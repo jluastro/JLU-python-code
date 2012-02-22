@@ -1,0 +1,51 @@
+import numpy as np
+import pylab as py
+
+
+def plotRadialProfile(psfImage, xcenter=None, ycenter=None, rbin=1):
+    """
+    Calculate and plot the radial profile. If the X and Y centers
+    are not given, then it calculates from the center of the image.
+    """
+
+    xsize = psfImage.shape[1]
+    ysize = psfImage.shape[0]
+
+    xhalf = xsize / 2.0
+    yhalf = ysize / 2.0
+    
+    x, y = np.indices((ysize, xsize), dtype=float)
+
+    r = np.hypot(x - xhalf, y - yhalf)
+
+    # Sort by radius
+    ridx = np.argsort(r.flat)
+
+    # Flatten images and sort by radius
+    rFlat = r.flat[ridx]
+    imFlat = image.flat[ridx]
+
+    radialBins = np.arange(0, r.max(), rbin)
+    radialProfile = np.zeros(len(radialBins), dtyle=float)
+
+
+    # Get the integer part of the radii
+    rInt = rFlat.astype(np.Int16)
+
+    # Assume all radii are represented
+    rDelta = rInt[1:] - rInt[-1]
+    
+    # Find the location where the radii changed
+    rIndependant = np.where(rDelta)[0]
+
+    # Number of radii in each bin
+    rNum = rIndependant[1:] - rIndependant[:-1]
+    
+
+    # Cumulative Sum to sum each radial bin
+    cumIm = np.cumsum(imFlat)
+    tbin = cumIm[rIndependant[1:]] - cumIm[rIndependant[:-1]]
+
+    radialProfile = tbin / rNum
+    
+    

@@ -1,0 +1,11 @@
+sigma = 5.670400e-5  # erg cm^-2 s^-1 K^-4 (stefan-boltzman constant in )
+Lsun = 3.839e33 # erg s^-1
+Rsun = 0.004652 # AU
+Msun = 1.98892e30 # kg
+gsun = 2.740e4 # cm s^-2  surface gravity
+G = 6.6726e-8 # gravitational constant cm^3 g^-1 s^-2
+c = 299792.458 # speed of light in km/s
+cm_in_AU = 149.60e11 # cm
+cm_in_pc = 3.086e18 # cm
+AU_in_pc = 206264.806
+sec_in_yr = 3.1557e7
