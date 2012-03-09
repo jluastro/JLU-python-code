@@ -14,6 +14,7 @@ from gcreduce import gcutil
 import pickle
 import pdb
 from gcwork import objects
+from jlu.util import rebin
 
 def random_distance(randNum):
     dist_mean = 8.096  # kpc
@@ -52,13 +53,24 @@ def random_alpha(randNum):
     return alpha, prob_alpha
 
 def random_mass(randNum):
-    Mcl_min = 1
-    Mcl_max = 100
+    #Mcl_min = 1
+    #Mcl_max = 100
+    Mcl_min = 7
+    Mcl_max = 13
     Mcl_diff = Mcl_max - Mcl_min
     Mcl = scipy.stats.uniform.ppf(randNum, loc=Mcl_min, scale=Mcl_diff)
     prob_Mcl = scipy.stats.uniform.pdf(Mcl, loc=Mcl_min, scale=Mcl_diff)
 
     return Mcl, prob_Mcl
+
+def random_N_old(randNum):
+    N_old_min = 0.2e3
+    N_old_max = 3.0e3
+    N_old_diff = N_old_max - N_old_min
+    N_old = scipy.stats.uniform.ppf(randNum, loc=N_old_min, scale=N_old_diff)
+    prob_N_old = scipy.stats.uniform.pdf(N_old, loc=N_old_min, scale=N_old_diff)
+
+    return N_old, prob_N_old
 
 def random_gamma(randNum):
     # Values from Schodel+ 2010
@@ -715,18 +727,27 @@ def run2(outdir, yng=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
                     n_clustering_params=n_clust_param,
                     n_live_points=n_live_points)
 
-def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
+def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
+         interact=False):
     magCut = 15.5
 
     # Load up the data arrays.
-    if yng == None:
+    if data == None:
         data = lu_gc_imf.load_all_catalog_by_radius(rmin, rmax, magCut=magCut)
         data_file = 'Observed Data'
-    elif type(yng) == str:
+    elif type(data) == str:
         data_file = data
         foo = open(data_file, 'r')
         data = pickle.load(foo)
         foo.close()
+
+        idx = np.where(data.kp_ext <= magCut)
+        data.kp = data.kp[idx]
+        data.kp_ext = data.kp_ext[idx]
+        data.kp_err = data.kp_err[idx]
+        data.prob = data.prob[idx]
+        data.mass = data.mass[idx]
+        data.isYoung = data.isYoung[idx]
     else:
         data_file = 'Simulated Cluster Object'
         
@@ -777,6 +798,8 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         # Mean of Red Clump: Note ratio of rec-clump to powerlaw is fixed.
         rcMean, prob_rcMean = random_rcMean(cube[6])
         rcSigma, prob_rcSigma = random_rcSigma(cube[7])
+        cube[6] = rcMean
+        cube[7] = rcSigma
 
         # Check that all our prior probabilities are valid, otherwise abort
         # before expensive calculation.
@@ -813,7 +836,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
             new_bins = np.arange(sim_k_bins[0]-width, k_min, -width)
             if len(new_bins) > 0:
                 tmp = np.zeros(len(new_bins), dtype=float)
-                sim_k_bins = np.concatenate([new_bins, sim_k_bins])
+                sim_k_bins = np.concatenate([new_bins[::-1], sim_k_bins])
                 sim_k_pdf = np.concatenate([tmp, sim_k_pdf])
                 sim_k_pdf_norm = np.concatenate([tmp, sim_k_pdf_norm])
                 sim_k_bin_widths = np.diff(sim_k_bins)
@@ -852,11 +875,13 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         comp_at_kp_sim = interpolate.splev(sim_k_bin_center, Kp_interp)
         comp_at_kp_sim[comp_at_kp_sim < 0] = 0.0
         comp_at_kp_sim[comp_at_kp_sim > 1] = 1.0
+        comp_at_kp_sim[sim_k_bin_center > magCut] = 0.0
 
         # Completeness curve (resampled to observed Kp)
-        comp_at_kp_obs = interpolate.splev(data.kp, Kp_interp)
+        comp_at_kp_obs = interpolate.splev(data.kp_ext, Kp_interp)
         comp_at_kp_obs[comp_at_kp_obs < 0] = 0.0
         comp_at_kp_obs[comp_at_kp_obs > 1] = 1.0
+        comp_at_kp_obs[data.kp_ext > magCut] = 0.0
 
         # N_yng (down to model_magnitude cut)
         N_yng = int(np.round(sim_k_pdf.sum()))
@@ -868,7 +893,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         #####
         # Keep track of the normalization constant (actually an array
         # that will be integrated at the end).
-        log_norm_const = 1.0
+        log_norm_const = 0.0
         
         #####
         # Prob(N_WR | model)
@@ -877,14 +902,17 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         log_L_N_WR = log_prob( scipy.stats.poisson.pmf(data.N_WR, sim_N_WR) )
 
         N_tot = N_yng + N_old
-        N_obs = len(data.kp)
-        fracY = N_yng / N_tot   # this is our mixture model weight
+        N_obs = len(data.kp_ext)
+        fracYng = N_yng / N_tot   # this is our mixture model weight
+
+        # TMP
+        N_tot = N_yng
+        fracYng = 1.0
 
         #####
         # Binomial Coefficient
         if N_obs >= N_tot:
-            print 'PROBLEM in binomial coefficient!!!'
-            pdb.set_trace()
+            return -np.Inf
         else:
             log_binom_coeff = scipy.special.gammaln(N_tot + 1)
             log_binom_coeff -= scipy.special.gammaln(N_obs + 1)
@@ -895,17 +923,18 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         #####
         # Non detections: log_L_k_non_detect
         ## Young part
-        tmp = fracYng * sim_k_pdf_norm * sim_k_bin_widths
-        tmp *= (1.0 - comp_at_kp_sim)
-        P_I0_y = tmp.sum()
+        tmp_y = fracYng * sim_k_pdf_norm * sim_k_bin_widths
+        tmp_y *= (1.0 - comp_at_kp_sim)
+        P_I0_y = tmp_y.sum()
 
         ## Old part
-        tmp = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths
-        tmp *= (1.0 - comp_at_kp_sim)
-        P_I0_o = tmp.sum()
+        tmp_o = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths
+        tmp_o *= (1.0 - comp_at_kp_sim)
+        P_I0_o = tmp_o.sum()
 
         ## log[ prob(I=0 | model)^(N-n) ]
-        log_L_k_non_detect = (N_tot - N_obs) * (log_prob(P_I0_y) + log_prob(P_I0_o))
+        #log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
+        log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y) # TMP
 
         log_norm_const += log_L_k_non_detect
 
@@ -915,33 +944,50 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
 
         tmp1 = fracYng * sim_k_pdf_norm * sim_k_bin_widths * comp_at_kp_sim
         tmp2 = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths * comp_at_kp_sim
-        tmp3 = N_obs * (log_prob(tmp1) + log_prob(tmp2))
+        tmp3 = N_obs * log_prob(tmp1.sum() + tmp2.sum())
+        # TMP
+        tmp3 = N_obs * log_prob(tmp1.sum())
         log_norm_const += tmp3
 
+        arr_L_k_y_np = np.zeros(len(data.kp_ext), dtype=float)
+        arr_L_k_y = np.zeros(len(data.kp_ext), dtype=float)
+        arr_L_k_o = np.zeros(len(data.kp_ext), dtype=float)
+        arr_L_k = np.zeros(len(data.kp_ext), dtype=float)
+        arr_L_k_comp = np.zeros(len(data.kp_ext), dtype=float)
+
         # Loop through each star and calc prob of detecting.
-        for ii in range(len(data.kp)):
+        for ii in range(len(data.kp_ext)):
             # Make gaussian around observed k mag
             obs_k_norm = scipy.stats.norm(loc=data.kp_ext[ii], scale=data.kp_err[ii])
             obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
-            obs_k_norm_pdf_binned = np.diff(obs_k_norm_cdf)
+            obs_k_norm_pdf = np.diff(obs_k_norm_cdf)
             
             # Convolve gaussian with PDF(K) from model
-            if obs_k_norm_pdf_binned.sum() == 0:
+            if obs_k_norm_pdf.sum() == 0:
                 print 'We have a problem... this should never happen.'
-                L_k_i = 0
+                pdb.set_trace()
+                #L_k_i = 0
+                return -np.Inf
             else:
                 # Young part
                 # Multiply gaussian with PDF(K) from model and sum to get probability
-                L_k_i_y = (sim_k_pdf_norm * obs_k_norm_pdf_binned).sum()
+                L_k_i_y = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_widths).sum()
+                arr_L_k_y_np[ii] = log_prob(L_k_i_y)
                 L_k_i_y *= data.prob[ii]
 
                 # Old part
-                L_k_i_o = (old_k_pdf_norm * obs_k_norm_pdf_binned).sum()
+                L_k_i_o = (old_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_widths).sum()
                 L_k_i_o *= (1.0 - data.prob[ii])
 
                 # Combine
-                L_k_i = L_k_i_y + L_k_i_o
+                #L_k_i = L_k_i_y + L_k_i_o
+                L_k_i = L_k_i_y # TMP
 
+                arr_L_k_y[ii] = log_prob(L_k_i_y)
+                arr_L_k_o[ii] = log_prob(L_k_i_o)
+                arr_L_k[ii] = log_prob(L_k_i)
+                arr_L_k_comp[ii] = log_prob(L_k_i) + log_prob(comp_at_kp_obs[ii])
+                
             log_L_k_detect += log_prob(L_k_i) + log_prob(comp_at_kp_obs[ii])
 
         log_L = log_L_N_WR + log_L_k_detect + log_binom_coeff
@@ -955,6 +1001,115 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
         log_L += math.log(prob_log_age_cont)
         log_L += math.log(prob_gamma)
         log_L += math.log(prob_N_old)
+        log_L += math.log(prob_rcMean)
+        log_L += math.log(prob_rcSigma)
+
+        if log_L >= 0:
+            pdb.set_trace()
+
+        if interact:
+            py.figure(1)
+            py.clf()
+            py.plot(data.kp_ext, arr_L_k_y, 'b.')
+            py.plot(data.kp_ext, arr_L_k_o, 'r.')
+            py.plot(data.kp_ext, arr_L_k, 'g.')
+            py.plot(data.kp_ext, arr_L_k_comp, 'k.')
+            py.ylim(-10, -2)
+            
+            py.figure(4)
+            py.clf()
+            bins = np.arange(-15, 0, 1)
+            py.hist(arr_L_k_y[data.prob == 1], label='young',
+                    histtype='step', bins=bins)
+            # py.hist(arr_L_k[data.prob == 0], label='old',
+            #         histtype='step', normed=True, bins=bins)
+            idx = np.where((data.prob > 0) & (data.prob < 1))[0]
+            if len(idx) > 0:
+                py.hist(arr_L_k_y[idx], label='uncertain',
+                        histtype='step', bins=bins, weights=data.prob[idx])
+                py.hist(arr_L_k_y, label='all',
+                        histtype='step', bins=bins, weights=data.prob)
+            
+            py.legend(loc='upper left')
+            py.xlabel('log L')
+
+            binsKp = np.arange(9.0, 17, 1.0)  # Bin Center Pointsklf_mag_bins
+            binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
+
+            tdx = np.where(sim_k_bins <= magCut)[0]
+            k_bins_tmp = np.append(sim_k_bins[tdx], sim_k_bins[tdx[-1]+1])
+            sim_k_pdf_tmp = (sim_k_pdf * comp_at_kp_sim)[tdx]
+            old_k_pdf_tmp = (old_k_pdf_norm * N_old * sim_k_bin_widths * comp_at_kp_sim)[tdx]
+
+            N_yng_sim = (sim_k_pdf_norm * N_yng * sim_k_bin_widths * comp_at_kp_sim)[tdx].sum()
+            N_old_sim = (old_k_pdf_norm * N_old * sim_k_bin_widths * comp_at_kp_sim)[tdx].sum()
+            N_tot_sim = N_yng_sim + N_old_sim
+
+            py.figure(2)
+            py.clf()
+            py.hist(data.kp_ext, bins=binEdges, histtype='step', color='black',
+                    weights=data.prob)
+            sim_k_pdf_rebin = rebin.rebin(k_bins_tmp, sim_k_pdf_tmp, binEdges)
+            rebin.edge_step(binEdges, sim_k_pdf_rebin, color='red')
+            py.plot(9.5, N_WR_sim, 'rs', ms=10)
+            py.plot(9.5, data.N_WR, 'ko', ms=9)
+            py.title('Young')
+
+            # py.figure(3)
+            # py.clf()
+            # py.hist(data.kp_ext, bins=binEdges, histtype='step', color='black',
+            #         weights=(1.0-data.prob))
+            # old_k_pdf_rebin = rebin.rebin(k_bins_tmp, old_k_pdf_tmp, binEdges)
+            # rebin.edge_step(binEdges, old_k_pdf_rebin, color='red')
+            # py.title('Old')
+
+            
+            print 'dist    = %6.3f   log_prob = %8.1f' % (dist, math.log(prob_dist))
+            print 'log_age = %6.2f   log_prob = %8.1f' % (log_age_cont, math.log(prob_log_age_cont))
+            print 'alpha   = %6.2f   log_prob = %8.1f' % (alpha, math.log(prob_alpha))
+            print 'Mcl     = %6.2f   log_prob = %8.1f' % (Mcl, math.log(prob_Mcl))
+            print 'gamma   = %6.2f   log_prob = %8.1f' % (gamma, math.log(prob_gamma))
+            print 'N_old   = %6d   log_prob = %8.1f' % (N_old, math.log(prob_N_old))
+            print 'rcMean  = %6.2f   log_prob = %8.1f' % (rcMean, math.log(prob_rcMean))
+            print 'rcSigma = %6.2f   log_prob = %8.1f' % (rcSigma, math.log(prob_rcSigma))
+            print ''
+            print 'Simulated Stars:'
+            print 'N_yng = %6d' % (N_yng_sim)
+            print 'N_old = %6d' % (N_old_sim)
+            print 'N_tot = %6d' % (N_tot_sim)
+            print 'N_WR = %6d' % (N_WR_sim)
+            print ''
+            print 'Observed Stars:'
+            print 'N_yng = %6d' % (data.prob.sum())
+            print 'N_old = %6d' % ((1.0 - data.prob).sum())
+            print 'N_obs = %6d' % (N_obs)
+            print 'N_WR = %6d' % (data.N_WR)
+            print ''
+            print 'Binomial: '
+            print 'N_tot = %6d' % N_tot
+            print 'N_obs = %6d' % N_obs
+            print ''
+            print 'Likelihood:'
+            print 'log_L_N_WR         = %8.1f' % log_L_N_WR
+            print 'log_L_binom_coeff  = %8.1f' % log_binom_coeff
+            print 'log_L_k_detect     = %8.1f' % log_L_k_detect
+            print 'log_L_k_non_detect = %8.1f' % log_L_k_non_detect
+            print 'log_norm_const     = %8.1f' % log_norm_const
+            print ''
+            idx = np.where(data.prob > 0)[0]
+            print 'YNG arr_L_k_y_np   = %8.1f' % arr_L_k_y_np[idx].sum()
+            print 'YNG arr_L_k_y      = %8.1f' % arr_L_k_y[idx].sum()
+            print 'FINAL: '
+            print 'log_L = %8.1f' % log_L
+            print ''
+            
+            #pdb.set_trace()
+            
+        cube[10] = log_L_N_WR
+        cube[11] = log_binom_coeff
+        cube[12] = log_L_k_detect
+        cube[13] = log_L_k_non_detect
+        cube[14] = log_norm_const
 
         return log_L
 
@@ -963,7 +1118,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
     outroot = outdir + 'mnest_'
 
     num_dims = 8
-    num_params = 10
+    num_params = 15
     ev_tol = 0.7
     samp_eff = 0.8
     n_clust_param = num_dims - 1
@@ -975,7 +1130,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
     _run.write('Sampling Efficiency: %.1f\n' % samp_eff)
     _run.write('Num Clustering Params: %d\n' % n_clust_param)
     _run.write('Num Live Points: %d\n' % n_live_points)
-    _run.write('Young Star Data: %s\n' % yng_file)
+    _run.write('Young Star Data: %s\n' % data_file)
     _run.write('Allowed Multiples in Fit: %s\n' % str(multiples))
     _run.close()
 
@@ -989,12 +1144,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
 
 def load_results(rootdir):
     root = '%s/mnest_' % (rootdir)
-    num_params = 7
-
     tab = atpy.Table(root + '.txt', type='ascii')
-
-    if num_params != (tab.shape[1] - 2):
-        print 'N_params mismatch: ', outroot
 
     # Convert to log(likelihood)
     tab['col2'] /= -2.0
@@ -1007,9 +1157,17 @@ def load_results(rootdir):
     tab.rename_column('col4', 'logAge')
     tab.rename_column('col5', 'alpha')
     tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'N_yng_obs')
-    tab.rename_column('col8', 'N_WR_sim')
-    tab.rename_column('col9', 'N_yng_sim')
+    tab.rename_column('col7', 'gamma')
+    tab.rename_column('col8', 'N_old')
+    tab.rename_column('col9', 'rcMean')
+    tab.rename_column('col10', 'rcSigma')
+    tab.rename_column('col11', 'N_yng')
+    tab.rename_column('col12', 'N_WR_sim')
+    tab.rename_column('col13', 'log_L_N_WR')
+    tab.rename_column('col14', 'log_L_binom_coeff')
+    tab.rename_column('col15', 'log_L_k_detect')
+    tab.rename_column('col16', 'log_L_k_non_detect')
+    tab.rename_column('col17', 'log_L_norm_const')
 
     # Now sort based on logLikelihood
     tab.sort('logLike')
@@ -1062,13 +1220,23 @@ def plot_posteriors_1D(outdir, sim=True):
 
     # Rename the parameter columns. This is hard-coded to match the
     # above run() function.
+    # tab.rename_column('col3', 'distance')
+    # tab.rename_column('col4', 'logAge')
+    # tab.rename_column('col5', 'alpha')
+    # tab.rename_column('col6', 'Mcl')
+    # tab.rename_column('col7', 'N_yng_obs')
+    # tab.rename_column('col8', 'N_WR_sim')
+    # tab.rename_column('col9', 'N_yng_sim')
     tab.rename_column('col3', 'distance')
     tab.rename_column('col4', 'logAge')
     tab.rename_column('col5', 'alpha')
     tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'N_yng_obs')
-    tab.rename_column('col8', 'N_WR_sim')
-    tab.rename_column('col9', 'N_yng_sim')
+    tab.rename_column('col7', 'gamma')
+    tab.rename_column('col8', 'N_old')
+    tab.rename_column('col9', 'rcMean')
+    tab.rename_column('col10', 'rcSigma')
+    tab.rename_column('col11', 'N_yng')
+    tab.rename_column('col12', 'N_WR_sim')
 
     # If this is simulated data, load up the simulation and overplot
     # the input values on each histogram.
@@ -1153,6 +1321,37 @@ def plot_posteriors_1D(outdir, sim=True):
 
     py.suptitle(outdir)
     py.savefig(outdir + 'plot_posteriors_1D.png')
+
+def plot_posteriors3(outdir):
+    outroot = '%s/mnest_' % (outdir)
+    num_params = 10
+
+    tab = atpy.Table(outroot + '.txt', type='ascii')
+
+    if num_params != (tab.shape[1] - 2):
+        print 'N_params mismatch: ', outroot
+
+    # First column is the weights
+    weights = tab['col1']
+    logLike = tab['col2'] / -2.0
+    
+    # Now delete the first two rows
+    tab.remove_columns(('col1', 'col2'))
+
+    # Rename the parameter columns. This is hard-coded to match the
+    # above run() function.
+    tab.rename_column('col3', 'distance')
+    tab.rename_column('col4', 'logAge')
+    tab.rename_column('col5', 'alpha')
+    tab.rename_column('col6', 'Mcl')
+    tab.rename_column('col7', 'gamma')
+    tab.rename_column('col8', 'N_old')
+    tab.rename_column('col9', 'rcMean')
+    tab.rename_column('col10', 'rcSigma')
+    tab.rename_column('col11', 'N_yng')
+    tab.rename_column('col12', 'N_WR_sim')
+
+    pair_posterior(tab, weights, outfile=outroot+'posteriors.png', title=outdir)
 
 def pair_posterior(atpy_table, weights, outfile=None, title=None):
     """
@@ -1332,15 +1531,23 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     
 
     # Merge together the two data sets
+    # data = objects.DataHolder()
+    # data.kp = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
+    # data.kp_ext = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
+    # data.kp_err = np.ones(len(detected_yng) + len(detected_old), dtype=float) * 0.1
+    # data.N_WR = cluster.num_WR
+    # data.mass = np.concatenate([cluster.mass[cluster.idx_noWR][detected_yng],
+    #                             np.zeros(len(detected_old))])
+    # data.isYoung = np.concatenate([np.ones(len(detected_yng), dtype=bool),
+    #                                np.zeros(len(detected_old), dtype=bool)])
+
     data = objects.DataHolder()
-    data.kp = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
-    data.kp_ext = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
-    data.kp_err = np.ones(len(detected_yng) + len(detected_old), dtype=float) * 0.1
+    data.kp = kp_yng[detected_yng]
+    data.kp_ext = kp_yng[detected_yng]
+    data.kp_err = np.ones(len(detected_yng), dtype=float) * 0.1
     data.N_WR = cluster.num_WR
-    data.mass = np.concatenate([cluster.mass[cluster.idx_noWR][detected_yng],
-                                np.zeros(len(detected_old))])
-    data.isYoung = np.concatenate([np.ones(len(detected_yng), dtype=bool),
-                                   np.zeros(len(detected_old), dtype=bool)])
+    data.mass = cluster.mass[cluster.idx_noWR][detected_yng]
+    data.isYoung = np.ones(len(detected_yng), dtype=bool)
 
     # Assign probability of youth. Assume everything is perfectly characterized
     # up to 14. Then an increasing fraction of the stars will have imperfect
@@ -1350,22 +1557,22 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     # with imperfect knowledge have a randomly selected P(yng) between 0 - 0.4.
     # This effectively means that we "know" the old stars better than the young
     # stars.
-    prob_ID = (data.kp - 14.0) / (16.5 - 14.0)
+    prob_ID = (16.5 - data.kp) / (16.5 - 14.0)
     prob_ID[data.kp < 14] = 1
-    prob_ID[data.kp > 16.1] = 0
+    prob_ID[data.kp > 16.5] = 0
 
     # Default, we know it's type
     data.prob = np.ones(len(data.kp), dtype=float)
     data.prob[data.isYoung == False] = 0.0
 
-    # randomly decide if each star is perfectly ID'ed
-    rand_number = np.random.rand(len(data.kp))
-    idx = np.where(rand_number > prob_ID)[0]      # all stars with uncertain types
-    ydx = np.where(data.isYoung[idx] == True)[0]  # young uncertains
-    odx = np.where(data.isYoung[idx] == False)[0] # old uncertains
-    data.prob[idx[ydx]] = np.random.uniform(low=0.4, high=1.0, size=len(ydx))
-    data.prob[idx[odx]] = np.random.uniform(low=0.0, high=0.4, size=len(odx))
-    
+    # # randomly decide if each star is perfectly ID'ed
+    # rand_number = np.random.rand(len(data.kp))
+    # idx = np.where(rand_number > prob_ID)[0]      # all stars with uncertain types
+    # ydx = np.where(data.isYoung[idx] == True)[0]  # young uncertains
+    # odx = np.where(data.isYoung[idx] == False)[0] # old uncertains
+    # data.prob[idx[ydx]] = np.random.uniform(low=0.4, high=1.0, size=len(ydx))
+    # data.prob[idx[odx]] = np.random.uniform(low=0.0, high=0.4, size=len(odx))
+
     return data
 
 def test_prob_old():
@@ -1405,6 +1612,8 @@ def test_prob_old():
     print 'N_old with 10.0 <= Kp < 14.0: %d' % len(idx)
     print 'N_old with 14.0 <= Kp < 15.5: %d' % len(rdx)
 
+    outRoot = '/u/jlu/work/gc/imf/klf/2012_02_14/multinest/test_model/'
+
     sim = simulated_data()
     kp_bins = np.arange(8, 18, 1.0)
     py.figure(1)
@@ -1416,6 +1625,7 @@ def test_prob_old():
     py.xlim(8, 16)
     py.ylim(0, 400)
     py.title('All Stars')
+    py.savefig(outRoot + 'klf_sim_vs_obs.png')
 
     py.figure(2)
     py.clf()
@@ -1426,6 +1636,7 @@ def test_prob_old():
     py.xlim(8, 16)
     py.ylim(0, 150)
     py.title('Young Stars')
+    py.savefig(outRoot + 'klf_sim_vs_obs_yng.png')
 
     py.figure(3)
     py.clf()
@@ -1436,6 +1647,49 @@ def test_prob_old():
     py.xlim(8, 16)
     py.ylim(0, 400)
     py.title('Old Stars')
+    py.savefig(outRoot + 'klf_sim_vs_obs_old.png')
 
     print len(sim.kp), sim.prob.sum() + (1.0 - sim.prob).sum()
     print len(obs.kp), obs.prob.sum() + (1.0 - obs.prob).sum()
+
+
+def make_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
+                            Nold, multiples=True, suffix=''):
+
+    sim = simulated_data(logAge, AKs, distance, imfSlope, clusterMass,
+                         Nold=Nold, multiples=multiples)
+    if multiples:
+        multi = 'multi'
+    else:
+        multi = 'single'
+
+    out_root = 'cluster_sim_t%.2f_AKs%.1f_d%d_a%.2f_m%d_o%d_%s%s' % \
+	(logAge, AKs, distance, imfSlope, clusterMass, Nold, multi, suffix)
+
+    out_file = out_root + '.pickle'
+    _out = open(out_file, 'w')
+    pickle.dump(sim, _out)
+    _out.close()
+
+def run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
+                           Nold, multiples, fitMultiples, suffix=''):
+    if multiples:
+        multi = 'multi'
+    else:
+        multi = 'single'
+
+    if fitMultiples:
+        fit_multi = 'multi'
+    else:
+        fit_multi = 'single'
+
+    info = 'sim_t%.2f_AKs%.1f_d%d_a%.2f_m%d_o%d_%s%s' % \
+        (logAge, AKs, distance, imfSlope, clusterMass, Nold, multi, suffix)
+
+    data_file = 'cluster_%s.pickle' % (info)
+    out_dir = 'fit_%s_%s/' % (fit_multi, info)
+
+    run3(out_dir, data=data_file, multiples=fitMultiples)
+
+    return out_dir
+
