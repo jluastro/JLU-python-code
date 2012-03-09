@@ -905,10 +905,6 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         N_obs = len(data.kp_ext)
         fracYng = N_yng / N_tot   # this is our mixture model weight
 
-        # TMP
-        N_tot = N_yng
-        fracYng = 1.0
-
         #####
         # Binomial Coefficient
         if N_obs >= N_tot:
@@ -933,8 +929,8 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         P_I0_o = tmp_o.sum()
 
         ## log[ prob(I=0 | model)^(N-n) ]
-        #log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
-        log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y) # TMP
+        log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
+        # log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y) # TMP
 
         log_norm_const += log_L_k_non_detect
 
@@ -946,7 +942,8 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         tmp2 = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths * comp_at_kp_sim
         tmp3 = N_obs * log_prob(tmp1.sum() + tmp2.sum())
         # TMP
-        tmp3 = N_obs * log_prob(tmp1.sum())
+        #tmp3 = N_obs * log_prob(tmp1.sum())
+
         log_norm_const += tmp3
 
         arr_L_k_y_np = np.zeros(len(data.kp_ext), dtype=float)
@@ -980,8 +977,8 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                 L_k_i_o *= (1.0 - data.prob[ii])
 
                 # Combine
-                #L_k_i = L_k_i_y + L_k_i_o
-                L_k_i = L_k_i_y # TMP
+                L_k_i = L_k_i_y + L_k_i_o
+                #L_k_i = L_k_i_y # TMP
 
                 arr_L_k_y[ii] = log_prob(L_k_i_y)
                 arr_L_k_o[ii] = log_prob(L_k_i_o)
@@ -1055,13 +1052,13 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             py.plot(9.5, data.N_WR, 'ko', ms=9)
             py.title('Young')
 
-            # py.figure(3)
-            # py.clf()
-            # py.hist(data.kp_ext, bins=binEdges, histtype='step', color='black',
-            #         weights=(1.0-data.prob))
-            # old_k_pdf_rebin = rebin.rebin(k_bins_tmp, old_k_pdf_tmp, binEdges)
-            # rebin.edge_step(binEdges, old_k_pdf_rebin, color='red')
-            # py.title('Old')
+            py.figure(3)
+            py.clf()
+            py.hist(data.kp_ext, bins=binEdges, histtype='step', color='black',
+                    weights=(1.0-data.prob))
+            old_k_pdf_rebin = rebin.rebin(k_bins_tmp, old_k_pdf_tmp, binEdges)
+            rebin.edge_step(binEdges, old_k_pdf_rebin, color='red')
+            py.title('Old')
 
             
             print 'dist    = %6.3f   log_prob = %8.1f' % (dist, math.log(prob_dist))
@@ -1182,7 +1179,6 @@ def plot_posteriors(outdir):
 
 def plot_posteriors_1D(outdir, sim=True):
     tab = load_results(outdir)
-    tab.remove_columns(('weights', 'logLike'))
 
     # If this is simulated data, load up the simulation and overplot
     # the input values on each histogram.
@@ -1225,7 +1221,7 @@ def plot_posteriors_1D(outdir, sim=True):
         else:
             bins = 50
         n, bins, patch = ax.hist(tab[paramName], normed=True, histtype='step',
-                                 weights=weights, bins=bins)
+                                 weights=tab['weights'], bins=bins)
         py.setp(ax.get_xticklabels(), fontsize=fontsize)
         py.setp(ax.get_yticklabels(), fontsize=fontsize)
         ax.set_xlabel(paramName, size=fontsize+2)
@@ -1240,8 +1236,8 @@ def plot_posteriors_1D(outdir, sim=True):
     plot_PDF(ax7, 'N_old', counter=True)
 
     # Make some adjustments to the axes for Number of stars plots
-    N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=weights)
-    N_WR_sim_std = math.sqrt( np.dot(weights, (tab['N_WR_sim']-N_WR_sim_avg)**2) / weights.sum() )
+    N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=tab['weights'])
+    N_WR_sim_std = math.sqrt( np.dot(tab['weights'], (tab['N_WR_sim']-N_WR_sim_avg)**2) / tab['weights'].sum() )
     N_WR_lo = N_WR_sim_avg - (3 * N_WR_sim_std)
     N_WR_hi = N_WR_sim_avg + (3 * N_WR_sim_std)
     if N_WR_lo < 0:
@@ -1467,23 +1463,23 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     
 
     # Merge together the two data sets
-    # data = objects.DataHolder()
-    # data.kp = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
-    # data.kp_ext = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
-    # data.kp_err = np.ones(len(detected_yng) + len(detected_old), dtype=float) * 0.1
-    # data.N_WR = cluster.num_WR
-    # data.mass = np.concatenate([cluster.mass[cluster.idx_noWR][detected_yng],
-    #                             np.zeros(len(detected_old))])
-    # data.isYoung = np.concatenate([np.ones(len(detected_yng), dtype=bool),
-    #                                np.zeros(len(detected_old), dtype=bool)])
-
     data = objects.DataHolder()
-    data.kp = kp_yng[detected_yng]
-    data.kp_ext = kp_yng[detected_yng]
-    data.kp_err = np.ones(len(detected_yng), dtype=float) * 0.1
+    data.kp = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
+    data.kp_ext = np.concatenate([kp_yng[detected_yng], kp_old[detected_old]])
+    data.kp_err = np.ones(len(detected_yng) + len(detected_old), dtype=float) * 0.1
     data.N_WR = cluster.num_WR
-    data.mass = cluster.mass[cluster.idx_noWR][detected_yng]
-    data.isYoung = np.ones(len(detected_yng), dtype=bool)
+    data.mass = np.concatenate([cluster.mass[cluster.idx_noWR][detected_yng],
+                                np.zeros(len(detected_old))])
+    data.isYoung = np.concatenate([np.ones(len(detected_yng), dtype=bool),
+                                   np.zeros(len(detected_old), dtype=bool)])
+
+    # data = objects.DataHolder()
+    # data.kp = kp_yng[detected_yng]
+    # data.kp_ext = kp_yng[detected_yng]
+    # data.kp_err = np.ones(len(detected_yng), dtype=float) * 0.1
+    # data.N_WR = cluster.num_WR
+    # data.mass = cluster.mass[cluster.idx_noWR][detected_yng]
+    # data.isYoung = np.ones(len(detected_yng), dtype=bool)
 
     # Assign probability of youth. Assume everything is perfectly characterized
     # up to 14. Then an increasing fraction of the stars will have imperfect
