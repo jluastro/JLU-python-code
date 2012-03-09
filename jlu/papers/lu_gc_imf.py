@@ -5999,13 +5999,16 @@ def plot_model_vs_data(logAge, AKs, distance, imfSlope, clusterMass, yngData=Non
     f_arr = [f1, f2, f3, f4]
     for fidx in range(len(f_arr)):
         f = f_arr[fidx]
-        f.hist(yngData.kp, bins=binEdges, histtype='step', color='black', label='Obs')
+        f.hist(yngData.kp, bins=binEdges, histtype='step', color='black', label='Obs',
+               weights=yngData.prob)
         f.plot([8.5], yngData.N_WR, 'ko', color='black', ms=10)
         f.legend(loc='upper left')
-        f.set_yscale('log')
+        #f.set_yscale('log')
+        rng = py.axis()
         f.set_xlabel('Kp Magnitude')
         f.set_ylabel('Number of Stars')
         f.set_title(titles[fidx])
+        f.set_ylim(0, rng[3])
 
         outFile = outDir + 'plots/klf_model_vs_data_' + outSuffixArr[fidx] + '.png'
         f.get_figure().savefig(outFile)
@@ -6115,18 +6118,19 @@ def plot_model_vs_data_tests():
     Plot up the data vs. a set of model parameters to see how much variation there is.
     The data is actually a simulated cluster.
     """
-    data_logt = 6.78
+    data_logt = 6.6
     data_AKs = 2.70
     data_dist = 8000
-    data_Mcl = 4e4
+    data_Mcl = 1.1e4
     data_alpha = 2.35
 
-    sim_file = 'test_yng_sim3_t%.2f_AKs%.1f_d%d_a%.2f_m%d.pickle' % \
-        (data_logt, data_AKs, data_dist, data_alpha, data_Mcl)
-    print sim_file
-    tmp = open(workDir + sim_file, 'r')
+    # sim_file = 'test_yng_sim3_t%.2f_AKs%.1f_d%d_a%.2f_m%d.pickle' % \
+    #     (data_logt, data_AKs, data_dist, data_alpha, data_Mcl)
+    # print sim_file
+    # tmp = open(workDir + sim_file, 'r')
     
-    yng_sim = pickle.load(tmp)
+    # yng_sim = pickle.load(tmp)
+    yng_sim = None
 
     # Vary the cluster age
     logAge = np.array([6.30, 6.60, 6.78, 6.90, 7.00])
@@ -6787,7 +6791,7 @@ def plot_WR_vs_age():
     py.savefig(workDir + 'plots/num_WR_OB_ratio_vs_age.png')
     py.savefig(workDir + 'plots/num_WR_OB_ratio_vs_age.eps')
 
-def plot_fit_posteriors_2d(param1, param2):
+def plot_fit_posteriors_2d(param1, param2, fit=None):
     """
     Plot 2D posterior PDFs for the bayesian inference analysis on the
     observed data. The fit was done allowing for multiples.
@@ -6803,9 +6807,10 @@ def plot_fit_posteriors_2d(param1, param2):
     """
     from jlu.gc.imf import multinest as m
 
-    #fit_dir = workDir + 'multinest/obs_multi/'
-    fit_dir = workDir + 'multinest/fit_multi_sim_t6.78_AKs2.7_d8000_a2.35_m10000_multi/'
-    fit = m.load_results(fit_dir)
+    if fit == None:
+        #fit_dir = workDir + 'multinest/obs_multi/'
+        fit_dir = workDir + 'multinest/fit_multi_sim_t6.78_AKs2.7_d8000_a2.35_m10000_multi/'
+        fit = m.load_results(fit_dir)
 
     #py.close(1)
     #py.figure(1)

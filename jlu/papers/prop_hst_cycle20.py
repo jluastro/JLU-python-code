@@ -168,14 +168,29 @@ def cmd():
     magHi = 16.5
     colorLo = 0.8
     colorHi = 0.88
+    
+    # Pull out a few key masses along the isochrone
+    idxM1 = np.abs(iso.M - 1.0).argmin()
+    idxM01 = np.abs(iso.M - 0.1).argmin()
+
+    colM1 = iso.mag125w[idxM1] - iso.mag160w[idxM1]
+    magM1 = iso.mag125w[idxM1]
+    colM01 = iso.mag125w[idxM01] - iso.mag160w[idxM01]
+    magM01 = iso.mag125w[idxM01]
 
     # Plot up the complete near-infrared color magnitude diagram, select out
     # a color region to show cluster members in the VPD.
     py.clf()
     py.subplots_adjust(left=0.11)
     py.plot(data.mag125 - data.mag160, data.mag125, 'k.', ms=2)
-    py.plot(iso.mag125w - iso.mag160w, iso.mag125w, 'b-', ms=2,
-            linewidth=2)
+    py.plot(iso.mag125w - iso.mag160w, iso.mag125w, 'r-', ms=2,
+            color='red', linewidth=2)
+    py.plot([colM1], [magM1], 'r*', ms=25)
+    py.plot([colM01], [magM01],'r*', ms=25)
+    py.text(colM1+0.1, magM1, r'1 M$_\odot$', color='red', 
+            fontweight='normal', fontsize=28)
+    py.text(colM01+0.1, magM01, r'0.1 M$_\odot$', color='red',
+            fontweight='normal', fontsize=28)
     py.gca().invert_yaxis()
 
     py.plot([colorLo, colorHi, colorHi, colorLo, colorLo,],
@@ -218,15 +233,16 @@ def cmd():
 
     py.clf()
     py.subplots_adjust(left=0.13)
-    py.plot(data.dx[idx]/dt, data.dy[idx]/dt, 'k.', ms=2)
+    py.plot(data.dx[idx]/dt, data.dy[idx]/dt, 'k.', ms=4)
     py.plot(data.dx[idx[tdx]]/dt, data.dy[idx[tdx]]/dt,
             'b.', color='lightgreen', ms=10)
     circ = py.Circle([dx_mean/dt, dy_mean/dt], radius=dr_cluster/dt,
-                     fc='none', ec='red', linewidth=4, zorder=10)
+                     fc='none', ec='yellow', linewidth=4, zorder=10)
     py.gca().add_patch(circ)
-    py.axis([-20/dt, 20/dt, -20/dt, 20/dt])
-    py.xlabel('X Offset (mas/yr)')
-    py.ylabel('Y Offset (mas/yr)')
+    lim = 20
+    py.axis([-lim/dt, lim/dt, -lim/dt, lim/dt])
+    py.xlabel('X Proper Motion (mas/yr)')
+    py.ylabel('Y Proper Motion (mas/yr)')
     py.title('2010 F814W - 2005 F125W')
     py.savefig(plotDir + 'vpd_cmd_selected.png')
     
@@ -237,9 +253,15 @@ def cmd():
     py.subplots_adjust(left=0.11)
     py.plot(data.mag125 - data.mag160, data.mag125, 'k.', ms=2)
     py.plot(data.mag125[idx[inCluster]] - data.mag160[idx[inCluster]],
-            data.mag125[idx[inCluster]], 'r.', ms=5)
-    py.plot(iso.mag125w - iso.mag160w, iso.mag125w, 'b-', ms=2,
+            data.mag125[idx[inCluster]], 'y.', ms=5)
+    py.plot(iso.mag125w - iso.mag160w, iso.mag125w, 'r-', ms=2,
             linewidth=2)
+    py.plot([colM1], [magM1], 'r*', ms=25)
+    py.plot([colM01], [magM01],'r*', ms=25)
+    py.text(colM1+0.1, magM1, r'1 M$_\odot$', color='red', 
+            fontweight='normal', fontsize=28)
+    py.text(colM01+0.1, magM01, r'0.1 M$_\odot$', color='red',
+            fontweight='normal', fontsize=28)
     py.gca().invert_yaxis()
     py.xlim(0, 2)
     py.ylim(23, 12)
