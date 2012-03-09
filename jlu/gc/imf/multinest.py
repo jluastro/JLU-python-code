@@ -1175,68 +1175,14 @@ def load_results(rootdir):
     return tab
 
 def plot_posteriors(outdir):
-    outroot = '%s/mnest_' % (outdir)
-    num_params = 7
-
-    tab = atpy.Table(outroot + '.txt', type='ascii')
-
-    if num_params != (tab.shape[1] - 2):
-        print 'N_params mismatch: ', outroot
-
-    # First column is the weights
-    weights = tab['col1']
-    logLike = tab['col2'] / -2.0
-    
-    # Now delete the first two rows
-    tab.remove_columns(('col1', 'col2'))
-
-    # Rename the parameter columns. This is hard-coded to match the
-    # above run() function.
-    tab.rename_column('col3', 'distance')
-    tab.rename_column('col4', 'logAge')
-    tab.rename_column('col5', 'alpha')
-    tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'N_yng_obs')
-    tab.rename_column('col8', 'N_WR_sim')
-    tab.rename_column('col9', 'N_yng_sim')
+    tab = load_results(outdir)
+    tab.remove_columns(('weights', 'logLike'))
 
     pair_posterior(tab, weights, outfile=outroot+'posteriors.png', title=outdir)
 
 def plot_posteriors_1D(outdir, sim=True):
-    outroot = '%s/mnest_' % (outdir)
-    num_params = 7
-
-    tab = atpy.Table(outroot + '.txt', type='ascii')
-
-    if num_params != (tab.shape[1] - 2):
-        print 'N_params mismatch: ', outroot
-
-    # First column is the weights
-    weights = tab['col1']
-    logLike = tab['col2'] / -2.0
-    
-    # Now delete the first two rows
-    tab.remove_columns(('col1', 'col2'))
-
-    # Rename the parameter columns. This is hard-coded to match the
-    # above run() function.
-    # tab.rename_column('col3', 'distance')
-    # tab.rename_column('col4', 'logAge')
-    # tab.rename_column('col5', 'alpha')
-    # tab.rename_column('col6', 'Mcl')
-    # tab.rename_column('col7', 'N_yng_obs')
-    # tab.rename_column('col8', 'N_WR_sim')
-    # tab.rename_column('col9', 'N_yng_sim')
-    tab.rename_column('col3', 'distance')
-    tab.rename_column('col4', 'logAge')
-    tab.rename_column('col5', 'alpha')
-    tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'gamma')
-    tab.rename_column('col8', 'N_old')
-    tab.rename_column('col9', 'rcMean')
-    tab.rename_column('col10', 'rcSigma')
-    tab.rename_column('col11', 'N_yng')
-    tab.rename_column('col12', 'N_WR_sim')
+    tab = load_results(outdir)
+    tab.remove_columns(('weights', 'logLike'))
 
     # If this is simulated data, load up the simulation and overplot
     # the input values on each histogram.
@@ -1290,8 +1236,8 @@ def plot_posteriors_1D(outdir, sim=True):
     plot_PDF(ax3, 'Mcl')
     plot_PDF(ax4, 'distance')
     plot_PDF(ax5, 'N_WR_sim', counter=True)
-    plot_PDF(ax6, 'N_yng_obs', counter=True)
-    plot_PDF(ax7, 'N_yng_sim', counter=True)
+    plot_PDF(ax6, 'gamma', counter=True)
+    plot_PDF(ax7, 'N_old', counter=True)
 
     # Make some adjustments to the axes for Number of stars plots
     N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=weights)
@@ -1302,22 +1248,12 @@ def plot_posteriors_1D(outdir, sim=True):
         N_WR_lo = 0
     ax5.set_xlim(N_WR_lo, N_WR_hi)
 
-    N_yng_obs_avg = np.average(tab['N_yng_obs'], weights=weights)
-    N_yng_obs_std = math.sqrt( np.dot(weights, (tab['N_yng_obs']-N_yng_obs_avg)**2) / weights.sum() )
-    N_yng_lo = N_yng_obs_avg - (3 * N_yng_obs_std)
-    N_yng_hi = N_yng_obs_avg + (3 * N_yng_obs_std)
-    ax6.set_xlim(N_yng_lo, N_yng_hi)
-    ax7.set_xlim(N_yng_lo, N_yng_hi)
-
-
     if sim:
         ax1.axvline(imfSlope, color='red')
         ax2.axvline(logAge, color='red')
         ax3.axvline(Mcl, color='red')
         ax4.axvline(distance, color='red')
         ax5.axvline(numWR, color='red')
-        ax6.axvline(numOB, color='red')
-        ax7.axvline(numOB, color='red')
 
     py.suptitle(outdir)
     py.savefig(outdir + 'plot_posteriors_1D.png')
