@@ -1174,6 +1174,8 @@ def load_results(rootdir):
 def plot_posteriors(outdir):
     tab = load_results(outdir)
     tab.remove_columns(('weights', 'logLike'))
+    tab.remove_columns(('log_L_N_WR', 'log_L_binom_coeff', 'log_L_k_detect',
+                        'log_L_k_non_detect', 'log_L_norm_const')
 
     pair_posterior(tab, weights, outfile=outroot+'posteriors.png', title=outdir)
 
@@ -1189,6 +1191,7 @@ def plot_posteriors_1D(outdir, sim=True):
         distance = float(parts[5][1:]) / 10**3
         imfSlope = float(parts[6][1:])
         Mcl = int(parts[7][1:]) / 10**3
+        N_old = int(parts[8][1:])
         
         tmp2 = 'cluster_' + '_'.join(parts[2:])
         tmp3 = tmp2.replace('/', '')
@@ -1232,7 +1235,7 @@ def plot_posteriors_1D(outdir, sim=True):
     plot_PDF(ax3, 'Mcl')
     plot_PDF(ax4, 'distance')
     plot_PDF(ax5, 'N_WR_sim', counter=True)
-    plot_PDF(ax6, 'gamma', counter=True)
+    plot_PDF(ax6, 'N_yng', counter=True)
     plot_PDF(ax7, 'N_old', counter=True)
 
     # Make some adjustments to the axes for Number of stars plots

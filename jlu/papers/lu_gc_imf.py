@@ -54,6 +54,7 @@ def analysis_by_radius(rmin=0, rmax=30):
     spec_completeness_by_radius(rmin=rmin, rmax=rmax)
     merge_completeness_by_radius(rmin=rmin, rmax=rmax)
     klf_by_radius(rmin=rmin, rmax=rmax)
+
     plot_klf_by_radius(rmin=rmin, rmax=rmax)
     plot_klf_by_radius_noWR(rmin=rmin, rmax=rmax)
     plot_klf_by_radius_WR_v_noWR(rmin=rmin, rmax=rmax)
@@ -68,7 +69,16 @@ def analysis_by_radius(rmin=0, rmax=30):
     #fit_with_models(multiples=True)
     #table_best_fit_params(multiples=True)
     #plot_fit_posteriors_1d()
-    #plot_sim_results()
+    #Plot_sim_results()
+
+def make_paper_plots():
+    # Plots in paper
+    plot_image_completeness_vs_radius()
+    plot_klf_progression()
+    plot_klf_vs_bartko_by_radius_paper()
+    plot_fit_posteriors_1d()
+    plot_binary_properties()
+    table_best_fit_params(multiples=True)
 
 def old_analysis():
     img_completeness()
