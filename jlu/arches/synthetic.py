@@ -23,8 +23,8 @@ import matplotlib
 import pymc
 import pdb
 
-defaultAKs = 0.91
-defaultDist = 4000
+defaultAKs = 3.1
+defaultDist = 8000
 
 def Vega():
     # Use Vega as our zeropoint... assume V=0.03 mag and all colors = 0.0
@@ -236,7 +236,6 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     _in.close()
 
     return iso
-
 
 # Little helper utility to get all the bandpass/zeropoint info.
 def get_filter_info(name, vega=vega):
