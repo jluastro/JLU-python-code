@@ -16,81 +16,91 @@ import pdb
 from gcwork import objects
 from jlu.util import rebin
 
-def random_distance(randNum):
+def make_distance_gen():
     dist_mean = 8.096  # kpc
     dist_std = 0.483   # kpc
     dist_min = 6.793   # kpc
     dist_max = 9.510   # kpc
     dist_a = (dist_min - dist_mean) / dist_std
     dist_b = (dist_max - dist_mean) / dist_std
-    dist = scipy.stats.truncnorm.ppf(randNum, dist_a, dist_b,
-                                     loc=dist_mean, scale=dist_std)
-    prob_dist = scipy.stats.truncnorm.pdf(dist, dist_a, dist_b,
-                                          loc=dist_mean, scale=dist_std)
-    return dist, prob_dist
+    return scipy.stats.truncnorm(dist_a, dist_b, loc=dist_mean, scale=dist_std)
 
-def random_log_age(randNum):
+def random_distance(randNum):
+    dist = dist_gen.ppf(randNum)
+    log_prob_dist = dist_gen.logpdf(dist)
+    return dist, log_prob_dist
+
+def make_log_age_gen():
     log_age_mean = 6.78
     log_age_std = 0.18
     log_age_min = 6.20
     log_age_max = 7.20
     log_age_a = (log_age_min - log_age_mean) / log_age_std
     log_age_b = (log_age_max - log_age_mean) / log_age_std
-    log_age_cont = scipy.stats.truncnorm.ppf(randNum, log_age_a, log_age_b,
-                                             loc=log_age_mean, scale=log_age_std)
-    prob_log_age_cont = scipy.stats.truncnorm.pdf(log_age_cont, log_age_a, log_age_b,
-                                                  loc=log_age_mean, scale=log_age_std)
+    return scipy.stats.truncnorm(log_age_a, log_age_b,
+                                 loc=log_age_mean, scale=log_age_std)
 
-    return log_age_cont, prob_log_age_cont
+def random_log_age(randNum):
+    log_age_cont = log_age_gen.ppf(randNum)
+    log_prob_log_age_cont = log_age_gen.logpdf(log_age_cont)
+    return log_age_cont, log_prob_log_age_cont
 
-def random_alpha(randNum):
+def make_alpha_gen():
     alpha_min = 0.10
     alpha_max = 3.35
     alpha_diff = alpha_max - alpha_min
-    alpha = scipy.stats.uniform.ppf(randNum, loc=alpha_min, scale=alpha_diff)
-    prob_alpha = scipy.stats.uniform.pdf(alpha, loc=alpha_min, scale=alpha_diff)
+    return scipy.stats.uniform(loc=alpha_min, scale=alpha_diff)
 
-    return alpha, prob_alpha
+def random_alpha(randNum):
+    alpha = alpha_gen.ppf(randNum)
+    log_prob_alpha = alpha_gen.logpdf(alpha)
+    return alpha, log_prob_alpha
 
-def random_mass(randNum):
-    #Mcl_min = 1
-    #Mcl_max = 100
-    Mcl_min = 7
+def make_Mcl_gen():
+    Mcl_min = 4
     Mcl_max = 13
     Mcl_diff = Mcl_max - Mcl_min
-    Mcl = scipy.stats.uniform.ppf(randNum, loc=Mcl_min, scale=Mcl_diff)
-    prob_Mcl = scipy.stats.uniform.pdf(Mcl, loc=Mcl_min, scale=Mcl_diff)
+    return scipy.stats.uniform(loc=Mcl_min, scale=Mcl_diff)
 
-    return Mcl, prob_Mcl
+def random_mass(randNum):
+    Mcl = Mcl_gen.ppf(randNum)
+    log_prob_Mcl = Mcl_gen.logpdf(Mcl)
+    return Mcl, log_prob_Mcl
 
-def random_N_old(randNum):
+def make_N_old_gen():
     N_old_min = 0.2e3
     N_old_max = 3.0e3
     N_old_diff = N_old_max - N_old_min
-    N_old = scipy.stats.uniform.ppf(randNum, loc=N_old_min, scale=N_old_diff)
-    prob_N_old = scipy.stats.uniform.pdf(N_old, loc=N_old_min, scale=N_old_diff)
+    return scipy.stats.uniform(loc=N_old_min, scale=N_old_diff)
 
-    return N_old, prob_N_old
+def random_N_old(randNum):
+    N_old = N_old_gen.ppf(randNum)
+    log_prob_N_old = N_old_gen.logpdf(N_old)
+    return N_old, log_prob_N_old
 
-def random_gamma(randNum):
+def make_gamma_gen():
     # Values from Schodel+ 2010
     gamma_mean = 0.27
     gamma_std = 0.02
-    gamma = scipy.stats.norm.ppf(randNum, loc=gamma_mean, scale=gamma_std)
-    prob_gamma = scipy.stats.norm.pdf(gamma, loc=gamma_mean, scale=gamma_std)
-    
-    return gamma, prob_gamma
+    return scipy.stats.norm(loc=gamma_mean, scale=gamma_std)
 
-def random_rcMean(randNum):
+def random_gamma(randNum):
+    gamma = gamma_gen.ppf(randNum)
+    log_prob_gamma = gamma_gen.logpdf(gamma)
+    return gamma, log_prob_gamma
+
+def make_rcMean_gen():
     # Values from Schodel+ 2010
     rcMean_mean = 15.57 + 0.03  # correction for Ks -> Kp (cool stars)
     rcMean_std = 0.06
-    rcMean = scipy.stats.norm.ppf(randNum, loc=rcMean_mean, scale=rcMean_std)
-    prob_rcMean = scipy.stats.norm.pdf(rcMean, loc=rcMean_mean, scale=rcMean_std)
+    return scipy.stats.norm(loc=rcMean_mean, scale=rcMean_std)
 
-    return rcMean, prob_rcMean
+def random_rcMean(randNum):
+    rcMean = rcMean_gen.ppf(randNum)
+    log_prob_rcMean = rcMean_gen.logpdf(rcMean)
+    return rcMean, log_prob_rcMean
 
-def random_rcSigma(randNum):
+def make_rcSigma_gen():
     # Values from Schodel+ 2010
     rcSigma_mean = 0.3  # correction for Ks -> Kp (cool stars)
     rcSigma_std = 0.2
@@ -98,637 +108,28 @@ def random_rcSigma(randNum):
     rcSigma_max = 0.8
     rcSigma_a = (rcSigma_min - rcSigma_mean) / rcSigma_std
     rcSigma_b = (rcSigma_max - rcSigma_mean) / rcSigma_std
-    rcSigma = scipy.stats.truncnorm.ppf(randNum, rcSigma_a, rcSigma_b,
-                                        loc=rcSigma_mean, scale=rcSigma_std)
-    prob_rcSigma = scipy.stats.truncnorm.pdf(rcSigma, rcSigma_a, rcSigma_b,
-                                             loc=rcSigma_mean, scale=rcSigma_std)
-
-    return rcSigma, prob_rcSigma
-
-def run(outdir, yng=None, rmin=0, rmax=30, n_live_points=4000, multiples=True):
-    """
-    Run MultiNest bayesian inference on the specified data <yng> and send output
-    to the <outdir>.
-    """
-    magCut = 15.5
-
-    # Load up the data arrays.
-    if yng == None:
-        yng = lu_gc_imf.load_yng_data_by_radius(rmin, rmax, magCut=magCut)
-        yng_file = 'Observed Data'
-    elif type(yng) == str:
-        yng_file = yng
-        foo = open(yng_file, 'r')
-        yng = pickle.load(foo)
-        foo.close()
-    else:
-        yng_file = 'Simulated Cluster Object'
-        
-    completeness = lu_gc_imf.load_image_completeness_by_radius(rmin, rmax)
-
-    def priors(cube, ndim, nparams):
-        return
-
-    def likelihood(cube, ndim, nparams):
-        # Set up variables (with priors)
-        AKs = 2.7   # mag
-        m_min = 1.0 # Msun
-        m_max = 150 # Msun
-        Z = 0.02
-
-        # Distance to cluster
-        dist, prob_dist = random_distance(cube[0])
-        cube[0] = dist
-
-        # Log Age of the cluster
-        log_age_cont, prob_log_age_cont = random_log_age(cube[1])
-        log_age = round(log_age_cont, 2)
-        cube[1] = log_age_cont
-
-        # Slope of the IMF
-        alpha, prob_alpha = random_alpha(cube[2])
-        cube[2] = alpha
-
-        # Total Cluster Mass
-        Mcl, prob_Mcl = random_mass(cube[3])
-        cube[3] = Mcl
-
-        # Number of young stars we observed. cube[4] contains total N(OB)
-        N_yng_obs_definite = yng.prob[yng.prob == 1].sum()
-        N_yng_obs_other_expect = yng.prob[yng.prob != 1].sum()
-        N_yng_obs_other = scipy.stats.poisson.ppf(cube[4], N_yng_obs_other_expect)
-        N_yng_obs = N_yng_obs_definite + N_yng_obs_other
-        prob_N_yng_obs = scipy.stats.poisson.pmf(N_yng_obs_other, N_yng_obs_other_expect)
-        cube[4] = N_yng_obs
-
-        # Check that all our prior probabilities are valid, otherwise abort
-        # before expensive calculation.
-        if ((prob_alpha == 0) or (prob_log_age_cont == 0) or (prob_dist == 0) or
-            (prob_Mcl == 0) or (prob_N_yng_obs == 0)):
-            return -np.Inf
-
-        # Set some variables so we don't have to change names around
-        logAge = log_age
-        distance = dist
-        imfSlope = alpha
-        clusterMass = Mcl
-        minMass = m_min
-        maxMass = m_max
-
-        # Get the PDF(k|model) -- the simulated luminosity function
-        mod_sims = b.fetch_model_from_sims(logAge, AKs, distance*10**3,
-                                           imfSlope, clusterMass*10**3,
-                                           minMass, maxMass, makeMultiples=multiples)
-
-        sim_N_WR = mod_sims[0]
-        sim_k_bins = mod_sims[1]
-        sim_k_pdf = mod_sims[2]
-        sim_k_pdf_norm = mod_sims[3]
-
-        sim_k_bin_widths = np.diff(sim_k_bins)
-        sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_widths/2.0)
-
-        # Multiply by the completeness curve (after re-sampling). And renormalize.
-        Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
-        comp_resamp = interpolate.splev(sim_k_bin_center, Kp_interp)
-        comp_resamp[comp_resamp < 0] = 0.0
-        comp_resamp[comp_resamp > 1] = 1.0
-
-        sim_k_pdf *= comp_resamp
-        sim_k_pdf_norm *= comp_resamp
-        #sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
-        sim_k_pdf_norm /= sim_k_pdf_norm.sum()
-
-        # Trim down to a little more than magCut just to speed things
-        # up and make computations easier.
-        idx = np.where(sim_k_bins <= (magCut + (3.0 * yng.kp_err.max())))[0]
-        #idx = np.where(sim_k_bins <= magCut)[0]
-
-        sim_k_bins = np.append(sim_k_bins[idx], sim_k_bins[idx[-1]+1])
-        sim_k_bin_center = sim_k_bin_center[idx]
-        sim_k_bin_widths = sim_k_bin_widths[idx]
-        sim_k_pdf = sim_k_pdf[idx]
-        sim_k_pdf_norm = sim_k_pdf_norm[idx]
-
-        #sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
-        sim_k_pdf_norm /= sim_k_pdf_norm.sum()
-
-        # Prob(N_WR | model)
-        cube[5] = sim_N_WR
-        log_L_N_WR = log_prob( scipy.stats.poisson.pmf(yng.N_WR, sim_N_WR) )
-
-        # Prob(N_kp | model)
-        idx = np.where(sim_k_bins <= magCut)[0]
-        N_yng_sim = sim_k_pdf[idx[:-1]].sum()
-        bb = idx[-1] # Take only a part of the last bin (depending on where the magCut falls)
-        N_yng_sim += sim_k_pdf[bb] * (magCut - sim_k_bins[bb]) / sim_k_bin_widths[bb]
-        cube[6] = N_yng_sim
-
-        log_L_N_yng = log_prob( scipy.stats.poisson.pmf(N_yng_obs, N_yng_sim) )
-
-        ##############################
-        #
-        # KLF shape is handled directly with the normalized Kp PDF
-        # from the simulations. We account for errors by convolving
-        # each measurement gaussian with the PDF(Kp).
-        #
-        ##############################
-        log_L_k_detect = 0.0
-
-        # Loop through each star and calc prob of detecting.
-        for ii in range(len(yng.kp)):
-            # Make gaussian around observed k mag
-            obs_k_norm = scipy.stats.norm(loc=yng.kp[ii], scale=yng.kp_err[ii])
-            obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
-            obs_k_norm_pdf_binned = np.diff(obs_k_norm_cdf)
-
-            # Renormalize over observing range
-            # and convolve gaussian with PDF(K) from model
-            if obs_k_norm_pdf_binned.sum() == 0:
-                L_k_i = 0
-            else:
-                # Make it a true PDF
-                #obs_k_norm_pdf_binned /= (obs_k_norm_pdf_binned * sim_k_bin_widths).sum()
-                #obs_k_norm_pdf_binned /= obs_k_norm_pdf_binned.sum()
-
-                # Multiple gaussian with PDF(K) from model and sum to get probability
-                #L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf_binned * sim_k_bin_widths**2).sum()
-                L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf_binned).sum()
-
-            log_L_k_i = log_prob(L_k_i)
-
-            log_L_k_detect += yng.prob[ii] * log_L_k_i
-
-        #log_L = log_L_N_yng + log_L_k_detect + (yng.N_WR * log_L_N_WR)
-        log_L = log_L_N_yng + log_L_k_detect + log_L_N_WR
-
-        # Add in the log(Prior_Probabilities) as well
-        log_L += math.log(prob_dist)
-        log_L += math.log(prob_alpha)
-        log_L += math.log(prob_Mcl)
-        log_L += math.log(prob_log_age_cont)
-        log_L += math.log(prob_N_yng_obs)
-
-        return log_L
-
-
-    gcutil.mkdir(outdir)
-
-    outroot = outdir + 'mnest_'
-
-    num_params = 7
-    num_dims = 5
-    ev_tol = 0.5
-    samp_eff = 0.5
-    n_clust_param = num_dims - 1
-
-    _run = open(outroot + 'params.run', 'w')
-    _run.write('Num Dimensions: %d\n' % num_dims)
-    _run.write('Num Params: %d\n' % num_params)
-    _run.write('Evidence Tolerance: %.1f\n' % ev_tol)
-    _run.write('Sampling Efficiency: %.1f\n' % samp_eff)
-    _run.write('Num Clustering Params: %d\n' % n_clust_param)
-    _run.write('Num Live Points: %d\n' % n_live_points)
-    _run.write('Young Star Data: %s\n' % yng_file)
-    _run.write('Allowed Multiples in Fit: %s\n' % str(multiples))
-    _run.close()
-
-    pymultinest.run(likelihood, priors, num_dims, n_params=num_params,
-                    outputfiles_basename=outroot,
-                    verbose=True, resume=False,
-                    evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
-                    n_clustering_params=n_clust_param,
-                    n_live_points=n_live_points)
-
-
-def run_no_dist(outdir, yng=None, rmin=0, rmax=30, n_live_points=4000, multiples=True):
-    """
-    Run MultiNest bayesian inference on the specified data <yng> and send output
-    to the <outdir>.
-    """
-    magCut = 15.5
-
-    # Load up the data arrays.
-    if yng == None:
-        yng = lu_gc_imf.load_yng_data_by_radius(rmin, rmax, magCut=magCut)
-        yng_file = 'Observed Data'
-    elif type(yng) == str:
-        yng_file = yng
-        foo = open(yng_file, 'r')
-        yng = pickle.load(foo)
-        foo.close()
-    else:
-        yng_file = 'Simulated Cluster Object'
-        
-    completeness = lu_gc_imf.load_image_completeness_by_radius(rmin, rmax)
-
-    def priors(cube, ndim, nparams):
-        return
-
-    def likelihood(cube, ndim, nparams):
-        # Set up variables (with priors)
-        AKs = 2.7   # mag
-        m_min = 1.0 # Msun
-        m_max = 150 # Msun
-        Z = 0.02
-
-        # Distance to cluster
-        dist = 8.00 # kpc
-        # dist_mean = 8.096  # kpc
-        # dist_std = 0.483   # kpc
-        # dist_min = 6.793   # kpc
-        # dist_max = 9.510   # kpc
-        # dist_a = (dist_min - dist_mean) / dist_std
-        # dist_b = (dist_max - dist_mean) / dist_std
-        # dist = scipy.stats.truncnorm.ppf(cube[0], dist_a, dist_b,
-        #                                  loc=dist_mean, scale=dist_std)
-        # prob_dist = scipy.stats.truncnorm.pdf(dist, dist_a, dist_b,
-        #                                       loc=dist_mean, scale=dist_std)
-        prob_dist = 1.0
-        cube[0] = dist
-
-        # Log Age of the cluster
-        log_age_mean = 6.78
-        log_age_std = 0.18
-        log_age_min = 6.20
-        log_age_max = 7.20
-        log_age_a = (log_age_min - log_age_mean) / log_age_std
-        log_age_b = (log_age_max - log_age_mean) / log_age_std
-        log_age_cont = scipy.stats.truncnorm.ppf(cube[1], log_age_a, log_age_b,
-                                                 loc=log_age_mean, scale=log_age_std)
-        prob_log_age_cont = scipy.stats.truncnorm.pdf(log_age_cont, log_age_a, log_age_b,
-                                                      loc=log_age_mean, scale=log_age_std)
-        log_age = round(log_age_cont, 2)
-        cube[1] = log_age_cont
-
-        # Slope of the IMF
-        alpha_min = 0.10
-        alpha_max = 3.35
-        alpha_diff = alpha_max - alpha_min
-        alpha = scipy.stats.uniform.ppf(cube[2], loc=alpha_min, scale=alpha_diff)
-        prob_alpha = scipy.stats.uniform.pdf(alpha, loc=alpha_min, scale=alpha_diff)
-        cube[2] = alpha
-
-        # Total Cluster Mass
-        Mcl_min = 1
-        Mcl_max = 100
-        Mcl_diff = Mcl_max - Mcl_min
-        Mcl = scipy.stats.uniform.ppf(cube[3], loc=Mcl_min, scale=Mcl_diff)
-        prob_Mcl = scipy.stats.uniform.pdf(Mcl, loc=Mcl_min, scale=Mcl_diff)
-        cube[3] = Mcl
-
-        # Number of young stars we observed. cube[4] contains total N(OB)
-        N_yng_obs_definite = yng.prob[yng.prob == 1].sum()
-        N_yng_obs_other_expect = yng.prob[yng.prob != 1].sum()
-        N_yng_obs_other = scipy.stats.poisson.ppf(cube[4], N_yng_obs_other_expect)
-        N_yng_obs = N_yng_obs_definite + N_yng_obs_other
-        prob_N_yng_obs = scipy.stats.poisson.pmf(N_yng_obs_other, N_yng_obs_other_expect)
-        cube[4] = N_yng_obs
-
-        # Check that all our prior probabilities are valid, otherwise abort
-        # before expensive calculation.
-        if ((prob_alpha == 0) or (prob_log_age_cont == 0) or (prob_dist == 0) or
-            (prob_Mcl == 0) or (prob_N_yng_obs == 0)):
-            return -np.Inf
-
-        # Set some variables so we don't have to change names around
-        logAge = log_age
-        distance = dist
-        imfSlope = alpha
-        clusterMass = Mcl
-        minMass = m_min
-        maxMass = m_max
-
-        # Get the PDF(k|model) -- the simulated luminosity function
-        mod_sims = b.fetch_model_from_sims(logAge, AKs, distance*10**3,
-                                           imfSlope, clusterMass*10**3,
-                                           minMass, maxMass, makeMultiples=multiples)
-
-        sim_N_WR = mod_sims[0]
-        sim_k_bins = mod_sims[1]
-        sim_k_pdf = mod_sims[2]
-        sim_k_pdf_norm = mod_sims[3]
-
-        sim_k_bin_widths = np.diff(sim_k_bins)
-        sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_widths/2.0)
-
-        # Multiply by the completeness curve (after re-sampling). And renormalize.
-        Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
-        comp_resamp = interpolate.splev(sim_k_bin_center, Kp_interp)
-        comp_resamp[comp_resamp < 0] = 0.0
-        comp_resamp[comp_resamp > 1] = 1.0
-
-        sim_k_pdf *= comp_resamp
-        sim_k_pdf_norm *= comp_resamp
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
-
-        # Trim down to a little more than magCut just to speed things
-        # up and make computations easier.
-        idx = np.where(sim_k_bins <= (magCut + (3.0 * yng.kp_err.max())))[0]
-
-        sim_k_bins = np.append(sim_k_bins[idx], sim_k_bins[idx[-1]+1])
-        sim_k_bin_center = sim_k_bin_center[idx]
-        sim_k_bin_widths = sim_k_bin_widths[idx]
-        sim_k_pdf = sim_k_pdf[idx]
-        sim_k_pdf_norm = sim_k_pdf_norm[idx]
-
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
-
-        # Prob(N_WR | model)
-        cube[5] = sim_N_WR
-        log_L_N_WR = log_prob( scipy.stats.poisson.pmf(yng.N_WR, sim_N_WR) )
-
-        # Prob(N_kp | model)
-        idx = np.where(sim_k_bins <= magCut)[0]
-        N_yng_sim = sim_k_pdf[idx[:-1]].sum()
-        bb = idx[-1] # Take only a part of the last bin (depending on where the magCut falls)
-        N_yng_sim += sim_k_pdf[bb] * (magCut - sim_k_bins[bb]) / sim_k_bin_widths[bb]
-        cube[6] = N_yng_sim
-
-        log_L_N_yng = log_prob( scipy.stats.poisson.pmf(N_yng_obs, N_yng_sim) )
-
-        ##############################
-        #
-        # KLF shape is handled directly with the normalized Kp PDF
-        # from the simulations. We account for errors by convolving
-        # each measurement gaussian with the PDF(Kp).
-        #
-        ##############################
-        log_L_k_detect = 0.0
-
-        # Loop through each star and calc prob of detecting.
-        for ii in range(len(yng.kp)):
-            # Make gaussian around observed k mag
-            obs_k_norm = scipy.stats.norm(loc=yng.kp[ii], scale=yng.kp_err[ii])
-            obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
-            obs_k_norm_pdf_binned = np.diff(obs_k_norm_cdf)
-
-            # Renormalize over observing range
-            # and convolve gaussian with PDF(K) from model
-            if obs_k_norm_pdf_binned.sum() == 0:
-                L_k_i = 0
-            else:
-                # Make it a true PDF
-                obs_k_norm_pdf_binned /= (obs_k_norm_pdf_binned * sim_k_bin_widths).sum()
-
-                # Multiple gaussian with PDF(K) from model and sum to get probability
-                L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf_binned * sim_k_bin_widths**2).sum()
-
-            log_L_k_i = log_prob(L_k_i)
-
-            log_L_yng_i = log_prob(yng.prob[ii])
-
-            log_L_k_detect += yng.prob[ii] * log_L_k_i
-
-        #log_L = log_L_N_yng + log_L_k_detect + (yng.N_WR * log_L_N_WR)
-        log_L = log_L_N_yng + log_L_k_detect + log_L_N_WR
-
-        # Add in the log(Prior_Probabilities) as well
-        log_L += math.log(prob_dist)
-        log_L += math.log(prob_alpha)
-        log_L += math.log(prob_Mcl)
-        log_L += math.log(prob_log_age_cont)
-        log_L += math.log(prob_N_yng_obs)
-
-        return log_L
-
-
-    gcutil.mkdir(outdir)
-
-    outroot = outdir + 'mnest_'
-
-    num_params = 7
-    num_dims = 5
-    ev_tol = 0.5
-    samp_eff = 0.5
-    n_clust_param = num_dims - 1
-
-    _run = open(outroot + 'params.run', 'w')
-    _run.write('Num Dimensions: %d\n' % num_dims)
-    _run.write('Num Params: %d\n' % num_params)
-    _run.write('Evidence Tolerance: %.1f\n' % ev_tol)
-    _run.write('Sampling Efficiency: %.1f\n' % samp_eff)
-    _run.write('Num Clustering Params: %d\n' % n_clust_param)
-    _run.write('Num Live Points: %d\n' % n_live_points)
-    _run.write('Young Star Data: %s\n' % yng_file)
-    _run.write('Allowed Multiples in Fit: %s\n' % str(multiples))
-    _run.close()
-
-    pymultinest.run(likelihood, priors, num_dims, n_params=num_params,
-                    outputfiles_basename=outroot,
-                    verbose=True, resume=False,
-                    evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
-                    n_clustering_params=n_clust_param,
-                    n_live_points=n_live_points)
-
-
-def run2(outdir, yng=None, rmin=0, rmax=30, n_live_points=300, multiples=True):
-    magCut = 15.5
-
-    # Load up the data arrays.
-    if yng == None:
-        yng = lu_gc_imf.load_yng_data_by_radius(rmin, rmax, magCut=magCut)
-        yng_file = 'Observed Data'
-    elif type(yng) == str:
-        yng_file = yng
-        foo = open(yng_file, 'r')
-        yng = pickle.load(foo)
-        foo.close()
-    else:
-        yng_file = 'Simulated Cluster Object'
-        
-    completeness = lu_gc_imf.load_image_completeness_by_radius(rmin, rmax)
-
-    def priors(cube, ndim, nparams):
-        return
-
-    def likelihood(cube, ndim, nparams):
-        # Set up variables (with priors)
-        AKs = 2.7   # mag
-        m_min = 1.0 # Msun
-        m_max = 150 # Msun
-        Z = 0.02
-
-        # Distance to cluster
-        dist, prob_dist = random_distance(cube[0])
-        cube[0] = dist
-
-        # Log Age of the cluster
-        log_age_cont, prob_log_age_cont = random_log_age(cube[1])
-        log_age = round(log_age_cont, 2)
-        cube[1] = log_age_cont
-
-        # Slope of the IMF
-        alpha, prob_alpha = random_alpha(cube[2])
-        cube[2] = alpha
-
-        # Total Cluster Mass
-        Mcl, prob_Mcl = random_mass(cube[3])
-        cube[3] = Mcl
-
-        # Number of young stars we observed. cube[4] contains total N(OB)
-        N_yng_obs_definite = yng.prob[yng.prob == 1].sum()
-        N_yng_obs_other_expect = yng.prob[yng.prob != 1].sum()
-        N_yng_obs_other = scipy.stats.poisson.ppf(cube[4], N_yng_obs_other_expect)
-        N_yng_obs = N_yng_obs_definite + N_yng_obs_other
-        prob_N_yng_obs = scipy.stats.poisson.pmf(N_yng_obs_other, N_yng_obs_other_expect)
-        cube[4] = N_yng_obs
-
-        # Check that all our prior probabilities are valid, otherwise abort
-        # before expensive calculation.
-        if ((prob_alpha == 0) or (prob_log_age_cont == 0) or (prob_dist == 0) or
-            (prob_Mcl == 0) or (prob_N_yng_obs == 0)):
-            return -np.Inf
-
-        # Set some variables so we don't have to change names around
-        logAge = log_age
-        distance = dist
-        imfSlope = alpha
-        clusterMass = Mcl
-        minMass = m_min
-        maxMass = m_max
-
-        # Get the PDF(k|model) -- the simulated luminosity function
-        mod_sims = b.fetch_model_from_sims(logAge, AKs, distance*10**3,
-                                           imfSlope, clusterMass*10**3,
-                                           minMass, maxMass, makeMultiples=multiples)
-
-        sim_N_WR = mod_sims[0]
-        sim_k_bins = mod_sims[1]
-        sim_k_pdf = mod_sims[2]
-        sim_k_pdf_norm = mod_sims[3]
-
-        sim_k_bin_widths = np.diff(sim_k_bins)
-        sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_widths/2.0)
-
-        # Trim down to magCut
-        idx = np.where(sim_k_bins <= (magCut + (3.0*yng.kp_err.max())))[0]
-
-        sim_k_bins = np.append(sim_k_bins[idx], sim_k_bins[idx[-1]+1])
-        sim_k_bin_center = sim_k_bin_center[idx]
-        sim_k_bin_widths = sim_k_bin_widths[idx]
-        sim_k_pdf = sim_k_pdf[idx]
-        sim_k_pdf_norm = sim_k_pdf_norm[idx]
-
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
-
-        # Completeness curve (after re-sampling at simulated Kp)
-        Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
-        comp_at_kp_sim = interpolate.splev(sim_k_bin_center, Kp_interp)
-        comp_at_kp_sim[comp_at_kp_sim < 0] = 0.0
-        comp_at_kp_sim[comp_at_kp_sim > 1] = 1.0
-
-        # Completeness curve (after re-sampling at simulated Kp)
-        comp_at_kp_obs = interpolate.splev(yng.kp, Kp_interp)
-        comp_at_kp_obs[comp_at_kp_obs < 0] = 0.0
-        comp_at_kp_obs[comp_at_kp_obs > 1] = 1.0
-
-        # Prob(N_WR | model)
-        N_WR_sim = sim_N_WR
-        cube[5] = N_WR_sim
-        log_L_N_WR = log_prob( scipy.stats.poisson.pmf(yng.N_WR, sim_N_WR) )
-
-        # Prob(N_yng_sim | model)
-        idx = np.where(sim_k_bins <= magCut)[0]
-        N_yng_sim_expect = sim_k_pdf[idx[:-1]].sum()
-        bb = idx[-1] # Take only a part of the last bin (depending on where the magCut falls)
-        N_yng_sim_expect += sim_k_pdf[bb] * (magCut - sim_k_bins[bb]) / sim_k_bin_widths[bb]
-        cube[6] = N_yng_sim_expect
-
-        N_yng_sim = scipy.stats.poisson.rvs(N_yng_sim_expect)
-        prob_N_yng_sim = scipy.stats.poisson.pmf(N_yng_sim, N_yng_sim_expect)
-        log_L_N_yng_sim = log_prob( prob_N_yng_sim )
-
-        # Non detections: log_L_k_non_detect
-        if N_yng_sim <= N_yng_obs:
-            # Jump straight out for performance reasons -- model is not possible
-            return -np.Inf
-        else:
-            tmp = (1.0 - comp_at_kp_sim) * sim_k_pdf_norm * sim_k_bin_widths
-            P_non_detect = tmp.sum()
-
-            log_L_k_non_detect = (N_yng_sim - N_yng_obs) * log_prob(P_non_detect)
-
-        # Detections: log_L_k_detect
-        log_L_k_detect = 0.0
-
-        # Loop through each star and calc prob of detecting.
-        for ii in range(len(yng.kp)):
-            # Make gaussian around observed k mag
-            obs_k_norm = scipy.stats.norm(loc=yng.kp[ii], scale=yng.kp_err[ii])
-            obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
-            obs_k_norm_pdf_binned = np.diff(obs_k_norm_cdf)
-            
-            # Renormalize over observing range
-            # and convolve gaussian with PDF(K) from model
-            if obs_k_norm_pdf_binned.sum() == 0:
-                L_k_i = 0
-            else:
-                # Make it a true PDF
-                #obs_k_norm_pdf_binned /= (obs_k_norm_pdf_binned * sim_k_bin_widths).sum()
-                #obs_k_norm_pdf_binned /= obs_k_norm_pdf_binned.sum()
-
-                # Multiple gaussian with PDF(K) from model and sum to get probability
-                #L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf_binned * sim_k_bin_widths**2).sum()
-                L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf_binned).sum()
-
-            log_L_k_i = log_prob(L_k_i)
-            log_L_k_i_detect = log_prob(comp_at_kp_obs[ii])
-            log_L_yng_i = log_prob(yng.prob[ii])
-
-            log_L_k_detect += log_L_k_i + log_L_k_i_detect + log_L_yng_i
-
-
-        # Binomial Coefficient
-        if N_yng_obs >= N_yng_sim:
-            log_binom_coeff = -np.Inf
-        else:
-            log_binom_coeff = scipy.special.gammaln(N_yng_sim + 1)
-            log_binom_coeff -= scipy.special.gammaln(N_yng_obs + 1)
-            log_binom_coeff -= scipy.special.gammaln(N_yng_sim - N_yng_obs + 1)
-
-        log_L = log_L_N_WR + log_L_k_detect + log_binom_coeff
-        log_L += log_L_k_non_detect + log_L_N_yng_sim
-
-        # Add in the log(Prior_Probabilities) as well
-        log_L += math.log(prob_dist)
-        log_L += math.log(prob_alpha)
-        log_L += math.log(prob_Mcl)
-        log_L += math.log(prob_log_age_cont)
-        log_L += math.log(prob_N_yng_obs)
-
-        return log_L
-
-    gcutil.mkdir(outdir)
-
-    outroot = outdir + 'mnest_'
-
-    num_dims = 5
-    num_params = 7
-    ev_tol = 0.7
-    samp_eff = 0.8
-    n_clust_param = num_dims - 1
-
-    _run = open(outroot + 'params.run', 'w')
-    _run.write('Num Dimensions: %d\n' % num_dims)
-    _run.write('Num Params: %d\n' % num_params)
-    _run.write('Evidence Tolerance: %.1f\n' % ev_tol)
-    _run.write('Sampling Efficiency: %.1f\n' % samp_eff)
-    _run.write('Num Clustering Params: %d\n' % n_clust_param)
-    _run.write('Num Live Points: %d\n' % n_live_points)
-    _run.write('Young Star Data: %s\n' % yng_file)
-    _run.write('Allowed Multiples in Fit: %s\n' % str(multiples))
-    _run.close()
-
-    pymultinest.run(likelihood, priors, num_dims, n_params=num_params,
-                    outputfiles_basename=outroot,
-                    verbose=True, resume=False,
-                    evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
-                    n_clustering_params=n_clust_param,
-                    n_live_points=n_live_points)
-
-def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
-         interact=False):
+    return scipy.stats.truncnorm(rcSigma_a, rcSigma_b,
+                                 loc=rcSigma_mean, scale=rcSigma_std)
+
+def random_rcSigma(randNum):
+    rcSigma = rcSigma_gen.ppf(randNum)
+    log_prob_rcSigma = rcSigma_gen.logpdf(rcSigma)
+    return rcSigma, log_prob_rcSigma
+
+
+# Instantiate random number generators
+dist_gen = make_distance_gen()
+log_age_gen = make_log_age_gen()
+alpha_gen = make_alpha_gen()
+Mcl_gen = make_Mcl_gen()
+N_old_gen = make_N_old_gen()
+gamma_gen = make_gamma_gen()
+rcMean_gen = make_rcMean_gen()
+rcSigma_gen = make_rcSigma_gen()
+
+
+def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
+        interact=False):
     magCut = 15.5
 
     # Load up the data arrays.
@@ -752,6 +153,15 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         data_file = 'Simulated Cluster Object'
         
     completeness = lu_gc_imf.load_image_completeness_by_radius(rmin, rmax)
+    Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
+
+    # Completeness curve (resampled to observed Kp)
+    comp_at_kp_obs = interpolate.splev(data.kp_ext, Kp_interp)
+    comp_at_kp_obs[comp_at_kp_obs < 0] = 0.0
+    comp_at_kp_obs[comp_at_kp_obs > 1] = 1.0
+    comp_at_kp_obs[data.kp_ext > magCut] = 0.0
+
+    log_comp_at_kp_obs = log_prob(comp_at_kp_obs)
 
     def priors(cube, ndim, nparams):
         return
@@ -769,42 +179,44 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         # Priors for model parameters
         ####################
         # Distance to cluster
-        dist, prob_dist = random_distance(cube[0])
+        dist, log_prob_dist = random_distance(cube[0])
         cube[0] = dist
 
         # Log Age of the cluster
-        log_age_cont, prob_log_age_cont = random_log_age(cube[1])
+        log_age_cont, log_prob_log_age_cont = random_log_age(cube[1])
         log_age = round(log_age_cont, 2)
         cube[1] = log_age_cont
 
         # Slope of the IMF
-        alpha, prob_alpha = random_alpha(cube[2])
+        alpha, log_prob_alpha = random_alpha(cube[2])
         cube[2] = alpha
 
         # Total Cluster Mass
-        Mcl, prob_Mcl = random_mass(cube[3])
+        Mcl, log_prob_Mcl = random_mass(cube[3])
         cube[3] = Mcl
 
         # Powerlaw slope for old population
-        gamma, prob_gamma = random_gamma(cube[4])
+        gamma, log_prob_gamma = random_gamma(cube[4])
         cube[4] = gamma
 
         # Number of old stars that exist (not just observed).
         # Remember this is from k_min brightness down to
         # the model magnitude cut (k_max).
-        N_old, prob_N_old = random_N_old(cube[5])
+        N_old, log_prob_N_old = random_N_old(cube[5])
         cube[5] = N_old
 
         # Mean of Red Clump: Note ratio of rec-clump to powerlaw is fixed.
-        rcMean, prob_rcMean = random_rcMean(cube[6])
-        rcSigma, prob_rcSigma = random_rcSigma(cube[7])
+        rcMean, log_prob_rcMean = random_rcMean(cube[6])
+        rcSigma, log_prob_rcSigma = random_rcSigma(cube[7])
         cube[6] = rcMean
         cube[7] = rcSigma
 
         # Check that all our prior probabilities are valid, otherwise abort
         # before expensive calculation.
-        if ((prob_alpha == 0) or (prob_log_age_cont == 0) or (prob_dist == 0) or
-            (prob_Mcl == 0) or (prob_gamma == 0) or (prob_N_old == 0)):
+        if ((log_prob_alpha == -np.inf) or (log_prob_log_age_cont == -np.inf) or
+            (log_prob_dist == -np.inf) or (log_prob_Mcl == -np.inf) or
+            (log_prob_gamma == -np.inf) or (log_prob_N_old == -np.inf) or
+            (log_prob_rcMean == -np.inf) or (log_prob_rcSigma == np.inf)):
             return -np.Inf
 
         # We will only be considering magnitudes down to some hard magnitude
@@ -826,37 +238,34 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         sim_k_bins = mod_sims[1]
         sim_k_pdf = mod_sims[2]
         sim_k_pdf_norm = mod_sims[3]
-        sim_k_bin_widths = np.diff(sim_k_bins)
-        sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_widths/2.0)
 
+        sim_k_bin_width = sim_k_bins[1] - sim_k_bins[0]
+        
         # Append bins at the bright end to always go up to at least
         # K' = k_min to cover the full range of observations.
         if sim_k_bins[0] > k_min:
-            width = sim_k_bin_widths[0]
-            new_bins = np.arange(sim_k_bins[0]-width, k_min, -width)
+            new_bins = np.arange(sim_k_bins[0]-sim_k_bin_width, k_min, -sim_k_bin_width)
             if len(new_bins) > 0:
                 tmp = np.zeros(len(new_bins), dtype=float)
                 sim_k_bins = np.concatenate([new_bins[::-1], sim_k_bins])
                 sim_k_pdf = np.concatenate([tmp, sim_k_pdf])
                 sim_k_pdf_norm = np.concatenate([tmp, sim_k_pdf_norm])
-                sim_k_bin_widths = np.diff(sim_k_bins)
-                sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_widths/2.0)
         
+
         # Trim down on the faint side to the model magnitude cut
         idx = np.where(sim_k_bins <= model_mag_cut)[0]
 
         sim_k_bins = np.append(sim_k_bins[idx], sim_k_bins[idx[-1]+1])
-        sim_k_bin_center = sim_k_bin_center[idx]
-        sim_k_bin_widths = sim_k_bin_widths[idx]
         sim_k_pdf = sim_k_pdf[idx]
         sim_k_pdf_norm = sim_k_pdf_norm[idx]
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_widths).sum()
+        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_width).sum()
+        sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_width/2.0)
 
         ####################
         # PDF for old stars
         ####################
         pl_loc = math.e**k_min
-        pl_scale = math.e**k_max - math.e**k_min
+        pl_scale = math.e**k_max - pl_loc
         pl_index = gamma * math.log(10)
         old_powerlaw = scipy.stats.powerlaw(pl_index, loc=pl_loc, scale=pl_scale)
         old_gaussian = scipy.stats.norm(loc=rcMean, scale=rcSigma)
@@ -865,24 +274,17 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         old_k_cdf = (1.0 - fracInRC) * old_powerlaw.cdf(math.e**sim_k_bins)
         old_k_cdf += fracInRC * old_gaussian.cdf(sim_k_bins)
         old_k_pdf_norm = np.diff(old_k_cdf)
-        old_k_pdf_norm /= (old_k_pdf_norm * sim_k_bin_widths).sum()
+        old_k_pdf_norm /= (old_k_pdf_norm * sim_k_bin_width).sum()
 
         ####################
         # completeness curves
         ####################
         # Completeness curve (resampled to simulated Kp)
-        Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
         comp_at_kp_sim = interpolate.splev(sim_k_bin_center, Kp_interp)
         comp_at_kp_sim[comp_at_kp_sim < 0] = 0.0
         comp_at_kp_sim[comp_at_kp_sim > 1] = 1.0
         comp_at_kp_sim[sim_k_bin_center > magCut] = 0.0
-
-        # Completeness curve (resampled to observed Kp)
-        comp_at_kp_obs = interpolate.splev(data.kp_ext, Kp_interp)
-        comp_at_kp_obs[comp_at_kp_obs < 0] = 0.0
-        comp_at_kp_obs[comp_at_kp_obs > 1] = 1.0
-        comp_at_kp_obs[data.kp_ext > magCut] = 0.0
-
+        
         # N_yng (down to model_magnitude cut)
         N_yng = int(np.round(sim_k_pdf.sum()))
         cube[8] = N_yng
@@ -891,15 +293,11 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         # Different parts of the likelihood
         ####################
         #####
-        # Keep track of the normalization constant (actually an array
-        # that will be integrated at the end).
-        log_norm_const = 0.0
-        
-        #####
         # Prob(N_WR | model)
+        #####
         N_WR_sim = sim_N_WR
         cube[9] = N_WR_sim
-        log_L_N_WR = log_prob( scipy.stats.poisson.pmf(data.N_WR, sim_N_WR) )
+        log_L_N_WR = scipy.stats.poisson.logpmf(data.N_WR, sim_N_WR)
 
         N_tot = N_yng + N_old
         N_obs = len(data.kp_ext)
@@ -907,6 +305,7 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
         #####
         # Binomial Coefficient
+        #####
         if N_obs >= N_tot:
             return -np.Inf
         else:
@@ -914,43 +313,26 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             log_binom_coeff -= scipy.special.gammaln(N_obs + 1)
             log_binom_coeff -= scipy.special.gammaln(N_tot - N_obs + 1)
 
-        log_norm_const += log_binom_coeff
-
         #####
         # Non detections: log_L_k_non_detect
+        #####
+        incomp_at_kp_sim = 1.0 - comp_at_kp_sim
+
         ## Young part
-        tmp_y = fracYng * sim_k_pdf_norm * sim_k_bin_widths
-        tmp_y *= (1.0 - comp_at_kp_sim)
+        tmp_y = fracYng * sim_k_pdf_norm * sim_k_bin_width * incomp_at_kp_sim
         P_I0_y = tmp_y.sum()
 
         ## Old part
-        tmp_o = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths
-        tmp_o *= (1.0 - comp_at_kp_sim)
+        tmp_o = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_width * incomp_at_kp_sim
         P_I0_o = tmp_o.sum()
 
         ## log[ prob(I=0 | model)^(N-n) ]
         log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
-        # log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y) # TMP
-
-        log_norm_const += log_L_k_non_detect
 
         #####
         # Detections: log_L_k_detect
+        #####
         log_L_k_detect = 0.0
-
-        tmp1 = fracYng * sim_k_pdf_norm * sim_k_bin_widths * comp_at_kp_sim
-        tmp2 = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_widths * comp_at_kp_sim
-        tmp3 = N_obs * log_prob(tmp1.sum() + tmp2.sum())
-        # TMP
-        #tmp3 = N_obs * log_prob(tmp1.sum())
-
-        log_norm_const += tmp3
-
-        arr_L_k_y_np = np.zeros(len(data.kp_ext), dtype=float)
-        arr_L_k_y = np.zeros(len(data.kp_ext), dtype=float)
-        arr_L_k_o = np.zeros(len(data.kp_ext), dtype=float)
-        arr_L_k = np.zeros(len(data.kp_ext), dtype=float)
-        arr_L_k_comp = np.zeros(len(data.kp_ext), dtype=float)
 
         # Loop through each star and calc prob of detecting.
         for ii in range(len(data.kp_ext)):
@@ -963,43 +345,34 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             if obs_k_norm_pdf.sum() == 0:
                 print 'We have a problem... this should never happen.'
                 pdb.set_trace()
-                #L_k_i = 0
                 return -np.Inf
             else:
                 # Young part
                 # Multiply gaussian with PDF(K) from model and sum to get probability
-                L_k_i_y = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_widths).sum()
-                arr_L_k_y_np[ii] = log_prob(L_k_i_y)
-                L_k_i_y *= data.prob[ii]
+                L_k_i_y = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
+                L_k_i_y *= data.prob[ii] * fracYng
 
                 # Old part
-                L_k_i_o = (old_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_widths).sum()
-                L_k_i_o *= (1.0 - data.prob[ii])
+                L_k_i_o = (old_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
+                L_k_i_o *= (1.0 - data.prob[ii]) * (1.0 - fracYng)
 
                 # Combine
                 L_k_i = L_k_i_y + L_k_i_o
-                #L_k_i = L_k_i_y # TMP
-
-                arr_L_k_y[ii] = log_prob(L_k_i_y)
-                arr_L_k_o[ii] = log_prob(L_k_i_o)
-                arr_L_k[ii] = log_prob(L_k_i)
-                arr_L_k_comp[ii] = log_prob(L_k_i) + log_prob(comp_at_kp_obs[ii])
                 
-            log_L_k_detect += log_prob(L_k_i) + log_prob(comp_at_kp_obs[ii])
+            log_L_k_detect += log_prob(L_k_i) + log_comp_at_kp_obs[ii]
 
         log_L = log_L_N_WR + log_L_k_detect + log_binom_coeff
         log_L += log_L_k_non_detect
-        log_L -= log_norm_const
 
         # Add in the log(Prior_Probabilities) as well
-        log_L += math.log(prob_dist)
-        log_L += math.log(prob_alpha)
-        log_L += math.log(prob_Mcl)
-        log_L += math.log(prob_log_age_cont)
-        log_L += math.log(prob_gamma)
-        log_L += math.log(prob_N_old)
-        log_L += math.log(prob_rcMean)
-        log_L += math.log(prob_rcSigma)
+        log_L += log_prob_dist
+        log_L += log_prob_alpha
+        log_L += log_prob_Mcl
+        log_L += log_prob_log_age_cont
+        log_L += log_prob_gamma
+        log_L += log_prob_N_old
+        log_L += log_prob_rcMean
+        log_L += log_prob_rcSigma
 
         if log_L >= 0:
             pdb.set_trace()
@@ -1036,10 +409,10 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             tdx = np.where(sim_k_bins <= magCut)[0]
             k_bins_tmp = np.append(sim_k_bins[tdx], sim_k_bins[tdx[-1]+1])
             sim_k_pdf_tmp = (sim_k_pdf * comp_at_kp_sim)[tdx]
-            old_k_pdf_tmp = (old_k_pdf_norm * N_old * sim_k_bin_widths * comp_at_kp_sim)[tdx]
+            old_k_pdf_tmp = (old_k_pdf_norm * N_old * sim_k_bin_width * comp_at_kp_sim)[tdx]
 
-            N_yng_sim = (sim_k_pdf_norm * N_yng * sim_k_bin_widths * comp_at_kp_sim)[tdx].sum()
-            N_old_sim = (old_k_pdf_norm * N_old * sim_k_bin_widths * comp_at_kp_sim)[tdx].sum()
+            N_yng_sim = (sim_k_pdf_norm * N_yng * sim_k_bin_width * comp_at_kp_sim)[tdx].sum()
+            N_old_sim = (old_k_pdf_norm * N_old * sim_k_bin_width * comp_at_kp_sim)[tdx].sum()
             N_tot_sim = N_yng_sim + N_old_sim
 
             py.figure(2)
@@ -1091,7 +464,6 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             print 'log_L_binom_coeff  = %8.1f' % log_binom_coeff
             print 'log_L_k_detect     = %8.1f' % log_L_k_detect
             print 'log_L_k_non_detect = %8.1f' % log_L_k_non_detect
-            print 'log_norm_const     = %8.1f' % log_norm_const
             print ''
             idx = np.where(data.prob > 0)[0]
             print 'YNG arr_L_k_y_np   = %8.1f' % arr_L_k_y_np[idx].sum()
@@ -1100,13 +472,12 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             print 'log_L = %8.1f' % log_L
             print ''
             
-            #pdb.set_trace()
+            pdb.set_trace()
             
         cube[10] = log_L_N_WR
         cube[11] = log_binom_coeff
         cube[12] = log_L_k_detect
         cube[13] = log_L_k_non_detect
-        cube[14] = log_norm_const
 
         return log_L
 
@@ -1115,10 +486,10 @@ def run3(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
     outroot = outdir + 'mnest_'
 
     num_dims = 8
-    num_params = 15
+    num_params = 14
     ev_tol = 0.7
     samp_eff = 0.8
-    n_clust_param = num_dims - 1
+    n_clust_param = 4
 
     _run = open(outroot + 'params.run', 'w')
     _run.write('Num Dimensions: %d\n' % num_dims)
@@ -1164,7 +535,6 @@ def load_results(rootdir):
     tab.rename_column('col14', 'log_L_binom_coeff')
     tab.rename_column('col15', 'log_L_k_detect')
     tab.rename_column('col16', 'log_L_k_non_detect')
-    tab.rename_column('col17', 'log_L_norm_const')
 
     # Now sort based on logLikelihood
     tab.sort('logLike')
@@ -1173,11 +543,12 @@ def load_results(rootdir):
 
 def plot_posteriors(outdir):
     tab = load_results(outdir)
+    weights = tab.weights
     tab.remove_columns(('weights', 'logLike'))
     tab.remove_columns(('log_L_N_WR', 'log_L_binom_coeff', 'log_L_k_detect',
-                        'log_L_k_non_detect', 'log_L_norm_const')
+                        'log_L_k_non_detect'))
 
-    pair_posterior(tab, weights, outfile=outroot+'posteriors.png', title=outdir)
+    pair_posterior(tab, weights, outfile=outdir+'/plots/posteriors.png', title=outdir)
 
 def plot_posteriors_1D(outdir, sim=True):
     tab = load_results(outdir)
@@ -1214,9 +585,8 @@ def plot_posteriors_1D(outdir, sim=True):
     ax2 = py.subplot2grid((3, 6), (0, 3), colspan=3)
     ax3 = py.subplot2grid((3, 6), (1, 0), colspan=3)
     ax4 = py.subplot2grid((3, 6), (1, 3), colspan=3)
-    ax5 = py.subplot2grid((3, 6), (2, 0), colspan=2)
-    ax6 = py.subplot2grid((3, 6), (2, 2), colspan=2)
-    ax7 = py.subplot2grid((3, 6), (2, 4), colspan=2)
+    ax5 = py.subplot2grid((3, 6), (2, 0), colspan=3)
+    ax6 = py.subplot2grid((3, 6), (2, 3), colspan=3)
 
     def plot_PDF(ax, paramName, counter=False):
         if counter:
@@ -1235,8 +605,7 @@ def plot_posteriors_1D(outdir, sim=True):
     plot_PDF(ax3, 'Mcl')
     plot_PDF(ax4, 'distance')
     plot_PDF(ax5, 'N_WR_sim', counter=True)
-    plot_PDF(ax6, 'N_yng', counter=True)
-    plot_PDF(ax7, 'N_old', counter=True)
+    plot_PDF(ax6, 'N_old')
 
     # Make some adjustments to the axes for Number of stars plots
     N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=tab['weights'])
@@ -1253,40 +622,10 @@ def plot_posteriors_1D(outdir, sim=True):
         ax3.axvline(Mcl, color='red')
         ax4.axvline(distance, color='red')
         ax5.axvline(numWR, color='red')
+        ax6.axvline(N_old, color='red')
 
     py.suptitle(outdir)
-    py.savefig(outdir + 'plot_posteriors_1D.png')
-
-def plot_posteriors3(outdir):
-    outroot = '%s/mnest_' % (outdir)
-    num_params = 10
-
-    tab = atpy.Table(outroot + '.txt', type='ascii')
-
-    if num_params != (tab.shape[1] - 2):
-        print 'N_params mismatch: ', outroot
-
-    # First column is the weights
-    weights = tab['col1']
-    logLike = tab['col2'] / -2.0
-    
-    # Now delete the first two rows
-    tab.remove_columns(('col1', 'col2'))
-
-    # Rename the parameter columns. This is hard-coded to match the
-    # above run() function.
-    tab.rename_column('col3', 'distance')
-    tab.rename_column('col4', 'logAge')
-    tab.rename_column('col5', 'alpha')
-    tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'gamma')
-    tab.rename_column('col8', 'N_old')
-    tab.rename_column('col9', 'rcMean')
-    tab.rename_column('col10', 'rcSigma')
-    tab.rename_column('col11', 'N_yng')
-    tab.rename_column('col12', 'N_WR_sim')
-
-    pair_posterior(tab, weights, outfile=outroot+'posteriors.png', title=outdir)
+    py.savefig(outdir + 'plots/plot_posteriors_1D.png')
 
 def pair_posterior(atpy_table, weights, outfile=None, title=None):
     """
@@ -1501,12 +840,12 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     data.prob[data.isYoung == False] = 0.0
 
     # # randomly decide if each star is perfectly ID'ed
-    # rand_number = np.random.rand(len(data.kp))
-    # idx = np.where(rand_number > prob_ID)[0]      # all stars with uncertain types
-    # ydx = np.where(data.isYoung[idx] == True)[0]  # young uncertains
-    # odx = np.where(data.isYoung[idx] == False)[0] # old uncertains
-    # data.prob[idx[ydx]] = np.random.uniform(low=0.4, high=1.0, size=len(ydx))
-    # data.prob[idx[odx]] = np.random.uniform(low=0.0, high=0.4, size=len(odx))
+    rand_number = np.random.rand(len(data.kp))
+    idx = np.where(rand_number > prob_ID)[0]      # all stars with uncertain types
+    ydx = np.where(data.isYoung[idx] == True)[0]  # young uncertains
+    odx = np.where(data.isYoung[idx] == False)[0] # old uncertains
+    data.prob[idx[ydx]] = np.random.uniform(low=0.4, high=1.0, size=len(ydx))
+    data.prob[idx[odx]] = np.random.uniform(low=0.0, high=0.4, size=len(odx))
 
     return data
 
@@ -1588,11 +927,8 @@ def test_prob_old():
     print len(obs.kp), obs.prob.sum() + (1.0 - obs.prob).sum()
 
 
-def make_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
-                            Nold, multiples=True, suffix=''):
-
-    sim = simulated_data(logAge, AKs, distance, imfSlope, clusterMass,
-                         Nold=Nold, multiples=multiples)
+def get_data_file(logAge, AKs, distance, imfSlope, clusterMass, Nold,
+                  multiples, suffix=''):
     if multiples:
         multi = 'multi'
     else:
@@ -1602,12 +938,12 @@ def make_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
 	(logAge, AKs, distance, imfSlope, clusterMass, Nold, multi, suffix)
 
     out_file = out_root + '.pickle'
-    _out = open(out_file, 'w')
-    pickle.dump(sim, _out)
-    _out.close()
 
-def run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
-                           Nold, multiples, fitMultiples, suffix=''):
+    return out_file
+
+def get_out_dir(logAge, AKs, distance, imfSlope, clusterMass, Nold,
+                multiples, fitMultiples, suffix=''):
+
     if multiples:
         multi = 'multi'
     else:
@@ -1618,13 +954,38 @@ def run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
     else:
         fit_multi = 'single'
 
-    info = 'sim_t%.2f_AKs%.1f_d%d_a%.2f_m%d_o%d_%s%s' % \
-        (logAge, AKs, distance, imfSlope, clusterMass, Nold, multi, suffix)
+    out_dir = 'fit_%s_sim_t%.2f_AKs%.1f_d%d_a%.2f_m%d_o%d_%s%s/' % \
+        (fit_multi, logAge, AKs, distance, imfSlope, clusterMass, Nold, multi, suffix)
 
-    data_file = 'cluster_%s.pickle' % (info)
-    out_dir = 'fit_%s_%s/' % (fit_multi, info)
+    return out_dir
+    
 
-    run3(out_dir, data=data_file, multiples=fitMultiples)
+def make_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
+                            Nold, multiples=True, suffix=''):
+
+    sim = simulated_data(logAge, AKs, distance, imfSlope, clusterMass,
+                         Nold=Nold, multiples=multiples)
+
+    out_file = get_data_file(logAge, AKs, distance, imfSlope, clusterMass,
+                             Nold, multiples=multiples, suffix=suffix)
+
+    _out = open(out_file, 'w')
+    pickle.dump(sim, _out)
+    _out.close()
+
+def run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
+                           Nold, multiples, fitMultiples, suffix='', interact=False):
+    if multiples:
+        multi = 'multi'
+    else:
+        multi = 'single'
+
+    data_file = get_data_file(logAge, AKs, distance, imfSlope, clusterMass,
+                              Nold, multiples, suffix=suffix)
+    out_dir = get_out_dir(logAge, AKs, distance, imfSlope, clusterMass,
+                          Nold, multiples, fitMultiples, suffix=suffix)
+
+    run(out_dir, data=data_file, multiples=fitMultiples, interact=interact)
 
     return out_dir
 
