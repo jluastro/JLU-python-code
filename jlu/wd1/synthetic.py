@@ -199,13 +199,22 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     endTime = time.time()
     print '      Time taken: %d seconds' % (endTime - startTime)
 
-def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
+def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist):
     inFile = '/u/jlu/work/wd1/models/iso/'
     inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(distance).zfill(4))
 
+    changeDistance = False
+
     if not os.path.exists(inFile):
-        make_observed_isochrone_hst(logAge=logAge, AKs=AKs, distance=distance)
+        # File doesn't exist, but if only distance has changed we can simply rescale.
+        inFile = '/u/jlu/work/wd1/models/iso/'
+        inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
+                                                 str(defaultDist).zfill(4))
+        if not os.path.exists(inFile):
+            make_observed_isochrone_hst(logAge=logAge, AKs=AKs, distance=distance)
+        else:
+            changeDistance = True
 
     _in = open(inFile, 'rb')
     iso = objects.DataHolder()
@@ -219,6 +228,16 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     iso.mag160w = pickle.load(_in)
     iso.isWR = pickle.load(_in)
     _in.close()
+
+    if changeDistance:
+        print 'Using existing isochrone with d = %d and changing to d = %d' % \
+            (defaultDist, distance)
+        deltaDM = 5.0 * math.log10(float(distance) / float(defaultDist))
+        print '    delta DM = %.2f' % deltaDM
+        iso.mag814w += deltaDM
+        iso.mag125w += deltaDM
+        iso.mag139m += deltaDM
+        iso.mag160w += deltaDM
 
     return iso
 
