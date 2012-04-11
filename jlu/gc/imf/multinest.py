@@ -58,7 +58,7 @@ def random_alpha(randNum):
 
 def make_Mcl_gen():
     Mcl_min = 4
-    Mcl_max = 13
+    Mcl_max = 100
     Mcl_diff = Mcl_max - Mcl_min
     return scipy.stats.uniform(loc=Mcl_min, scale=Mcl_diff)
 
@@ -69,12 +69,12 @@ def random_mass(randNum):
 
 def make_N_old_gen():
     N_old_min = 0.2e3
-    N_old_max = 3.0e3
+    N_old_max = 1.0e4
     N_old_diff = N_old_max - N_old_min
     return scipy.stats.uniform(loc=N_old_min, scale=N_old_diff)
 
 def random_N_old(randNum):
-    N_old = N_old_gen.ppf(randNum)
+    N_old = int(round(N_old_gen.ppf(randNum)))
     log_prob_N_old = N_old_gen.logpdf(N_old)
     return N_old, log_prob_N_old
 
@@ -85,25 +85,27 @@ def make_gamma_gen():
     return scipy.stats.norm(loc=gamma_mean, scale=gamma_std)
 
 def random_gamma(randNum):
-    gamma = gamma_gen.ppf(randNum)
+    #gamma = gamma_gen.ppf(randNum)
+    gamma = 0.27
     log_prob_gamma = gamma_gen.logpdf(gamma)
     return gamma, log_prob_gamma
 
 def make_rcMean_gen():
-    # Values from Schodel+ 2010
-    rcMean_mean = 15.57 + 0.03  # correction for Ks -> Kp (cool stars)
+    # Values from Schodel+ 2010 and Schodel private communication
+    rcMean_mean = 15.71 + 0.03  # correction for Ks -> Kp (cool stars)
     rcMean_std = 0.06
     return scipy.stats.norm(loc=rcMean_mean, scale=rcMean_std)
 
 def random_rcMean(randNum):
-    rcMean = rcMean_gen.ppf(randNum)
+    #rcMean = rcMean_gen.ppf(randNum)
+    rcMean = 15.71 + 0.03
     log_prob_rcMean = rcMean_gen.logpdf(rcMean)
     return rcMean, log_prob_rcMean
 
 def make_rcSigma_gen():
     # Values from Schodel+ 2010
-    rcSigma_mean = 0.3  # correction for Ks -> Kp (cool stars)
-    rcSigma_std = 0.2
+    rcSigma_mean = 0.36  # correction for Ks -> Kp (cool stars)
+    rcSigma_std = 0.04
     rcSigma_min = 0.1
     rcSigma_max = 0.8
     rcSigma_a = (rcSigma_min - rcSigma_mean) / rcSigma_std
@@ -112,7 +114,8 @@ def make_rcSigma_gen():
                                  loc=rcSigma_mean, scale=rcSigma_std)
 
 def random_rcSigma(randNum):
-    rcSigma = rcSigma_gen.ppf(randNum)
+    #rcSigma = rcSigma_gen.ppf(randNum)
+    rcSigma = 0.36
     log_prob_rcSigma = rcSigma_gen.logpdf(rcSigma)
     return rcSigma, log_prob_rcSigma
 
@@ -195,15 +198,15 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         Mcl, log_prob_Mcl = random_mass(cube[3])
         cube[3] = Mcl
 
-        # Powerlaw slope for old population
-        gamma, log_prob_gamma = random_gamma(cube[4])
-        cube[4] = gamma
-
         # Number of old stars that exist (not just observed).
         # Remember this is from k_min brightness down to
         # the model magnitude cut (k_max).
-        N_old, log_prob_N_old = random_N_old(cube[5])
-        cube[5] = N_old
+        N_old, log_prob_N_old = random_N_old(cube[4])
+        cube[4] = N_old
+
+        # Powerlaw slope for old population
+        gamma, log_prob_gamma = random_gamma(cube[5])
+        cube[5] = gamma
 
         # Mean of Red Clump: Note ratio of rec-clump to powerlaw is fixed.
         rcMean, log_prob_rcMean = random_rcMean(cube[6])
@@ -216,7 +219,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         if ((log_prob_alpha == -np.inf) or (log_prob_log_age_cont == -np.inf) or
             (log_prob_dist == -np.inf) or (log_prob_Mcl == -np.inf) or
             (log_prob_gamma == -np.inf) or (log_prob_N_old == -np.inf) or
-            (log_prob_rcMean == -np.inf) or (log_prob_rcSigma == np.inf)):
+            (log_prob_rcMean == -np.inf) or (log_prob_rcSigma == -np.inf)):
             return -np.Inf
 
         # We will only be considering magnitudes down to some hard magnitude
@@ -301,7 +304,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
         N_tot = N_yng + N_old
         N_obs = len(data.kp_ext)
-        fracYng = N_yng / N_tot   # this is our mixture model weight
+        fracYng = float(N_yng) / float(N_tot)   # this is our mixture model weight
 
         #####
         # Binomial Coefficient
@@ -319,15 +322,27 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         incomp_at_kp_sim = 1.0 - comp_at_kp_sim
 
         ## Young part
-        tmp_y = fracYng * sim_k_pdf_norm * sim_k_bin_width * incomp_at_kp_sim
-        P_I0_y = tmp_y.sum()
+        tmp_y = sim_k_pdf_norm * incomp_at_kp_sim
+        P_I0_y = fracYng * tmp_y.sum() * sim_k_bin_width
 
         ## Old part
-        tmp_o = (1.0 - fracYng) * old_k_pdf_norm * sim_k_bin_width * incomp_at_kp_sim
-        P_I0_o = tmp_o.sum()
+        tmp_o = old_k_pdf_norm * incomp_at_kp_sim
+        P_I0_o = (1.0 - fracYng) * tmp_o.sum() * sim_k_bin_width
 
         ## log[ prob(I=0 | model)^(N-n) ]
         log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
+
+        #####
+        # Normalization Constant
+        #####
+        tmp_y2 = sim_k_pdf_norm * comp_at_kp_sim
+        P_I0_y2 = fracYng * tmp_y2.sum() * sim_k_bin_width
+
+        tmp_o2 = old_k_pdf_norm * comp_at_kp_sim
+        P_I0_o2 = (1.0 - fracYng) * tmp_o2.sum() * sim_k_bin_width
+
+        ## log[ prob(I=1 | model)^n ]
+        log_L_k_detect_norm = N_obs * log_prob(P_I0_y2 + P_I0_o2)
 
         #####
         # Detections: log_L_k_detect
@@ -361,8 +376,8 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                 
             log_L_k_detect += log_prob(L_k_i) + log_comp_at_kp_obs[ii]
 
-        log_L = log_L_N_WR + log_L_k_detect + log_binom_coeff
-        log_L += log_L_k_non_detect
+        log_L = log_L_N_WR
+        log_L += log_binom_coeff + log_L_k_non_detect + log_L_k_detect
 
         # Add in the log(Prior_Probabilities) as well
         log_L += log_prob_dist
@@ -478,6 +493,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         cube[11] = log_binom_coeff
         cube[12] = log_L_k_detect
         cube[13] = log_L_k_non_detect
+        cube[14] = log_L_k_detect_norm
 
         return log_L
 
@@ -485,8 +501,9 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
     outroot = outdir + 'mnest_'
 
-    num_dims = 8
-    num_params = 14
+    #num_dims = 8
+    num_dims = 5
+    num_params = 15
     ev_tol = 0.7
     samp_eff = 0.8
     n_clust_param = 4
@@ -506,8 +523,8 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                     outputfiles_basename=outroot,
                     verbose=True, resume=False,
                     evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
-                    n_clustering_params=n_clust_param,
                     n_live_points=n_live_points)
+        #n_clustering_params=n_clust_param,
 
 
 def load_results(rootdir):
@@ -525,8 +542,8 @@ def load_results(rootdir):
     tab.rename_column('col4', 'logAge')
     tab.rename_column('col5', 'alpha')
     tab.rename_column('col6', 'Mcl')
-    tab.rename_column('col7', 'gamma')
-    tab.rename_column('col8', 'N_old')
+    tab.rename_column('col7', 'N_old')
+    tab.rename_column('col8', 'gamma')
     tab.rename_column('col9', 'rcMean')
     tab.rename_column('col10', 'rcSigma')
     tab.rename_column('col11', 'N_yng')
@@ -535,6 +552,8 @@ def load_results(rootdir):
     tab.rename_column('col14', 'log_L_binom_coeff')
     tab.rename_column('col15', 'log_L_k_detect')
     tab.rename_column('col16', 'log_L_k_non_detect')
+    if len(tab.columns) > 16:
+        tab.rename_column('col17', 'log_L_k_detect_norm')
 
     # Now sort based on logLikelihood
     tab.sort('logLike')
@@ -563,6 +582,10 @@ def plot_posteriors_1D(outdir, sim=True):
         imfSlope = float(parts[6][1:])
         Mcl = int(parts[7][1:]) / 10**3
         N_old = int(parts[8][1:])
+
+        gamma = 0.27
+        rcMean = 15.71 + 0.03
+        rcSigma = 0.36
         
         tmp2 = 'cluster_' + '_'.join(parts[2:])
         tmp3 = tmp2.replace('/', '')
@@ -581,12 +604,15 @@ def plot_posteriors_1D(outdir, sim=True):
     py.figure(1, figsize = (10,10))
     py.subplots_adjust(left=0.05, right=0.95, bottom=0.07, top=0.95, wspace=0.5, hspace=0.3)
 
-    ax1 = py.subplot2grid((3, 6), (0, 0), colspan=3)
-    ax2 = py.subplot2grid((3, 6), (0, 3), colspan=3)
-    ax3 = py.subplot2grid((3, 6), (1, 0), colspan=3)
-    ax4 = py.subplot2grid((3, 6), (1, 3), colspan=3)
-    ax5 = py.subplot2grid((3, 6), (2, 0), colspan=3)
-    ax6 = py.subplot2grid((3, 6), (2, 3), colspan=3)
+    ax11 = py.subplot2grid((3, 3), (0, 0))
+    ax12 = py.subplot2grid((3, 3), (0, 1))
+    ax13 = py.subplot2grid((3, 3), (0, 2))
+    ax21 = py.subplot2grid((3, 3), (1, 0))
+    ax22 = py.subplot2grid((3, 3), (1, 1))
+    ax23 = py.subplot2grid((3, 3), (1, 2))
+    ax31 = py.subplot2grid((3, 3), (2, 0))
+    ax32 = py.subplot2grid((3, 3), (2, 1))
+    ax33 = py.subplot2grid((3, 3), (2, 2))
 
     def plot_PDF(ax, paramName, counter=False):
         if counter:
@@ -600,12 +626,15 @@ def plot_posteriors_1D(outdir, sim=True):
         ax.set_xlabel(paramName, size=fontsize+2)
         ax.set_ylim(0, n.max()*1.1)
 
-    plot_PDF(ax1, 'alpha')
-    plot_PDF(ax2, 'logAge')
-    plot_PDF(ax3, 'Mcl')
-    plot_PDF(ax4, 'distance')
-    plot_PDF(ax5, 'N_WR_sim', counter=True)
-    plot_PDF(ax6, 'N_old')
+    plot_PDF(ax11, 'alpha')
+    plot_PDF(ax12, 'logAge')
+    plot_PDF(ax13, 'Mcl')
+    plot_PDF(ax21, 'distance')
+    plot_PDF(ax22, 'N_WR_sim', counter=True)
+    plot_PDF(ax23, 'N_old')
+    plot_PDF(ax31, 'gamma')
+    plot_PDF(ax32, 'rcMean')
+    plot_PDF(ax33, 'rcSigma')
 
     # Make some adjustments to the axes for Number of stars plots
     N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=tab['weights'])
@@ -614,15 +643,18 @@ def plot_posteriors_1D(outdir, sim=True):
     N_WR_hi = N_WR_sim_avg + (3 * N_WR_sim_std)
     if N_WR_lo < 0:
         N_WR_lo = 0
-    ax5.set_xlim(N_WR_lo, N_WR_hi)
+    ax22.set_xlim(N_WR_lo, N_WR_hi)
 
     if sim:
-        ax1.axvline(imfSlope, color='red')
-        ax2.axvline(logAge, color='red')
-        ax3.axvline(Mcl, color='red')
-        ax4.axvline(distance, color='red')
-        ax5.axvline(numWR, color='red')
-        ax6.axvline(N_old, color='red')
+        ax11.axvline(imfSlope, color='red')
+        ax12.axvline(logAge, color='red')
+        ax13.axvline(Mcl, color='red')
+        ax21.axvline(distance, color='red')
+        ax22.axvline(numWR, color='red')
+        ax23.axvline(N_old, color='red')
+        ax31.axvline(gamma, color='red')
+        ax32.axvline(rcMean, color='red')
+        ax33.axvline(rcSigma, color='red')
 
     py.suptitle(outdir)
     py.savefig(outdir + 'plots/plot_posteriors_1D.png')
