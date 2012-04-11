@@ -737,10 +737,11 @@ def pymc_model4(yng=None, rmin=0, rmax=30):
     return vars()
 
 
-def sim_to_obs_klf(cluster, magCut=15.5, withErrors=True):
+def sim_to_obs_klf(cluster, magCut=15.5, withErrors=True, yng_orig=None):
     # Load up the original young star data to use the observed distribution
     # of Kp errors for our simulated population.
-    yng_orig = lu_gc_imf.load_yng_data_by_radius(magCut=magCut)
+    if yng_orig == None:
+        yng_orig = lu_gc_imf.load_yng_data_by_radius(magCut=magCut)
 
     # Load up imaging completness curve
     completeness = lu_gc_imf.load_image_completeness_by_radius()
