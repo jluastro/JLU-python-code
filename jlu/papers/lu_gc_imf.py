@@ -38,7 +38,7 @@ from gcreduce import gcutil
 import pymultinest
 
 
-workDir = '/u/jlu/work/gc/imf/klf/2012_02_14/'
+workDir = '/u/jlu/work/gc/imf/klf/2012_04_11/'
 theAKs = 2.7
 synFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a680.dat'
 oldSynFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a935.dat'
@@ -48,9 +48,9 @@ distance = 8000.0
 # klf_mag_bins = np.arange(9.0, 19, 0.5)  # Bin Center Points
 
 def analysis_by_radius(rmin=0, rmax=30):
-    # image_completeness_in_osiris()
-    # image_completeness_by_radius(rmin=rmin, rmax=rmax)
-    # calc_spec_id_all_stars()
+    image_completeness_in_osiris()
+    image_completeness_by_radius(rmin=rmin, rmax=rmax)
+    calc_spec_id_all_stars()
     spec_completeness_by_radius(rmin=rmin, rmax=rmax)
     merge_completeness_by_radius(rmin=rmin, rmax=rmax)
     klf_by_radius(rmin=rmin, rmax=rmax)
@@ -135,6 +135,9 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None):
     yng.prob = pickle.load(_pick)
     _pick.close()
 
+    foo = np.where(yng.isWR == True)[0]
+    yng.N_WR = len(foo)
+
     # Optional magnitude cut
     if magCut != None:
         print 'Cutting out young stars with Kp <= %.2f' % magCut
@@ -165,6 +168,9 @@ def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
     all.isWR = pickle.load(_pick)
     all.prob = pickle.load(_pick)
     _pick.close()
+
+    foo = np.where(all.isWR == True)[0]
+    all.N_WR = len(foo)
 
     # Optional magnitude cut
     if magCut != None:
@@ -6075,8 +6081,8 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
         c2.mag_noWR += 5.0 * np.log10(distance / 8000.0)
 
 
-        o1 = b.sim_to_obs_klf(c1, magCut=15.5, withErrors=False)
-        o2 = b.sim_to_obs_klf(c2, magCut=15.5, withErrors=False)
+        o1 = b.sim_to_obs_klf(c1, magCut=15.5, withErrors=False, yng_orig=yngData)
+        o2 = b.sim_to_obs_klf(c2, magCut=15.5, withErrors=False, yng_orig=yngData)
         
         f1.hist(c1.mag_noWR, bins=binEdges, histtype='step', color=color,
                 label=legLabel, linewidth=2, alpha=0.2)
@@ -6314,10 +6320,10 @@ def plot_sim_clusters():
         tmp2 = tmp1 / (mMax**tmp1 - mMin**tmp1)
         return tmp2 * m**(-alpha)
     
-    logAge = 6.78
+    logAge = 6.6
     AKs = 2.7
     dist = 8000
-    Mcl = 4e4
+    Mcl = 1e6
     imfSlope = 2.35
     minMass = 1.0
     maxMass = 150.0
@@ -6351,17 +6357,19 @@ def plot_sim_clusters():
 
     # Plot a mass-magnitude diagram
     py.clf()
-    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'rs', ms=5, mec='red', label='No Multiples')
+    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'gs', ms=3, mec='green', label='No Multiples')
     py.plot(c2.mass[c2.idx_noWR], c2.mag_noWR, 'k.', label='With Multiples')
+    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'gs', ms=3, mec='green')
     ax = py.axis()
     py.ylim(ax[3], ax[2])
     py.xlabel('Mass (Msun)')
     py.ylabel('Kp Magnitude')
     py.legend(loc='lower right', numpoints=1)
     py.savefig(workDir + 'plots/sim_clusters_m_vs_kp_multiples.png')
+    py.savefig(workDir + 'plots/sim_clusters_m_vs_kp_multiples.eps')
 
     # Check out the companion information
-    idx = np.where(c2.isMultiple == True)[0]
+    idx = np.where((c2.isMultiple == True) & (c2.mass > 10))[0]
     q = np.array([], dtype=float)
     for ii in idx:
         q_new = c2.compMasses[ii] / c2.mass[ii]
@@ -6389,6 +6397,7 @@ def plot_sim_clusters():
     py.xlabel('Kp Magnitude')
     py.ylabel('Number of Stars')
     py.savefig(workDir + 'plots/sim_clusters_klf_multiples.png')
+    py.savefig(workDir + 'plots/sim_clusters_klf_multiples.eps')
 
     return
 
@@ -6635,7 +6644,8 @@ def plot_sim_results(rootdir, index=0, sim=True):
         data = pickle.load(tmp)
         tmp.close()
     else:
-        data = load_yng_data_by_radius(magCut=15.5)
+        data = load_all_data_by_radius(magCut=15.5)
+        data.kp = data.kp_ext
 
     out_suffix = '_best_fit_%d' % index
 
@@ -6645,15 +6655,73 @@ def plot_sim_results(rootdir, index=0, sim=True):
     print '   distance (pc):   %d' % (fit['distance'][idx]*10**3)
     print '   alpha:           %.2f' % fit['alpha'][idx]
     print '   Mcl (Msun)       %d' % (fit['Mcl'][idx]*10**3)
+    print '   N_old:           %d' % (fit['N_old'][idx])
+    print '   gamma:           %.2f' % (fit['gamma'][idx])
+    print '   rcMean:          %.2f' % (fit['rcMean'][idx])
+    print '   rcSigma:         %.2f' % (fit['rcSigma'][idx])
     print '   N(WR):           %d in data vs. %d in sim' % (data.N_WR, fit['N_WR_sim'][idx])
     print '   N(yng):          %d in data vs. %d in sim' % \
-        (data.prob.sum(), fit['N_yng_sim'][idx])
+        (data.prob.sum(), fit['N_yng'][idx])
 
 
     plot_model_vs_data_MC(fit['logAge'][idx], 2.7, int(round(fit['distance'][idx]*10**3, 0)),
                           fit['alpha'][idx], int(round(fit['Mcl'][idx]*10**3, 0)), yngData=data,
                           outDir=rootdir+'/', outSuffix=out_suffix)
-    
+
+    #####
+    # Plot up the old population
+    #####
+    binsKp = klf_mag_bins
+    binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
+    py.close(5)
+    fig = py.figure(5)
+    f = fig.gca()
+
+    # Load up imaging completness curve
+    completeness = load_image_completeness_by_radius()
+    Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
+
+    # This is the magnitude range over which the mixture model weights
+    # are determined.
+    k_min = 8.0  # K' magnitude limit for old KLF powerlaw
+    k_max = 18.0 # K' magnitude limit for old KLF powerlaw
+
+    # Generate old stars
+    pl_loc = math.e**k_min
+    pl_scale = math.e**k_max - math.e**k_min
+    pl_index = fit['gamma'][idx] * math.log(10.0)
+    powerlaw = scipy.stats.powerlaw(pl_index, loc=pl_loc, scale=pl_scale)
+    gaussian = scipy.stats.norm(loc=fit['rcMean'][idx], scale=fit['rcSigma'][idx])
+
+    for ii in range(50):
+        # Fix the relative fraction of stars in the Red Clump
+        fracInRC = 0.12
+        kp_PLAW = np.log( powerlaw.rvs((1.0 - fracInRC)*(fit['N_old'][idx])) )
+        kp_NORM = gaussian.rvs(fracInRC*fit['N_old'][idx])
+        old_sim_kp = np.concatenate([kp_PLAW, kp_NORM])
+
+        comp_for_stars = interpolate.splev(old_sim_kp, Kp_interp)
+        comp_for_stars[comp_for_stars > 1] = 1.0
+        comp_for_stars[comp_for_stars < 0] = 0.0
+
+        if ii == 0:
+            legLabel = 'Sim'
+        else:
+            legLabel = None
+        f.hist(old_sim_kp, bins=binEdges, histtype='step', color='red', label=legLabel,
+               linewidth=2, alpha=0.2, weights=comp_for_stars)
+
+
+    (n, b, p) = f.hist(data.kp, bins=binEdges, histtype='step', color='black', label='Obs',
+                       linewidth=4, weights=(1.0 - data.prob))
+
+    f.legend(loc='upper left')
+    f.set_ylim((0, n.max()*1.5))
+    f.set_xlabel('Kp Magnitude')
+    f.set_ylabel('Number of Old Stars')
+
+    outFile = rootdir + 'plots/klf_model_vs_data_MC_old_' + out_suffix + '.png'
+    f.get_figure().savefig(outFile)
 
 def fit_with_models(multiples=True):
     """
@@ -7364,3 +7432,11 @@ def plot_test_membership_prob(out_file_root):
     m.pair_posterior(tab, weights, outfile=outroot+'posteriors.png')
 
         
+def plot_klf_vs_multiples():
+    """
+    Plot K-band luminosity functions for simulated clusters with and
+    without multiples.
+    """
+    
+
+    
