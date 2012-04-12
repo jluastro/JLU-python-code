@@ -567,6 +567,7 @@ def plot_posteriors(outdir):
     tab.remove_columns(('log_L_N_WR', 'log_L_binom_coeff', 'log_L_k_detect',
                         'log_L_k_non_detect'))
 
+    gcutil.mkdir(outdir + 'plots/')
     pair_posterior(tab, weights, outfile=outdir+'/plots/posteriors.png', title=outdir)
 
 def plot_posteriors_1D(outdir, sim=True):
@@ -655,6 +656,8 @@ def plot_posteriors_1D(outdir, sim=True):
         ax31.axvline(gamma, color='red')
         ax32.axvline(rcMean, color='red')
         ax33.axvline(rcSigma, color='red')
+
+    gcutil.mkdir(outdir + 'plots/')
 
     py.suptitle(outdir)
     py.savefig(outdir + 'plots/plot_posteriors_1D.png')
@@ -1004,6 +1007,51 @@ def make_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
     _out = open(out_file, 'w')
     pickle.dump(sim, _out)
     _out.close()
+
+    # Also write two scripts for fitting the simulated data.
+    fit_single = get_out_dir(logAge, AKs, distance, imfSlope, clusterMass,
+                          Nold, multiples, False, suffix=suffix)
+    py_single_file = fit_single.replace('/', '.py')
+    _single = open(py_single_file, 'w')
+    _single.write('from jlu.gc.imf import multinest as m\n')
+    _single.write('from jlu.papers import lu_gc_imf as imf\n')
+    _single.write('\n')
+    _single.write('logAge = %.2f\n' % logAge)
+    _single.write('AKs = %.1f\n' % AKs)
+    _single.write('distance = %d\n' % distance)
+    _single.write('imfSlope = %.2f\n' % imfSlope)
+    _single.write('clusterMass = %.1e\n' % clusterMass)
+    _single.write('Nold = %.2e\n' % Nold)
+    _single.write('multiples = %s\n' % multiples)
+    _single.write('fitMultiples = False\n')
+    _single.write('\n')
+    _single.write('out_dir = m.run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass, Nold, multiples, fitMultiples, suffix="%s")' % suffix)
+    _single.write('\n')
+    _single.write('print out_dir\n')
+    _single.close()
+
+    fit_multi = get_out_dir(logAge, AKs, distance, imfSlope, clusterMass,
+                          Nold, multiples, True, suffix=suffix)
+    py_multi_file = fit_multi.replace('/', '.py')
+    _multi = open(py_multi_file, 'w')
+    _multi.write('from jlu.gc.imf import multinest as m\n')
+    _multi.write('from jlu.papers import lu_gc_imf as imf\n')
+    _multi.write('\n')
+    _multi.write('logAge = %.2f\n' % logAge)
+    _multi.write('AKs = %.1f\n' % AKs)
+    _multi.write('distance = %d\n' % distance)
+    _multi.write('imfSlope = %.2f\n' % imfSlope)
+    _multi.write('clusterMass = %.1e\n' % clusterMass)
+    _multi.write('Nold = %.2e\n' % Nold)
+    _multi.write('multiples = %s\n' % multiples)
+    _multi.write('fitMultiples = True\n')
+    _multi.write('\n')
+    _multi.write('out_dir = m.run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass, Nold, multiples, fitMultiples, suffix="%s")' % suffix)
+    _multi.write('\n')
+    _multi.write('print out_dir\n')
+    _multi.close()
+
+    return (py_single_file, py_multi_file)
 
 def run_simulated_data_set(logAge, AKs, distance, imfSlope, clusterMass,
                            Nold, multiples, fitMultiples, suffix='', interact=False):
