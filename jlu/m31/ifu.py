@@ -58,6 +58,7 @@ def get_all_cubes(year):
         
     return cubes
 
+
 def osiris_performance_all(year):
     cubes = get_all_cubes(year)
 
