@@ -304,7 +304,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
         N_tot = N_yng + N_old
         N_obs = len(data.kp_ext)
-        fracYng = float(N_yng) / float(N_tot)   # this is our mixture model weight
+        fracYng = float(N_yng) / float(N_tot)
 
         #####
         # Binomial Coefficient
@@ -321,28 +321,39 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         #####
         incomp_at_kp_sim = 1.0 - comp_at_kp_sim
 
+        # number of young vs. mag
+        n_yng_k = N_yng * sim_k_pdf_norm * sim_k_bin_width
+        n_old_k = N_old * old_k_pdf_norm * sim_k_bin_width
+        prob_Y1 = n_yng_k / (n_yng_k + n_old_k)
+        prob_Y0 = 1.0 - prob_Y1
+        #prob_Y1 = fracYng
+        #prob_Y0 = 1.0 - prob_Y1
+
+        
         ## Young part
-        tmp_y = sim_k_pdf_norm * incomp_at_kp_sim
-        P_I0_y = fracYng * tmp_y.sum() * sim_k_bin_width
+        #P_I0_y = prob_Y1 * fracYng * sim_k_pdf_norm
+        P_I0_y = fracYng * sim_k_pdf_norm
 
         ## Old part
-        tmp_o = old_k_pdf_norm * incomp_at_kp_sim
-        P_I0_o = (1.0 - fracYng) * tmp_o.sum() * sim_k_bin_width
+        #P_I0_o = prob_Y0 * (1.0 - fracYng) * old_k_pdf_norm
+        P_I0_o = (1.0 - fracYng) * old_k_pdf_norm
+
+        ## Total Integral
+        P_I0 =  incomp_at_kp_sim * (P_I0_y + P_I0_o) * sim_k_bin_width
 
         ## log[ prob(I=0 | model)^(N-n) ]
-        log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0_y + P_I0_o)
+        log_L_k_non_detect = (N_tot - N_obs) * log_prob(P_I0.sum())
+
+        #n_yng_k * log_prob(sim_k_pdf_norm) + n_old_k * log_prob(old_k_pdf_prob)
+        #log_L_k_non_detect = sim_k_pdf_nrom**n_yng_k
 
         #####
-        # Normalization Constant
+        # Normalization Constant for the observed side
         #####
-        tmp_y2 = sim_k_pdf_norm * comp_at_kp_sim
-        P_I0_y2 = fracYng * tmp_y2.sum() * sim_k_bin_width
-
-        tmp_o2 = old_k_pdf_norm * comp_at_kp_sim
-        P_I0_o2 = (1.0 - fracYng) * tmp_o2.sum() * sim_k_bin_width
+        P_I0_all = (P_I0_y + P_I0_o).sum() * sim_k_bin_width
 
         ## log[ prob(I=1 | model)^n ]
-        log_L_k_detect_norm = N_obs * log_prob(P_I0_y2 + P_I0_o2)
+        log_L_norm_coeff = N_tot * log_prob(P_I0_all)
 
         #####
         # Detections: log_L_k_detect
@@ -355,6 +366,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             obs_k_norm = scipy.stats.norm(loc=data.kp_ext[ii], scale=data.kp_err[ii])
             obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
             obs_k_norm_pdf = np.diff(obs_k_norm_cdf)
+            obs_k_norm_pdf /= (obs_k_norm_pdf * sim_k_bin_width).sum()
             
             # Convolve gaussian with PDF(K) from model
             if obs_k_norm_pdf.sum() == 0:
@@ -365,11 +377,11 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                 # Young part
                 # Multiply gaussian with PDF(K) from model and sum to get probability
                 L_k_i_y = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
-                L_k_i_y *= data.prob[ii] * fracYng
+                L_k_i_y *= data.prob[ii] * fracYng * sim_k_bin_width
 
                 # Old part
                 L_k_i_o = (old_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
-                L_k_i_o *= (1.0 - data.prob[ii]) * (1.0 - fracYng)
+                L_k_i_o *= (1.0 - data.prob[ii]) * (1.0 - fracYng) * sim_k_bin_width
 
                 # Combine
                 L_k_i = L_k_i_y + L_k_i_o
@@ -378,17 +390,19 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
         log_L = log_L_N_WR
         log_L += log_binom_coeff + log_L_k_non_detect + log_L_k_detect
+        #log_L -= log_L_norm_coeff
 
         # Add in the log(Prior_Probabilities) as well
         log_L += log_prob_dist
         log_L += log_prob_alpha
         log_L += log_prob_Mcl
         log_L += log_prob_log_age_cont
-        log_L += log_prob_gamma
         log_L += log_prob_N_old
-        log_L += log_prob_rcMean
-        log_L += log_prob_rcSigma
+        #log_L += log_prob_gamma
+        #log_L += log_prob_rcMean
+        #log_L += log_prob_rcSigma
 
+        #pdb.set_trace()
         if log_L >= 0:
             pdb.set_trace()
 
@@ -493,7 +507,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         cube[11] = log_binom_coeff
         cube[12] = log_L_k_detect
         cube[13] = log_L_k_non_detect
-        cube[14] = log_L_k_detect_norm
+        cube[14] = log_L_norm_coeff
 
         return log_L
 
@@ -553,7 +567,7 @@ def load_results(rootdir):
     tab.rename_column('col15', 'log_L_k_detect')
     tab.rename_column('col16', 'log_L_k_non_detect')
     if len(tab.columns) > 16:
-        tab.rename_column('col17', 'log_L_k_detect_norm')
+        tab.rename_column('col17', 'log_L_norm_coeff')
 
     # Now sort based on logLikelihood
     tab.sort('logLike')
@@ -779,7 +793,7 @@ def plot_results_3d(outdir, param1='alpha', param2='logAge'):
     ax.scatter(tab[param1][idx1], tab[param2][idx1], logLike[idx1], color='red')
 
 def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
-                   gamma=0.3, Nold=1.5e3, rcMean=15.6, rcSigma=0.3, multiples=True):
+                   gamma=0.27, Nold=1.5e3, rcMean=15.74, rcSigma=0.36, multiples=True):
     if multiples:
         multiStr = 'multi'
     else:
