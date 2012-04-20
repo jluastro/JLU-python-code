@@ -48,12 +48,12 @@ distance = 8000.0
 # klf_mag_bins = np.arange(9.0, 19, 0.5)  # Bin Center Points
 
 def analysis_by_radius(rmin=0, rmax=30):
-    image_completeness_in_osiris()
-    image_completeness_by_radius(rmin=rmin, rmax=rmax)
-    calc_spec_id_all_stars()
-    spec_completeness_by_radius(rmin=rmin, rmax=rmax)
-    merge_completeness_by_radius(rmin=rmin, rmax=rmax)
-    klf_by_radius(rmin=rmin, rmax=rmax)
+    # image_completeness_in_osiris()
+    # image_completeness_by_radius(rmin=rmin, rmax=rmax)
+    # calc_spec_id_all_stars()
+    # spec_completeness_by_radius(rmin=rmin, rmax=rmax)
+    # merge_completeness_by_radius(rmin=rmin, rmax=rmax)
+    # klf_by_radius(rmin=rmin, rmax=rmax)
 
     plot_klf_by_radius(rmin=rmin, rmax=rmax)
     plot_klf_by_radius_noWR(rmin=rmin, rmax=rmax)
@@ -6114,11 +6114,25 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
     f_arr = [f1, f2, f3, f4]
     for fidx in range(len(f_arr)):
         f = f_arr[fidx]
-        (n, b, p) = f.hist(yngData.kp, bins=binEdges, histtype='step', color='black', label='Obs',
-                           linewidth=4, weights=yngData.prob)
+
+        try:
+            idx = np.where(yngData.isYoung == True)[0]
+            plotData = yngData.kp[idx]
+            plotWeights = None
+        except AttributeError:
+            plotData = yngData.kp
+            plotWeights = yngData.prob
+            
+        (n, b, p) = f.hist(plotData, bins=binEdges, histtype='step', color='black', label='Obs',
+                           linewidth=4, weights=plotWeights)
         f.plot([8.5], yngData.N_WR, 'ko', color='black', ms=10)
         f.legend(loc='upper left')
-        f.set_ylim((0, n.max()*2))
+
+        maxLevel = n.max() * 2
+        if maxLevel < 20:
+            maxLevel = 20
+
+        f.set_ylim((0, maxLevel))
         f.set_xlabel('Kp Magnitude')
         f.set_ylabel('Number of Stars')
         f.set_title(titles[fidx])
@@ -6644,7 +6658,7 @@ def plot_sim_results(rootdir, index=0, sim=True):
         data = pickle.load(tmp)
         tmp.close()
     else:
-        data = load_all_data_by_radius(magCut=15.5)
+        data = load_all_catalog_by_radius(magCut=15.5)
         data.kp = data.kp_ext
 
     out_suffix = '_best_fit_%d' % index
@@ -6712,8 +6726,16 @@ def plot_sim_results(rootdir, index=0, sim=True):
                linewidth=2, alpha=0.2, weights=comp_for_stars)
 
 
-    (n, b, p) = f.hist(data.kp, bins=binEdges, histtype='step', color='black', label='Obs',
-                       linewidth=4, weights=(1.0 - data.prob))
+    try:
+        idx = np.where(data.isYoung == False)[0]
+        plotData = data.kp[idx]
+        plotWeights = None
+    except AttributeError:
+        plotData = data.kp
+        plotWeights = 1.0 - data.prob
+            
+    (n, b, p) = f.hist(plotData, bins=binEdges, histtype='step', color='black', label='Obs',
+                       linewidth=4, weights=plotWeights)
 
     f.legend(loc='upper left')
     f.set_ylim((0, n.max()*1.5))
