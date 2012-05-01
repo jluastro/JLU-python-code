@@ -6115,13 +6115,16 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
     for fidx in range(len(f_arr)):
         f = f_arr[fidx]
 
-        try:
-            idx = np.where(yngData.isYoung == True)[0]
-            plotData = yngData.kp[idx]
-            plotWeights = None
-        except AttributeError:
-            plotData = yngData.kp
-            plotWeights = yngData.prob
+        # try:
+        #     idx = np.where(yngData.isYoung == True)[0]
+        #     plotData = yngData.kp[idx]
+        #     plotWeights = None
+        # except AttributeError:
+        #     plotData = yngData.kp
+        #     plotWeights = yngData.prob
+        plotData = yngData.kp
+        plotWeights = yngData.prob
+            
             
         (n, b, p) = f.hist(plotData, bins=binEdges, histtype='step', color='black', label='Obs',
                            linewidth=4, weights=plotWeights)
@@ -6726,14 +6729,17 @@ def plot_sim_results(rootdir, index=0, sim=True):
                linewidth=2, alpha=0.2, weights=comp_for_stars)
 
 
-    try:
-        idx = np.where(data.isYoung == False)[0]
-        plotData = data.kp[idx]
-        plotWeights = None
-    except AttributeError:
-        plotData = data.kp
-        plotWeights = 1.0 - data.prob
-            
+    # try:
+    #     idx = np.where(data.isYoung == False)[0]
+    #     plotData = data.kp[idx]
+    #     plotWeights = None
+    # except AttributeError:
+    #     plotData = data.kp
+    #     plotWeights = 1.0 - data.prob
+
+    plotData = data.kp
+    plotWeights = 1.0 - data.prob
+
     (n, b, p) = f.hist(plotData, bins=binEdges, histtype='step', color='black', label='Obs',
                        linewidth=4, weights=plotWeights)
 
@@ -7453,12 +7459,161 @@ def plot_test_membership_prob(out_file_root):
 
     m.pair_posterior(tab, weights, outfile=outroot+'posteriors.png')
 
-        
-def plot_klf_vs_multiples():
+
+def test_bernoulli_prob():
     """
-    Plot K-band luminosity functions for simulated clusters with and
-    without multiples.
+    A self-contained test to figure out why the Bernoulli distribution
+    isn't working in the likelihood.
     """
+    ####################
+    # Some random powerlaw populations to play with.
+    ####################
+    rand_set_1 = scipy.stats.powerlaw.rvs(2.0, size=10000)
+
+    # Apply a linear completeness correction
+    def comp(xval, x0=0.6, a=30):
+        dx = xval - x0
+        denom = np.sqrt(1.0 + a**2 * dx**2)
+        f = 0.5 * (1.0 - ((a * dx) / denom))
+
+        return f
+
+    comp_at_rand = comp(rand_set_1)
+    detect_rand = scipy.stats.uniform.rvs(size=len(rand_set_1))
+    detect_idx = np.where(detect_rand <= comp_at_rand)[0]
+
+    observed_set_1 = rand_set_1[detect_idx]
     
+    py.clf()
+    py.hist(rand_set_1, histtype='step')
+    py.hist(observed_set_1, histtype='step')
+    py.show()
+
+    data = observed_set_1
+    N_obs = len(data)
+
+    # Now we are going to run a multinest fitting program.
+    # We will fit only the gaussian distribution but we need
+    # to account for the probability of membership.
+    def priors(cube, ndim, nparams):
+        return
+
+    def random_alpha(randNum):
+        alpha_min = 0.1
+        alpha_max = 5
+        alpha_diff = alpha_max - alpha_min
+        alpha = scipy.stats.uniform.ppf(randNum, loc=alpha_min, scale=alpha_diff)
+        log_prob_alpha = scipy.stats.uniform.logpdf(alpha, loc=alpha_min, scale=alpha_diff)
+
+        return alpha, log_prob_alpha
+
+    def random_N(randNum):
+        N_min = 100
+        N_max = 1.0e4
+        N_diff = N_max - N_min
+        N = scipy.stats.uniform.ppf(randNum, loc=N_min, scale=N_diff)
+        log_prob_N = scipy.stats.uniform.logpdf(N)
+
+        return N, log_prob_N
+
+
+    # Bins for histograms of PDF
+    bin_width = 0.025
+    bins = np.arange(0, 1+bin_width, bin_width)
+    bin_centers = bins[:-1] + (bin_width / 2.0)
+
+    # Completeness at bin centers
+    comp_at_bins = comp(bin_centers)
+    incomp_at_bins = 1.0 - comp_at_bins
+
+    def logLike(cube, ndim, nparams):
+        alpha, log_prob_alpha = random_alpha(cube[0])
+        cube[0] = alpha
+
+        N, log_prob_N = random_N(cube[1])
+        cube[1] = N
+
+        # Make a simulated data set - similar to what we do when we don't
+        # have the analytic expression for the luminosity function.
+        sim_plaw = scipy.stats.powerlaw(alpha, size=N)
+
+        # Bin it up to make a normalized PDF
+        sim_cdf = sim_plaw.cdf(bins)
+        sim_pdf = np.diff(sim_cdf)
+        sim_pdf_norm = sim_pdf / (sim_pdf * bin_width).sum()
+
+        ##########
+        # Parts of the Likelihood
+        ##########
+        # Binomial coefficient:
+        log_L_binom_coeff = scipy.special.gammaln(N + 1)
+        log_L_binom_coeff -= scipy.special.gammaln(N_obs + 1)
+        log_L_binom_coeff -= scipy.special.gammaln(N - N_obs + 1)
+
+        # Undetected part
+        tmp = (sim_pdf_norm * incomp_at_bins * bin_width).sum()
+        log_L_non_detect = (N - N_obs) * np.log(tmp)
+
+        # Detected part
+        log_L_detect = 0.0
+
+        for ii in range(N_obs):
+            # Find the closest bin in the PDF
+            dx = np.abs(data[ii] - bin_centers)
+            idx = dx.argmin()
+
+            L_i = comp_at_bins[idx] * sim_pdf_norm[idx]
+
+            if L_i == 0.0:
+                log_L_detect += -np.Inf
+            else:
+                log_L_detect += np.log(L_i)
+
+        log_L = log_L_binom_coeff + log_L_non_detect + log_L_detect
+        log_L += log_prob_alpha
+        log_L += log_prob_N
+        pdb.set_trace()
+
+        cube[2] = log_L_binom_coeff
+        cube[3] = log_L_non_detect
+        cube[4] = log_L_detect
+
+        return log_L
+
+
+    num_params = 5
+    num_dims = 2
+    n_clust_param = num_dims - 1
+    ev_tol = 0.7
+    samp_eff = 0.5
+    n_live_points = 300
+
+    # Now run all 3 tests.
+    outroot = '/u/jlu/work/stats/test_bernoulli/multi_'
+    pymultinest.run(logLike, priors, num_dims, n_params=num_params,
+                    outputfiles_basename=outroot,
+                    verbose=True, resume=False,
+                    evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
+                    n_live_points=n_live_points)
+
+    plot_test_membership_prob('multi')
+
+def plot_test_bernoulli(out_file_root):
+    from jlu.gc.imf import multinest as m
+    outroot = '/u/jlu/work/stats/test_bernoulli/' + out_file_root + '_'
+
+    tab = atpy.Table(outroot + '.txt', type='ascii')
+
+    tab['col2'] /= -2.0
+
+    tab.rename_columns('col1', 'weights')
+    tab.rename_columns('col2', 'logLike')
+    tab.rename_column('col3', 'alpha')
+    tab.rename_column('col4', 'N')
+    tab.rename_column('col4', 'logL_b')
+    tab.rename_column('col4', 'logL_nd')
+    tab.rename_column('col4', 'logL_d')
+
+    pdb.set_trace()
 
     
