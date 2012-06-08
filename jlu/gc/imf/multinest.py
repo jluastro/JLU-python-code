@@ -935,7 +935,6 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         sim_k_bins = np.append(sim_k_bins[idx], sim_k_bins[idx[-1]+1])
         sim_k_pdf = sim_k_pdf[idx]
         sim_k_pdf_norm = sim_k_pdf_norm[idx]
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_width).sum()
         sim_k_bin_center = sim_k_bins[:-1] + (sim_k_bin_width/2.0)
 
         ####################
@@ -946,6 +945,12 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         comp_at_kp_sim[comp_at_kp_sim < 0] = 0.0
         comp_at_kp_sim[comp_at_kp_sim > 1] = 1.0
         comp_at_kp_sim[sim_k_bin_center > magCut] = 0.0
+
+        # Reduce the PDF down to just the "observed" one.
+        # Remember to re-normalize the observed PDF.
+        sim_k_pdf *= comp_at_kp_sim
+        sim_k_pdf_norm *= comp_at_kp_sim
+        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_width).sum()
 
         ####################
         # Different parts of the likelihood
@@ -960,8 +965,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         #####
         # Prob(N_yng_obs | model)
         #####
-        sim_k_pdf_incomp = sim_k_pdf * comp_at_kp_sim
-        N_yng_obs_expect = sim_k_pdf_incomp.sum()
+        N_yng_obs_expect = sim_k_pdf.sum()
         cube[5] = N_yng_obs_expect
 
         N_yng_obs = int(np.round(data.prob.sum()))
@@ -988,9 +992,6 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             else:
                 # Multiply gaussian with PDF(K) from model and sum to get probability
                 L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
-
-                # Apply completeness correction
-                L_k_i *= comp_at_kp_obs[ii]
 
             log_L_k_detect += data.prob[ii] * log_prob(L_k_i)
 
@@ -1106,8 +1107,9 @@ def plot_posteriors(outdir):
     tab = load_results(outdir)
     weights = tab.weights
     tab.remove_columns(('weights', 'logLike'))
-    tab.remove_columns(('log_L_N_WR', 'log_L_binom_coeff', 'log_L_k_detect',
-                        'log_L_k_non_detect'))
+    # tab.remove_columns(('log_L_N_WR', 'log_L_binom_coeff', 'log_L_k_detect',
+    #                     'log_L_k_non_detect'))
+    tab.remove_columns(('log_L_N_WR', 'log_L_N_yng_obs', 'log_L_k_detect'))
 
     gcutil.mkdir(outdir + 'plots/')
     pair_posterior(tab, weights, outfile=outdir+'/plots/posteriors.png', title=outdir)
@@ -1139,23 +1141,26 @@ def plot_posteriors_1D(outdir, sim=True):
         foo.close()
 
         numWR = sim.N_WR
-        numOB = sim.prob.sum()
+
+        idx = np.where(sim.kp < 15.5)[0]
+        numOB = sim.prob[idx].sum()
 
     fontsize = 12
 
     py.close(1)
-    py.figure(1, figsize = (10,10))
-    py.subplots_adjust(left=0.05, right=0.95, bottom=0.07, top=0.95, wspace=0.5, hspace=0.3)
+    #    py.figure(1, figsize = (10,10))
+    py.figure(1, figsize = (10,7))
+    py.subplots_adjust(left=0.05, right=0.95, bottom=0.07, top=0.92, wspace=0.5, hspace=0.3)
 
-    ax11 = py.subplot2grid((3, 3), (0, 0))
-    ax12 = py.subplot2grid((3, 3), (0, 1))
-    ax13 = py.subplot2grid((3, 3), (0, 2))
-    ax21 = py.subplot2grid((3, 3), (1, 0))
-    ax22 = py.subplot2grid((3, 3), (1, 1))
-    ax23 = py.subplot2grid((3, 3), (1, 2))
-    ax31 = py.subplot2grid((3, 3), (2, 0))
-    ax32 = py.subplot2grid((3, 3), (2, 1))
-    ax33 = py.subplot2grid((3, 3), (2, 2))
+    ax11 = py.subplot2grid((2, 3), (0, 0))
+    ax12 = py.subplot2grid((2, 3), (0, 1))
+    ax13 = py.subplot2grid((2, 3), (0, 2))
+    ax21 = py.subplot2grid((2, 3), (1, 0))
+    ax22 = py.subplot2grid((2, 3), (1, 1))
+    ax23 = py.subplot2grid((2, 3), (1, 2))
+    # ax31 = py.subplot2grid((3, 3), (2, 0))
+    # ax32 = py.subplot2grid((3, 3), (2, 1))
+    # ax33 = py.subplot2grid((3, 3), (2, 2))
 
     def plot_PDF(ax, paramName, counter=False):
         if counter:
@@ -1174,6 +1179,7 @@ def plot_posteriors_1D(outdir, sim=True):
     plot_PDF(ax13, 'Mcl')
     plot_PDF(ax21, 'distance')
     plot_PDF(ax22, 'N_WR_sim', counter=True)
+    plot_PDF(ax23, 'N_yng_obs', counter=True)
     # plot_PDF(ax23, 'N_old')
     # plot_PDF(ax31, 'gamma')
     # plot_PDF(ax32, 'rcMean')
@@ -1182,11 +1188,20 @@ def plot_posteriors_1D(outdir, sim=True):
     # Make some adjustments to the axes for Number of stars plots
     N_WR_sim_avg = np.average(tab['N_WR_sim'], weights=tab['weights'])
     N_WR_sim_std = math.sqrt( np.dot(tab['weights'], (tab['N_WR_sim']-N_WR_sim_avg)**2) / tab['weights'].sum() )
-    N_WR_lo = N_WR_sim_avg - (3 * N_WR_sim_std)
-    N_WR_hi = N_WR_sim_avg + (3 * N_WR_sim_std)
+    N_WR_lo = N_WR_sim_avg - (5 * N_WR_sim_std)
+    N_WR_hi = N_WR_sim_avg + (5 * N_WR_sim_std)
     if N_WR_lo < 0:
         N_WR_lo = 0
-    ax22.set_xlim(N_WR_lo, N_WR_hi)
+    ax22.set_xlim(round(N_WR_lo), round(N_WR_hi))
+
+    # Make some adjustments to the axes for Number of stars plots
+    N_obs_avg = np.average(tab['N_yng_obs'], weights=tab['weights'])
+    N_obs_std = math.sqrt( np.dot(tab['weights'], (tab['N_yng_obs']-N_obs_avg)**2) / tab['weights'].sum() )
+    N_obs_lo = N_obs_avg - (5 * N_obs_std)
+    N_obs_hi = N_obs_avg + (5 * N_obs_std)
+    if N_obs_lo < 0:
+        N_obs_lo = 0
+    ax23.set_xlim(N_obs_lo, N_obs_hi)
 
     if sim:
         ax11.axvline(imfSlope, color='red')
@@ -1194,6 +1209,7 @@ def plot_posteriors_1D(outdir, sim=True):
         ax13.axvline(Mcl, color='red')
         ax21.axvline(distance, color='red')
         ax22.axvline(numWR, color='red')
+        ax23.axvline(numOB, color='red')
         # ax23.axvline(N_old, color='red')
         # ax31.axvline(gamma, color='red')
         # ax32.axvline(rcMean, color='red')
@@ -1453,7 +1469,7 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     odx = np.where(data.isYoung == False)[0]
     bins = np.arange(8.5, 18.5, 1.0)  # Bin Edges
 
-    py.figure(1)
+    fig1 = py.figure(1)
     py.clf()
     py.hist(data.kp[ydx], histtype='step', label='No Weights', bins=bins)
     py.hist(data.kp, histtype='step', weights=data.prob,
@@ -1462,8 +1478,10 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     py.ylabel('Number of Stars')
     py.title('Young Stars')
     py.legend(loc='upper left')
+    rng1 = fig1.gca().axis()
+    fig1.gca().set_ylim(0, rng1[3]+1)
 
-    py.figure(2)
+    fig2 = py.figure(2)
     py.clf()
     py.hist(data.kp[odx], histtype='step', label='No Weights', bins=bins)
     py.hist(data.kp, histtype='step', weights=(1.0 - data.prob),
@@ -1471,6 +1489,8 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
     py.xlabel('Kp')
     py.ylabel('Number of Stars')
     py.title('Old Stars')
+    rng2 = fig2.gca().axis()
+    fig2.gca().set_ylim(0, rng2[3]+1)
     py.legend(loc='upper left')
 
     return data
