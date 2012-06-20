@@ -38,7 +38,7 @@ from gcreduce import gcutil
 import pymultinest
 
 
-workDir = '/u/jlu/work/gc/imf/klf/2012_04_11/'
+workDir = '/u/jlu/work/gc/imf/klf/2012_05_01/'
 theAKs = 2.7
 synFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a680.dat'
 oldSynFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a935.dat'
@@ -655,6 +655,7 @@ def calc_spec_id_all_stars():
             wrIdx = np.where(wolfRayetNames == yng.name[ii])[0]
             if len(wrIdx) > 0:
                 isWR_yng_field.append(True)
+                print yng.name[ii], ' is a Wolf-Rayet Star'
             else:
                 isWR_yng_field.append(False)
 
@@ -7128,7 +7129,7 @@ def table_best_fit_params(multiples=True):
     print '%-20s  %5.2f +/- %5.2f' % ('Age (Myr)', age_mean, age_std)
     print '%-20s  %5.2f +/- %5.2f' % ('log[Age (Myr)]', logage_mean, logage_std)
     print '%-20s  %5.2f +/- %5.2f' % ('Mass (x1000 Msun)', mass_mean, mass_std)
-    print' %-20s  %5.2f +/- %5.2f' % ('Distance (kpc)', dist_mean, dist_std)
+    print '%-20s  %5.2f +/- %5.2f' % ('Distance (kpc)', dist_mean, dist_std)
 
     print '%-33s  & %5.2f $\pm$ %5.2f \\\\' % \
         ('IMF slope ($\\alpha$)', alpha_mean, alpha_std)
@@ -7228,7 +7229,127 @@ def cluster_mass():
             nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_yng - nirc2.Aks[nn] \
                 + theAKs + ks_2_kp_yng
 
-    
     return
 
+def plot_sims_vs_multiplicity():
+    """
+    Plot the results of different synthetic clusters with and without multiple
+    systems in the simulated clusters and in the fitting.
+    """
+    from jlu.gc.imf import multinest as m
+
+    logAge = 6.60
+    alpha = 2.35
+    Mcl = 10
+    distance = 8
+    
+    multiDir = workDir + '/multinest/'
+    dataPart = '_sim_t%.2f_AKs2.7_d%4d_a%.2f_m%d_o1500_' % \
+        (logAge, distance*1e3, alpha, Mcl*1e3)
+
+    # S = single, M = multiples
+    root_simS_fitS = multiDir + 'fit_single' + dataPart + 'single/'
+    root_simS_fitM = multiDir + 'fit_multi' + dataPart + 'single/'
+    root_simM_fitS = multiDir + 'fit_single' + dataPart + 'multi/'
+    root_simM_fitM = multiDir + 'fit_multi' + dataPart + 'multi/'
+    
+    m_simS_fitS = m.load_results(root_simS_fitS)
+    m_simS_fitM = m.load_results(root_simS_fitM)
+    m_simM_fitS = m.load_results(root_simM_fitS)
+    m_simM_fitM = m.load_results(root_simM_fitM)
+
+    fontsize = 12
+
+    def prep_plot():
+        py.close(1)
+        py.figure(1, figsize = (7,11))
+        py.subplots_adjust(left=0.08, right=0.95, bottom=0.06, top=0.95,
+                           wspace=0.3, hspace=0.3)
+
+        ax11 = py.subplot2grid((4, 2), (0, 0))
+        ax12 = py.subplot2grid((4, 2), (1, 0))
+        ax13 = py.subplot2grid((4, 2), (2, 0))
+        ax14 = py.subplot2grid((4, 2), (3, 0))
+        ax21 = py.subplot2grid((4, 2), (0, 1))
+        ax22 = py.subplot2grid((4, 2), (1, 1))
+        ax23 = py.subplot2grid((4, 2), (2, 1))
+        ax24 = py.subplot2grid((4, 2), (3, 1))
+
+        axes = [[ax11, ax12, ax13, ax14], [ax21, ax22, ax23, ax24]]
+
+        return axes
+
+    def plot_PDF(tab, ax, paramName, counter=False):
+        bins = 50
+
+        xlabels = {'alpha': 'IMF slope',
+                   'logAge': 'log(t [Myr])',
+                   'Mcl': r'Cluster Mass (M$_\odot$)',
+                   'distance': 'Distance (kpc)'}
+        
+        n, bins, patch = ax.hist(tab[paramName], normed=True, histtype='step',
+                                 weights=tab['weights'], bins=bins)
+        py.setp(ax.get_xticklabels(), fontsize=fontsize)
+        py.setp(ax.get_yticklabels(), fontsize=fontsize)
+        ax.set_xlabel(xlabels[paramName], size=fontsize+2)
+        ax.set_ylim(0, n.max()*1.1)
+
+        if paramName == 'Mcl':
+            ax.set_xlim(0, 30)
+
+        return
+
+    # Plot compares the no-multiples cluster with different fits.
+    axes = prep_plot()
+    plot_PDF(m_simS_fitS, axes[0][0], 'alpha')
+    plot_PDF(m_simS_fitS, axes[0][1], 'logAge')
+    plot_PDF(m_simS_fitS, axes[0][2], 'Mcl')
+    plot_PDF(m_simS_fitS, axes[0][3], 'distance')
+    plot_PDF(m_simS_fitM, axes[1][0], 'alpha')
+    plot_PDF(m_simS_fitM, axes[1][1], 'logAge')
+    plot_PDF(m_simS_fitM, axes[1][2], 'Mcl')
+    plot_PDF(m_simS_fitM, axes[1][3], 'distance')
+
+    axes[0][0].set_title('Fit Singles')
+    axes[1][0].set_title('Fit Multiples')
+
+    axes[0][0].axvline(alpha, color='red')
+    axes[0][1].axvline(logAge, color='red')
+    axes[0][2].axvline(Mcl, color='red')
+    axes[0][3].axvline(distance, color='red')
+    axes[1][0].axvline(alpha, color='red')
+    axes[1][1].axvline(logAge, color='red')
+    axes[1][2].axvline(Mcl, color='red')
+    axes[1][3].axvline(distance, color='red')
+
+    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simS.png')
+    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simS.eps')
+
+
+    # Plot compares the multiples cluster with different fits.
+    axes = prep_plot()
+    plot_PDF(m_simM_fitS, axes[0][0], 'alpha')
+    plot_PDF(m_simM_fitS, axes[0][1], 'logAge')
+    plot_PDF(m_simM_fitS, axes[0][2], 'Mcl')
+    plot_PDF(m_simM_fitS, axes[0][3], 'distance')
+    plot_PDF(m_simM_fitM, axes[1][0], 'alpha')
+    plot_PDF(m_simM_fitM, axes[1][1], 'logAge')
+    plot_PDF(m_simM_fitM, axes[1][2], 'Mcl')
+    plot_PDF(m_simM_fitM, axes[1][3], 'distance')
+
+    axes[0][0].set_title('Fit Singles')
+    axes[1][0].set_title('Fit Multiples')
+
+    axes[0][0].axvline(alpha, color='red')
+    axes[0][1].axvline(logAge, color='red')
+    axes[0][2].axvline(Mcl, color='red')
+    axes[0][3].axvline(distance, color='red')
+    axes[1][0].axvline(alpha, color='red')
+    axes[1][1].axvline(logAge, color='red')
+    axes[1][2].axvline(Mcl, color='red')
+    axes[1][3].axvline(distance, color='red')
+
+    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simM.png')
+    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simM.eps')
+    
     

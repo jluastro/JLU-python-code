@@ -94,6 +94,7 @@ def upper_sco():
 
     # Plot up the distribution of spectral types
     xloc = np.arange(len(sp_type_uniq)) + 1
+    py.figure(2, figsize=(10,6))
     py.clf()
     py.bar(xloc, sp_type_count, width=0.5)
     py.xticks(xloc+0.25, sp_type_uniq)
@@ -103,6 +104,7 @@ def upper_sco():
     py.savefig(rootDir + 'USco_spec_type_hist.png')
 
     # Plot Teff vs. J-band mag
+    py.figure(1)
     py.clf()
     py.semilogx(us.sp_teff[0], J, 'k.')
     rng = py.axis()

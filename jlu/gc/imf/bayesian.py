@@ -837,12 +837,16 @@ def fetch_model_from_sims_no_mass(logAge, AKs, imfSlope, minMass, maxMass,
         (logAge, imfSlope, clusterMass, AKs, distance, minMass, maxMass, multi_str)
 
     if os.path.exists(modelDir + modelFile):
-        # print 'Using pre-existing model: %s' % modelFile
-        _sim = open(modelDir + modelFile, 'rb')
-        sim_N_WR = pickle.load(_sim)
-        sim_k_bins = pickle.load(_sim)
-        sim_k_pdf = pickle.load(_sim)
-        sim_k_pdf_norm = pickle.load(_sim)
+        try:
+            # print 'Using pre-existing model: %s' % modelFile
+            _sim = open(modelDir + modelFile, 'rb')
+            sim_N_WR = pickle.load(_sim)
+            sim_k_bins = pickle.load(_sim)
+            sim_k_pdf = pickle.load(_sim)
+            sim_k_pdf_norm = pickle.load(_sim)
+        except EOFError:
+            print 'Bad file: ', modelFile
+            raise
 
         # Summary parameters
         tmp_logAge = round(pickle.load(_sim), 2)
@@ -859,6 +863,8 @@ def fetch_model_from_sims_no_mass(logAge, AKs, imfSlope, minMass, maxMass,
         tmp_CSFamp = pickle.load(_sim)
         tmp_CSFindex = pickle.load(_sim)
         tmp_CSFmax = pickle.load(_sim)
+
+        _sim.close()
 
         if ((logAge != tmp_logAge) or (AKs != tmp_AKs) or (distance != tmp_distance) or
             (round(imfSlope, 2) != round(tmp_imfSlope, 2)) or

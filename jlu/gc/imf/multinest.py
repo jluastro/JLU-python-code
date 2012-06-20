@@ -31,14 +31,19 @@ def random_distance(randNum):
     return dist, log_prob_dist
 
 def make_log_age_gen():
-    log_age_mean = 6.78
-    log_age_std = 0.18
+    # log_age_mean = 6.78
+    # log_age_std = 0.18
+    # log_age_min = 6.20
+    # log_age_max = 7.20
+    # log_age_a = (log_age_min - log_age_mean) / log_age_std
+    # log_age_b = (log_age_max - log_age_mean) / log_age_std
+    # return scipy.stats.truncnorm(log_age_a, log_age_b,
+    #                              loc=log_age_mean, scale=log_age_std)
+
     log_age_min = 6.20
     log_age_max = 7.20
-    log_age_a = (log_age_min - log_age_mean) / log_age_std
-    log_age_b = (log_age_max - log_age_mean) / log_age_std
-    return scipy.stats.truncnorm(log_age_a, log_age_b,
-                                 loc=log_age_mean, scale=log_age_std)
+    log_age_diff = log_age_max - log_age_min
+    return scipy.stats.uniform(loc=log_age_min, scale=log_age_diff)
 
 def random_log_age(randNum):
     log_age_cont = log_age_gen.ppf(randNum)
@@ -57,8 +62,8 @@ def random_alpha(randNum):
     return alpha, log_prob_alpha
 
 def make_Mcl_gen():
-    Mcl_min = 4
-    Mcl_max = 100
+    Mcl_min = 2
+    Mcl_max = 75
     Mcl_diff = Mcl_max - Mcl_min
     return scipy.stats.uniform(loc=Mcl_min, scale=Mcl_diff)
 
@@ -824,21 +829,34 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
 
 def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
-        interact=False):
+        interact=False, fitDistance=True):
     magCut = 15.5
 
     # Load up the data arrays.
     if data == None:
         data = lu_gc_imf.load_all_catalog_by_radius(rmin, rmax, magCut=magCut)
         data_file = 'Observed Data'
+
+        # Trim out all the stars that are DEFINITELY old...
+        # Only consider stars with non-zero probability of being young as the
+        # certain old stars shouldn't contribute anything to the likelihood.
+        # We also need to drop the WR stars from the magnitude list.
+        idx = np.where((data.prob != 0) & (data.isWR == False))[0]
+        data.kp = data.kp[idx]
+        data.kp_ext = data.kp_ext[idx]
+        data.kp_err = data.kp_err[idx]
+        data.prob = data.prob[idx]
+
     elif type(data) == str:
         data_file = data
         foo = open(data_file, 'r')
         data = pickle.load(foo)
         foo.close()
-
-        idx = np.where(data.kp_ext <= magCut)
+        
+        idx = np.where((data.kp_ext <= magCut) & (data.prob != 0))
+        print len(data.kp)
         data.kp = data.kp[idx]
+        print len(data.kp)
         data.kp_ext = data.kp_ext[idx]
         data.kp_err = data.kp_err[idx]
         data.prob = data.prob[idx]
@@ -847,6 +865,8 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
     else:
         data_file = 'Simulated Cluster Object'
         
+
+
     completeness = lu_gc_imf.load_image_completeness_by_radius(rmin, rmax)
     Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
 
@@ -870,11 +890,16 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         k_max = 18. # K' magnitude limit for old KLF powerlaw
         Z = 0.02
 
+
         ####################
         # Priors for model parameters
         ####################
         # Distance to cluster
-        dist, log_prob_dist = random_distance(cube[0])
+        if fitDistance:
+            dist, log_prob_dist = random_distance(cube[0])
+        else:
+            dist = 8.0  # fix to 8 kpc
+            log_prob_dist = 0.0
         cube[0] = dist
 
         # Log Age of the cluster
@@ -890,6 +915,12 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         Mcl, log_prob_Mcl = random_mass(cube[3])
         cube[3] = Mcl
 
+        # print 'dist = %4d' % (dist*1e3)
+        # print 'log_age = %4.2f' % (log_age)
+        # print 'alpha = %4.2f' % (alpha)
+        # print 'Mcl = %4.1f' % (Mcl)
+        # pdb.set_trace()
+        
         # Check that all our prior probabilities are valid, otherwise abort
         # before expensive calculation.
         if ((log_prob_alpha == -np.inf) or (log_prob_log_age_cont == -np.inf) or
@@ -950,7 +981,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         # Remember to re-normalize the observed PDF.
         sim_k_pdf *= comp_at_kp_sim
         sim_k_pdf_norm *= comp_at_kp_sim
-        sim_k_pdf_norm /= (sim_k_pdf_norm * sim_k_bin_width).sum()
+        sim_k_pdf_norm /= sim_k_pdf_norm.sum()
 
         ####################
         # Different parts of the likelihood
@@ -982,7 +1013,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             obs_k_norm = scipy.stats.norm(loc=data.kp_ext[ii], scale=data.kp_err[ii])
             obs_k_norm_cdf = obs_k_norm.cdf(sim_k_bins)
             obs_k_norm_pdf = np.diff(obs_k_norm_cdf)
-            obs_k_norm_pdf /= (obs_k_norm_pdf * sim_k_bin_width).sum()
+            obs_k_norm_pdf /= obs_k_norm_pdf.sum()
             
             # Convolve gaussian with PDF(K) from model
             if obs_k_norm_pdf.sum() == 0:
@@ -991,9 +1022,26 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                 return -np.Inf
             else:
                 # Multiply gaussian with PDF(K) from model and sum to get probability
-                L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf * sim_k_bin_width).sum()
+                L_k_i = (sim_k_pdf_norm * obs_k_norm_pdf).sum()
 
             log_L_k_detect += data.prob[ii] * log_prob(L_k_i)
+
+            if np.isnan(log_L_k_detect):
+                print 'Bad Model: cube[0:4] = ', cube[0:4]
+
+            if log_L_k_detect == -np.inf:
+                break
+
+        # py.clf()
+        # py.hist(data.kp_ext, histtype='step', label='Data Unweighted', bins=sim_k_bins,
+        #         color='green')
+        # py.hist(data.kp_ext, histtype='step', label='Data Weighted', bins=sim_k_bins,
+        #         weights=data.prob, color='black')
+        # py.plot(sim_k_bin_center, sim_k_pdf, drawstyle='steps-mid', label='Model',
+        #         color='red')
+        # py.legend(loc='upper left')
+        # print 'N_WR obs vs. model: %d vs. %d' % (data.N_WR, sim_N_WR)
+        # pdb.set_trace()
 
         log_L = log_L_N_WR + log_L_N_yng_obs
         log_L += log_L_k_detect
@@ -1021,7 +1069,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
     num_dims = 4
     num_params = 9
-    ev_tol = 0.7
+    ev_tol = 0.3
     samp_eff = 0.8
 
     _run = open(outroot + 'params.run', 'w')
@@ -1038,7 +1086,8 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
                     outputfiles_basename=outroot,
                     verbose=True, resume=False,
                     evidence_tolerance=ev_tol, sampling_efficiency=samp_eff,
-                    n_live_points=n_live_points)
+                    n_live_points=n_live_points,
+                    multimodal=True, n_clustering_params=num_dims)
 
 
 def load_results2(rootdir):
