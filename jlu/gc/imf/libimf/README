@@ -1,0 +1,133 @@
+
+
+******************** COPYRIGHT ***********************
+
+
+/*
+libimf -  Programming functions for the initial mass function
+Copyright (C) 2005  Jan Pflamm-Altenburg
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
+USA.
+
+Additionally:
+	  
+  When publishing results based on this software
+  or parts of it (executable and/ or source code
+  cite:
+       Pflamm-Altenburg, J., Kroupa P., 2006
+
+  See manpage for details.
+*/
+
+
+
+
+**************** LAST UPDATE ***********************
+
+                05th Oct. 2006
+
+**************** COMPILATION *******************
+
+
+These functions can be implemented by compiling the 
+source file imf.c with your programm directly, 
+or it can be installed as a shared library. To do
+this do this:
+
+1) Compile imf.c as position independed code:
+
+   gcc -fPIC -Wall -g -c imf.c
+
+2) Create the shared object:
+
+   gcc -g -shared -Wl,-soname,libimf.so.1 -o libimf.so.1 imf.o -lc -lm 
+
+3) Copy the header file into your local include directory.
+   E.g. $HOME/include
+   If it does not exist, then create it.
+
+4) If not done already, then export the 
+   CPATH variable to make sure that the compiler will find imf.h.
+   Include in your bash config-file, perhaps .bashrc:
+
+   export CPATH=$HOME/.include:$CPATH
+
+5) Copy the shared libimf.so.1 object into your local library directory.
+   E.g. $HOME/lib
+   If it does not exist, then create it.
+   
+6) Create a symbolic link:
+
+   ln -s libimf.so.1 libimf.so
+
+7) If not done already, then export the 
+   LIBRARY_PATH variable to make sure that the compiler will find 
+   libimf.so when linking with -limf.
+   Include in your bash config-file, perhaps .bashrc:
+
+   export LIBRARY_PATH=$HOME/.lib:$LIBRARY_PATH
+
+8) If not done already, then export the 
+   LD_LIBRARY_PATH variable to make sure that the loader will find 
+   libimf.so when running your program.
+   Include in your bash config-file, perhaps .bashrc:
+
+   export LD_LIBRARY_PATH=$HOME/.lib:$LD_LIBRARY_PATH
+
+9) Don't forget the login again, run a new shell or
+   read in the config file with 'source'.
+
+
+
+10) Compile/link with -limf.
+
+
+
+*************** MANPAGE ***************************
+
+The manpage can be found in the subdirectory man.
+Its name is imf.3.gz.
+The manpage can be viewed locally by 
+
+           man - l imf.3.gz 
+ 
+To install the manpage, copy imf.3.gz into your local
+manpage directory. If it does not exist, then
+   create a directory man/man3 in your home directoy.
+   Copy imf.3.gz into $HOME/man/man3.
+   Export the MANPATH-variable,
+   e.g. if you use the bash, in .bashrc:
+ 
+  export MANPATH=$HOME/man:$MANPATH
+ 
+  update the configuration:
+       logout and login again
+       or type in "source $HOME/.bashrc"
+ 
+
+
+
+***************************************************************
+
+If you encounter any problems or spot bugs, please
+report to 
+
+ jpflamm@astro.uni-bonn.de
+
+
+Good luck
+
+Jan
