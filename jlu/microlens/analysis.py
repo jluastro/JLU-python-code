@@ -10,10 +10,12 @@ class OB110061(gcanalysis.Analysis):
         filt -- 'kp', 'lp', or 'h'
         """
         # Setup some W51a specific parameters
-        self.mapFilter2Cal = {'kp': 4, 'h': 5, 'j': 6}
+        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+
+        filt_field = 'ob110061_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt,
+        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
@@ -26,7 +28,7 @@ class OB110061(gcanalysis.Analysis):
         # Setup the appropriate calibration stuff.
         ##########
         # Use the default stars
-        self.calStars = None
+        self.calStars = Non
 
         # Choose the column based on the filter
         self.calColumn = self.mapFilter2Cal[filt]
@@ -57,10 +59,12 @@ class OB110022(gcanalysis.Analysis):
         filt -- 'kp', 'lp', or 'h'
         """
         # Setup some W51a specific parameters
-        self.mapFilter2Cal = {'kp': 4, 'h': 5, 'j': 6}
+        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+
+        filt_field = 'ob110022_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt,
+        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)

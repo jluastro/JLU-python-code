@@ -36,7 +36,9 @@ from scipy import stats
 from jlu.util import img_scale
 from gcreduce import gcutil
 import pymultinest
-
+import subprocess
+from matplotlib.patches import FancyArrow
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 workDir = '/u/jlu/work/gc/imf/klf/2012_05_01/'
 theAKs = 2.7
@@ -47,13 +49,23 @@ klf_mag_bins = np.arange(9.0, 17, 1.0)  # Bin Center Points
 distance = 8000.0
 # klf_mag_bins = np.arange(9.0, 19, 0.5)  # Bin Center Points
 
+# fitAlpha = 1.71
+# fitAge = 3.92e6
+# fitMcl = 9.35e3
+# fitDist = 7930
+fitAlpha = 1.7
+fitAge = 3.9e6
+fitMcl = 9.2e3
+fitDist = 7900
+fitLogAge = math.log10(fitAge)
+
 def analysis_by_radius(rmin=0, rmax=30):
     # image_completeness_in_osiris()
     # image_completeness_by_radius(rmin=rmin, rmax=rmax)
-    # calc_spec_id_all_stars()
-    # spec_completeness_by_radius(rmin=rmin, rmax=rmax)
-    # merge_completeness_by_radius(rmin=rmin, rmax=rmax)
-    # klf_by_radius(rmin=rmin, rmax=rmax)
+    calc_spec_id_all_stars()
+    spec_completeness_by_radius(rmin=rmin, rmax=rmax)
+    merge_completeness_by_radius(rmin=rmin, rmax=rmax)
+    klf_by_radius(rmin=rmin, rmax=rmax)
 
     plot_klf_by_radius(rmin=rmin, rmax=rmax)
     plot_klf_by_radius_noWR(rmin=rmin, rmax=rmax)
@@ -62,23 +74,39 @@ def analysis_by_radius(rmin=0, rmax=30):
     plot_klf_vs_bartko_by_radius(rmin=rmin, rmax=rmax)
     plot_klf_vs_bartko_by_radius_12A(rmin=rmin, rmax=rmax)
 
-    # Do the Bayesian analysis (MultiNest)
-
-    # Generate plots
+    # Do the Bayesian analysis (MultiNest) - see notebook to run with parallel processing.
     #fit_with_models(multiples=False)
     #fit_with_models(multiples=True)
     #table_best_fit_params(multiples=True)
-    #plot_fit_posteriors_1d()
-    #Plot_sim_results()
 
 def make_paper_plots():
-    # Plots in paper
-    plot_image_completeness_vs_radius()
-    plot_klf_progression()
-    plot_klf_vs_bartko_by_radius_paper()
-    plot_fit_posteriors_1d()
-    plot_binary_properties()
-    table_best_fit_params(multiples=True)
+    # Plots for paper (in Tuan's or just useful)
+    # plot_image_completeness_vs_radius()
+    # plot_klf_progression()
+    # plot_klf_vs_bartko_by_radius_paper()
+    # plot_WR_vs_age()
+    # plot_sim_results()
+
+    # Figures (in order)
+    plot_klf_vs_old_models()  # fig 1
+    evolution.test_merged_isochrones(6.8)    # fig 2
+    plot_WR_OB_ratio_vs_age() # fig 3
+    plot_WR_OB_ratio_vs_age() # fig 3   
+    sim_age_monte_carlo() # fig 4
+    plot_sim_clusters() # fig 5
+    plot_sims_vs_multiplicity() # fig 6, fig 7
+    plot_sims_vs_imf_slope() # fig 8
+    plot_fit_posteriors_1d(multiples=True) # fig 9
+    plot_fit_posteriors_2d() # fig 107475
+    table_best_fit_params(multiples=True, rmin=0.0) # fig 11
+    plot_model_vs_data_MC_for_paper() # fig 11
+    compute_masses() # fig 11
+    plot_masses_in_imf() # fig 11
+    plot_fit_posteriors_1d(multiples=False, rmin=0.0) # fig 12
+    plot_fit_posteriors_1d(multiples=True, rmin=0.8) # fig 13
+    plot_klf_with_tmt()  # fig 14
+    plot_binary_properties() # fig 15
+    
 
 def old_analysis():
     img_completeness()
@@ -90,10 +118,10 @@ def old_analysis():
     plot_klf2()
     plot_klf_2radii()
     plot_klf_3radii()
-    plot_klf_vs_bartko()    
+    plot_klf_vs_bartko()
 
 
-def load_yng_data_by_radius(rmin=0, rmax=30, magCut=None):
+def load_yng_data_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
     """
     Load up the list of young star
 
@@ -106,20 +134,18 @@ def load_yng_data_by_radius(rmin=0, rmax=30, magCut=None):
 
     Note magnitudes are extinction corrected.
     """
-    tmp = load_yng_catalog_by_radius(rmin=rmin, rmax=rmax, magCut=magCut)
+    tmp = load_yng_catalog_by_radius(rmin=rmin, rmax=rmax, magCut=magCut, trimWR=trimWR)
 
     # Note extinction corrected magnitude.
     yng = objects.DataHolder()
     yng.kp = tmp.kp_ext      
     yng.kp_err = tmp.kp_err
     yng.prob = tmp.prob
-
-    foo = np.where(tmp.isWR == True)[0]
-    yng.N_WR = len(foo)
+    yng.N_WR = tmp.N_WR
 
     return yng
 
-def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None):
+def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
     yng = objects.DataHolder()
 
     outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir, rmin, rmax)
@@ -133,6 +159,7 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None):
     yng.kp_err = pickle.load(_pick)
     yng.isWR = pickle.load(_pick)
     yng.prob = pickle.load(_pick)
+    yng.prob_err = pickle.load(_pick)
     _pick.close()
 
     foo = np.where(yng.isWR == True)[0]
@@ -149,8 +176,22 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None):
         yng.kp_ext = yng.kp_ext[idx]
         yng.kp_err = yng.kp_err[idx]
         yng.prob = yng.prob[idx]
+        yng.prob_err = yng.prob_err[idx]
         yng.isWR = yng.isWR[idx]
 
+    if trimWR == True:
+        print 'Cutting out WR stars'
+        idx = np.where(yng.isWR == False)[0]
+        yng.name = yng.name[idx]
+        yng.x = yng.x[idx]
+        yng.y = yng.y[idx]
+        yng.kp = yng.kp[idx]
+        yng.kp_ext = yng.kp_ext[idx]
+        yng.kp_err = yng.kp_err[idx]
+        yng.prob = yng.prob[idx]
+        yng.prob_err = yng.prob_err[idx]
+        yng.isWR = yng.isWR[idx]
+        
     return yng
 
 def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
@@ -167,6 +208,7 @@ def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
     all.kp_err = pickle.load(_pick)
     all.isWR = pickle.load(_pick)
     all.prob = pickle.load(_pick)
+    all.prob_err = pickle.load(_pick)
     _pick.close()
 
     foo = np.where(all.isWR == True)[0]
@@ -183,6 +225,7 @@ def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
         all.kp_ext = all.kp_ext[idx]
         all.kp_err = all.kp_err[idx]
         all.prob = all.prob[idx]
+        all.prob_err = all.prob_err[idx]
         all.isWR = all.isWR[idx]
 
     return all
@@ -515,6 +558,10 @@ def calc_spec_id_all_stars():
     nirc2.y = dp_msc['Yarc']
     nirc2.kp = dp_msc['Kp']
     nirc2.kperr = dp_msc['Kperr']
+
+    # Impose magnitude error lower limit of 1\%
+    idx = np.where(nirc2.kperr < 0.02)[0]
+    nirc2.kperr[idx] = 0.02
 
     # Select all the OSIRIS fields-of-view
     fields = getOsirisFields()
@@ -2147,7 +2194,7 @@ def plot_klf_vs_bartko(logAge=6.78, imfSlope=1.35):
 
 def model_klf(logAge=6.78, imfSlope=2.35, clusterMass=10**4,
               filterName='Kp', makeMultiples=True,
-              includeWR=False):
+              includeWR=False, output=None):
     from jlu.gc.imf import bayesian as b
 
     cluster = b.model_young_cluster(logAge, filterName=filterName,
@@ -2439,22 +2486,29 @@ def fit_imf_slope(mass, dNdM, dNdMerr):
     return fit, index, indexErr, amp, ampErr
 
 
-def load_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=distance):
+def load_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=int(distance)):
     inFile = '/u/jlu/work/gc/imf/klf/models/iso/'
     inFile += 'iso_%.2f_%s_%4.2f_%4s.pickle' % (logAge, filterName, AKs,
                                                  str(distance).zfill(4))
+    print inFile
 
     if not os.path.exists(inFile):
         make_observed_isochrone(logAge=logAge, filterName=filterName,
                                 AKs=AKs, distance=distance)
 
-    _data = open(inFile, 'r')
-    
-    iso = pickle.load(_data)
+    _in = open(inFile, 'r')
+    iso = objects.DataHolder()
+    iso.M = pickle.load(_in)
+    iso.T = pickle.load(_in)
+    iso.logg = pickle.load(_in)
+    iso.logL = pickle.load(_in)
+    iso.mag = pickle.load(_in)
+    iso.isWR = pickle.load(_in)
+    _in.close()
 
     return iso
 
-def make_observed_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=distance):
+def make_observed_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=int(distance)):
     outFile = '/u/jlu/work/gc/imf/klf/models/iso/'
     outFile += 'iso_%.2f_%s_%4.2f_%4s.pickle' % (logAge, filterName, AKs,
                                                  str(distance).zfill(4))
@@ -2524,10 +2578,15 @@ def make_observed_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=d
     iso.mag = mag
     iso.isWR = isWR
     
-    _out = open(outFile, 'w')
-    pickle.dump(iso, _out)
+    _out = open(outFile, 'wb')
+    pickle.dump(iso.M, _out)
+    pickle.dump(iso.T, _out)
+    pickle.dump(iso.logg, _out)
+    pickle.dump(iso.logL, _out)
+    pickle.dump(iso.mag, _out)
+    pickle.dump(iso.isWR, _out)
     _out.close()
-    
+
 
 def load_osiris_field_areas():
     # Load up the areas for each field
@@ -3937,7 +3996,7 @@ def plot_image_completeness_vs_radius():
     py.savefig(workDir + 'plots/image_completeness_vs_radius.png')
     py.savefig(workDir + 'plots/image_completeness_vs_radius.eps')
         
-def spec_completeness_by_radius(rmin=0, rmax=30):
+def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
     """
     Calculate spectroscopic KLF and completeness curves.
     """
@@ -3995,6 +4054,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
     allyng_kp_err = np.array([], dtype=float)
     allyng_isWR = np.array([], dtype=bool)
     allyng_prob = np.array([], dtype=float)
+    allyng_prob_err = np.array([], dtype=float)
 
     # Make a complete table of all stars
     # (including the WR stars and old stars).
@@ -4006,6 +4066,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
     all_kp_err = np.array([], dtype=float)
     all_isWR = np.array([], dtype=bool)
     all_prob = np.array([], dtype=float)
+    all_prob_err = np.array([], dtype=float)
 
     # Also keep track of the number of WR stars
     idx = np.where(s.isWR_yng == True)[0]
@@ -4126,6 +4187,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
         all_kp_err = np.append(all_kp_err, s.kperr_yng[yy])
         all_kp_ext = np.append(all_kp_ext, s.kp_ext_yng[yy])
         all_prob = np.append(all_prob, np.ones(len(yy)))
+        all_prob_err = np.append(all_prob_err, np.zeros(len(yy)))
         all_isWR = np.append(all_isWR, s.isWR_yng[yy])
 
         # Append the known old stars to the "all" list. 
@@ -4136,6 +4198,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
         all_kp_err = np.append(all_kp_err, s.kperr_old[oo])
         all_kp_ext = np.append(all_kp_ext, s.kp_ext_old[oo])
         all_prob = np.append(all_prob, np.zeros(len(oo), dtype=float))
+        all_prob_err = np.append(all_prob_err, np.zeros(len(oo), dtype=float))
         all_isWR = np.append(all_isWR, np.zeros(len(oo), dtype=bool))
 
         # Gather up all the unknown sources and find them in the
@@ -4204,6 +4267,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
             allyng_kp_err = np.append(allyng_kp_err, s.kperr_nirc2[unk_sdx[ndx]])
             allyng_kp_ext = np.append(allyng_kp_ext, s.kp_ext_nirc2[unk_sdx[ndx]])
             allyng_prob = np.append(allyng_prob, unk_probY[ndx])
+            allyng_prob_err = np.append(allyng_prob_err, unk_probYerr[ndx])
             allyng_isWR = np.append(allyng_isWR, np.zeros(len(ndx), dtype=bool))
 
         # Append all the unkown stars to the list.
@@ -4215,6 +4279,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
             all_kp_err = np.append(all_kp_err, s.kperr_nirc2[unk_sdx])
             all_kp_ext = np.append(all_kp_ext, s.kp_ext_nirc2[unk_sdx])
             all_prob = np.append(all_prob, unk_probY)
+            all_prob_err = np.append(all_prob_err, unk_probYerr)
             all_isWR = np.append(all_isWR, np.zeros(len(unk_sdx), dtype=bool))
 
 
@@ -4235,57 +4300,58 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
 
     outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir, rmin, rmax)
 
-    # Total completeness
-    py.clf()
-    py.plot(magBins, comp_ext_fix, 'ks-', label='Ext. Correct, Fixed')
-    py.plot(magBins, comp_ext, 'ks--', label='Ext. Correct')
-    py.plot(magBins, comp, 'r^--', label='Raw')
-    py.xlabel('Kp Magnitude')
-    py.ylabel('Completeness')
-    py.title('%.1f < r <= %.1f' % (rmin, rmax))
-    py.ylim(0, 1.1)
-    py.xlim(9, 18)
-    py.legend(loc='lower left')
-    py.savefig(outRoot + '.png')
+    if plot == True:
+        # Total completeness
+        py.clf()
+        py.plot(magBins, comp_ext_fix, 'ks-', label='Ext. Correct, Fixed')
+        py.plot(magBins, comp_ext, 'ks--', label='Ext. Correct')
+        py.plot(magBins, comp, 'r^--', label='Raw')
+        py.xlabel('Kp Magnitude')
+        py.ylabel('Completeness')
+        py.title('%.1f < r <= %.1f' % (rmin, rmax))
+        py.ylim(0, 1.1)
+        py.xlim(9, 18)
+        py.legend(loc='lower left')
+        py.savefig(outRoot + '.png')
 
-    # Completeness to young stars
-    py.clf()
-    py.plot(magBins, comp_ext_fix_yng, 'ks-', label='Ext. Correct, Fixed')
-    py.plot(magBins, comp_ext_yng, 'ks--', label='Ext. Correct')
-    py.plot(magBins, comp_yng, 'r^--', label='Raw')
-    py.xlabel('Kp Magnitude')
-    py.ylabel('Completeness')
-    py.title('Young Stars: %.1f < r <= %.1f' % (rmin, rmax))
-    py.ylim(0, 1.1)
-    py.xlim(9, 18)
-    py.legend(loc='lower left')
-    py.savefig(outRoot + '_yng.png')
+        # Completeness to young stars
+        py.clf()
+        py.plot(magBins, comp_ext_fix_yng, 'ks-', label='Ext. Correct, Fixed')
+        py.plot(magBins, comp_ext_yng, 'ks--', label='Ext. Correct')
+        py.plot(magBins, comp_yng, 'r^--', label='Raw')
+        py.xlabel('Kp Magnitude')
+        py.ylabel('Completeness')
+        py.title('Young Stars: %.1f < r <= %.1f' % (rmin, rmax))
+        py.ylim(0, 1.1)
+        py.xlim(9, 18)
+        py.legend(loc='lower left')
+        py.savefig(outRoot + '_yng.png')
 
-    # Completeness to old stars 
-    py.clf()
-    py.plot(magBins, comp_ext_fix_old, 'ks-', label='Ext. Correct, Fixed')
-    py.plot(magBins, comp_ext_old, 'ks--', label='Ext. Correct')
-    py.plot(magBins, comp_old, 'r^--', label='Raw')
-    py.xlabel('Kp Magnitude')
-    py.ylabel('Completeness')
-    py.title('Old Stars: %.1f < r <= %.1f' % (rmin, rmax))
-    py.ylim(0, 1.1)
-    py.xlim(9, 18)
-    py.legend(loc='lower left')
-    py.savefig(outRoot + '_old.png')
+        # Completeness to old stars 
+        py.clf()
+        py.plot(magBins, comp_ext_fix_old, 'ks-', label='Ext. Correct, Fixed')
+        py.plot(magBins, comp_ext_old, 'ks--', label='Ext. Correct')
+        py.plot(magBins, comp_old, 'r^--', label='Raw')
+        py.xlabel('Kp Magnitude')
+        py.ylabel('Completeness')
+        py.title('Old Stars: %.1f < r <= %.1f' % (rmin, rmax))
+        py.ylim(0, 1.1)
+        py.xlim(9, 18)
+        py.legend(loc='lower left')
+        py.savefig(outRoot + '_old.png')
 
-    # Completeness compared
-    py.clf()
-    py.plot(magBins, comp_ext_fix, 'ks-', label='Total Spec. Comp.')
-    py.plot(magBins, comp_ext_fix_yng, 'bo-', label='Young Spec. Comp.')
-    py.plot(magBins, comp_ext_fix_old, 'r^-', label='Old Spec. Comp.')
-    py.xlabel('Kp Magnitude')
-    py.ylabel('Completeness')
-    py.title('%.1f < r <= %.1f' % (rmin, rmax))
-    py.ylim(0, 1.1)
-    py.xlim(9, 18)
-    py.legend(loc='lower left')
-    py.savefig(outRoot + '_yng_v_old.png')
+        # Completeness compared
+        py.clf()
+        py.plot(magBins, comp_ext_fix, 'ks-', label='Total Spec. Comp.')
+        py.plot(magBins, comp_ext_fix_yng, 'bo-', label='Young Spec. Comp.')
+        py.plot(magBins, comp_ext_fix_old, 'r^-', label='Old Spec. Comp.')
+        py.xlabel('Kp Magnitude')
+        py.ylabel('Completeness')
+        py.title('%.1f < r <= %.1f' % (rmin, rmax))
+        py.ylim(0, 1.1)
+        py.xlim(9, 18)
+        py.legend(loc='lower left')
+        py.savefig(outRoot + '_yng_v_old.png')
 
     # Save the original list of young star magnitudes
     _pick2 = open(outRoot + '_yng_kp.pickle', 'wb')
@@ -4305,6 +4371,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
     pickle.dump(allyng_kp_err, _pick3)
     pickle.dump(allyng_isWR, _pick3)
     pickle.dump(allyng_prob, _pick3)
+    pickle.dump(allyng_prob_err, _pick3)
     _pick3.close()
 
     # Save the original list of all stars -- complete info
@@ -4317,6 +4384,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30):
     pickle.dump(all_kp_err, _pick3)
     pickle.dump(all_isWR, _pick3)
     pickle.dump(all_prob, _pick3)
+    pickle.dump(all_prob_err, _pick3)
     _pick3.close()
 
     # Save the completeness and KLF curves
@@ -4569,7 +4637,8 @@ def klf_by_radius(rmin=0, rmax=30):
     eKLF_ext = eN_ext / perAsec2Mag
 
     N_ext_cmp_sp = spec_info.cnt_ext_yng + spec_info.cnt_ext_unk_yng
-    eN_ext_cmp_sp = np.sqrt(N_ext_cmp_sp + spec_info.adderr_ext_unk_yng**2)
+    #eN_ext_cmp_sp = np.sqrt(N_ext_cmp_sp + spec_info.adderr_ext_unk_yng**2)
+    eN_ext_cmp_sp = poisson_error(N_ext_cmp_sp)
     KLF_ext_cmp_sp = N_ext_cmp_sp / perAsec2Mag
     eKLF_ext_cmp_sp = eN_ext_cmp_sp / perAsec2Mag
 
@@ -4590,7 +4659,8 @@ def klf_by_radius(rmin=0, rmax=30):
     eKLF_ext_noWR = eN_ext_noWR / perAsec2Mag
 
     N_ext_cmp_sp_noWR = spec_info.cnt_ext_yng_noWR + spec_info.cnt_ext_unk_yng
-    eN_ext_cmp_sp_noWR = np.sqrt(N_ext_cmp_sp_noWR + spec_info.adderr_ext_unk_yng**2)
+    #eN_ext_cmp_sp_noWR = np.sqrt(N_ext_cmp_sp_noWR + spec_info.adderr_ext_unk_yng**2)
+    eN_ext_cmp_sp_noWR = poisson_error(N_ext_cmp_sp_noWR)
     KLF_ext_cmp_sp_noWR = N_ext_cmp_sp_noWR / perAsec2Mag
     eKLF_ext_cmp_sp_noWR = eN_ext_cmp_sp_noWR / perAsec2Mag
 
@@ -4787,6 +4857,7 @@ def plot_klf_vs_bartko_by_radius(rmin=0, rmax=30, logAge=6.78, imfSlope=1.35):
     # Model
     binsKp = klf_mag_bins
     binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
+    binEdges = binsKp[0:-1] - np.diff(binsKp) / 2.0
 
     # Plotting
     py.clf()
@@ -5269,6 +5340,67 @@ def plot_klf_vs_model_by_radius(rmin=0, rmax=30, logAge=6.78, imfSlope=2.35,
     py.savefig('%splots/klf_vs_model_r_%.1f_%.1f_noWR.png' % 
                (workDir, rmin, rmax))
 
+def plot_klf_vs_old_models(rmin=0, rmax=30):
+    makeMultiples = True
+    logAge = 6.78
+    
+    # Salpeter
+    clusterMassSP = 1.3e4
+    imfSlopeSP = 2.35
+    
+    # Top-Heavy
+    clusterMassTH = 2.7e4
+    imfSlopeTH = 0.45
+                           
+    d = load_klf_by_radius(rmin, rmax, mask_for_log=True)
+
+    magBin = d.Kp[1] - d.Kp[0]
+
+    idx = np.where(d.Kp < 16)[0]
+
+    # Load up a model luminosity functions
+    modelStarsSP = model_klf(logAge=logAge, imfSlope=imfSlopeSP, clusterMass=1e6,
+                             makeMultiples=makeMultiples)
+    modelStarsTH = model_klf(logAge=logAge, imfSlope=imfSlopeTH, clusterMass=1e6,
+                             makeMultiples=makeMultiples)
+    area = 116.098  # arcsec^2
+    scaleFactorSP = (clusterMassSP / 1e6) / area
+    scaleFactorTH = (clusterMassTH / 1e6) / area
+    weightsSP = np.ones(len(modelStarsSP), dtype=float)
+    weightsTH = np.ones(len(modelStarsTH), dtype=float)
+    weightsSP *= scaleFactorSP
+    weightsTH *= scaleFactorTH
+
+    # Plot the model... remember, no WR stars.
+    binsKp = klf_mag_bins
+    binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
+    py.clf()
+    (n, b, p) = py.hist(modelStarsSP, bins=binEdges, histtype='step', weights=weightsSP,
+                        color='green', label='Salpeter Model', align='mid', linewidth=1.5)
+    (n, b, p) = py.hist(modelStarsTH, bins=binEdges, histtype='step', weights=weightsTH,
+                        color='blue', label='Top Heavy Model', align='mid', linewidth=1.5,
+                        linestyle='dashed')
+
+    # Plot the observations
+    py.errorbar(d.Kp[idx], d.KLF_ext_cmp_sp_im_noWR[idx], fmt='ro-', 
+                xerr=magBin/2.0, capsize=0, linewidth=2)
+    py.errorbar(d.Kp[idx], d.KLF_ext_cmp_sp_im_noWR[idx], fmt='ro-', 
+                yerr=d.eKLF_ext_cmp_sp_im_noWR[idx], linewidth=2,
+                label='Observed')
+
+    py.legend(loc='upper left', numpoints=1)
+    py.ylim(0, 0.5)
+    py.xlim(8.5, 15.5)
+    py.xlabel('Kp magnitude')
+    py.ylabel('Stars / (arcsec^2 mag)')
+    py.title('Age = %d Myr' % (10**(logAge-6)), fontsize=14)
+
+    outRoot = '%splots/klf_vs_old_models' % workDir
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = 'convert {0}.png -colorspace gray {0}.eps'.format(outRoot)
+    os.system(convert)
+
 
 def test_wr_transformed_radius():
     """
@@ -5669,16 +5801,20 @@ def plot_binary_properties():
     modelMass = np.arange(0.1, 100, 0.1)
     
     py.clf()
-    py.loglog(data['mass'], data['MF'], 'bs', label='MF Data')
-    py.plot(data['mass'][idx], data['CSF'][idx], 'ro', label='CSF Data')
-    py.plot(modelMass, plaw_mf(modelMass, mfAmp, mfIndex), 'b-', label='MF Fit')
+    py.loglog(data['mass'], data['MF'], 'bs', label='MF Data', ms=10)
+    py.plot(data['mass'][idx], data['CSF'][idx], 'ro', label='CSF Data', ms=9)
+    py.plot(modelMass, plaw_mf(modelMass, mfAmp, mfIndex), 'b--', label='MF Fit')
     py.plot(modelMass, plaw_csf(modelMass, csfAmp, csfIndex), 'r-', label='CSF Fit')
     py.xlabel('Mass')
     py.ylabel('Fraction')
-    py.legend(loc='upper left')
+    py.legend(loc='upper left', numpoints=1)
     py.ylim(0, 3.1)
-    py.savefig(workDir + 'plots/binary_properties_fit.png')
-    py.savefig(workDir + 'plots/binary_properties_fit.eps')
+
+    outRoot = '{0}plots/binary_properties_fit'.format(workDir)
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = ' convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
+    os.system(convert)
     
     return data
     
@@ -5936,7 +6072,7 @@ def plot_model_vs_data(logAge, AKs, distance, imfSlope, clusterMass, yngData=Non
     binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
 
     if yngData == None:
-        yngData = load_yng_data_by_radius(magCut=15.5)
+        yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
 
     if type(logAge) not in [list, np.ndarray]:
         logAge = [logAge]
@@ -6043,7 +6179,7 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
     binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
 
     if yngData == None:
-        yngData = load_yng_data_by_radius(magCut=15.5)
+        yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
 
     # Setup 4 different figures
     #    Figure 1 -- with multiples, complete    
@@ -6116,16 +6252,16 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
     for fidx in range(len(f_arr)):
         f = f_arr[fidx]
 
-        # try:
-        #     idx = np.where(yngData.isYoung == True)[0]
-        #     plotData = yngData.kp[idx]
-        #     plotWeights = None
-        # except AttributeError:
-        #     plotData = yngData.kp
-        #     plotWeights = yngData.prob
-        plotData = yngData.kp
-        plotWeights = yngData.prob
-            
+        try:
+            idx = np.where(yngData.isWR == False)[0]
+            plotData = yngData.kp[idx]
+            plotWeights = yngData.prob[idx]
+            # idx = np.where(yngData.isYoung == True)[0]
+            # plotData = yngData.kp[idx]
+            # plotWeights = None
+        except AttributeError:
+            plotData = yngData.kp
+            plotWeights = yngData.prob
             
         (n, b, p) = f.hist(plotData, bins=binEdges, histtype='step', color='black', label='Obs',
                            linewidth=4, weights=plotWeights)
@@ -6141,11 +6277,12 @@ def plot_model_vs_data_MC(logAge, AKs, distance, imfSlope, clusterMass, yngData=
         f.set_ylabel('Number of Stars')
         f.set_title(titles[fidx])
 
-        outFile = outDir + 'plots/klf_model_vs_data_MC_' + outSuffixArr[fidx] + '.png'
-        f.get_figure().savefig(outFile)
+        outFile = outDir + 'plots/klf_model_vs_data_MC_' + outSuffixArr[fidx]
+        f.get_figure().savefig(outFile + '.png')
 
         if makeEPS:
-            f.get_figure().savefig(outFile.replace('.png', '.eps'))
+            tmp = 'convert %s.png %s.eps' % (outFile, outFile)
+            subprocess.call(tmp, shell=True)
 
 def plot_model_vs_data_tests():
     """
@@ -6360,8 +6497,10 @@ def plot_sim_clusters():
     bins = np.arange(minMass, maxMass, 1)
     bin_center = bins[:-1] + (np.diff(bins)/2.0)
     py.clf()
-    py.hist(c1.mass, bins=bins, histtype='step', label='No Multiples', log=True)
-    py.hist(c2.mass, bins=bins, histtype='step', label='With Multiples', log=True)
+    py.hist(c2.mass, bins=bins, histtype='step', label='With Multiples',
+            log=True, color='red', linewidth=1.5)
+    py.hist(c1.mass, bins=bins, histtype='step', label='No Multiples',
+            log=True, color='green', linewidth=1.5)
     legLabel = r'$N(m) \propto m^{-%.2f}$' % imfSlope
     tmp = m_pdf(bin_center, imfSlope, minMass, maxMass)
     tmp *= len(c1.mass)
@@ -6375,16 +6514,19 @@ def plot_sim_clusters():
 
     # Plot a mass-magnitude diagram
     py.clf()
-    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'gs', ms=3, mec='green', label='No Multiples')
-    py.plot(c2.mass[c2.idx_noWR], c2.mag_noWR, 'k.', label='With Multiples')
-    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'gs', ms=3, mec='green')
+    py.plot(c2.mass[c2.idx_noWR], c2.mag_noWR, 'r+', ms=3, mec='red',
+            label='With Multiples')
+    py.plot(c1.mass[c1.idx_noWR], c1.mag_noWR, 'gx', ms=3, mec='green',
+            label='No Multiples')
     ax = py.axis()
     py.ylim(ax[3], ax[2])
     py.xlabel('Mass (Msun)')
     py.ylabel('Kp Magnitude')
-    py.legend(loc='lower right', numpoints=1)
-    py.savefig(workDir + 'plots/sim_clusters_m_vs_kp_multiples.png')
-    py.savefig(workDir + 'plots/sim_clusters_m_vs_kp_multiples.eps')
+    py.legend(loc='lower right', numpoints=1, markerscale=3)
+    outFile = workDir + 'plots/sim_clusters_m_vs_kp_multiples'
+    py.savefig(outFile + '.png')
+    tmp = 'convert %s.png %s.eps' % (outFile, outFile)
+    subprocess.call(tmp, shell=True)
 
     # Check out the companion information
     idx = np.where((c2.isMultiple == True) & (c2.mass > 10))[0]
@@ -6408,8 +6550,10 @@ def plot_sim_clusters():
     # Plot KLFs
     py.clf()
     bins = np.arange(9, 21, 0.25)
-    tmp1 = py.hist(c1.mag_noWR, bins=bins, histtype='step', label='No Multiples')
-    tmp2 = py.hist(c2.mag_noWR, bins=bins, histtype='step', label='With Multiples')
+    tmp2 = py.hist(c2.mag_noWR, bins=bins, histtype='step', label='With Multiples',
+                   color='red', linewidth=1.5)
+    tmp1 = py.hist(c1.mag_noWR, bins=bins, histtype='step', label='No Multiples',
+                   color='green', linewidth=1.5)
     py.gca().set_yscale('log')
     py.legend(loc='upper left')
     py.xlabel('Kp Magnitude')
@@ -6597,6 +6741,10 @@ def plot_klf_progression(rmin=0, rmax=30):
                 yerr=d.eN_ext_cmp_sp_im[idx], 
                 label='Ext + SpCmp + ImCmp')
 
+    for ii in idx:
+        print 'Kp = %5.2f  N = %5.2f  density = %5.3f' % \
+            (d.Kp[ii], d.N_ext_cmp_sp_im[ii], d.KLF_ext_cmp_sp_im[ii])
+
     #py.gca().set_yscale('log')
     py.legend(loc='upper left', numpoints=1, prop=legFont)
     py.xlim(8.5, 15.5)
@@ -6637,7 +6785,7 @@ def plot_klf_progression(rmin=0, rmax=30):
                (workDir, rmin, rmax))
     
     
-def plot_sim_results(rootdir, index=0, sim=True):
+def plot_sim_results(rootdir, index=0, sim=True, rmin=0, rmax=30):
     """
     Load up the results of a MultiNest run for on of the simulated clusters. Then
     overplot the best fitting model (or the one specified by <index> which is the index
@@ -6662,11 +6810,10 @@ def plot_sim_results(rootdir, index=0, sim=True):
         data = pickle.load(tmp)
         tmp.close()
 
-        idx_brite = np.where(data.kp < 15.5)[0]
+        idx_nonWR = np.where(data.kp < 15.5)[0]
     else:
-        data = load_all_catalog_by_radius(magCut=15.5)
+        data = load_yng_catalog_by_radius(rmin=rmin, rmax=rmax, magCut=15.5, trimWR=True)
         data.kp = data.kp_ext
-        idx_brite = np.arange(len(data.kp))
 
     out_suffix = '_best_fit_%d' % index
 
@@ -6682,7 +6829,7 @@ def plot_sim_results(rootdir, index=0, sim=True):
     # print '   rcSigma:         %.2f' % (fit['rcSigma'][idx])
     print '   N(WR):           %d in data vs. %d in sim' % (data.N_WR, fit['N_WR_sim'][idx])
     print '   N(yng):          %d in data vs. %d in sim' % \
-        (data.prob[idx_brite].sum(), fit['N_yng_obs'][idx])
+        (data.prob.sum(), fit['N_yng_obs'][idx])
 
     plot_model_vs_data_MC(fit['logAge'][idx], 2.7, int(round(fit['distance'][idx]*10**3, 0)),
                           fit['alpha'][idx], int(round(fit['Mcl'][idx]*10**3, 0)), yngData=data,
@@ -6754,14 +6901,14 @@ def plot_sim_results(rootdir, index=0, sim=True):
     # outFile = rootdir + 'plots/klf_model_vs_data_MC_old_' + out_suffix + '.png'
     # f.get_figure().savefig(outFile)
 
-def fit_with_models(multiples=True):
+def fit_with_models(multiples=True, rmin=0, rmax=30):
     """
     Run MultiNest on the observed data to find the best fit cluster properties
     """
     if multiples:
-        out_dir = workDir + 'multinest/obs_multi/'
+        out_dir = '%s/multinest/obs_multi_r_%.1f_%.1f/' % (workDir, rmin, rmax)
     else:
-        out_dir = workDir + 'multinest/obs_single/'
+        out_dir = '%s/multinest/obs_single_r_%.1f_%.1f/' % (workDir, rmin, rmax)
 
     from jlu.gc.imf import multinest as m
 
@@ -6776,8 +6923,9 @@ def plot_WR_vs_age():
     """
     from jlu.gc.imf import bayesian as b
     
-    logAge = np.arange(6.2, 7.21, 0.01)
-    alpha = np.array([0.5, 1.35, 1.85, 2.35])
+    logAge = np.arange(6.2, 7.0, 0.01)
+    #alpha = np.array([0.5, 1.35, 1.85, 2.35])
+    alpha = np.array([0.5, 1.1, 1.7, 2.35])
     AKs = 2.7
     Mcl = 1e4
     distance = 8000
@@ -6836,7 +6984,7 @@ def plot_WR_vs_age():
     
     legLabels = ['%.2f' % aa for aa in alpha]
 
-    yngData = load_yng_data_by_radius(magCut=15.5)
+    yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
     obs_N_WR = yngData.N_WR
     obs_N_OB = yngData.prob.sum()
 
@@ -6846,7 +6994,7 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('log(age [yr])')
     py.ylabel('Number of Wolf-Rayet Stars')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_WR, linestyle='--')
     py.savefig(workDir + 'plots/num_WR_vs_logage.png')
 
@@ -6855,7 +7003,7 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('log(age [yr])')
     py.ylabel('Number of OB Stars (Kp <= 15.5)')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_OB, linestyle='--')
     py.savefig(workDir + 'plots/num_OB_vs_logage.png')
 
@@ -6864,7 +7012,7 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('log(age [yr])')
     py.ylabel('WR / OB')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_WR/obs_N_OB, linestyle='--')
     py.savefig(workDir + 'plots/num_WR_OB_ratio_vs_logage.png')
 
@@ -6875,7 +7023,7 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('Age [Myr]')
     py.ylabel('Number of Wolf-Rayet Stars')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_WR, linestyle='--')
     py.savefig(workDir + 'plots/num_WR_vs_age.png')
     py.savefig(workDir + 'plots/num_WR_vs_age.eps')
@@ -6885,7 +7033,7 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('Age [Myr]')
     py.ylabel('Number of OB Stars (Kp <= 15.5)')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_OB, linestyle='--')
     py.savefig(workDir + 'plots/num_OB_vs_age.png')
     py.savefig(workDir + 'plots/num_OB_vs_age.eps')
@@ -6895,12 +7043,247 @@ def plot_WR_vs_age():
     py.legend(legLabels, title='IMF Slopes')
     py.xlabel('age [Myr]')
     py.ylabel('WR / OB')
-    py.title('Cluster Mass = %.0e Msun' % Mcl)
+    py.title('Cluster Mass = %d Msun' % Mcl)
     py.axhline(obs_N_WR/obs_N_OB, linestyle='--')
     py.savefig(workDir + 'plots/num_WR_OB_ratio_vs_age.png')
     py.savefig(workDir + 'plots/num_WR_OB_ratio_vs_age.eps')
 
-def plot_fit_posteriors_2d(param1, param2, fit=None):
+def calc_WR_OB_ratio_vs_age():
+    """
+    Plot up the ratio of WR to OB stars vs. age for a bunch of clusters.
+    """
+    from jlu.gc.imf import bayesian as b
+    
+    age = np.arange(1.5e6, 10e6, 0.1e6)
+    logAge = np.log10(age)
+    alpha = np.array([0.45, 1.05, 1.7, 2.35])
+    AKs = 2.7
+    Mcl = 1e4
+    Mcl_sim = 1e7
+    distance = 8000
+    multi = True
+
+    num_WR = np.zeros((len(logAge), len(alpha)), dtype=float)
+    num_OB = np.zeros((len(logAge), len(alpha)), dtype=float)
+    std_WR = np.zeros((len(logAge), len(alpha)), dtype=float)
+    std_OB = np.zeros((len(logAge), len(alpha)), dtype=float)
+
+    completeness = load_image_completeness_by_radius()
+    magCut = 15.5
+
+    for aa in range(len(alpha)):
+        for tt in range(len(logAge)):
+            tmp_logAge = round(logAge[tt], 2)
+            tmp_alpha = round(alpha[aa], 2)
+
+            print 'log(age) = %.2f  alpha = %.2f' % (tmp_logAge, tmp_alpha)
+
+            cluster = b.model_young_cluster(tmp_logAge, imfSlope=tmp_alpha, 
+                                            AKs=AKs, distance=distance, 
+                                            clusterMass=Mcl_sim,
+                                            makeMultiples=multi)
+            #####
+            # Number of WR stars
+            #####
+            N_WR = cluster.num_WR
+
+            # Rescale down to 1e4 mass
+            N_WR *= float(Mcl) / float(Mcl_sim)
+
+            #####
+            # Number of OB stars
+            #####
+            kp = cluster.mag_noWR
+
+            # Trim down to magCut
+            idx = np.where(kp <= magCut)[0]
+            kp = kp[idx]
+
+            # Multiply by the completeness curve (after re-sampling). And renormalize.
+            Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
+            comp_at_kp = interpolate.splev(kp, Kp_interp)
+            comp_at_kp[comp_at_kp < 0] = 0.0
+            comp_at_kp[comp_at_kp > 1] = 1.0
+
+            # Generate a random number for each star to decide if it was detected.
+            # If the random number is less than the completeness, call it detected.
+            rand = np.random.uniform(size=len(kp))
+            isDetected = np.where(rand < comp_at_kp)[0]
+
+            N_OB = len(isDetected)
+
+            # Rescale down to 1e4 mass
+            N_OB *= float(Mcl) / float(Mcl_sim)
+
+            num_WR[tt, aa] = N_WR
+            num_OB[tt, aa] = N_OB
+            std_WR[tt, aa] = np.sqrt(N_WR)
+            std_OB[tt, aa] = np.sqrt(N_OB)
+            
+    
+    ratio = num_WR / num_OB
+    ratio_err = ratio * np.hypot( std_WR / num_WR, std_OB / num_OB )
+
+    _out = open('%s/age_vs_WR_OB.dat' % workDir, 'w')
+
+    pickle.dump(age, _out)
+    pickle.dump(alpha, _out)
+    pickle.dump(num_WR, _out)
+    pickle.dump(std_WR, _out)
+    pickle.dump(num_OB, _out)
+    pickle.dump(std_OB, _out)
+    pickle.dump(ratio, _out)
+    pickle.dump(ratio_err, _out)
+
+    _out.close()
+
+
+def plot_WR_OB_ratio_vs_age():
+    _in = open('%s/age_vs_WR_OB.dat' % workDir, 'r')
+
+    age = pickle.load(_in)
+    age /= 1e6
+    alpha = pickle.load(_in)
+    num_WR = pickle.load(_in)
+    std_WR = pickle.load(_in)
+    num_OB = pickle.load(_in)
+    std_OB = pickle.load(_in)
+    ratio = pickle.load(_in)
+    ratio_err = pickle.load(_in)
+
+    _in.close()
+
+    legLabels = [r'$\alpha = $%.2f' % aa for aa in alpha]
+
+    yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
+    obs_N_WR = yngData.N_WR
+    obs_N_OB = yngData.prob.sum()
+
+    colors = ['red', 'green', 'blue', 'cyan']
+
+    # Plot all range of IMF slopes
+    py.figure(1)
+    py.clf()
+    for aa in range(len(alpha)):
+        val = ratio[:,aa]
+        valHi = ratio[:,aa] + ratio_err[:,aa]
+        valLo = ratio[:,aa] - ratio_err[:,aa]
+
+        py.plot(age, val, color=colors[aa])
+        py.fill_between(age, valLo, valHi, color=colors[aa], alpha=0.2)
+    py.legend(legLabels)
+    py.xlabel('Age [Myr]')
+    py.ylabel(r'N$_{WR}$ / N$_{OB}$', fontsize=22)
+    py.axhline(obs_N_WR/obs_N_OB, linestyle='--', linewidth=2, color='black')
+
+    py.xlim(1.5, 10)
+    py.ylim(0, 1.0)
+
+    outRoot = workDir + 'plots/num_WR_OB_ratio_vs_age'
+    py.savefig(outRoot + '.png')
+    tmp = 'convert %s.png %s.eps' % (outRoot, outRoot)
+    print tmp
+    subprocess.call(tmp, shell=True)
+
+    # Plot a single IMF slope
+    py.figure(2)
+    py.clf()
+    aa = 2
+    val = ratio[:,aa]
+    valHi = ratio[:,aa] + ratio_err[:,aa]
+    valLo = ratio[:,aa] - ratio_err[:,aa]
+
+    obsRatio = obs_N_WR / obs_N_OB
+
+    py.plot(age, val, color=colors[aa])
+    py.fill_between(age, valLo, valHi, color=colors[aa], alpha=0.2)
+    py.xlabel('Age [Myr]')
+    py.ylabel(r'N$_{WR}$ / N$_{OB}$', fontsize=22)
+    py.text(4, 0.182, r'$\alpha = 1.7$, M$_{cl,obs} = 10^4$', fontsize=20, color='blue')
+
+    py.axhline(obsRatio, linestyle='--', color='black', linewidth=2)
+    py.text(8, obsRatio+0.003, 'Observed')
+    idx = np.where(np.abs(ratio[:,aa] - obsRatio) < 0.01)[0]
+    print idx, age[idx], val[idx]
+    #py.plot(age[idx[:2]], val[idx[:2]], 'ks')
+    py.plot([2.9, 3.8], [obsRatio, obsRatio], 'ks', ms=10)
+
+    py.xlim(1.5, 10)
+    py.ylim(0, 0.2)
+
+    outRoot = workDir + 'plots/num_WR_OB_ratio_vs_age_1.7'
+    py.savefig(outRoot + '.png')
+    tmp = 'convert %s.png %s.eps' % (outRoot, outRoot)
+    print tmp
+    subprocess.call(tmp, shell=True)
+
+def plot_fit_posteriors_2d():
+    from jlu.gc.imf import multinest as m
+
+    fit_dir = workDir + 'multinest/obs_multi_r_0.0_30.0/'
+    fit = m.load_results(fit_dir)
+
+    # Make a column that contains Myr instead of log(yr)
+    fit.add_column('age', 10**(fit['logAge']-6.0), unit='Myr')
+
+    fontsize = 16
+
+    py.close(1)
+    py.figure(1, figsize = (8,10))
+
+    gs = gridspec.GridSpec(3, 2)
+    gs.update(left=0.1, right=0.95, bottom=0.07, top=0.95,
+              wspace=0.35, hspace=0.4)
+    ax1 = py.subplot(gs[0, 0])
+    ax2 = py.subplot(gs[0, 1])
+    ax3 = py.subplot(gs[1, 0])
+    ax4 = py.subplot(gs[1, 1])
+    ax5 = py.subplot(gs[2, 0])
+    ax6 = py.subplot(gs[2, 1])
+
+    bins = {'alpha': 50, 'age': 50,
+            'distance': np.arange(6.5, 9.5, 0.1),
+            'Mcl': np.arange(1, 30, 1)}
+
+    defSmooth = 1.2
+    plot_fit_posterior_2d(ax1, 'alpha', 'age', fit=fit,
+                          bins1=bins['alpha'], bins2=bins['age'])
+    plot_fit_posterior_2d(ax2, 'distance', 'age', fit=fit,
+                          bins1=bins['distance'], bins2=bins['age'])
+    plot_fit_posterior_2d(ax3, 'alpha', 'Mcl', fit=fit,
+                          bins1=bins['alpha'], bins2=bins['Mcl'])
+    plot_fit_posterior_2d(ax4, 'age', 'Mcl', fit=fit,
+                          bins1=bins['age'], bins2=bins['Mcl'])
+    plot_fit_posterior_2d(ax5, 'alpha', 'distance', fit=fit,
+                          bins1=bins['alpha'], bins2=bins['distance'])
+    plot_fit_posterior_2d(ax6, 'Mcl', 'distance', fit=fit,
+                          bins1=bins['Mcl'], bins2=bins['distance'])
+
+    ## Set some custom axes limits
+    #  age
+    ax1.set_ylim(1, 8)
+    ax2.set_ylim(1, 8)
+    ax4.set_xlim(1, 8)
+
+    # # distance
+    # ax2.set_xlim(7, 9)
+    # ax5.set_ylim(7, 9)
+    # ax6.set_ylim(7, 9)
+
+    # Align axis labels
+    ax1.yaxis.set_label_coords(-0.16, 0.5)
+    ax2.yaxis.set_label_coords(-0.16, 0.5)
+    ax3.yaxis.set_label_coords(-0.12, 0.5)
+    ax4.yaxis.set_label_coords(-0.12, 0.5)
+    ax5.yaxis.set_label_coords(-0.16, 0.5)
+    ax6.yaxis.set_label_coords(-0.16, 0.5)
+    
+    py.savefig(workDir + 'plots/plot_fit_posteriors_2D.png')
+    py.savefig(workDir + 'plots/plot_fit_posteriors_2D.eps')
+
+def plot_fit_posterior_2d(axes, param1, param2, fit=None,
+                          bins1=None, bins2=None,
+                          smooth1=1.0, smooth2=1.0):
     """
     Plot 2D posterior PDFs for the bayesian inference analysis on the
     observed data. The fit was done allowing for multiples.
@@ -6917,24 +7300,38 @@ def plot_fit_posteriors_2d(param1, param2, fit=None):
     from jlu.gc.imf import multinest as m
 
     if fit == None:
-        #fit_dir = workDir + 'multinest/obs_multi/'
-        fit_dir = workDir + 'multinest/fit_multi_sim_t6.78_AKs2.7_d8000_a2.35_m10000_multi/'
+        fit_dir = workDir + 'multinest/obs_multi_r_0.0_30.0/'
+        #fit_dir = workDir + 'multinest/fit_multi_sim_t6.78_AKs2.7_d8000_a2.35_m10000_multi/'
         fit = m.load_results(fit_dir)
 
-    #py.close(1)
-    #py.figure(1)
-    py.clf()
+    labels = {'alpha': 'IMF Slope',
+              'Mcl': r'Mass (10$^3$ M$_\odot$)',
+              'distance': 'Distance (kpc)',
+              'age': 'Age (Myr)',
+              'logAge': 'Log( Age (Myr) )',
+              'N_yng_obs': r'N$_{OB}$',
+              'N_WR_sim': r'N$_{WR}$'}
+
+    if bins1 == None:
+        bins1 = 25
+    if bins2 == None:
+        bins2 = 25
+    
+
+    import scipy.ndimage as ndimage
 
     (H, x, y) = np.histogram2d(fit[param1], fit[param2],
-                               weights=fit['weights'], bins=20)
+                               weights=fit['weights'], bins=[bins1,bins2])
     xcenter = x[:-1] + (np.diff(x) / 2.0)
     ycenter = y[:-1] + (np.diff(y) / 2.0)
 
     extent = [x[0], x[-1], y[0], y[-1]]
-    py.imshow(H.T, extent=extent, interpolation='nearest', cmap=py.cm.gist_stern_r)
-    py.axis('tight')
-    py.xlabel(param1)
-    py.ylabel(param2)
+    axes.imshow(H.T, extent=extent, interpolation='nearest', cmap=py.cm.binary)
+    axes.axis('tight')
+    py.setp(axes.get_xticklabels(), fontsize=16)
+    py.setp(axes.get_yticklabels(), fontsize=16)
+    axes.set_xlabel(labels[param1])
+    axes.set_ylabel(labels[param2])
 
     # figure out the contour levels for credible intervals
     prob1d = H.flatten()
@@ -6949,48 +7346,47 @@ def plot_fit_posteriors_2d(param1, param2, fit=None):
     val_95 = prob1d[idx_95[0]]
     val_99 = prob1d[idx_99[0]]
 
-    py.contour(xcenter, ycenter, H.T, levels=[val_68, val_95, val_99], colors='black',
-               antialiased=True)
+    if smooth1 != None or smooth2 != None:
+        if smooth1 == None or smooth2 == None:
+            print 'Both smoothing paramters must be set to smooth.'
+        else:
+            sigma = [smooth1, smooth2]
+            H = ndimage.gaussian_filter(H, sigma, order=0)
 
+    axes.contour(xcenter, ycenter, H.T, levels=[val_68, val_95, val_99], colors='black',
+                 antialiased=True)
 
-def plot_fit_posteriors_1d():
+def plot_fit_posteriors_1d(multiples=True, rmin=0.0):
     from jlu.gc.imf import multinest as m
 
-    fit_dir = workDir + 'multinest/obs_multi/'
+    if multiples:
+        fit_dir = '%smultinest/obs_multi_r_%.1f_30.0/' % (workDir, rmin)
+    else:
+        fit_dir = '%smultinest/obs_single_r_%.1f_30.0/' % (workDir, rmin)
+        
     fit = m.load_results(fit_dir)
 
     # Make a column that contains Myr instead of log(yr)
     fit.add_column('age', 10**(fit['logAge']-6.0), unit='Myr')
 
-    yngData = load_yng_data_by_radius(magCut=15.5)
+    yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
 
     fontsize = 16
 
-    py.close(1)
-    py.figure(1, figsize = (10,10))
-
-    gs = gridspec.GridSpec(3, 6)
-    gs.update(left=0.1, right=0.95, bottom=0.07, top=0.95,
-              wspace=1.5, hspace=0.4)
-    ax1 = py.subplot(gs[0, 0:3])
-    ax2 = py.subplot(gs[0, 3:])
-    ax3 = py.subplot(gs[1, 0:3])
-    ax4 = py.subplot(gs[1, 3:])
-    ax5 = py.subplot(gs[2, 0:2])
-    ax6 = py.subplot(gs[2, 2:4])
-    ax7 = py.subplot(gs[2, 4:])
-
     def plot_PDF(ax, paramName, counter=False, label=None):
-        if counter:
-            bins = np.arange(0, round(fit[paramName].max()))
-        else:
-            bins = 50
+        bins = {'alpha': 50,
+                'age': np.arange(1, 8, 0.1),
+                'Mcl': np.arange(0, 20, 0.5),
+                'distance': 40,
+                'N_WR_sim': np.arange(0, round(fit[paramName].max())),
+                'N_yng_obs': np.arange(0, round(fit[paramName].max()))}
 
         if label == None:
             label = paramName
             
         n, bins, patch = ax.hist(fit[paramName], normed=True, histtype='step',
-                                 weights=fit['weights'], bins=bins)
+                                 weights=fit['weights'], bins=bins[paramName],
+                                 linewidth=1.5, color='black')
         py.setp(ax.get_xticklabels(), fontsize=fontsize)
         py.setp(ax.get_yticklabels(), fontsize=fontsize)
         ax.set_xlabel(label, size=fontsize+2)
@@ -6998,17 +7394,28 @@ def plot_fit_posteriors_1d():
 
         return bins
 
+
+    py.close(1)
+    py.figure(1, figsize = (9,8))
+
+    gs = gridspec.GridSpec(2, 2)
+    gs.update(left=0.15, right=0.95, bottom=0.1, top=0.95,
+              wspace=0.3, hspace=0.3)
+    ax1 = py.subplot(gs[0, 0])
+    ax2 = py.subplot(gs[0, 1])
+    ax3 = py.subplot(gs[1, 0])
+    ax4 = py.subplot(gs[1, 1])
+
     bins_alpha = plot_PDF(ax1, 'alpha', label='IMF slope')
     bins_age = plot_PDF(ax2, 'age', label='Age (Myr))')
-    bins_Mcl = plot_PDF(ax3, 'Mcl', label=r'Mass (x 10$^3$ M$_\odot$)')
+    bins_Mcl = plot_PDF(ax3, 'Mcl', label=r'Mass (10$^3$ M$_\odot$)', counter=True)
     bins_dist = plot_PDF(ax4, 'distance', label='Distance (kpc)')
-    plot_PDF(ax5, 'N_WR_sim', counter=True, label='N(WR) simulated')
-    plot_PDF(ax6, 'N_yng_sim', counter=True, label='N(OB) simulated')
-    plot_PDF(ax7, 'N_yng_obs', counter=True, label='N(OB) observed')
 
     ax1.set_ylabel('Probability Density', size=fontsize+2)
     ax3.set_ylabel('Probability Density', size=fontsize+2)
-    ax5.set_ylabel('Probability Density', size=fontsize+2)
+
+    ax1.yaxis.set_label_coords(-0.25, 0.5)
+    ax3.yaxis.set_label_coords(-0.25, 0.5)
 
     # Over plot priors.
     # Distance to cluster
@@ -7023,18 +7430,13 @@ def plot_fit_posteriors_1d():
     ax4.plot(bins_dist, prob_dist, 'k--')
 
     # Log Age of the cluster
-    log_age_mean = 6.78
-    log_age_std = 0.18
     log_age_min = 6.20
     log_age_max = 7.20
-    log_age_a = (log_age_min - log_age_mean) / log_age_std
-    log_age_b = (log_age_max - log_age_mean) / log_age_std
+    log_age_diff = log_age_max - log_age_min
     tmp_bins = np.arange(6.15, 7.25, 0.01)
-    prob_log_age_cont = scipy.stats.truncnorm.pdf(tmp_bins, log_age_a, log_age_b,
-                                                  loc=log_age_mean, scale=log_age_std)
+    prob_log_age_cont = scipy.stats.uniform.pdf(tmp_bins,
+                                                loc=log_age_min, scale=log_age_diff)
     prob_log_age_cont /= 5.0
-    # prob_age_cont = scipy.stats.lognorm.pdf(bins_age*10**6, log_age_std, 
-    #                                         scale=np.exp(log_age_mean))
     ax2.plot(10**(tmp_bins-6.0), prob_log_age_cont, 'k--')
     print 10**(tmp_bins-6.0)
     print prob_log_age_cont
@@ -7050,99 +7452,176 @@ def plot_fit_posteriors_1d():
     Mcl_min = 1
     Mcl_max = 100
     Mcl_diff = Mcl_max - Mcl_min
-    prob_Mcl = scipy.stats.uniform.pdf(bins_Mcl, loc=Mcl_min, scale=Mcl_diff)
-    ax3.plot(bins_Mcl, prob_Mcl, 'k--')
+    tmp_bins = np.arange(0, 20, 1)
+    prob_Mcl = scipy.stats.uniform.pdf(tmp_bins, loc=Mcl_min, scale=Mcl_diff)
+    ax3.plot(tmp_bins, prob_Mcl*8, 'k--')
 
-    # Overplot observed number of WR stars
-    ax5.axvline(yngData.N_WR, linestyle='--', color='black')
-
+    ax1.set_xlim(0, 3)
     ax2.set_xlim(1, 8)
     ax3.set_xlim(0, 20)
     ax4.set_xlim(7, 9)
-    ax5.set_xlim(0, 15)
-    ax6.set_xlim(65, 125)
-    ax7.set_xlim(65, 125)
 
-    ax6.set_ylim(0, 0.08)
-    ax7.set_ylim(0, 0.08)
+    ax1.text(0.85, 0.9, '(a)', transform=ax1.transAxes)
+    ax2.text(0.85, 0.9, '(b)', transform=ax2.transAxes)
+    ax3.text(0.85, 0.9, '(c)', transform=ax3.transAxes)
+    ax4.text(0.85, 0.9, '(d)', transform=ax4.transAxes)
 
-    ax1.text(0.9, 0.9, '(a)', transform=ax1.transAxes)
-    ax2.text(0.9, 0.9, '(b)', transform=ax2.transAxes)
-    ax3.text(0.9, 0.9, '(c)', transform=ax3.transAxes)
-    ax4.text(0.9, 0.9, '(d)', transform=ax4.transAxes)
-    ax5.text(0.85, 0.9, '(e)', transform=ax5.transAxes)
-    ax6.text(0.85, 0.9, '(f)', transform=ax6.transAxes)
-    ax7.text(0.85, 0.9, '(g)', transform=ax7.transAxes)
+    outFig = '%s/plots/plot_fit_posteriors_1D' % workDir
+    if not multiples:
+        outFig += '_single'
+    if rmin > 0:
+        outFig += '_%.1f' % rmin
 
-    py.savefig(workDir + 'plots/plot_fit_posteriors_1D.png')
-    py.savefig(workDir + 'plots/plot_fit_posteriors_1D.eps')
+    py.savefig(outFig + '.png')
+    py.savefig(outFig + '.eps')
+        
 
-def get_best_fit(param, multiples=True):
+
+    # Now plot the resulting distributions for the number of WR and OB stars.
+    py.close(2)
+    py.figure(2, figsize = (10,5))
+
+    gs = gridspec.GridSpec(1, 2)
+    gs.update(left=0.15, right=0.95, bottom=0.15, top=0.91,
+               wspace=0.3, hspace=0.3)
+    ax1 = py.subplot(gs[0, 0])
+    ax2 = py.subplot(gs[0, 1])
+
+    plot_PDF(ax1, 'N_WR_sim', counter=True, label='N(WR) simulated')
+    plot_PDF(ax2, 'N_yng_obs', counter=True, label='N(OB) simulated')
+
+    # Overplot observed number of WR stars
+    ax1.axvline(yngData.N_WR, linestyle='-', color='black', linewidth=2)
+    ax2.axvline(yngData.prob.sum(), linestyle='-', color='black', linewidth=2)
+
+    # Fix N(OB) tick labels
+    ax2.set_xticks(np.arange(50, 120, 15))
+
+    ax1.set_xlim(0, 20)
+    ax2.set_xlim(45, 125)
+    ax2.set_ylim(0, 0.08)
+
+    ax1.set_ylabel('Probability Density', size=fontsize+2)
+    ax1.yaxis.set_label_coords(-0.25, 0.5)
+
+
+    outFig = '%s/plots/plot_fit_N_posteriors_1D' % workDir
+    if not multiples:
+        outFig += '_single'
+    if rmin > 0:
+        outFig += '_%.1f' % rmin
+
+    py.savefig(outFig + '.png')
+    py.savefig(outFig + '.eps')
+
+        
+def get_best_fit(param, weights, paramName):
+    # The 1-sigma (68.6%) low and high bounds on a CDF
+    cdf_lo = (1.0 - 0.686)/2.0
+    cdf_hi = (1.0 + 0.686)/2.0
+    cdf_lo2 = (1.0 - 0.9545)/2.0
+    cdf_hi2 = (1.0 + 0.9545)/2.0
+    cdf_lo3 = (1.0 - 0.9973)/2.0
+    cdf_hi3 = (1.0 + 0.9973)/2.0
+
+    weightSum = weights.sum()
+    exp_param = (param*weights).sum() / weightSum
+    sdx_param = param.argsort()
+    param_sort = param[sdx_param]
+    weights_sort = weights[sdx_param]
+    cdf_param = weights_sort.cumsum() / weightSum
+    cdf_lo_idx = np.where(cdf_param >= cdf_lo)[0][0]
+    cdf_hi_idx = np.where(cdf_param <= cdf_hi)[0][-1]
+    cdf_lo2_idx = np.where(cdf_param >= cdf_lo2)[0][0]
+    cdf_hi2_idx = np.where(cdf_param <= cdf_hi2)[0][-1]
+    cdf_lo3_idx = np.where(cdf_param >= cdf_lo3)[0][0]
+    cdf_hi3_idx = np.where(cdf_param <= cdf_hi3)[0][-1]
+
+    # Do a special check for alpha from Bartko.
+    if paramName == 'alpha':
+        bartkoIdx = np.where(param_sort <= 0.45)[0]
+        print 'P(alpha <= 0.45) = %.2e' % cdf_param[bartkoIdx[-1]]
+
+        salpeterIdx = np.where(param_sort >= 2.35)[0]
+        print 'P(alpha < 2.35) = %.2e' % (1.0 - cdf_param[salpeterIdx[0]])
+
+    param_mean = np.average(param, weights=weights)
+    param_std = math.sqrt( np.dot(weights, (param - param_mean)**2) / weightSum)
+
+    print ''
+    print '***** %s *****' % paramName
+    print 'Expectation Value:     %5.2f' % (exp_param)
+    print 'Most Probable:         %5.2f' % (param[-1])
+    print 'Standard Deviation:    %5.2f' % (param_std)
+    print 'Standard Dev. Range:   %5.2f - %5.2f' % \
+        (param_mean-param_std, param_mean+param_std)
+    print '68%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo_idx], param_sort[cdf_hi_idx])
+    print '95%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo2_idx], param_sort[cdf_hi2_idx])
+    print '99%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo3_idx], param_sort[cdf_hi3_idx])
+    print 'Top 10 most probable:  '
+    print param[-20:]
+    
+    return param_mean, param_std
+
+def table_best_fit_params(multiples=True):
     from jlu.gc.imf import multinest as m
 
     if multiples:
-        fit_dir = workDir + 'multinest/obs_multi/'
+        fit_dir = workDir + 'multinest/obs_multi_r_0.0_30.0/'
     else:
-        fit_dir = workDir + 'multinest/obs_single/'
-        
+        fit_dir = workDir + 'multinest/obs_single_r_0.0_30.0/'
+
     fit = m.load_results(fit_dir)
 
     # Make a column that contains Myr instead of log(yr)
     fit.add_column('age', 10**(fit['logAge']-6.0), unit='Myr')
 
-    weightSum = fit['weights'].sum()
+    alpha_mean, alpha_std = get_best_fit(fit['alpha'], fit['weights'], 'alpha')
+    mass_mean, mass_std = get_best_fit(fit['Mcl'], fit['weights'], 'Mcl')
+    dist_mean, dist_std = get_best_fit(fit['distance'], fit['weights'], 'distance')
+    age_mean, age_std = get_best_fit(fit['age'], fit['weights'], 'age')
 
-    # The 1-sigma (68.6^) low and high bounds on a CDF
-    cdf_lo = 0.5 - (0.686/2.0)
-    cdf_hi = 0.5 + (0.686/2.0)
+    # Do something special with the age if there are multiple
+    # peaks. This is only true for the multiples=True solution.
+    if multiples == True:
+        # Divide into three peaks.
+        idx1 = np.where(fit['age'] <= 3.3)[0]
+        idx2 = np.where(fit['age'] > 3.3)[0]
 
-    # Get the expectation value
-    exp_param = (fit[param]*fit['weights']).sum() / weightSum
-    sdx_param = fit[param].argsort()
-    param_sort = fit[param][sdx_param]
-    weights_sort = fit['weights'][sdx_param]
-    cdf_param = weights_sort.cumsum() / weightSum
-    cdf_lo_idx = np.where(cdf_param >= cdf_lo)[0][0]
-    cdf_hi_idx = np.where(cdf_param <= cdf_hi)[0][-1]
+        print '' 
+        print '**** Age <= 3.3 Myr *****'
+        print '' 
+        get_best_fit(fit['age'][idx1], fit['weights'][idx1], 'age1')
+        get_best_fit(fit['alpha'][idx1], fit['weights'][idx1], 'alpha')
+        get_best_fit(fit['Mcl'][idx1], fit['weights'][idx1], 'Mcl')
+        get_best_fit(fit['distance'][idx1], fit['weights'][idx1], 'distance')
 
-    param_mean = np.average(fit[param], weights=fit['weights'])
-    param_std = math.sqrt( np.dot(fit['weights'], (fit[param] - param_mean)**2) / weightSum)
+        print '' 
+        print '**** Age > 3.3 Myr *****'
+        print '' 
+        age_mean, age_std = get_best_fit(fit['age'][idx2], fit['weights'][idx2], 'age2')
+        alpha_mean, alpha_std = get_best_fit(fit['alpha'][idx2], fit['weights'][idx2], 'alpha')
+        mass_mean, mass_std = get_best_fit(fit['Mcl'][idx2], fit['weights'][idx2], 'Mcl')
+        dist_mean, dist_std = get_best_fit(fit['distance'][idx2], fit['weights'][idx2], 'distance')
+        # get_best_fit(fit['age'][idx2], fit['weights'][idx2], 'age2')
+        # get_best_fit(fit['alpha'][idx2], fit['weights'][idx2], 'alpha')
+        # get_best_fit(fit['Mcl'][idx2], fit['weights'][idx2], 'Mcl')
+        # get_best_fit(fit['distance'][idx2], fit['weights'][idx2], 'distance')
 
-    print '***** %s *****' % param
-    print 'Mean:                  ', exp_param
-    print 'Most Probable:         ', fit[param][-1]
-    print 'Standard Dev. Range:   ', param_mean-param_std, param_mean+param_std
-    print '68\% confidence range: ', param_sort[cdf_lo_idx], param_sort[cdf_hi_idx]
-    print 'Top 10 most probable:  ', fit[param][-20:]
-    
-    return param_mean, param_std
 
-def table_best_fit_params(multiples=True):
-    alpha_mean, alpha_std = get_best_fit('alpha', multiples=multiples)
-    age_mean, age_std = get_best_fit('age', multiples=multiples)
-    mass_mean, mass_std = get_best_fit('Mcl', multiples=multiples)
-    dist_mean, dist_std = get_best_fit('distance', multiples=multiples)
-    logage_mean, logage_std = get_best_fit('logAge', multiples=multiples)
+    logage_mean = math.log10(age_mean*1e6)
 
-    print 'Plain Text: '
-    print '%-20s  %5.2f +/- %5.2f' % ('IMF Slope', alpha_mean, alpha_std)
-    print '%-20s  %5.2f +/- %5.2f' % ('Age (Myr)', age_mean, age_std)
-    print '%-20s  %5.2f +/- %5.2f' % ('log[Age (Myr)]', logage_mean, logage_std)
-    print '%-20s  %5.2f +/- %5.2f' % ('Mass (x1000 Msun)', mass_mean, mass_std)
-    print '%-20s  %5.2f +/- %5.2f' % ('Distance (kpc)', dist_mean, dist_std)
+    print ''
+    print '***** Plotted Solution *****'
+    print '%-20s  %5.2f' % ('IMF Slope', alpha_mean)
+    print '%-20s  %5.2f' % ('Age (Myr)', age_mean)
+    print '%-20s  %5.2f' % ('log[Age (Myr)]', logage_mean)
+    print '%-20s  %5.2f' % ('Mass (x1000 Msun)', mass_mean)
+    print '%-20s  %5.2f' % ('Distance (kpc)', dist_mean)
 
-    print '%-33s  & %5.2f $\pm$ %5.2f \\\\' % \
-        ('IMF slope ($\\alpha$)', alpha_mean, alpha_std)
-    print '%-33s  & %5.2f $\pm$ %5.2f \\\\' % \
-        ('Age (Myr)', age_mean, age_std)
-    print '%-33s  & %5.2f $\pm$ %5.2f \\\\' % \
-        ('Total Mass ($\\times10^3$ \msun)', mass_mean, mass_std)
-    print '%-33s  & %5.2f $\pm$ %5.2f \\\\'  % \
-        ('Distance (kpc)', dist_mean, dist_std)
-    
-
-    # Plot up the results.
-    data = load_yng_data_by_radius(magCut=15.5)
 
     if multiples:
         out_suffix = '_fit_multi_means'
@@ -7150,8 +7629,8 @@ def table_best_fit_params(multiples=True):
         out_suffix = '_fit_single_means'
 
     plot_model_vs_data_MC(logage_mean, 2.7, int(round(dist_mean*10**3, 0)),
-                          alpha_mean, int(round(mass_mean*10**3, 0)), yngData=data,
-        outDir=workDir, outSuffix=out_suffix, makeEPS=True)
+                          alpha_mean, int(round(mass_mean*10**3, 0)),
+        outDir=workDir, outSuffix=out_suffix, makeEPS=True, numMC=100)
 
 
 def test_num_WR_vs_multiples():
@@ -7239,6 +7718,7 @@ def plot_sims_vs_multiplicity():
     from jlu.gc.imf import multinest as m
 
     logAge = 6.60
+    age = 10**(logAge - 6.0)
     alpha = 2.35
     Mcl = 10
     distance = 8
@@ -7258,12 +7738,17 @@ def plot_sims_vs_multiplicity():
     m_simM_fitS = m.load_results(root_simM_fitS)
     m_simM_fitM = m.load_results(root_simM_fitM)
 
+    m_simS_fitS.add_column('age', 10**(m_simS_fitS.logAge-6.0))
+    m_simS_fitM.add_column('age', 10**(m_simS_fitM.logAge-6.0))
+    m_simM_fitS.add_column('age', 10**(m_simM_fitS.logAge-6.0))
+    m_simM_fitM.add_column('age', 10**(m_simM_fitM.logAge-6.0))
+
     fontsize = 12
 
     def prep_plot():
         py.close(1)
         py.figure(1, figsize = (7,11))
-        py.subplots_adjust(left=0.08, right=0.95, bottom=0.06, top=0.95,
+        py.subplots_adjust(left=0.1, right=0.95, bottom=0.06, top=0.92,
                            wspace=0.3, hspace=0.3)
 
         ax11 = py.subplot2grid((4, 2), (0, 0))
@@ -7280,15 +7765,18 @@ def plot_sims_vs_multiplicity():
         return axes
 
     def plot_PDF(tab, ax, paramName, counter=False):
-        bins = 50
+        bins = {'alpha': 40,
+                'age': np.arange(1, 10, 0.20),
+                'Mcl': np.arange(0, 20, 0.5),
+                'distance': 40}
 
         xlabels = {'alpha': 'IMF slope',
-                   'logAge': 'log(t [Myr])',
+                   'age': 'Age (Myr))',
                    'Mcl': r'Cluster Mass (M$_\odot$)',
                    'distance': 'Distance (kpc)'}
         
         n, bins, patch = ax.hist(tab[paramName], normed=True, histtype='step',
-                                 weights=tab['weights'], bins=bins)
+                                 weights=tab['weights'], bins=bins[paramName], color='black')
         py.setp(ax.get_xticklabels(), fontsize=fontsize)
         py.setp(ax.get_yticklabels(), fontsize=fontsize)
         ax.set_xlabel(xlabels[paramName], size=fontsize+2)
@@ -7302,54 +7790,1211 @@ def plot_sims_vs_multiplicity():
     # Plot compares the no-multiples cluster with different fits.
     axes = prep_plot()
     plot_PDF(m_simS_fitS, axes[0][0], 'alpha')
-    plot_PDF(m_simS_fitS, axes[0][1], 'logAge')
+    plot_PDF(m_simS_fitS, axes[0][1], 'age')
     plot_PDF(m_simS_fitS, axes[0][2], 'Mcl')
     plot_PDF(m_simS_fitS, axes[0][3], 'distance')
     plot_PDF(m_simS_fitM, axes[1][0], 'alpha')
-    plot_PDF(m_simS_fitM, axes[1][1], 'logAge')
+    plot_PDF(m_simS_fitM, axes[1][1], 'age')
     plot_PDF(m_simS_fitM, axes[1][2], 'Mcl')
     plot_PDF(m_simS_fitM, axes[1][3], 'distance')
 
-    axes[0][0].set_title('Fit Singles')
-    axes[1][0].set_title('Fit Multiples')
+    axes[0][0].set_title('Input Singles\nFit Singles')
+    axes[1][0].set_title('Input Singles\nFit Multiples')
 
-    axes[0][0].axvline(alpha, color='red')
-    axes[0][1].axvline(logAge, color='red')
-    axes[0][2].axvline(Mcl, color='red')
-    axes[0][3].axvline(distance, color='red')
-    axes[1][0].axvline(alpha, color='red')
-    axes[1][1].axvline(logAge, color='red')
-    axes[1][2].axvline(Mcl, color='red')
-    axes[1][3].axvline(distance, color='red')
+    axes[0][0].set_ylabel('PDF', size=fontsize+2)
+    axes[0][1].set_ylabel('PDF', size=fontsize+2)
+    axes[0][2].set_ylabel('PDF', size=fontsize+2)
+    axes[0][3].set_ylabel('PDF', size=fontsize+2)
 
-    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simS.png')
-    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simS.eps')
+    axes[0][0].axvline(alpha, color='red', linewidth=2)
+    axes[0][1].axvline(age, color='red', linewidth=2)
+    axes[0][2].axvline(Mcl, color='red', linewidth=2)
+    axes[0][3].axvline(distance, color='red', linewidth=2)
+    axes[1][0].axvline(alpha, color='red', linewidth=2)
+    axes[1][1].axvline(age, color='red', linewidth=2)
+    axes[1][2].axvline(Mcl, color='red', linewidth=2)
+    axes[1][3].axvline(distance, color='red', linewidth=2)
+
+    outRoot = '{0}plots/plot_sims_vs_multi_simS'.format(multiDir)
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = 'convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
+    os.system(convert)
 
 
     # Plot compares the multiples cluster with different fits.
     axes = prep_plot()
     plot_PDF(m_simM_fitS, axes[0][0], 'alpha')
-    plot_PDF(m_simM_fitS, axes[0][1], 'logAge')
+    plot_PDF(m_simM_fitS, axes[0][1], 'age')
     plot_PDF(m_simM_fitS, axes[0][2], 'Mcl')
     plot_PDF(m_simM_fitS, axes[0][3], 'distance')
     plot_PDF(m_simM_fitM, axes[1][0], 'alpha')
-    plot_PDF(m_simM_fitM, axes[1][1], 'logAge')
+    plot_PDF(m_simM_fitM, axes[1][1], 'age')
     plot_PDF(m_simM_fitM, axes[1][2], 'Mcl')
     plot_PDF(m_simM_fitM, axes[1][3], 'distance')
 
-    axes[0][0].set_title('Fit Singles')
-    axes[1][0].set_title('Fit Multiples')
+    axes[0][0].set_title('Input Multiples\nFit Singles')
+    axes[1][0].set_title('Input Multiples\nFit Multiples')
 
-    axes[0][0].axvline(alpha, color='red')
-    axes[0][1].axvline(logAge, color='red')
-    axes[0][2].axvline(Mcl, color='red')
-    axes[0][3].axvline(distance, color='red')
-    axes[1][0].axvline(alpha, color='red')
-    axes[1][1].axvline(logAge, color='red')
-    axes[1][2].axvline(Mcl, color='red')
-    axes[1][3].axvline(distance, color='red')
+    axes[0][0].set_ylabel('PDF', size=fontsize+2)
+    axes[0][1].set_ylabel('PDF', size=fontsize+2)
+    axes[0][2].set_ylabel('PDF', size=fontsize+2)
+    axes[0][3].set_ylabel('PDF', size=fontsize+2)
 
-    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simM.png')
-    py.savefig(multiDir + 'plots/plot_sims_vs_multi_simM.eps')
+    axes[0][0].axvline(alpha, color='red', linewidth=2)
+    axes[0][1].axvline(age, color='red', linewidth=2)
+    axes[0][2].axvline(Mcl, color='red', linewidth=2)
+    axes[0][3].axvline(distance, color='red', linewidth=2)
+    axes[1][0].axvline(alpha, color='red', linewidth=2)
+    axes[1][1].axvline(age, color='red', linewidth=2)
+    axes[1][2].axvline(Mcl, color='red', linewidth=2)
+    axes[1][3].axvline(distance, color='red', linewidth=2)
+
+    outRoot = '{0}plots/plot_sims_vs_multi_simM'.format(multiDir)
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = 'convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
+    os.system(convert)
+
+    
+def plot_sims_vs_imf_slope():
+    """
+    Plot the results of different synthetic clusters with Salpeter and top-heavy
+    IMF slopes and show that there are no strong biases.
+    """
+    from jlu.gc.imf import multinest as m
+
+    logAge = 6.78
+    distance = 8
+
+    alpha1 = 2.35
+    Mcl1 = 10
+
+    alpha2 = 0.45
+    Mcl2 = 40
+
+    multiDir = workDir + '/multinest/'
+    dataPart1 = '_sim_t%.2f_AKs2.7_d%4d_a%.2f_m%d_o1500_' % \
+        (logAge, distance*1e3, alpha1, Mcl1*1e3)
+    dataPart2 = '_sim_t%.2f_AKs2.7_d%4d_a%.2f_m%d_o1500_' % \
+        (logAge, distance*1e3, alpha2, Mcl2*1e3)
+
+    # SP = Salpeter, TH = top heavy
+    root_simSP = multiDir + 'fit_multi' + dataPart1 + 'multi/'
+    root_simTH = multiDir + 'fit_multi' + dataPart2 + 'multi/'
+    
+    m_simSP = m.load_results(root_simSP)
+    m_simTH = m.load_results(root_simTH)
+
+    fontsize = 16
+
+    def prep_plot():
+        py.close(1)
+        #py.figure(1, figsize = (7,11))
+        # py.subplots_adjust(left=0.08, right=0.95, bottom=0.06, top=0.95,
+        #                    wspace=0.3, hspace=0.3)
+        py.figure(1, figsize = (12,6))
+        py.subplots_adjust(left=0.08, right=0.95, bottom=0.1, top=0.93,
+                           wspace=0.2, hspace=0.2)
+
+        # ax11 = py.subplot2grid((3, 2), (0, 0))
+        # ax12 = py.subplot2grid((3, 2), (1, 0))
+        # ax13 = py.subplot2grid((3, 2), (2, 0))
+        # ax21 = py.subplot2grid((3, 2), (0, 1))
+        # ax22 = py.subplot2grid((3, 2), (1, 1))
+        # ax23 = py.subplot2grid((3, 2), (2, 1))
+
+        # axes = [[ax11, ax12, ax13], [ax21, ax22, ax23]]
+
+        ax11 = py.subplot2grid((1, 2), (0, 0))
+        ax21 = py.subplot2grid((1, 2), (0, 1))
+
+        axes = [[ax11], [ax21]]
+
+        return axes
+
+    def plot_PDF(tab, ax, paramName, counter=False):
+        bins = 50
+
+        xlabels = {'alpha': 'IMF slope',
+                   'logAge': 'log(t [Myr])',
+                   'Mcl': r'Cluster Mass (M$_\odot$)',
+                   'distance': 'Distance (kpc)'}
+        
+        n, bins, patch = ax.hist(tab[paramName], normed=True, histtype='step',
+                                 weights=tab['weights'], bins=bins, color='black',
+                                 linewidth=1.5)
+        py.setp(ax.get_xticklabels(), fontsize=fontsize)
+        py.setp(ax.get_yticklabels(), fontsize=fontsize)
+        ax.set_xlabel(xlabels[paramName], size=fontsize+2)
+        ax.set_ylim(0, n.max()*1.1)
+
+        binInt = bins[1] - bins[0]
+        binCent = bins[:-1] + binInt/2.0
+
+        # Determine the peak in the probability distribution
+        peakIdx = n.argmax()
+
+        # Walk away from the peak, one on the left, one on the right,
+        # until you get an integrated probability of 0.68.
+        distFromPeak = np.abs(binCent - binCent[peakIdx])
+        sidx = distFromPeak.argsort()
+
+        # Integrated probability
+        cdfFromPeak = np.cumsum(n[sidx]) * binInt
+        #idx = np.where(cdfFromPeak <= 0.9545)[0]
+        idx = np.where(cdfFromPeak <= 0.6827)[0]
+
+        # Pull out the bins and values that fall within this region
+        idx_1sigma = np.sort(sidx[idx])
+        n_1sigma = n[idx_1sigma]
+        b_1sigma = bins[idx_1sigma.min():idx_1sigma.max()+2]
+
+        # Duplicate so we can do a step plot.
+        n_1sig_step = np.repeat(n_1sigma, 2)
+        b_1sig_step = np.repeat(b_1sigma, 2)[1:-1]
+
+        # Plot filled region
+        ax.fill_between(b_1sig_step, n_1sig_step, color='grey', alpha=0.2)
+        
+
+        return
+
+    # Plot shows the Salpeter and the Top Heavy posterior PDFs
+    axes = prep_plot()
+    plot_PDF(m_simSP, axes[0][0], 'alpha')
+    # plot_PDF(m_simSP, axes[0][1], 'logAge')
+    # plot_PDF(m_simSP, axes[0][2], 'Mcl')
+    plot_PDF(m_simTH, axes[1][0], 'alpha')
+    # plot_PDF(m_simTH, axes[1][1], 'logAge')
+    # plot_PDF(m_simTH, axes[1][2], 'Mcl')
+
+    axes[0][0].set_title('Salpeter')
+    axes[1][0].set_title('Top-Heavy')
+    axes[0][0].set_ylabel('PDF', size=fontsize+2)
+
+    axes[0][0].axvline(alpha1, color='red', linewidth=2)
+    # axes[0][1].axvline(logAge, color='red', linewidth=2)
+    # axes[0][2].axvline(Mcl1, color='red', linewidth=2)
+    axes[1][0].axvline(alpha2, color='red', linewidth=2)
+    # axes[1][1].axvline(logAge, color='red', linewidth=2)
+    # axes[1][2].axvline(Mcl2, color='red', linewidth=2)
+
+    outRoot = multiDir + 'plots/plot_sims_vs_alpha'
+    py.savefig('{0}.png'.format(outRoot))
+    convert = 'convert {0}.png {0}_color.eps'.format(outRoot)
+    os.system(convert)
+    convert = 'convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
+    os.system(convert)
+
+def calc_total_mass():
+    """
+    Take the best-fit mass and extrapolate to include the uncovered field of
+    view. We do this in different ways.
+    """
+    ##########
+    # Method #1. ASSume spherical symmetry and radial profile from Do et al.
+    ##########
+    
+    # Load up the area maps for the OSIRIS fields
+    areaFile = '/u/jlu/work/gc/imf/extinction/nirc2_mask_all.fits'
+    areaFITS = pyfits.open(areaFile)
+    area_map = areaFITS[0].data
+    area_hdr = areaFITS[0].header
+    area_map = np.array(area_map, dtype=float)
+
+    area_scaleX = area_hdr['CD1_1'] * 3600.0
+    area_scaleY = area_hdr['CD2_2'] * 3600.0
+    area_sgraX = area_hdr['CRPIX1']
+    area_sgraY = area_hdr['CRPIX2']
+
+    area_mapX = np.arange(area_map.shape[1], dtype=float)
+    area_mapY = np.arange(area_map.shape[0], dtype=float)
+
+    area_mapX = (area_mapX - area_sgraX) * area_scaleX
+    area_mapY = (area_mapY - area_sgraY) * area_scaleY
+
+    mapXX, mapYY = np.meshgrid(area_mapX, area_mapY)
+    mapRR = np.hypot(mapXX, mapYY)
+
+    # Find the maximum radius at which we have data.
+    maxRadius = mapRR[area_map > 0].max()
+    print 'Maximum Radius Observed: %.2f"' % (maxRadius)
+
+    # Surface Density profile: flat inner, power law outer.
+    # Surface Density Slope and inner Cutoff. Don't care about
+    # normalization.
+    gamma = 0.9
+    innerCut = 0.2
+    innerSD = 1.0 / (innerCut**(-gamma))
+
+    # Pixels are small, just make the simplifying assumption that the number
+    # of stars in each pixels = surface density(r) * pixel area. Remember
+    # the normalization doesn't matter. We are going to eventually take the ratio
+    # of observed to un-observed areas, weighted by the surface density.
+    mapNstars = mapRR**(-gamma) * np.abs(area_scaleX * area_scaleY)
+    mapNstars[mapRR <= 0.2] = innerSD * np.abs(area_scaleX * area_scaleY)
+    # Renormalize to 500 stars
+    mapNstars *= 500 / mapNstars.sum()
+
+    # Identify observed pixels
+    obs = np.where(area_map > 0)
+    noobs = np.where(area_map == 0)
+    
+    total = mapNstars.sum()
+    inFOV = mapNstars[obs].sum()
+    outFOV = mapNstars[noobs].sum()
+
+    inFraction = inFOV / total
+    outFraction = outFOV / total
+
+    print 'mapNstars.sum() = ', total
+    print 'mapNstars[obs].sum() = ', inFOV
+    print 'mapNstars[noobs].sum() = ', outFOV
+    print ''
+    print 'Fraction Observed = %.2f' % inFraction
+    print 'Fraction Unobserved = %.2f' % outFraction
+
+    print ''
+    print 'Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
+        (1.0 / inFraction)
+    print ''
+    
+
+    ##########
+    # Method #2
+    ##########
+    # Compare the number of young stars with Kp<13 we detect vs. Paumard.
+    connection = sqlite.connect(database)
+    cur = connection.cursor()
+    sqlCmd = "select ucla from paumard2006 where Kmag < 13"
+    cur.execute(sqlCmd)
+
+    rows = cur.fetchall()
+    
+    ours = load_yng_catalog_by_radius()
+    idx = np.where((ours.kp < 13) & (ours.prob == 1))[0]
+
+    Nobs = len(idx)
+    Ntot = len(rows)
+    inFraction = float(Nobs) / float(Ntot)
+
+    print ''
+    print 'N_yng for Kp < 13 total     : %d' % Ntot
+    print 'N_yng for Kp < 13 in our FOV: %d' % Nobs
+    print 'Fraction Observed = %.2f' % inFraction
+    
+    print ''
+    print 'Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
+        (1.0 / inFraction)
+    print ''
+
+def compute_masses(rmin=0, rmax=30, magCut=15.5):
+    """
+    Use the best-fit cluster isochrone to fit system masses for all the
+    observed systems. Do this using a Monte Carlo technique. Then combine
+    the PDFs of mass together (add them) weighted by their probability of youth.
+    All of this is just to make a nice figure of the mass function.
+    """
+    from jlu.gc.imf import bayesian as b
+
+    # Load up data on young stars.
+    d = load_yng_catalog_by_radius(rmin=rmin, rmax=rmax, magCut=magCut)
+    noWR = np.where(d.isWR == False)[0]
+
+    # Generate some fake data to compensate for incompleteness.
+    binsKp = klf_mag_bins
+    binHalfStep = np.diff(binsKp) / 2.0
+    binHalfStep = np.append(binHalfStep, binHalfStep[-1])
+    binEdges = np.append(binsKp - binHalfStep, binsKp[-1] + binHalfStep[-1])
+
+    # Load up imaging completness curve
+    completeness = load_image_completeness_by_radius()
+
+    # Make the KLF.
+    klf, bins = np.histogram(d.kp_ext[noWR], bins=binEdges, weights=d.prob[noWR])
+
+    # Make a completeness corrected version.
+    Kp_interp = interpolate.splrep(completeness.mag, completeness.comp, k=1, s=0)
+    comp_for_klf = interpolate.splev(binsKp, Kp_interp)
+    comp_for_klf[comp_for_klf > 1] = 1.0
+    comp_for_klf[comp_for_klf < 0] = 0.0
+
+    klf_comp = klf / comp_for_klf
+    
+    # Determine number of "fake" stars we need to generate in each magnitude bin.
+    # Assign them a random magnitude from that bin.
+    N_to_comp = np.round(klf_comp - klf)
+    print N_to_comp
+
+    #### ACTUALLY IGNORING INCOMPLETENESS AS IT DOESN'T EFFECT ANYTHING ####
+
+
+    # Plot the KLF.
+    py.clf()
+    py.plot(binsKp, klf, drawstyle='steps-mid', label='Incomplete')
+    py.plot(binsKp, klf_comp, drawstyle='steps-mid', label='Complete')
+    py.legend(loc='upper left')
+    py.xlabel('Kp Magnitude')
+    py.ylabel('Number of Stars')
+
+    ##########
+    # Generate masses for each star.
+    ##########
+    imfSlope = fitAlpha
+    Mcl = fitMcl
+    logAge = fitLogAge
+    distance = fitDist
+    AKs = theAKs
+    filterName = 'Kp'
+
+    iso = b.model_young_cluster(logAge=logAge, imfSlope=imfSlope,
+                                clusterMass=1e6, makeMultiples=True)
+                                
+    iso.mag = iso.mag + 5.0 * np.log10(float(distance) / 8000)
+
+    idx = np.where(iso.isWR == False)
+    iso.mass = iso.mass[idx]
+    iso.Teff = iso.Teff[idx]
+    iso.isWR = iso.isWR[idx]
+    iso.mag = iso.mag[idx]
+    iso.isMultiple = iso.isMultiple[idx]
+
+    # For each star, Monte Carlo the Kp magnitude and generate a mass PDF.
+    # Save these off as useful information.
+    numMC = 100
+
+    all_kp = np.zeros((len(noWR), numMC), dtype=float)
+    all_m = np.zeros((len(noWR), numMC), dtype=float)
+    all_isMulti = np.zeros((len(noWR), numMC), dtype=bool)
+
+    for ss in range(len(noWR)):
+        print 'Monte Carlo for star %d' % ss
+        sdx = noWR[ss]
+        all_kp[ss,:] = scipy.stats.norm.rvs(size=numMC, loc=d.kp_ext[sdx], scale=d.kp_err[sdx])
+
+        for ii in range(numMC):
+            dk = np.abs(all_kp[ss,ii] - iso.mag)
+            idx = dk.argmin()
+
+            if dk[idx] > 0.1:
+                print 'Bad Mass match for this magnitude: ', all_kp[ss,ii], iso.mag[idx]
+
+            all_m[ss, ii] = iso.mass[idx]
+            all_isMulti[ss, ii] = iso.isMultiple[idx]
+
+    _out = open(workDir + 'best_fit_mass_pdfs.dat', 'w')
+    pickle.dump(all_kp, _out)
+    pickle.dump(all_m, _out)
+    pickle.dump(all_isMulti, _out)
+    pickle.dump(iso, _out)
+    pickle.dump(d, _out)
+    _out.close()
+
+    return
+
+def plot_masses_in_imf():
+    """
+    Plot the results form the compute_masses() function.
+    """
+    # Recall that these variables are 2D (starIdx, monteCarloIdx).
+    # We ran 100 MC for each star to sample the Kp + error. Then
+    # used the best fit isochrone to generate a mass PDF.
+    _in = open(workDir + 'best_fit_mass_pdfs.dat', 'r')
+    kp = pickle.load(_in)
+    mass = pickle.load(_in)
+    isMulti = pickle.load(_in)
+    iso = pickle.load(_in)
+    data = pickle.load(_in)
+    _in.close()
+
+    noWR = np.where((data.prob > 0) & (data.isWR == False))[0]
+    
+    weights = np.repeat([data.prob[noWR]], kp.shape[1], axis=0)
+    weights = weights.T
+    
+    bins = np.arange(0.5, 2.0, 0.1)  # in log mass
+    binCenter = bins[:-1] + np.diff(bins)/2.0
+
+    # Make the histogram of the data.
+    (n_all, b, p) = py.hist(np.log10(mass), bins=bins, weights=weights)
+    n_all = np.array(n_all)
+    n = n_all.mean(axis=0)
+    n_err = n_all.std(axis=0)
+
+    # Make the same histogram for simulated cluster. Rescale to line up with
+    # the observations.
+    n_sim, b_sim = np.histogram(np.log10(iso.mass), bins=bins, normed=True)
+
+    idx = n.argmax()
+    n_sim *= n[idx:].sum() / n_sim[idx:].sum()
+
+    py.clf()
+    py.errorbar(binCenter, n, yerr=n_err, drawstyle='steps-mid', label='Observed',
+                linewidth=1.5, color='black')
+    # py.plot(binCenter, n_sim, label='Model', linewidth=1.5, color='red')
+    # py.text(0.9, 21, r'$\alpha$=1.7', color='red', fontsize=18)
+    # py.gca().set_yscale('log')
+    py.xlabel(r'log[ Mass (M$_\odot$) ]')
+    py.ylabel('Number of Stars')
+    py.xlim(1.0, 1.9)
+    py.ylim(0, 20)
+    # py.legend()
+    py.xticks([1.0, 1.2, 1.4, 1.6, 1.8])
+    py.savefig(workDir + 'plots/model_vs_data_mass_function.png')
+    py.savefig(workDir + 'plots/model_vs_data_mass_function.eps')
+    
+    # Also print out the individual masses for the stars.
+    mass_mean = mass.mean(axis=1)
+    mass_std = mass.std(axis=1)
+    print len(mass_mean)
+    print mass.shape
+    sdx = mass_mean.argsort()[::-1]
+
+    for ii in sdx:
+        dii = noWR[ii]
+        print '%-15s  Kp = %5.2f +/- %4.2f   M = %4.1f +/- %3.1f  prob = %.2f' % \
+            (data.name[dii], data.kp_ext[dii], data.kp_err[dii],
+             mass_mean[ii], mass_std[ii], data.prob[dii])
+
+
+def completeness_from_catalog(rmin=0, rmax=30, mmin=8, mmax=15.5):
+    """
+    Calculate both the imaging and spectroscopic completeness in the
+    specified radial and brightness range. This is more time consuming than
+    some of the custom codes above. But it is the most useful for very specific
+    brightness and radii ranges.
+
+    Completeness is calculated using extinction corrected magnitudes.
+
+    All ranges are fully inclusive.
+
+    Output: (image_comp, spec_comp)
+    """
+    # Spectroscopic completeness
+    d = load_all_catalog_by_radius()
+    d.r = np.hypot(d.x, d.y)
+
+    idx = np.where((d.r >= rmin) & (d.r <=rmax) & (d.kp_ext >= mmin) & (d.kp_ext <= mmax))[0]
+    n_total = len(idx)
+    tdx = np.where(d.prob_err[idx] == 0)[0]
+    n_typed = len(tdx)
+
+    if n_total != 0:
+        comp_spec = float(n_typed) / float(n_total)
+    else:
+        comp_spec = np.nan
+
+    print 'r: %4.1f - %4.1f   m: %4.1f - %4.1f  n: %4d out of %4d' % \
+        (rmin, rmax, mmin, mmax, n_typed, n_total)
+
+    # Imaging completeness
+    _planted = open(workDir + 'image_completeness_in_osiris.dat', 'r')
+    x_in = pickle.load(_planted)
+    y_in = pickle.load(_planted)
+    kp_in = pickle.load(_planted)
+    kp_ext_in = pickle.load(_planted)
+    x_out = pickle.load(_planted)
+    y_out = pickle.load(_planted)
+    kp_out = pickle.load(_planted)
+    kp_ext_out = pickle.load(_planted)
+
+    r_in = np.hypot(x_in, y_in)
+
+    idx = np.where((r_in >= rmin) & (r_in <= rmax) & (kp_ext_in >= mmin) & (kp_ext_in <= mmax))[0]
+    n_planted = len(idx)
+    ddx = np.where(np.isnan(kp_ext_out[idx]) == False)[0]
+    n_detected = len(ddx)
+
+    comp_imag = float(n_detected) / float(n_planted)
+
+    return comp_imag, comp_spec
+
+
+
+def plot_completeness_for_tdo():
+    """
+    Make a two-panel plot for completeness vs. Kp and completeness vs. radius.
+    """
+    # Setup plots
+    py.close(1)
+    py.figure(1, figsize=(12, 6))
+    py.clf()
+    py.subplots_adjust(left=0.1)
+
+    ##########
+    # First the plots for completeness vs. Kp
+    ##########
+    magEdges = np.arange(8.5, 16.6, 0.5)
+    rmin = 0
+    rmax = 30
+
+    comp_imag_kp = np.zeros(len(magEdges)-1, dtype=float)
+    comp_spec_kp = np.zeros(len(magEdges)-1, dtype=float)
+
+    for kk in range(len(magEdges)-1):
+        mmin = magEdges[kk]
+        mmax = magEdges[kk+1]
+
+        comp_imag_kp[kk], comp_spec_kp[kk] = completeness_from_catalog(rmin, rmax,
+                                                                       mmin, mmax)
+
+    mags = np.repeat(magEdges, 2)[1:-1]
+    comp_imag_kp = np.repeat(comp_imag_kp, 2)
+    comp_spec_kp = np.repeat(comp_spec_kp, 2)
+
+    py.subplot(1, 2, 1)
+    py.plot(mags, comp_imag_kp, 'b--', label='Imaging', linewidth=2)
+    py.plot(mags, comp_spec_kp, 'g-', label='Spectroscopy', linewidth=2)
+    py.xlabel('Kp Magnitudes')
+    py.ylabel('Completeness')
+    py.ylim(0, 1.05)
+    py.xlim(9, 15.5)
+    py.title(r'%d" $\leq$ R $\leq$ %d"' % (rmin, rmax))
+    py.legend(loc='lower left')
+
+    ##########
+    # Plots for completeness vs. radius
+    ##########
+    radiiEdges = np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 16.0])
+    mmin = 14.5
+    mmax = 15.5
+
+    comp_imag_r = np.zeros(len(radiiEdges)-1, dtype=float)
+    comp_spec_r = np.zeros(len(radiiEdges)-1, dtype=float)
+    
+    for rr in range(len(radiiEdges)-1):
+        rmin = radiiEdges[rr]
+        rmax = radiiEdges[rr+1]
+
+        comp_imag_r[rr], comp_spec_r[rr] = completeness_from_catalog(rmin, rmax,
+                                                                     mmin, mmax)
+
+    radii = np.repeat(radiiEdges, 2)[1:-1]
+    comp_imag_r = np.repeat(comp_imag_r, 2)
+    comp_spec_r = np.repeat(comp_spec_r, 2)
+    
+    py.subplot(1, 2, 2)
+    py.plot(radii, comp_imag_r, 'b--', label='Imaging', linewidth=2)
+    py.plot(radii, comp_spec_r, 'g-', label='Spectroscopy', linewidth=2)
+    py.xlabel('Radius (arcsec)')
+    py.ylabel('Completeness')
+    py.ylim(0, 1.05)
+    py.title(r'%.1f $\leq$ Kp $\leq$ %.1f' % (mmin, mmax))
+
+    py.savefig('%scompleteness_ext_spec_imag_for_tdo.png' % (workDir))
+    py.savefig('%scompleteness_ext_spec_imag_for_tdo.eps' % (workDir))
+
+
+def calc_eccentricity_inner():
+    """
+    Read in Gillessen's paper and calculate the mean eccentricity for stars
+    in the inner 0.03 pc.
+    """
+    filename = '/u/jlu/work/gc/published/gillessen2009_table7.dat'
+    tab = atpy.Table(filename, type='ascii')
+
+    semia = tab.col2
+    ecc = tab.col5
+    eccErr = tab.col7
+
+    idx = np.where(semia <= 0.75)[0]
+
+    print ecc[idx].mean()
+    print np.average(ecc[idx], weights=eccErr[idx])
+
+    return tab
+
+def print_catalog():
+    """
+    Print out the entire catalog of GCOWS sources.
+    """
+    d = load_all_catalog_by_radius(magCut=16.0)
+    _gcows = open('%s/gcows_catalog.txt' % workDir, 'w')
+
+    # Sort the catalog
+    r = np.hypot(d.x, d.y)
+    sdx = r.argsort()
+
+    d.name = d.name[sdx]
+    d.x = d.x[sdx] 
+    d.y = d.y[sdx] 
+    d.kp = d.kp[sdx] 
+    d.kp_ext = d.kp_ext[sdx] 
+    d.kp_err = d.kp_err[sdx] 
+    d.isWR = d.isWR[sdx] 
+    d.prob = d.prob[sdx] 
+    d.prob_err = d.prob_err[sdx]
+    r = r[sdx]
+
+    # Print
+    _gcows.write('# %-11s  %6s  %7s  %7s  %5s  %5s  %5s  %4s  %7s  %7s\n' %
+                 ('Name', 'R(")', 'X(")', 'Y(")', 'Kp_dA', 'eKp', 'Kp',
+                  'isWR', 'P(yng)', 'eP(yng)'))
+    for ii in range(len(d.name)):
+        _gcows.write('%-13s  %6.3f  %7.3f  %7.3f  ' %
+                     (str.upper(d.name[ii]), r[ii], d.x[ii], d.y[ii]))
+        _gcows.write('%5.2f  %5.2f  %5.2f  ' %
+                     (d.kp_ext[ii], d.kp_err[ii], d.kp[ii]))
+        _gcows.write('%4d  %7.3f  %7.3f\n' %
+                     (d.isWR[ii], d.prob[ii], d.prob_err[ii]))
+
+    _gcows.close()
+
+    # Do a quick comparison with Tuan's tables.
+    old = atpy.Table('/u/jlu/doc/papers/gcows_paper/old_stars_table.tex',
+                     type='ascii', delimiter='&', data_start=0)
+    yng = atpy.Table('/u/jlu/doc/papers/gcows_paper/young_stars_table.tex',
+                     type='ascii', delimiter='&', data_start=0)
+    unk = atpy.Table('/u/jlu/doc/papers/gcows_paper/unknownSimTable.tex',
+                     type='ascii', delimiter='&', data_start=0)
+
+    names = np.concatenate([old.col1, yng.col1, unk.col1])
+    print '%d in Do list, %d in Lu list' % (len(names), len(d.name))
+
+    odx = np.where((d.prob_err == 0) & (d.prob == 0))[0]
+    ydx = np.where((d.prob_err == 0) & (d.prob == 1))[0]
+    udx = np.where((d.prob_err > 0))[0]
+
+    print len(odx), len(ydx), len(udx)
+    print len(old.col1), len(yng.col1), len(unk.col1)
+
+    py.clf()
+    py.plot(d.x[odx], d.y[odx], 'rx', ms=10)
+    py.plot(old.col3, old.col4, 'r+', ms=10)
+    py.plot(d.x[ydx], d.y[ydx], 'bx', ms=10)
+    py.plot(yng.col3, yng.col4, 'b+', ms=10)
+    py.plot(d.x[udx], d.y[udx], 'gx', ms=10)
+    py.plot(unk.col3, unk.col4, 'g+', ms=10)
+    py.axis('equal')
+
+    # Loop through and figure out why Tuan's list is so much longer.
+    print ''
+    print 'OLD: In Do not in Lu'
+    for ii in range(len(old.col1)):
+        if old.col1[ii] not in d.name:
+            print old[ii]
+
+    print ''
+    print 'YNG: In Do not in Lu'
+    for ii in range(len(yng.col1)):
+        if yng.col1[ii] not in d.name:
+            print yng[ii]
+
+    print ''
+    print 'UNK: In Do not in Lu'
+    for ii in range(len(unk.col1)):
+        if unk.col1[ii] not in d.name:
+            print unk[ii]
+
+    print ''
+    print 'ALL: In Lu not in Do'
+    for ii in range(len(d.name)):
+        if (d.name[ii] not in names) and (str.upper(d.name[ii]) not in names):
+            print d.name[ii], d.kp_ext[ii], d.kp[ii], d.x[ii], d.y[ii], d.prob[ii], d.prob_err[ii]
+
+
+def sim_age_monte_carlo():
+    """
+    I ran a Monte Carlo of 10 simulated clusters, all with the same parameters. I want
+    to see if the input age is recovered in all the simulations and at what probability
+    in the 1D marginalized PDFs.
+    """
+    outRoot = workDir + 'multinest/' + \
+        'fit_single_sim_t6.60_AKs2.7_d8000_a1.70_m10000_o1500_single_v'
+
+    outIdx = np.arange(1, 10+1)
+
+    # Load up the simulation results
+    from jlu.gc.imf import multinest
+
+    # Set age bins (in Myr)
+    bins = np.arange(1.5, 10, 0.2)
+    binSize = bins[1] - bins[0]
+
+    # Find the bin that will contain 3.98 Myr (log(t) = 6.60)
+    ageIdx = np.where((bins - 3.98) <= 0)[0][-1]
+
+    from mpl_toolkits.axes_grid1 import AxesGrid
+
+    py.close(1)
+    fig = py.figure(1, figsize=(8,12))
+    py.clf()
+    grid = AxesGrid(fig, [0.1, 0.07, 0.85, 0.9], aspect=False,
+                    nrows_ncols=(5, 2), axes_pad=0, share_all=True)
+    grid[0].set_ylim(0, 1.51)
+    grid[0].set_xlim(1, 10.1)
+    grid[8].set_xlabel('Age (Myr)', fontsize=20)
+    grid[9].set_xlabel('Age (Myr)', fontsize=20)
+    grid[0].set_ylabel('PDF')
+    grid[2].set_ylabel('PDF')
+    grid[4].set_ylabel('PDF')
+    grid[6].set_ylabel('PDF')
+    grid[8].set_ylabel('PDF')
+    grid[0].set_yticks([0, 0.5, 1.0])
+    grid[8].tick_params(axis='x', which='major', labelsize=20)
+    grid[9].tick_params(axis='x', which='major', labelsize=20)
+    
+    for ii in range(len(outIdx)):
+        fit = multinest.load_results(outRoot + str(outIdx[ii]) + '/')
+        fit.age = 10**(fit.logAge - 6.0)
+
+        
+        n, bins, patch = grid[ii].hist(fit.age, normed=True, histtype='step', linewidth=1.5,
+                                       weights=fit.weights, bins=bins, color='black',)
+
+        # Sort the bins from highest probability to lowest probability
+        sdx = n.argsort()[::-1]
+
+        # Find the point when we reach the true input age
+        idx = np.where(sdx == ageIdx)[0]
+
+        grid[ii].axvline(bins[ageIdx] + binSize/2.0, color='red', linestyle='-',
+                         linewidth=2)
+
+        confidence = n[sdx[0:idx]].sum() * binSize
+
+        # Sum up all the probability until you reach the true input age and
+        # see at what confidence the true age is found.
+        print 'Confidence that age = 4 Myr: %.3f' % \
+            (confidence)
+
+        grid[ii].text(8.5, 1.3, '%2d%%' % (confidence*100))
+
+        # print 'Maximum probability peak: %.3f' % \
+        #     (n.max())
+
+    outRoot = '{0}plots/sim_age_monte_carlo'.format(workDir)
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = 'convert {0}.png -colorspace gray {0}.eps'.format(outRoot)
+    os.system(convert)
+
+def plot_model_vs_data_MC_for_paper():
+    """
+    Plot the final KLF observed vs. model comparison plot that goes into the paper.
+    """
+    age = fitAge
+    logAge = fitLogAge
+    alpha = fitAlpha
+    Mcl = fitMcl
+    distance = fitDist
+    AKs = theAKs
+
+    numMC = 100
+
+    from jlu.gc.imf import bayesian as b
+
+    binsKp = klf_mag_bins
+    binSize = binsKp[1] - binsKp[0]
+    binEdges = binsKp - binSize/2.0
+    binEdges = np.append(binEdges, binsKp[-1] + binSize/2.0)
+
+    yngData = load_yng_data_by_radius(magCut=15.5, trimWR=True)
+
+    py.close(1)
+    py.figure(1)
+    py.clf()
+
+    # Plot simulated data
+    colorSim = 'red'
+    colorObs = 'black'
+
+    klfSim = np.zeros((numMC, len(binEdges)-1), dtype=int)
+    nWRSim = np.zeros(numMC, dtype=int)
+
+    for i in range(numMC):
+        if i == 0:
+            legLabel = 'Sim'
+        else:
+            legLabel = None
+            
+        c1 = b.model_young_cluster(logAge, AKs=AKs, distance=8000,
+                                   imfSlope=alpha, clusterMass=Mcl,
+                                   makeMultiples=True)
+
+        c1.mag_noWR += 5.0 * np.log10(distance / 8000.0)
+        o1 = b.sim_to_obs_klf(c1, magCut=15.5, withErrors=False, yng_orig=yngData)
+
+        (n, foo1, foo2) = py.hist(o1.kp, bins=binEdges, histtype='step', color=colorSim,
+                                  label=legLabel, linewidth=2, alpha=0.2)
+        klfSim[i,:] = n
+        nWRSim[i] = o1.N_WR
+        py.plot([8.5], o1.N_WR, 'bx', color=colorSim, ms=10)
+
+    klf_mean = np.median(klfSim, axis=0)
+    klf_std = klfSim.std(axis=0)
+    nWR_mean = np.median(nWRSim)
+    nWR_std = nWRSim.std()
+
+    py.clf()
+    py.errorbar(binsKp, klf_mean, yerr=klf_std, drawstyle='steps-mid', label='Model',
+                linewidth=2.0, color=colorSim)
+    py.errorbar([9.0], [nWR_mean], yerr=[nWR_std], fmt='ks', color=colorSim, ms=8)
+
+    # Plot observed data
+    (n, b, p) = py.hist(yngData.kp, bins=binEdges, histtype='step', color=colorObs,
+                        label='Obs', linewidth=2, weights=yngData.prob)
+    py.plot([9.0], yngData.N_WR, 'ko', color=colorObs, ms=8)
+    py.legend(loc='upper left')
+
+    py.xlim(8.5, 15.5)
+    py.ylim((0, 45))
+    py.xlabel('Kp Magnitude')
+    py.ylabel('Number of Stars')
+
+    outFile = workDir + 'plots/klf_model_vs_data_MC_multi_for_paper'
+    py.savefig(outFile + '.png')
+    tmp = 'convert %s.png %s_color.eps' % (outFile, outFile)
+    subprocess.call(tmp, shell=True)
+    tmp = 'convert %s.png -colorspace Gray %s.eps' % (outFile, outFile)
+    subprocess.call(tmp, shell=True)
+
+def plot_klf_with_tmt():
+    """
+    Plot up a simulated KLF for the young star cluster at the Galactic Center
+    and show spectroscopic and photometric detections today with Keck and in the
+    future with TMT.
+    """
+
+    from jlu.gc.imf import bayesian as b
+    
+    # Use our best fit IMF for 0.5 - 150 Msun
+    # Use Weidner_Kroupa_2004 IMF between 0.1 - 0.5 Msun
+    #     Stop at 0.1 Msun as we don't have evolution models below that mass.
+    massLimits = np.array([0.1, 0.5, 150])
+    powers = np.array([-1.3, -fitAlpha])
+
+    Mcl1 = 3.4e4
+    Mcl2 = 3.0e4
+
+    cluster1 = b.model_young_cluster_new(fitLogAge, massLimits=massLimits, imfSlopes=powers,
+                                         clusterMass=Mcl1, makeMultiples=True,
+                                         AKs=theAKs, distance=distance)
+    cluster2 = b.model_young_cluster_new(fitLogAge, massLimits=massLimits, imfSlopes=powers,
+                                         clusterMass=Mcl2, makeMultiples=False,
+                                         AKs=theAKs, distance=distance)
+
+    Mcl1_1_150 = cluster1.systemMasses[cluster1.mass >= 1].sum()
+    Mcl2_1_150 = cluster2.systemMasses[cluster2.mass >= 1].sum()
+    Mcl1_01_1 = cluster1.systemMasses[cluster1.mass < 1].sum()
+    Mcl2_01_1 = cluster2.systemMasses[cluster2.mass < 1].sum()
+
+    print 'Cluster with multiples:'
+    print '     Total Cluster Mass = %d' % Mcl1
+    print '    Mass [1 - 150] Msun = %d' % Mcl1_1_150
+    print '    Mass [0.1 - 1] Msun = %d' % Mcl1_01_1
+    print 'Cluster with singles:'
+    print '     Total Cluster Mass = %d' % Mcl2
+    print '    Mass [1 - 150] Msun = %d' % Mcl2_1_150
+    print '    Mass [0.1 - 1] Msun = %d' % Mcl2_01_1
+
+    # Assign arbitrary magnitudes for WR stars. Uniformly distributed from Kp=9-11
+    idx = np.where(cluster1.isWR == True)[0]
+    cluster1.mag[idx] = 9.0 + (np.random.rand(len(idx))*2)
+    idx = np.where(cluster2.isWR == True)[0]
+    cluster2.mag[idx] = 9.0 + (np.random.rand(len(idx))*2)
+
+    # Plot the mass luminosity relationship
+    py.clf()
+    py.semilogy(cluster1.mag, cluster1.mass, 'k.', ms=2, label="Multiples")
+    py.semilogy(cluster2.mag, cluster2.mass, 'b.', ms=2, label='Single')
+    py.xlabel('Kp Magnitude')
+    py.ylabel('Stellar Mass (Msun)')
+    py.savefig(workDir + 'plots/tmt_mass_luminosity.png')
+
+    kbins = np.arange(9.0, 24, 0.5)
+
+    # Plot the KLF
+    py.clf()
+    py.hist(cluster1.mag, bins=kbins, histtype='step', linewidth=2, label='Multiples')
+    # py.hist(cluster2.mag, bins=kbins, histtype='step', linewidth=2, label='Singles')
+    py.gca().set_yscale('log')
+    py.xlabel('Kp Magnitude')
+    py.ylabel('Number of Stars')
+    # py.legend(loc='upper left')
+    py.title('Galactic Center Young Cluster')
+    py.xlim(9, 22)
+    py.ylim(1, 1e4)
+    rng = py.axis()
+
+    py.axvline(15.5, color='black', linestyle='--', linewidth=2)
+    py.text(15.6, 6e3, r'13 M$_\odot$', horizontalalignment='center')
+    ar1 = FancyArrow(15.5, 1e3, -1, 0, width=1e2, color='black', head_length=0.3)
+    py.gca().add_patch(ar1)
+    py.text(15.3, 7e2, 'Keck\nSpectra', horizontalalignment='right', verticalalignment='top')
+
+
+    py.axvline(21, color='black', linestyle='-', linewidth=2)
+    py.text(21.0, 6e3, r'0.4 M$_\odot$', horizontalalignment='center')
+    ar1 = FancyArrow(21, 4e3, -1, 0, width=4e2, color='black', head_length=0.3)
+    py.gca().add_patch(ar1)
+    py.text(20.8, 3e3, 'TMT\nSpectra', horizontalalignment='right', verticalalignment='top')
+
+    ar1 = FancyArrow(17.8, 10, 0, 13, width=0.1, color='blue', head_length=10)
+    py.gca().add_patch(ar1)
+    py.text(18, 9, 'Pre-MS\nTurn-On', color='blue',
+            horizontalalignment='center', verticalalignment='top')
+
+
+    outRoot = '{0}plots/tmt_klf_spectral_sensitivity'.format(workDir)
+    py.savefig('{0}.png'.format(outRoot))
+    py.savefig('{0}_color.eps'.format(outRoot))
+    convert = 'convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
+    os.system(convert)
+    
+    
+def plot_imf_vs_salpeter():
+    """
+    Plot the results form the compute_masses() function.
+    Overplot a Salpeter mass function to compare.
+    """
+    # Recall that these variables are 2D (starIdx, monteCarloIdx).
+    # We ran 100 MC for each star to sample the Kp + error. Then
+    # used the best fit isochrone to generate a mass PDF.
+    _in = open(workDir + 'best_fit_mass_pdfs.dat', 'r')
+    kp = pickle.load(_in)
+    mass = pickle.load(_in)
+    isMulti = pickle.load(_in)
+    iso = pickle.load(_in)
+    data = pickle.load(_in)
+    _in.close()
+
+    noWR = np.where((data.prob > 0) & (data.isWR == False))[0]
+    
+    weights = np.repeat([data.prob[noWR]], kp.shape[1], axis=0)
+    weights = weights.T
+    
+    bins = np.arange(0.5, 2.0, 0.1)  # in log mass
+    binCenter = bins[:-1] + np.diff(bins)/2.0
+
+    # Make the histogram of the data.
+    (n_all, b, p) = py.hist(np.log10(mass), bins=bins, weights=weights)
+    n_all = np.array(n_all)
+    n = n_all.mean(axis=0)
+    n_err = n_all.std(axis=0)
+
+    # Make the same histogram for simulated cluster. Rescale to line up with
+    # the observations.
+    n_sim, b_sim = np.histogram(np.log10(iso.mass), bins=bins, normed=True)
+
+    idx = n.argmax()
+    n_sim *= n[idx:].sum() / n_sim[idx:].sum()
+
+    # Make a Salpeter comparison version.
+    salpeter = (10**binCenter)**(1.0 - 2.35)
+    salpeter *= n[-4] / salpeter[-4]
+
+    py.clf()
+    py.errorbar(10**binCenter, n, yerr=n_err, drawstyle='steps-mid', label='Observed',
+                linewidth=1.5, color='black')
+    py.loglog(10**binCenter, salpeter, 'r--')
+    py.xlabel(r'Mass (M$_\odot$)')
+    py.ylabel('Number of Stars')
+    py.xlim(10, 100)
+    py.ylim(1, 50)
+    # py.legend()
+    py.xticks([10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
+    py.savefig(workDir + 'plots/model_vs_data_mass_function_salpeter.png')
+
+
+def plot_isochrones():
+    """
+    Examine the possible age range for stars at r < 0.8" by looking at the
+    set of stars with T > 6000 and Kp < 15.5.
+    """
+
+    ages = np.array([2, 4, 6, 8, 10, 15, 20, 25, 30, 40, 50], dtype=float)
+    ages *= 1.0e6
+    logAges = np.log10(ages)
+
+    py.figure(1)
+    py.clf()
+
+    py.figure(2)
+    py.clf()
+    
+    for aa in range(len(ages)):
+        iso = load_isochrone(logAge=logAges[aa])
+
+        idx = np.where(iso.isWR == False)[0]
+
+        # Kp vs. Teff
+        py.figure(1)
+        # py.scatter(np.log10(iso.T[idx]), iso.mag[idx], c=iso.M[idx],
+        #           s=10, vmin=0.1, vmax=50,
+        py.scatter(np.log10(iso.T[idx]), iso.mag[idx], c=iso.logg[idx],
+                  s=10, vmin=3.0, vmax=4.5,
+                  cmap=py.cm.spectral_r, edgecolor='none')
+        py.plot(np.log10(iso.T[idx]), iso.mag[idx], 'k-', color='gray', alpha=0.5)
+
+        # L vs. Teff
+        py.figure(2)
+        # py.scatter(np.log10(iso.T), iso.logL, c=iso.M,
+        #           s=10, vmin=0.1, vmax=50,
+        py.scatter(np.log10(iso.T), iso.logL, c=iso.logg,
+                  s=10, vmin=3.0, vmax=4.5,
+                  cmap=py.cm.spectral_r, edgecolor='none')
+        py.plot(np.log10(iso.T), iso.logL, 'k-', color='gray', alpha=0.5)
+
+    #####
+    # Kp vs. Teff
+    #####
+    py.figure(1)
+    
+    # Make a shaded region where we observe things
+    xobs = np.log10( np.array([1e5, 1e4, 1e4, 1e5]) )
+    yobs = np.array([15.5, 15.5, 5, 5])
+
+    # py.fill(xobs, yobs, 'gray', alpha=0.1)
+    cbar = py.colorbar()
+    py.gca().invert_xaxis()
+    py.gca().invert_yaxis()
+
+    py.xlim(np.log10(50000), np.log10(3000))
+    py.ylim(15.5, 6)
+
+    # Plot some of the known stars.
+    # S0-2
+    s02_Tlo = 19000
+    s02_Thi = 30000
+    s02_Teff_log = np.log10(s02_Tlo + (s02_Thi - s02_Tlo) / 2.0)
+    s02_Tlo_err_log = s02_Teff_log - np.log10(s02_Tlo)
+    s02_Thi_err_log = np.log10(s02_Thi) - s02_Teff_log
+    s02_Teff_err_log = [[s02_Tlo_err_log],[s02_Thi_err_log]]
+    py.errorbar([s02_Teff_log], [14.39], xerr=s02_Teff_err_log, yerr=[0.07])
+
+    py.xlabel(r'log T$_{eff}$ (K)')
+    py.ylabel("Kp Magnitude (A$_{Ks}$ = 2.7)")
+    cbar.set_label(r'Mass (M$_\odot$)')
+
+    py.savefig(workDir + 'plots/hr_kp.png')
+
+
+    #####
+    # L vs. Teff
+    #####
+    py.figure(2)
+    cbar = py.colorbar()
+    py.gca().invert_xaxis()
+
+    py.xlim(np.log10(50000), np.log10(3000))
+    py.ylim(2.5, 6.5)
+
+    py.xlabel(r'log T$_{eff}$ (K)')
+    py.ylabel(r'log (L/L$_\odot$)')
+    cbar.set_label(r'Mass (M$_\odot$)')
+    
+    
+    #####
+    # Zoom in and plot all the non-WR stars magnitudes (no Teff info).
+    #####
+    py.figure(3, figsize=(8, 6))
+    py.clf()
+    py.subplots_adjust(left=0.11)
+    axCenter = py.subplot(111)
+
+    cmap = py.get_cmap('spectral')
+    cNorm = matplotlib.colors.Normalize(vmin=0, vmax=len(ages))
+    scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+
+    legPosX = [4.65, 4.56, 4.4, 4.37, 4.355, 4.32, 4.29, 4.26, 4.23, 4.2, 4.18]
+    legPosY = [11.0, 11.3, 11.0, 11.65, 12.2, 12.9, 13.3, 13.7, 14.0, 14.4, 14.8]
+    
+    for aa in range(len(ages)):
+        iso = load_isochrone(logAge=logAges[aa])
+
+        idx = np.where(iso.isWR == False)[0]
+
+        legLabel = '%d Myr' % (ages[aa]/1e6)
+        color = scalarMap.to_rgba(aa)
+
+        # Kp vs. Teff
+        py.plot(np.log10(iso.T[idx]), iso.mag[idx], 'k.',
+                color=color, ms=3, label=legLabel)
+        #py.plot(np.log10(iso.T[idx]), iso.mag[idx], 'k-', color='gray', alpha=0.5)
+
+        py.text(legPosX[aa], legPosY[aa], legLabel, color=color)
+
+    py.gca().invert_xaxis()
+    py.gca().invert_yaxis()
+    py.xlabel(r'log T$_{eff}$ (K)')
+    py.ylabel(r'Kp Magnitude (A$_{Ks}$ = 2.7)')
+    #py.legend(numpoints=1, ncol=3)
+    py.title('Model Isochrones')
+
+    # Make left and top panels.
+    divider = make_axes_locatable(axCenter)
+    axHist = divider.append_axes('right', size=1.5, pad=0.1, sharey=axCenter)
+
+    axCenter.set_xlim(np.log10(50000), np.log10(10000))
+    axCenter.set_ylim(15.5, 8.5)
+
+    # Make the histogram
+    d = load_klf_by_radius()
+    binHalf = (d.Kp[1] - d.Kp[0]) / 2.0
+
+    xvals = np.zeros(len(d.Kp) * 2)
+    yvals = np.zeros(len(d.Kp) * 2)
+    for ii in range(len(d.Kp)):
+        xvals[ii*2] = d.KLF_ext_cmp_sp_im_noWR[ii]
+        xvals[ii*2+1] = d.KLF_ext_cmp_sp_im_noWR[ii]
+        yvals[ii*2] = d.Kp[ii] - binHalf
+        yvals[ii*2+1] = d.Kp[ii] + binHalf
+    
+    axHist.plot(xvals, yvals)
+    py.setp(axHist.get_yticklabels(), visible=False)
+    axHist.set_xticklabels([])
+    axHist.set_xlim(0, 0.4)
+    axHist.set_title('Observed')
+
+    # py.savefig(workDir + 'plots/hr_kp.png')
+
+
+def nstasr_vs_age_mass():
+    """
+    Plot up the number of stars as function of age and total cluster mass
+    to explain why the best fit solutions for flatter IMF slopes have higher
+    over all cluster masses. I think this is because it is a correlation with
+    the age of the cluster.
+    """
+    from jlu.imf import imf
+
+    alpha = np.arange(0.75, 2.5, 0.25)
+    clMass = np.arange(5000, 25000, 2500.)
+    maxMass = np.arange(20, 150, 5.0)  # this is a proxy for the cluster's age.
+    minMass = 7.0  # Assume that the minimum observable mass is 8 Msun
+
+    nstars = np.zeros((len(alpha), len(clMass), len(maxMass)), dtype=float)
+    alpha3d = np.zeros((len(alpha), len(clMass), len(maxMass)), dtype=float)
+    clMass3d = np.zeros((len(alpha), len(clMass), len(maxMass)), dtype=float)
+    maxMass3d = np.zeros((len(alpha), len(clMass), len(maxMass)), dtype=float)
+
+    imf_mass_range = np.array([1.0, 150.0])
+
+    for a in range(len(alpha)):
+        f = imf.IMF_broken_powerlaw(imf_mass_range, np.array([alpha[a]]))
+        
+        for c in range(len(clMass)):
+            f.imf_norm_cl(clMass[c])
+
+            for m in range(len(maxMass)):
+                nstars[a, c, m] = f.imf_int_xi(minMass, maxMass[m])
+                alpha3d[a, c, m] = alpha[a]
+                clMass3d[a, c, m] = clMass[c]
+                maxMass3d[a, c, m] = maxMass[m]
+
+    idx = np.where((nstars > 70) & (nstars < 85))
+    py.clf()
+    py.scatter(maxMass3d[idx], clMass3d[idx], c=alpha3d[idx], edgecolors='none')
+    cbar = py.colorbar()
+    cbar.set_label('IMF slope')
+    py.xlabel('Maximum Stellar Mass (age proxy)')
+    py.ylabel('Total Cluster Mass (Msun)')
+    py.axvspan(130, 140, color='grey', alpha=0.3)
+    py.axvspan(80, 90, color='grey', alpha=0.3)
+    py.savefig(workDir + 'plots/nstars_vs_age_mass.png')
+    
+                
     
     

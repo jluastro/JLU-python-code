@@ -454,27 +454,27 @@ def test_merged_isochrones(logAge):
 
     # Plot all isochrones
     py.clf()
-    py.plot(iso.logT, iso.logL, 'k-', label='Merged')
-    py.plot(mm.logT, mm.logL, 'b-', label='Geneva (v=300 km/s)')
-    py.plot(geneva.logT, geneva.logL, 'g-', label='Geneva (v=0 km/s)')
-    py.plot(siess.logT, siess.logL, 'r-', label='Siess+ 2000')
-    py.plot(padova.logT, padova.logL, 'y-', label='Padova')
+    py.plot(iso.logT, iso.logL, 'k-', color='orange', label='Interpolated', linewidth=1.5)
+    py.plot(mm.logT, mm.logL, 'b-', label='Geneva (v=300 km/s)', linewidth=1.5)
+    py.plot(geneva.logT, geneva.logL, 'g-', label='Geneva (v=0 km/s)', linewidth=1.5)
+    py.plot(siess.logT, siess.logL, 'r-', label='Siess+ 2000', linewidth=1.5)
+    #py.plot(padova.logT, padova.logL, 'y-', label='Padova', linewidth=1.5)
 
     # Print out intersection points
-    py.plot([siess.logT[siessHighIdx]], [siess.logL[siessHighIdx]], 'r*', ms=10)
-    py.plot([mm.logT[mmLowIdx]], [mm.logL[mmLowIdx]], 'b*', ms=10)
-    py.plot([geneva.logT[genevaLowIdx]], [geneva.logL[genevaLowIdx]], 'g*', ms=10)
+    py.plot([geneva.logT[genevaLowIdx]], [geneva.logL[genevaLowIdx]], 'gs', ms=7)
     py.plot([geneva.logT[genevaHighIdx]], [geneva.logL[genevaHighIdx]], 'g*', ms=10)
-    py.plot([padova.logT[padovaLowIdx]], [padova.logL[padovaLowIdx]], 'y*', ms=10)
+    py.plot([siess.logT[siessHighIdx]], [siess.logL[siessHighIdx]], 'rs', ms=7)
+    py.plot([mm.logT[mmLowIdx]], [mm.logL[mmLowIdx]], 'b*', ms=10)
+    #py.plot([padova.logT[padovaLowIdx]], [padova.logL[padovaLowIdx]], 'y*', ms=10)
 
     rng = py.axis()
     py.xlim(rng[1], rng[0])
     py.legend(numpoints=1, loc='lower left')
-    py.xlabel('log[ Teff ]')
-    py.ylabel('log[ L ]')
+    py.xlabel('log Teff')
+    py.ylabel('log L')
 
     py.savefig('/u/jlu/work/models/test/merged_iso_%.2f.png' % logAge)
-    #py.savefig('/u/jlu/work/models/test/merged_iso_%.2f.eps' % logAge)
+    py.savefig('/u/jlu/work/models/test/merged_iso_%.2f.eps' % logAge)
 
     # Print out information about the intersection points
     print '##########'

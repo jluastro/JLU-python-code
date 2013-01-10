@@ -81,7 +81,7 @@ def sample_imf(massLimits, imfSlopes, totalMass,
 
             # Determine the multiplicity of every star
             MF, CSF = binary_properties(newMasses, MFamp=multiMFamp, MFindex=multiMFindex,
-                                        CSFamp=multiCSFamp, CSFindex=multiCSFindex)
+                                        CSFamp=multiCSFamp, CSFindex=multiCSFindex, CSFmax=multiCSFmax)
             newIsMultiple = np.random.rand(newStarCount) < MF
             newSystemMasses = newMasses.copy()
         
@@ -664,7 +664,7 @@ def inv_error(x):
         return -y
     
 def binary_properties(mass, MFamp=defaultMFamp, MFindex=defaultMFindex,
-                      CSFamp=defaultCSFamp, CSFindex=defaultCSFindex):
+                      CSFamp=defaultCSFamp, CSFindex=defaultCSFindex, CSFmax=defaultCSFmax):
     """
     Given a star's mass, determine the probability that the star is in a
     multiple system (multiplicity fraction = MF) and its average number of

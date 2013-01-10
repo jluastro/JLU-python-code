@@ -402,3 +402,103 @@ def properMotions(galacticLat, distance, clusterName):
     outfile = plotDir + 'hst_clusterPropMot_%s' % clusterName
     py.savefig(outfile + '.png')
     py.savefig(outfile + '.eps')
+
+
+def spiral_dither_pattern(numSteps, stepSize, angle, x0=0, y0=0):
+    """
+    Plot up the positions in coordinates and pixel phase space of a spiral
+    dither pattern. This is useful for checking for adequate pixel phase coverage.
+
+    numSteps -
+
+    stepSize - step size in arcsec as given in the APT
+
+    angle - angle in degrees.
+
+    """
+    spiral_dx = np.array([ 0,  1,  1,  0, -1,
+                          -1, -1,  0,  1,  2,
+                           2,  2,  2,  1,  0,
+                          -1, -2, -2, -2, -2,
+                          -2, -1,  0,  1,  2], dtype=float)
+
+    spiral_dy = np.array([ 0,  0,  1,  1,  1,
+                           0, -1, -1, -1, -1,
+                           0,  1,  2,  2,  2,
+                           2,  2,  1,  0, -1,
+                          -2, -2, -2, -2, -2], dtype=float)
+
+    xscale = 0.136
+    yscale = 0.121
+
+    spiral_dx = spiral_dx[:numSteps]
+    spiral_dy = spiral_dy[:numSteps]
+
+    cosa = math.cos(math.radians(angle))
+    sina = math.sin(math.radians(angle))
+
+    x = spiral_dx * cosa + spiral_dy * sina
+    y = -spiral_dx * sina + spiral_dy * cosa
+
+    x *= stepSize
+    y *= stepSize
+
+    xPixPhase = (x/xscale) % 1.0
+    yPixPhase = (y/yscale) % 1.0
+
+    for i in range(numSteps):
+        fmt = 'Position {0:2d}:  X = {1:7.3f}  Y = {2:7.3f}'
+        print fmt.format(i+1, x0 + x[i], y0 + y[i])
+
+    py.figure(1)
+    py.clf()
+    py.plot(x, y, 'ko-')
+    py.xlabel('X Offset (arcsec)')
+    py.ylabel('Y Offset (arcsec)')
+    py.axis('equal')
+
+    py.figure(2)
+    py.clf()
+    py.plot(x/xscale, y/yscale, 'ks-')
+    py.xlabel('X Offset (pixels)')
+    py.ylabel('Y Offset (pixels)')
+    py.axis('equal')
+
+    py.figure(3)
+    py.clf()
+    py.plot(xPixPhase, yPixPhase, 'ko')
+    py.xlabel('X Pixel Phase')
+    py.ylabel('Y Pixel Phase')
+    py.plot([0, 0, 1, 1, 0], [0, 1, 1, 0, 0], 'k--')
+    py.xlim(-0.05, 1.05)
+    py.ylim(-0.05, 1.05)
+
+
+def mosaic_subarray():
+    """
+    Calculate offsets for the WFC3-IR sub-array mosaic.
+    """
+    # Center positions of the 2 x 2 full-array mosaic
+    x_mos4 = np.array([-55.0,  55.0, -55.0,  55.0])
+    y_mos4 = np.array([ 55.0,  55.0, -55.0, -55.0])
+
+    x_fov = 123.0
+    y_fov = 136.0
+
+    dx_mos8 = np.array([-x_fov/4.0,  x_fov/4.0, -x_fov/4.0,  x_fov/4.0])
+    dy_mos8 = np.array([ y_fov/4.0,  y_fov/4.0, -y_fov/4.0, -y_fov/4.0])
+
+    for ii in range(len(x_mos4)):
+        print 'Positions for sub-array images covering pointing %d at [%5.1f, %5.1f]' % \
+            (ii, x_mos4[ii], y_mos4[ii])
+
+        dx = x_mos4[ii] + dx_mos8
+        dy = y_mos4[ii] + dy_mos8
+
+        for jj in range(len(dx)):
+            print 'Offsets for pos %d, sub pos %d:  %6.1f  %6.1f' % \
+                (ii, jj, dx[jj], dy[jj])
+    
+
+
+    

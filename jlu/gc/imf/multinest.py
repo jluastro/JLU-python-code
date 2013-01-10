@@ -142,6 +142,7 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
 
     # Load up the data arrays.
     if data == None:
+        # WRONG WRONG WRONG 
         data = lu_gc_imf.load_all_catalog_by_radius(rmin, rmax, magCut=magCut)
         data_file = 'Observed Data'
     elif type(data) == str:
@@ -805,7 +806,7 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
     #num_dims = 8
     num_dims = 5
     num_params = 19
-    ev_tol = 0.7
+    ev_tol = 0.3
     samp_eff = 0.8
     n_clust_param = 4
 

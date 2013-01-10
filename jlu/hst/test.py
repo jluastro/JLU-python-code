@@ -3,6 +3,8 @@ import pylab as py
 import atpy
 from jlu.hst import starlists
 from jlu.util import statsIter
+from jlu.util import transforms
+from matplotlib import transforms as mplTrans
 import math
 
 
@@ -17,7 +19,7 @@ def matchup_ks2_pass1(ks2Root, ks2FilterIdx, matchupFile):
     """
 
     # Load the KS2 star list
-    ks2 = atpy.Table(ks2Root + '.XYVIQ1.fits')
+    ks2 = atpy.Table(ks2Root + '.FIND_AVG_UV1_F.fits')
     suffix = '_%d' % ks2FilterIdx
 
     # Trim down the KS2 list to just stuff well-measured in the filter of interest.
@@ -65,12 +67,14 @@ def matchup_ks2_pass1(ks2Root, ks2FilterIdx, matchupFile):
     stars.add_column('xe_pass1', pass1['xe'][in_p1])
     stars.add_column('ye_pass1', pass1['ye'][in_p1])
     stars.add_column('me_pass1', pass1['me'][in_p1])
+    stars.table_name = ''
 
     stars.write('stars_ks2_pass1_f%d.fits' % ks2FilterIdx, overwrite=True)
 
     # Just for kicks, also produce a table of stars that WERE NOT in ks2.
     # This table will have the same format as the pass1 list.
     stars_pass1_only = pass1.where(ks2Indices == -1)
+    stars_pass1_only.table_name = ''
     
     stars_pass1_only.write('stars_pass1_only_f%d.fits' % ks2FilterIdx, overwrite=True)
 
@@ -95,18 +99,19 @@ def plot_comparison(tableSuffix):
     dx = stars.x_ks2 - stars.x_pass1
     dxe = stars.xe_ks2
 
-    py.close('all')
+    #py.close('all')
 
+    py.figure(1)
     py.clf()
     ax1 = py.subplot(2, 1, 1)
-    py.plot(stars.m_ks2, dx, 'k.', ms=2)
+    py.plot(stars.m_pass1, dx, 'k.', ms=2)
     py.ylabel('dx (pix)')
     py.ylim(-0.3, 0.3)
     py.axhline(y=0, color='r', linewidth=2)
     py.title('KS2 - One Pass')
 
     ax2 = py.subplot(2, 1, 2, sharex=ax1)
-    py.plot(stars.m_ks2, dx/dxe, 'k.', ms=2)
+    py.plot(stars.m_pass1, dx/dxe, 'k.', ms=2)
     py.ylabel('dx/dxe (sigma)')
     py.ylim(-3, 3)
     py.axhline(y=0, color='r', linewidth=2)
@@ -123,16 +128,17 @@ def plot_comparison(tableSuffix):
     dy = stars.y_ks2 - stars.y_pass1
     dye = stars.ye_ks2
 
+    py.figure(2)
     py.clf()
     ax1 = py.subplot(2, 1, 1)
-    py.plot(stars.m_ks2, dy, 'k.', ms=2)
+    py.plot(stars.m_pass1, dy, 'k.', ms=2)
     py.ylabel('dy (pix)')
     py.ylim(-0.3, 0.3)
     py.axhline(y=0, color='r', linewidth=2)
     py.title('KS2 - One Pass')
 
     ax2 = py.subplot(2, 1, 2, sharex=ax1)
-    py.plot(stars.m_ks2, dy/dye, 'k.', ms=2)
+    py.plot(stars.m_pass1, dy/dye, 'k.', ms=2)
     py.ylabel('dy/dye (sigma)')
     py.ylim(-3, 3)
     py.axhline(y=0, color='r', linewidth=2)
@@ -150,16 +156,17 @@ def plot_comparison(tableSuffix):
     dm = stars.m_ks2 - stars.m_pass1
     dme = stars.me_ks2
 
+    py.figure(3)
     py.clf()
     ax1 = py.subplot(2, 1, 1)
-    py.plot(stars.m_ks2, dm, 'k.', ms=2)
+    py.plot(stars.m_pass1, dm, 'k.', ms=2)
     py.ylabel('dm (mag)')
     py.ylim(-0.3, 0.3)
     py.axhline(y=0, color='r', linewidth=2)
     py.title('KS2 - One Pass')
 
     ax2 = py.subplot(2, 1, 2, sharex=ax1)
-    py.plot(stars.m_ks2, dm/dme, 'k.', ms=2)
+    py.plot(stars.m_pass1, dm/dme, 'k.', ms=2)
     py.ylabel('dm/dme (sigma)')
     py.ylim(-3, 3)
     py.axhline(y=0, color='r', linewidth=2)
@@ -170,7 +177,8 @@ def plot_comparison(tableSuffix):
 
 
     # Plot differences in errors vs. m
-    py.figure(2, figsize=(9,12))
+    py.close(4)
+    py.figure(4, figsize=(9,12))
     py.clf()
     py.subplots_adjust(left=0.12, bottom=0.07, top=0.95)
     ax1 = py.subplot(3, 1, 1)
@@ -199,7 +207,7 @@ def plot_comparison(tableSuffix):
 
     
     # Plot stars that are NOT in KS2 vs. those that are.
-    py.figure(1)
+    py.figure(5)
     py.clf()
 
     py.semilogy(stars.m_pass1, stars.me_pass1, 'k.', label='In KS2', ms=2)
@@ -211,4 +219,65 @@ def plot_comparison(tableSuffix):
     py.ylim(0.004, 0.1)
     py.savefig('plot_m_me_others%s.png' % tableSuffix)
 
-    
+def fit_transform_matfile(matfile):
+    data = atpy.Table(matfile, type='ascii')
+
+    points_in = np.array([data.col1, data.col2]).T
+    points_out = np.array([data.col3, data.col4]).T
+
+    params, perrors = transforms.fit_affine2d_noshear(points_in, points_out)
+
+    print params
+    print perrors
+
+    trans = mplTrans.Affine2D()
+    trans.rotate_deg(params['angle'])
+    trans.scale(params['scale'])
+    trans.translate(params['transX'], params['transY'])
+
+    points_new = trans.transform(points_in)
+
+    diff = points_out - points_new
+    print diff
+
+
+def plot_pos_diff_xym1mat(xym1mat_cfile, scale=8, errMax=0.05):
+    """
+    Send in a match_c.txt file from xym1mat (3rd file) that has been trimmed
+    of all bogus entries. Then plot of the differences in the positions
+    from the 1st and 2nd starlists that went into the list matching process.
+    This allows me to see any large scale systematics due to residual distortion
+    or alignment errors.
+
+    This assumes that the input starlists were in the XYMEEE format. We will
+    use the frame #2 astrometric errors to trim out bad points.
+    """
+    t = atpy.Table(xym1mat_cfile, type='ascii')
+
+    if errMax != None:
+        x2e = t.col17
+        y2e = t.col18
+
+        err = np.hypot(x2e, y2e)
+
+        origLen = len(t)
+        t = t.where(err < errMax)
+        newLen = len(t)
+
+        print 'Trimmed %d of %d sources with errors > %.2f pix' % \
+            (origLen-newLen, origLen, errMax)
+        
+    x1 = t.col8
+    y1 = t.col9
+    x2 = t.col11
+    y2 = t.col12
+    dx = x1 - x2
+    dy = y1 - y2
+
+
+    py.clf()
+    q = py.quiver(x1, y1, dx, dy, scale=scale)
+    py.quiverkey(q, 0.9, 0.95, 0.1, '0.1 pix', coordinates='axes', color='red')
+    py.xlabel('X (pix)')
+    py.ylabel('Y (pix)')
+    py.savefig('pos_diff_vecs_' + xym1mat_cfile.replace('txt', 'png'))

@@ -19,6 +19,7 @@ import scipy
 import matplotlib
 import pymc
 import pdb
+from jlu.imf import imf
 
 defaultAKs = 2.7
 defaultDist = 8000
@@ -749,13 +750,17 @@ def sim_to_obs_klf(cluster, magCut=15.5, withErrors=True, yng_orig=None):
     starCount = len(cluster.mag_noWR)
 
     if withErrors:
+        # Get rid of the WR stars for the error distribution... they can be more variable
+        idx = np.where(yng_orig.isWR == False)[0]
+        orig_kp_err = yng_orig.kp_err[idx]
+
         # Randomly assign error bars from the observed kp error distribution.
         # Use the same random array as before as detectability and magnitude error
         # are not correlated.
         rand_number = np.random.rand(starCount)
-        rand_kp_err_idx = rand_number * (len(yng_orig.kp_err)-1)
+        rand_kp_err_idx = rand_number * (len(orig_kp_err)-1)
         rand_kp_err_idx = np.array(np.round(rand_kp_err_idx), dtype=int)
-        kp_err = yng_orig.kp_err[rand_kp_err_idx]
+        kp_err = orig_kp_err[rand_kp_err_idx]
 
         # Perturb the magnitudes by their photometric errors
         noise = np.random.randn(starCount) * kp_err
@@ -1068,6 +1073,124 @@ def model_young_cluster(logAge, filterName=defaultFilter,
             
     return cluster
 
+def model_young_cluster_new(logAge, filterName=defaultFilter,
+                            AKs=defaultAKs, distance=defaultDist,
+                            imfSlopes=np.array([-2.35]), massLimits=np.array([1, 150]),
+                            clusterMass=1e4, makeMultiples=True,
+                            MFamp=defaultMFamp, MFindex=defaultMFindex,
+                            CSFamp=defaultCSFamp, CSFindex=defaultCSFindex,
+                            CSFmax=defaultCSFmax,
+                            qMin=0.01, qIndex=-0.4, verbose=False):
+    c = constants
+
+    logAgeString = '0%d' % (int(logAge * 100))
+
+    iso = load_isochrone(logAge=logAge, filterName=filterName,
+                         AKs=AKs, distance=distance)
+
+    # Sample a power-law IMF randomly
+    results = imf.sample_imf(massLimits, imfSlopes, clusterMass,
+                             makeMultiples=makeMultiples,
+                             multiMFamp=MFamp, multiMFindex=MFindex,
+                             multiCSFamp=CSFamp, multiCSFindex=CSFindex,
+                             multiCSFmax=CSFmax,
+                             multiQmin=qMin, multiQindex=qIndex)
+    mass = results[0]
+    isMultiple = results[1]
+    compMasses = results[2]
+    systemMasses = results[3]
+
+    mag = np.zeros(len(mass), dtype=float)
+    temp = np.zeros(len(mass), dtype=float)
+    isWR = np.zeros(len(mass), dtype=bool)
+
+    def match_model_mass(theMass):
+        dm = np.abs(iso.M - theMass)
+        mdx = dm.argmin()
+
+        # Model mass has to be within 2% of the desired mass
+        if (dm[mdx] / theMass) > 0.1:
+            return None
+        else:
+            return mdx
+        
+    for ii in range(len(mass)):
+        # Find the closest model mass (returns None, if nothing with dm = 0.1
+        mdx = match_model_mass(mass[ii])
+        if mdx == None:
+            continue
+
+        mag[ii] = iso.mag[mdx]
+        temp[ii] = iso.T[mdx]
+        isWR[ii] = iso.isWR[mdx]
+
+        # Determine if this system is a binary.
+        if isMultiple[ii]:
+            n_stars = len(compMasses[ii])
+            for cc in range(n_stars):
+                mdx_cc = match_model_mass(compMasses[ii][cc])
+                if mdx_cc != None:
+                    f1 = 10**(-mag[ii]/2.5)
+                    f2 = 10**(-iso.mag[mdx_cc]/2.5)
+                    mag[ii] = -2.5 * np.log10(f1 + f2)
+                else:
+                    print 'Rejected a companion %.2f' % compMasses[ii][cc]
+        
+
+    # Get rid of the bad ones
+    idx = np.where(temp != 0)[0]
+    cdx = np.where(temp == 0)[0]
+
+    if len(cdx) > 0 and verbose:
+        print 'Found %d stars out of mass range: Minimum bad mass = %.1f' % \
+            (len(cdx), mass[cdx].min())
+
+    mass = mass[idx]
+    mag = mag[idx]
+    temp = temp[idx]
+    isWR = isWR[idx]
+    isMultiple = isMultiple[idx]
+    systemMasses = systemMasses[idx]
+    if makeMultiples:
+        compMasses = [compMasses[ii] for ii in idx]
+
+    idx_noWR = np.where(isWR == False)[0]
+
+    mag_noWR = mag[idx_noWR]
+    num_WR = len(mag) - len(idx_noWR)
+
+    cluster = objects.DataHolder()
+    cluster.mass = mass
+    cluster.Teff = temp
+    cluster.isWR = isWR
+    cluster.mag = mag
+    cluster.isMultiple = isMultiple
+    cluster.compMasses = compMasses
+    cluster.systemMasses = systemMasses
+
+    cluster.idx_noWR = idx_noWR
+    cluster.mag_noWR = mag_noWR
+    cluster.num_WR = num_WR
+
+    # Summary parameters
+    cluster.logAge = logAge
+    cluster.filter = filterName
+    cluster.AKs = AKs
+    cluster.distance = distance
+    cluster.massLimits = massLimits
+    cluster.imfSlopes = imfSlopes
+    cluster.sumIMFmass = clusterMass
+    cluster.makeMultiples = makeMultiples
+    cluster.MFamp = MFamp
+    cluster.MFindex = MFindex
+    cluster.CSFamp = CSFamp
+    cluster.CSFindex = CSFindex
+    cluster.CSFmax = CSFmax
+    cluster.qMin = qMin
+    cluster.qIndex = qIndex
+            
+    return cluster
+
 def make_observed_isochrone(logAge, filterName=defaultFilter,
                             AKs=defaultAKs, distance=defaultDist, verbose=False):
     startTime = time.time()
@@ -1358,6 +1481,8 @@ def sample_imf(totalMass, minMass, maxMass, imfSlope,
         isMultiple = np.zeros(len(masses), dtype=bool)
 
     return (masses, isMultiple, compMasses)
+
+
 
 def test_distributions():
     test_dist_generate()

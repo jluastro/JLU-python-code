@@ -610,6 +610,9 @@ class ArXivSubmissionPreparer(_ArXivSubmissionPreparerBase):
         "parse a graphics object line (uncommented)"
         # FIXME  handle case when more than one command per line
 
+        # strip leading/trailing whitespace
+        line = line.strip()
+
         if re.match(r"\\begin\{figure\*?\}", line):
             self.cursubfig = 0
             self.in_figure = True
@@ -689,6 +692,9 @@ class ArXivSubmissionPreparer(_ArXivSubmissionPreparerBase):
                     # get the filename for the new version
                     newfile = self.figname(self.curfig, i, len(self.curfig_graphics), ext=ext)
 
+                    # put figure in list
+                    self.figlist.append((gfile, newfile))
+
                     # same for print-only gray version
                     if orig_pog_gfile is not None:
                         pog_gfile, pog_ext = self.get_orig_figname(orig_pog_gfile)
@@ -697,14 +703,10 @@ class ArXivSubmissionPreparer(_ArXivSubmissionPreparerBase):
                         curfig_info.append((orig_gfile, gfile, newfile,
                                             orig_pog_gfile, pog_gfile, pog_newfile))
 
-                        # put gray figure in list
-                        self.figlist.append((pog_gfile, pog_newfile))
 
                     else:
                         curfig_info.append((orig_gfile, gfile, newfile,
                                             None, None, None))
-                        # put BW figure in list
-                        self.figlist.append((gfile, newfile))
 
         return line
 

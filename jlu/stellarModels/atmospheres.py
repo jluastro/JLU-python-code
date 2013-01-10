@@ -95,10 +95,31 @@ def get_amesdusty_atmosphere(metallicity=0, temperature=5000, gravity=4):
 
     return sp
 
+def get_phoenix_atmosphere(metallicity=0, temperature=5000, gravity=4):
+    """
+    metallicity = [M/H] (def = 0)
+    temperature = Kelvin (def = 5000)
+    gravity = log gravity (def = 4.0)
+    """
+    sp = pysynphot.Icat('phoenix', temperature, metallicity, gravity)
+
+    # Do some error checking
+    idx = np.where(sp.flux != 0)[0]
+    if len(idx) == 0:
+        print 'Could not find PHOENIX BT-Settl (Allard+ 2011 atmosphere model for'
+        print '  temperature = %d' % temperature
+        print '  metallicity = %.1f' % metallicity
+        print '  log gravity = %.1f' % gravity
+
+    return sp
+
 def test_merged_atmospheres(metallicity=0, gravity=4):
     """
     Compare spectra from Castelli and NextGen at the boundary
     temperature of 8000 K.
+
+    Compare spectra from NextGen and Phoenix at the boundary
+    temperature of 4000 K.
     """
     cast = get_castelli_atmosphere(temperature=8000, 
                                    metallicity=metallicity, gravity=gravity)
@@ -107,19 +128,46 @@ def test_merged_atmospheres(metallicity=0, gravity=4):
                                   metallicity=metallicity, gravity=gravity)
 
     # Now Plot the spectra
+    py.figure(1)
     py.clf()
-    py.semilogx(cast[0], cast[1], 'r-', label='Castelli')
-    py.plot(ngen[0], ngen[1], 'b-', label='NextGen')
+    py.loglog(cast.wave, cast.flux, 'r-', label='Castelli')
+    py.plot(ngen.wave, ngen.flux, 'b-', label='NextGen')
     py.xlabel('Wavelength')
     py.ylabel('Flux')
     py.legend()
+    py.xlim(3000, 50000)
+    py.ylim(1e3, 1e8)
+
+
+    ngen = get_nextgen_atmosphere(temperature=4000,
+                                  metallicity=metallicity, gravity=gravity)
+
+    phoe = get_phoenix_atmosphere(temperature=4000,
+                                  metallicity=metallicity, gravity=gravity)
+    # Now Plot the spectra
+    py.figure(2)
+    py.clf()
+    py.loglog(phoe.wave, phoe.flux, 'r-', label='Phoenix')
+    py.plot(ngen.wave, ngen.flux, 'b-', label='NextGen')
+    py.xlabel('Wavelength')
+    py.ylabel('Flux')
+    py.legend()
+    py.xlim(3000, 50000)
+    py.ylim(1, 1e8)
+
+    
 
 
 def get_merged_atmosphere(metallicity=0, temperature=20000, gravity=4):
     if temperature < 4000:
-        return get_amesdusty_atmosphere(metallicity=metallicity,
-                                        temperature=temperature,
-                                        gravity=gravity)
+        return get_phoenix_atmosphere(metallicity=metallicity,
+                                      temperature=temperature,
+                                      gravity=gravity)
+
+    # if temperature < 4000:
+    #     return get_amesdusty_atmosphere(metallicity=metallicity,
+    #                                     temperature=temperature,
+    #                                     gravity=gravity)
 
     if temperature >= 4000 and temperature < 7000:
         return get_nextgen_atmosphere(metallicity=metallicity,
