@@ -108,7 +108,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     # Lets do some trimming down to get rid of repeat masses or 
     # mass resolutions higher than 1/1000. We will just use the first
     # unique mass after rounding by the nearest 0.001.
-    mass_rnd = np.round(evol.mass, decimals=2)
+    mass_rnd = np.round(evol.mass, decimals=3)
     tmp, idx = np.unique(mass_rnd, return_index=True)
 
     mass = evol.mass[idx]

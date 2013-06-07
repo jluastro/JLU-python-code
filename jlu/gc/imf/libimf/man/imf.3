@@ -1,0 +1,466 @@
+.TH IMF 3 2005-12-23 "IMF" ""
+.SH NAME
+imf - Programming functions for the initial mass function
+.SH SYNOPSIS
+All functions of the imf library are preceeded by 'imf_ 'and
+all functions referring to a certain cluster are followed by
+the suffix '_cl'. These functions have been implemented in the
+very user friendly programm MakeCluster.
+.sp
+General:
+.sp
+.BI "#include <imf.h>"
+.sp
+.BI "IMF " imf ";
+.sp 
+Fixed-implemented general IMFs:
+.sp
+.BI "int imf_init_kroupa_2001(IMF *" imf "); 
+.sp
+.BI "int imf_init_weidner_kroupa_2004(IMF *" imf "); 
+.sp
+.BI "int imf_init_ktg_1993(IMF *" imf "); 
+.sp
+.BI "int imf_init_salpeter_1955(IMF *" imf ");
+.sp
+.BI "int imf_init_chabrier_2003(IMF *" imf ");
+.sp
+.BI "int imf_init_miller_scalo_1979(IMF *" imf");
+.sp
+.BI "int imf_init_kennicutt_1983(IMF *" imf");
+.sp
+Creating user defined general IMFs:
+.sp 
+.BI "int imf_init_multi_power(IMF *" imf ", int " n ", double *" m ", double *" alpha ");"
+.sp 
+.BI "int imf_init_user(IMF *" imf ", char *" imf_string ");"
+.sp 
+.BI "int imf_shift_left(IMF *" imf ", double " left ");
+.sp
+.BI "int imf_shift_right(IMF *" imf ", double " right ");
+.sp
+Getting values and integrals of an initialized general IMF:
+.sp
+.BI "double imf_xi(IMF *" imf ", double " m ");
+.sp
+.BI "double imf_mxi(IMF *" imf ", double " m ");
+.sp
+.BI "double imf_int_xi(IMF *" imf ", double " left ", double " right ");
+.sp
+.BI "double imf_int_mxi(IMF *" imf ", double " left ", double " right ");
+.sp 
+Normalize an IMF for an individual cluster:
+.sp
+.BI "int imf_norm_cl(IMF *" imf ", double " m_cl ", double " m_phy_max ");
+.sp
+.BI "int imf_norm_wk04_cl(IMF *" imf ", double " m_cl ", double " m_phy_max ");
+.sp
+Getting values and integrals of a normalized IMF for an individual cluster:
+.sp
+.BI "double imf_xi_cl(IMF *" imf ", double " m ");
+.sp
+.BI "double imf_mxi_cl(IMF *" imf ", double " m ");
+.sp
+.BI "double imf_int_xi_cl(IMF *" imf ", double " left ", double " right ");
+.sp
+.BI "double imf_int_mxi_cl(IMF *" imf ", double " left ", double " right ");
+.sp
+Dicing stars with respect to a normalized IMF for an individual cluster:
+.sp
+.BI "double imf_dice_star_cl(IMF *" imf ", double " x ");
+.sp
+Included segment functions
+.sp
+.BI "double imf_power(double " m ", double *" a ");
+.sp
+.BI "double imf_prim_power(double " m ", double *" a ");
+.sp
+.BI "double imf_inv_prim_power(double " x ", double *" a ");
+.sp
+.BI "double imf_log_normal(double " m ", double *" a ");
+.sp
+.BI "double imf_prim_log_normal(double " m ", double *" a ");
+.sp
+.BI "double imf_inv_prim_log_normal(double " x ", double *" a ");
+.sp
+.BI "double imf_mlog_normal(double " m ", double *" a ");
+.sp
+.BI "double imf_prim_mlog_normal(double " m ", double *" a ");
+.sp
+link with \-limf
+.SH DESCRIPTION
+.B struct IMF
+is the basic data element of all IMF-functions. 
+It contains at least the following members:
+.sp
+.RS
+.nf
+unsigned short \fIn\fP;              /* number of segments */
+double \fIm_max_physical\fP;         /* maximum physical 
+                                  stellar mass */
+double \fIm_cl\fP;                   /* total cluster mass */
+double \fIm_max\fP;                  /* expected maximum stellar 
+                                  mass for a given cluster mass*/
+double \fIk\fP;                      /* nomalization constant */
+double *\fIm\fP;                     /* mass array defining the 
+	                             segments boundaries */
+double *\fIpsi\fP;                   /* coeffient array to 
+                                  ensure continuity on the 
+                                  segment boundaries */
+double *\fIlamda\fP;
+double (**\fIf\fP)(double,double *);
+double (**\fIa_f\fP);
+double (**\fImf\fP)(double,double *);
+double (**\fIa_mf\fP);
+double (**\fIF\fP)(double,double *);
+double (**\fIa_F\fP);
+double (**\fImF\fP)(double,double *);
+double (**\fIa_mF\fP);
+double (**\fIinvF\fP)(double,double *);
+double (**\fIa_invF\fP);
+.fi
+.RE
+.sp
+\fIn\fR indicates the number of segments. The masses run from
+m_0 to m_n. The IMF is zero outside the entire interval from 
+m_0 to m_n. To choose an infinite mass use the
+macro IMF_MASSINF which is the maximum value for the data type 
+double.
+.sp
+.PP 
+.B IMF_MASSINF 
+is a macro to express an infinite stellar mass. IMF_MASSINF
+is the maximum value for the data type double and set
+by the DBL_MAX macro from float.h.
+.SH IMF
+The IMF is an 	abbreviation  of  the initial mass function.
+It has been introduced by Salpeter (1955). The IMF describes the number
+of stars per mass intervall. There exist two different but
+corresponding definitions. The original by Salpeter (1955):
+.sp
+.RS
+xi(log10 m) := dN / dlog10 m
+.sp
+.RE
+and the non-logarithmic form (Scalo, 1986)
+.sp
+.RS
+xi(m) := dN / dm
+.RE
+.sp
+where the mass unit is always M_sol. These two definitions
+correspond by 
+.sp
+.RS
+xi(log10 m) = m * ln(10) * xi(m)
+.RE
+.sp
+These correspondence is trivial but one has to be careful with
+the explicit  values of power-slopes.
+Throughout the whole library and this manpage the non-logarithmic
+definition is used:
+.sp
+.RS
+xi(m) := dN / dm
+.RE
+.sp
+Currently two types of functions are used to describe the IMF piecewisely:
+a power-law and a log-normal form. The specified parameters of the
+fixed-implemented IMFs (see section FIXED IMFs) refer to the following
+definitions of the segment functions: 
+.sp
+.B power-law
+.sp
+The power-law has the advantage that it transforms into a straight line
+in a double-logarithmic plot and it therefore can be fitted to data
+easily. It has the general form:
+.sp
+.RS
+xi(m) ~ m^(alpha)
+.RE
+.sp  
+.B log-normal
+The log-normal form is a parabola in the log-log plot and has 
+the transformed form:
+.sp
+.RS
+xi(m) ~ m^(-1) * exp(- (log10(m) - log10(m_c)) / (2*sigma^2) )
+.RE
+.sp
+.SH IMF-ALGORITHM
+These library functions are based on a general description
+of the IMF handling an arbitrary number of segments. See
+Pflamm-Altenburg & Kroupa (2006) for further information.
+.SH FIXED IMFs
+The libimf contains some fixed-implemented IMFs frequently used
+in astrophysical science. These fixed IMFs refer to  certain 
+publications in which the IMF is described on a certain mass range.
+Outside these original mass range the IMF in these functions is set
+zero. E.g. the original Salpeter IMF has a power-slope of -1.35
+in the logarithmic description
+on the mass range from -0.4 <= log10 (m/M_sol) <= +1.0, which means
+a slope of -2.35 in the non-logarithmic description on the mass range
+0.40 <= m / M_sol <= 10.0. To apply these IMF on different star cluster
+with a wider mass range many authors extrapolate this narrow Salpeter
+IMF to lower and larger mass limits. To do this an IMF struture has
+to be initialized first. Then the mass limits must be shifted using
+the functions \fBimf_shift_left()\fR and \fBimf_shift_right()\fR. 
+See section EXAMPLES.
+As some authors have definied different IMFs the name of the 
+fixed-implemented IMF functions contains  the year of the publication. 
+For reference see the section REFERENCE. The following definitions
+have not the original form but they are transformed into the 
+non-logarithmic
+description (see section IMF):
+
+.sp 
+.B imf_init_salpeter_1955()
+inits a one-segment power-law IMF:
+.sp
+.RS
+.nf
+alpha = -2.35    ;  0.40 <= m/M_sol <=  10.0
+.fi
+.RE
+.sp
+.B imf_init_kroupa_2001() 
+inits a four-segment-power-law IMF described in
+Kroupa (2001, MNRAS).
+.sp
+.RS
+.nf
+alpha_1 = -0.30  ;  0.01 <= m/M_sol <=   0.08
+alpha_2 = -1.30  ;  0.08 <= m/M_sol <=   0.50
+alpha_3 = -2.30  ;  0.50 <= m/M_sol <=   1.00
+alpha_4 = -2.30  ;  1.00 <= m/M_sol <  +infinite
+.fi
+.RE
+.sp
+.B imf_init_weidner_kroupa_2004()
+inits a four-segment-power-law IMF described in
+Weidner & Kroupa (2004, MNRAS).
+.sp
+.RS
+.nf
+alpha_1 = -0.30  ;  0.01 <= m/M_sol <=   0.08
+alpha_2 = -1.30  ;  0.08 <= m/M_sol <=   0.50
+alpha_3 = -2.30  ;  0.50 <= m/M_sol <=   1.00
+alpha_4 = -2.35  ;  1.00 <= m/M_sol <  +infinite
+.fi
+.RE
+.sp
+.B imf_init_miller_scalo_1979()
+inits a three-segment-power-law IMF described in
+Miller & Scalo (1979, ApJS).
+.sp
+.RS
+.nf
+alpha_1 = -1.40  ;  0.10 <= m/M_sol <=   1.00
+alpha_2 = -2.50  ;  1.00 <= m/M_sol <=  10.00
+alpha_3 = -3.30  ; 10.00 <= m/M_sol <  +infinite
+.fi
+.RE
+.sp
+.B imf_init_chabrier_2003()
+inits a two-segment IMF described by Chabrier (2003).
+The first segment is desribed by a log-normal form:
+.sp
+.RS
+.nf
+m_c = 0.079  &  sigma = 0.69   ;   0.01 <= m/M_sol <=   1.0
+.fi
+.RE
+.sp
+The  second segment is described by a power-law:
+.sp
+.RS
+alpha = -2.30  ;  1.0 <= m/M_sol < +infinite
+.RE
+.sp
+.B imf_init_ktg_1993()
+inits a three-segment-power-law IMF described in
+Kroupa, Tout & Gilmore (1993, MNRAS).
+.sp
+.RS
+.nf
+alpha_1 = -1.30  ;  0.08 <= m/M_sol <=   0.50
+alpha_2 = -2.20  ;  0.50 <= m/M_sol <=   1.00
+alpha_3 = -2.70  ;  1.00 <= m/M_sol <  +infinite
+.fi
+.RE
+.sp 
+.SH NORMALIZATION
+To apply the IMF on a true star cluster, the general IMF
+has to be normalized with respect to the total stellar mass 
+of the cluster, m_cluster. 
+This library currently supports two different
+normalization methods. They are using the parameter
+m_max_physical, which is the maximum physical upper stellar
+mass limit. This upper limit is expected to 
+be approximately 150 M_sol (Weidner & Kroupa, 2004; Figer, 2005).
+.sp
+.B imf_norm_cl():
+The normalization constant k of the IMF is choosen so that
+the mass integral over the IMF ranging from m[0]
+to m_max, where m_max is the minimum of m[n], m_max_physical
+and m_cluster, is m_cluster:
+.sp
+.RS
+ m_cluster = int_m[0]^m_max m * xi(m) dm
+.RE 
+.sp 
+.B imf_norm_wk04():
+This normalization introduces a new parameter
+m_max, the maximum stellar mass in a cluster with the mass m_cluster
+(Weidner & Kroupa, 2004). The two unknown variables,
+the normalization constant k and the maximum stellar mass m_max, are
+defined by two equations. The mass integral from m[0] to m_max gives
+the total cluster mass m_cluster and the IMF integral from m_max to 
+m_max_physical gives one star. m_max_physical is the minimum of
+m_max_physical and m_cluster: 
+.sp
+.RS
+ m_cluster = int_m[0]^m_max m * xi(m) dm
+.RE 
+.sp 
+.sp
+.RS
+ 1 = int_m_max^m_max_physical xi(m) dm
+.RE 
+.sp 
+.SH DICING STARS
+Stars can be drawn randomly from an 
+IMF with the function \fB imf_dice_star_cl()\fR. It requires a random 
+number \fIx\fR, drawn from a uniform
+distribution between 0 and 1. It 
+returns a random mass obtained from an IMF specified by
+\fIimf\fR. The required transformations of the distribution
+functions is described in Pflamm-Altenburg & Kroupa (2006). 
+
+.SH SEGMENT FUNCTIONS
+The struct IMF contains pointers to function arrays storing
+the used functions on each segment: \fIf\fR, the IMF
+segment function, \fImf\fR, the IMF mass-segment function,
+\fIF\fR, the primitive of the IMF segment function,
+\fImF\fR, the primitive of the IMF mass segment function and
+\fIinv_F\fR, the inverse of the primitive of the IMF segment function. 
+To allow the usage of 
+parametrized functions all segment functions are of the form:
+.sp
+.RS
+double f(double \fIx\fP, double *\fIa\fP);
+.RE
+.sp
+.SH EXAMPLES
+.B 1.
+Calculate the number of stars havier than 10 M_sol
+in a star cluster with 2200 M_sol using a Kroupa IMF. 
+The maximum physical stellar mass is 150 and the IMF should
+be normalized classically:
+.sp
+.nf
+.RS
+IMF imf;
+double n_stars;
+imf_init_kroupa_2001(&imf); 
+imf_norm_cl(&imf,2200,150);
+n_stars = imf_int_xi_cl(&imf,10,IMF_MASSINF);
+.RE
+.fi
+.sp
+.B 2.
+Create a new power-law IMF with 3 segements: from 0.6 to 1.2,
+from 1.2 to 8.5, and from 8.5 to 10.3 having the slopes -1.4, -2.6,
+and -3.4:
+.sp
+.nf
+.RS
+IMF imf;
+double m[4] = {0.6,1.2,8.5,10.3};
+double a[3] = {-1.4,-2.6,-3.4};  
+imf_init_multi_power(&imf,3,m,a);
+.RE
+.fi
+.sp
+.B 3. 
+Create a mixed IMF with a log-normal form from 0.015 to 1.23 M_sol
+with m_c = 0.055 and sigma = 0.721 and a power-law from 1.23 to
+75.3 M_sol with alpha = -2.64 and a power-law above 75.3 M_sol
+with alpha = -3.55.
+.sp
+.nf
+.RS
+IMF imf; 
+imf_init_manual(&imf,"0.015(log-norm:0.055:0.721)1.23(pow:-2.64)75.3(pow:-3.55)inf");
+.RE
+.fi
+.B 4.
+Dice 10000 stars from a Kroupa-IMF, normalized classically for a 5000 M_sol
+star cluster with a upper stellar mass limit of 150:
+.sp
+.nf
+.RS
+IMF imf;
+int i;
+double x;
+double m[10000];  
+imf_init_kroupa_2001(&imf);
+imf_norm_cl(&imf,5000,150);
+for(i=0;i<10000;i++){
+   x = rand()/(1.+RAND_MAX);
+   m[i] = imf_dice_star_cl(&imf,x);
+}
+.RE
+.fi
+.sp
+.SH AUTHOR 
+Jan Plfamm-Altenburg at the Sternwarte of Bonn University.
+.SH COPYRIGHT
+2005-2006
+This software is written under terms of GPL.
+For more information see: http://www.gnu.com .
+Additionally: When publishing results based on this software or
+parts of it (executable and/ or source code) cite:
+.PP
+Pflamm-Altenburg, J., Kroupa P., 2006, MNRAS, accepted 
+
+.SH BUGS 
+Report any bugs, mistakes, ... to
+<jpflamm@astro.uni-bonn.de>
+.SH REFERENCES
+.PP
+Chabrier, G., 2003, ApJ, 586, 133L -- The Galactic Disk Mass Function: 
+Reconciliation of the Hubble Space Telescope and Nearby Determinations
+.PP
+Chabrier, G., 2003, PASP, 115, 763 -- Galactic Stellar and 
+Substellar Initial Mass Function
+.PP
+Figer, D. F., 2005, Nature, 434, 192 -- 
+An upper limit to the masses of stars
+.PP
+Kennicutt, R. C., Jr., 1983, ApJ, 272, 54 -- 
+The rate of star formation in normal disk galaxies
+.PP
+Kroupa, P., 2001, MNRAS, 322, 231 -- On the variation of the 
+initial mass function
+.PP
+Miller, G. E., Scalo, J. M., 1979, ApJS, 41, 513 -- The initial mass 
+function and stellar birthrate in the solar neighborhood
+.PP
+Pflamm-Altenburg, J., Kroupa, P., 2006, MNRAS, accepted
+-- A highly abnormal massive-star mass function in the Orion Nebula
+cluster and the dynamical decay of trapezia systems
+.PP
+Salpeter, E. E., 1955, ApJ, 121, 161 -- 
+The Luminosity Function and Stellar Evolution
+.PP
+Scalo, J. M., 1986, FCPh, 11, 1 -- The stellar initial mass function
+.PP
+Weidner, C., Kroupa, P., 2004, MNRAS,
+.B 348:
+187-191
+ - Evidence for a fundamental stellar upper mass limit from clustered star
+formation
+
+.SH SEE ALSO
+MakeCluster(1)

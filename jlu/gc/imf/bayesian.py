@@ -1435,14 +1435,14 @@ def sample_imf(totalMass, minMass, maxMass, imfSlope,
                     m_comp = q_values * newMasses[ii]
 
                     # Only keep companions that are more than the minimum mass
-                    mdx = np.where(m_comp >= minMass)
+                    mdx = np.where(m_comp >= minMass)[0]
                     compMasses[ii] = m_comp[mdx]
                     newSystemMasses[ii] += compMasses[ii].sum()
 
                     # Double check for the case when we drop all companions.
                     # This happens a lot near the minimum allowed mass.
                     if len(mdx) == 0:
-                        newIsMultiple[ii] == False
+                        newIsMultiple[ii] = False
 
             newSimTotalMass = newSystemMasses.sum()
             isMultiple = np.append(isMultiple, newIsMultiple)

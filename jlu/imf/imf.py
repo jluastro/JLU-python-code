@@ -90,17 +90,20 @@ def sample_imf(massLimits, imfSlopes, totalMass,
                 if newIsMultiple[ii]:
                     n_comp = 1 + np.random.poisson((CSF[ii]/MF[ii]) - 1)
                     q_values = q_cdf_inv(np.random.rand(n_comp), multiQmin, multiQindex)
-                    m_comp = q_values * newMasses[ii]
+                    m_comp = np.float16(q_values * newMasses[ii])
 
                     # Only keep companions that are more than the minimum mass
-                    mdx = np.where(m_comp >= massLimits[0])
+                    mdx = np.where(m_comp >= massLimits[0])[0]
                     compMasses[ii] = m_comp[mdx]
                     newSystemMasses[ii] += compMasses[ii].sum()
 
                     # Double check for the case when we drop all companions.
                     # This happens a lot near the minimum allowed mass.
                     if len(mdx) == 0:
-                        newIsMultiple[ii] == False
+                        newIsMultiple[ii] = False
+
+                    if (len(compMasses[ii]) == 0) and (newIsMultiple[ii] == True):
+                        pdb.set_trace()
 
             newSimTotalMass = newSystemMasses.sum()
             isMultiple = np.append(isMultiple, newIsMultiple)
@@ -146,6 +149,285 @@ class IMF_broken_powerlaw(object):
     def __init__(self, massLimits, powers):
         """
         Initialze a multi-part powerlaw with N parts.
+
+        massLimits - len=N+1 array with lower and upper limits of segments
+        coefficients - len=N array containing the coefficients
+        """
+        self.massLimits = np.atleast_1d(massLimits)
+        self.mLimitsLow = massLimits[0:-1]
+        self.mLimitsHigh = massLimits[1:]
+        self.powers = powers
+
+        if len(massLimits) != len(powers)+1:
+            print 'Incorrect specification of multi-part powerlaw.'
+            print '    len(massLimts) != len(powers)+1'
+            print '    len(massLimits) = ', len(massLimits)
+            print '    len(powers) = ', len(powers)
+
+        # Calculate the coeffs to make the function continuous
+        nterms = len(self.powers)
+        coeffs = np.ones(nterms, dtype=float)
+
+        # First term is just 1.0
+        # Subsequent terms are products of previous terms and then some.
+        for i in range(1, nterms):
+            y = self.mLimitsLow[i]**powers[i-1]
+            z = self.mLimitsLow[i]**powers[i]
+
+            coeffs[i] *= coeffs[i-1] * y / z
+
+        self.nterms = nterms
+        self.coeffs = coeffs
+        self.k = 1
+
+    def imf_xi(self, m):
+        """
+        Probability density distribution describing the IMF.
+
+        Input:
+        m - mass of a star
+
+        Output:
+        xi - probability of measuring that mass.
+
+        """
+        returnFloat = type(m) == float
+        
+        m = np.atleast_1d(m)
+        xi = np.zeros(len(m), dtype=float)
+        
+        for i in range(len(xi)):
+            tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
+            tmp *= self.coeffs * m[i]**self.powers
+            y = tmp.sum()
+            z = delta(m[i] - self.mLimitsHigh).prod()
+            xi[i] = self.k * z * y
+
+        if returnFloat:
+            return xi[0]
+        else:
+            return xi
+
+    def imf_mxi(self, m):
+        """
+        Mass-weighted probability m*xi
+        """
+        returnFloat = type(m) == float
+        m = np.atleast_1d(m)
+        mxi = np.zeros(len(m), dtype=float)
+        
+        for i in range(len(mxi)):
+            tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
+            tmp *= self.coeffs * m[i]**(self.powers+1)
+            y = tmp.sum()
+            z = delta(m[i] - self.mLimitsHigh).prod()
+            mxi[i] = self.k * z * y
+
+        if returnFloat:
+            return mxi[0]
+        else:
+            return mxi
+
+
+    def imf_int_xi(self, left, right):
+        """
+        Return the integrated probability between some low and high mass value.
+        """
+        return self.prim_xi(right) - self.prim_xi(left)
+
+    def imf_int_mxi(self, left, right):
+        """
+        Return the total mass between some low and high stellar mass value.
+        """
+        return self.prim_mxi(right) - self.prim_mxi(left)
+
+    def prim_xi(self, a):
+        returnFloat = type(a) == float
+
+        a = np.atleast_1d(a)
+        val = np.zeros(len(a), dtype=float)
+
+        for i in range(len(val)):
+            t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
+            t2 = imf_prim_power(self.mLimitsHigh, self.powers)
+            t3 = imf_prim_power(self.mLimitsLow, self.powers)
+            y1 = (t1 * (t2 - t3)).sum()
+
+            t1 = gamma_closed(a[i], self.mLimitsLow, self.mLimitsHigh) 
+            t1 *= self.coeffs
+            t2 = imf_prim_power(a[i], self.powers)
+            t3 = imf_prim_power(self.mLimitsLow, self.powers)
+            y2 = (t1 * (t2 - t3)).sum()
+
+            val[i] = self.k * (y1 + y2)
+
+        if returnFloat:
+            return val[0]
+        else:
+            return val
+
+    def prim_mxi(self, a):
+        returnFloat = type(a) == float
+        
+        a = np.atleast_1d(a)
+        val = np.zeros(len(a), dtype=float)
+
+        for i in range(len(val)):
+            t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
+            t2 = imf_prim_power(self.mLimitsHigh, self.powers+1)
+            t3 = imf_prim_power(self.mLimitsLow, self.powers+1)
+            y1 = (t1 * (t2 - t3)).sum()
+            
+            t1 = gamma_closed(a[i], self.mLimitsLow, self.mLimitsHigh) 
+            t1 *= self.coeffs
+            t2 = imf_prim_power(a[i], self.powers+1)
+            t3 = imf_prim_power(self.mLimitsLow, self.powers+1)
+            y2 = (t1 * (t2 - t3)).sum()
+
+            val[i] = self.k * (y1 + y2)
+
+        if returnFloat:
+            return val[0]
+        else:
+            return val
+
+    def imf_norm_cl(self, Mcl, Mmin=None, Mmax=None):
+        """
+        Normalize the IMF to a total cluster mass within a specified
+        minimum and maximum stellar mass range.
+        """
+        self.k = 1.0
+        self.Mcl = Mcl
+        
+        if Mmax == None:
+            Mmax = self.mLimitsHigh[-1]
+
+        if Mmin == None:
+            Mmin = self.mLimitsLow[0]
+
+        if Mmax > Mcl:
+            Mmax = Mcl
+            
+        if Mmax > self.mLimitsHigh[-1]:
+            Mmax = self.mLimitsHigh[-1]
+
+        if Mmin < self.mLimitsLow[0]:
+            Mmin = self.mLimitsLow[0]
+
+        self.norm_Mmin = Mmin
+        self.norm_Mmax = Mmax
+        
+        self.k = Mcl / self.imf_int_mxi(self.norm_Mmin, self.norm_Mmax)
+        self.lamda = self.imf_int_xi_cl(self.mLimitsLow[0], self.massLimits)
+
+    def imf_norm_cl_wk04(self, Mcl, Mmax, Mmin=None):
+        self.k = 1.0
+        self.Mcl = Mcl
+
+        if Mmax == None:
+            Mmax = self.mLimitsHigh[-1]
+
+        if Mmin == None:
+            Mmin = self.mLimitsLow[0]
+
+        if Mmax > Mcl:
+            Mmax = Mcl
+            
+        if Mmax > self.mLimitsHigh[-1]:
+            Mmax = self.mLimitsHigh[-1]
+
+        if Mmin < self.mLimitsLow[0]:
+            Mmin = self.mLimitsLow[0]
+
+        a = Mmin
+        c = Mmix
+        b = (c + a) / 2.0
+        while (((c/b)-(a/b)) > 0.00001):
+            mb = self.imf_int_mxi(Mmin, b) / self.imf_int_xi(b, Mmax)
+            if mb < Mcl:
+                a = b
+            else:
+                c = b
+            b = (c + a) / 2.0
+
+        Mmax = b
+        self.norm_Mmin = Mmin
+        self.norm_Mmax = Mmax
+
+        self.k = Mcl / self.imf_int_mxi(Mmin, Mmax)
+        self.lamda = self.imf_int_xi_cl(self.mLimitsLow[0], self.massLimits)
+
+    def imf_xi_cl(self, m):
+        return theta_closed(self.norm_Mmax - m) * self.imf_xi(m)
+
+    def imf_mxi_cl(self, m):
+        return theta_closed(self.norm_Mmax - m) * self.imf_mxi(m)
+
+    def imf_int_xi_cl(self, left, right):
+        t1 = self.prim_xi(right)
+        t2 = theta_closed(right - self.norm_Mmax)
+        t3 = self.imf_int_xi(self.norm_Mmax, right)
+        t4 = self.prim_xi(left)
+        t5 = theta_closed(left - self.norm_Mmax)
+        t6 = self.imf_int_xi(self.norm_Mmax, left)
+
+        return (t1 - t2*t3) - (t4 - t5*t6)
+
+    def imf_int_mxi_cl(self, left, right):
+        t1 = self.prim_mxi(right)
+        t2 = theta_closed(right - self.norm_Mmax)
+        t3 = self.imf_int_mxi(self.norm_Mmax, right)
+        t4 = self.prim_mxi(left)
+        t5 = theta_closed(left - self.norm_Mmax)
+        t6 = self.imf_int_mxi(self.norm_Mmax, left)
+
+        return (t1 - t2*t3) - (t4 - t5*t6)
+
+    def imf_dice_star_cl(self, r):
+        """
+        Given a list of random numbers (r), return a list of masses
+        selected from the IMF.
+        """
+        returnFloat = type(r) == float
+        r = np.atleast_1d(r)  # Make sure it is an array
+        
+        x = r * self.lamda[-1]
+        y = np.zeros(len(r), dtype=float)
+        z = np.ones(len(r), dtype=float)
+
+        for i in range(self.nterms):
+            aux = x - self.lamda[i]
+
+            # Only continue for those entries that are in later segments
+            idx = np.where(aux >= 0)[0]
+
+            # Maybe we are all done?
+            if len(idx) == 0:
+                break
+            
+            x_tmp = x[idx]
+            aux_tmp = aux[idx]
+
+            # len(idx) entries
+            t1 = aux_tmp / (self.coeffs[i] * self.k)
+            t1 += imf_prim_power(self.mLimitsLow[i], self.powers[i])
+            y_i = gamma_closed(x_tmp, self.lamda[i], self.lamda[i+1])
+            y_i *= imf_inv_prim_power(t1, self.powers[i])
+            
+            # Save results into the y array
+            y[idx] += y_i
+
+            z *= delta(x - self.lamda[i])
+
+        if returnFloat:
+            return y[0] * z[0]
+        else:
+            return y * z
+
+class IMF_Chabrier_2003(object):
+    def __init__(self, massLimits, powers):
+        """
+        Initialze a log-normal IMF
 
         massLimits - len=N+1 array with lower and upper limits of segments
         coefficients - len=N array containing the coefficients
@@ -469,12 +751,45 @@ def imf_prim_power(m, power):
     """
     returnFloat = (type(m) == float) and (type(power) == float)
 
+#-----------------------------------------------
+# Notes before changing the code.
+#   m is either a array or a float, if m is an array it always has the same length as power.
+#   problem comes out when m is a float and power is an array with an element=0.
+#   for example, power=(0,-2.4) and m=(1.2)
+#   val will be(2., -0.269).  The second number is from (1.2**(-2.4))/(-2.4), but I have no idea on how '2.' coming out.
+#   If I change m=(1.0), the first number is still '2.'. 
+#-----------------------------------------------
+
+#    print 'm is:',m
+#    print 'power is:', power
     m = np.atleast_1d(m)
+
     power = np.atleast_1d(power)
 
     z = 1.0 + power
-    val = (m**z) / z
-    val[power == -1] = np.log(m[power == -1])
+
+    val=np.zeros(len(power))
+
+#    val = (m**z) / z
+#    val[power == -1] = np.log(m[power == -1])
+
+##-----------------------------------------------
+## Bon's changed
+    if len(m)==1:
+        for i in range (len(z)):
+            if z[i]!=0:
+                val[i]=(m[0]**z[i])/z[i]
+            else:
+                val[i]=np.log(m[0])
+
+    if len(m)>1:
+        for i in range(len(z)):
+            if z[i]!=0:
+                val[i]=(m[i]**z[i])/z[i]
+            else:
+                val[i]=np.log(m[i])
+##-----------------------------------------------
+#    print 'val is:', val
 
     if returnFloat:
         return val[0]

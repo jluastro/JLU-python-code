@@ -23,7 +23,7 @@ def plot_cmd():
     py.plot(color, mag, 'k.')
     py.plot(color[idx1], mag[idx1], 'r^', ms=20)
     py.plot(color[idx01], mag[idx01], 'r^', ms=20)
-    py.xlabel('F117M - F153M')
+    py.xlabel('F127M - F153M')
     py.ylabel('F153M')
     py.gca().set_ylim(py.gca().get_ylim()[::-1])
     py.savefig('/u/jlu/work/arches/cmd_sim.png')

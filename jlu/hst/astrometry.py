@@ -4,8 +4,12 @@ import atpy
 from jlu.hst import starlists
 import math
 
+scale = {'WFC': 0.050,
+         'WFC3-IR': 0.130}
+
 def plot_errors_wfc3ir(ks2Data, filterIndex, filterName,
-                       minMagGood=-13.5, maxMagGood=-7):
+                       minMagGood=-13.5, maxMagGood=-7
+                       ):
     """
     Load up a ks2 data table and plot the astrometric errors for the designated filter.
 

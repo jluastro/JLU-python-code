@@ -2,6 +2,9 @@ import datetime
 import time
 
 def toYearFraction(date):
+    """
+    Given a date time object, calculate the decimal form of the year.
+    """
     def sinceEpoch(date): # returns seconds since epoch
         return time.mktime(date.timetuple())
     s = sinceEpoch
