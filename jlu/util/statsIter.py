@@ -11,6 +11,7 @@ def mean(array, hsigma=None, lsigma=None, iter=0, verbose=False):
 
     lo = arr.min()
     hi = arr.max()
+    cnt = len(arr)
 
     if verbose:
         print '    Original: mean = %.3g' % (arr.mean())
@@ -30,7 +31,8 @@ def mean(array, hsigma=None, lsigma=None, iter=0, verbose=False):
         new_mean = arr.mean()
 
         if verbose:
-            print 'Iteration %2d: mean = %.3g' % (ii, new_mean)
+            print 'Iteration %2d: mean = %.3g (cut %d of %d)' % \
+                (ii, new_mean, cnt-len(arr), cnt)
 
     return new_mean
 
@@ -44,6 +46,7 @@ def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
 
     lo = arr.min()
     hi = arr.max()
+    cnt = len(arr)
 
     if verbose:
         print '    Original: std = %.3g' % (arr.std())
@@ -62,7 +65,8 @@ def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
         new_std = arr.std()
 
         if verbose:
-            print 'Iteration %2d: std = %.3g' % (ii, new_std)
+            print 'Iteration %2d: std = %.3g (cut %d of %d)' % \
+                (ii, new_std, cnt-len(arr), cnt)
 
     return new_std
 

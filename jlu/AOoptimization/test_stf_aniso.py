@@ -8,13 +8,14 @@ import os
 import shutil
 import glob
 import math
+from jlu.util import statsIter
 
 
-workDir = '/u/jlu/work/ao/ao_optimization/test_stf_aniso/'
+workDir = '/u/jlu/work/ao/ao_optimization/test_stf_aniso2/'
 
 def organize_psf_grid():
     """
-    Organize the raw PSF files that Gunther provided into a single psf_cube_20_20.fits
+    Organize the raw PSF files that Gunther provided into a single psf_cube_61_61.fits
     file and a svpart_20_20.txt file with the box boundaries.
 
     In the process of making a cube, we will trim the PSFs down to 100 pixel size
@@ -103,7 +104,8 @@ def organize_psf_grid():
         for xx in range(len(lx)):
             pp = yy*len(lx) + xx
 
-            psf = pyfits.getdata(psfs[ii])
+            pp_orig = np.where((xcoords == xuni[xx]) & (ycoords == yuni[yy]))[0]
+            psf = pyfits.getdata(psfs[pp_orig])
             psfLo = (psf.shape[1]/2) - (psf_size/2)
             psfHi = psfLo + psf_size
 
@@ -147,7 +149,7 @@ def make_psf_cube(undersample):
     # Grid-box boundaries are defined in an sv_par text file.
 
     # Dimensions of new grid
-    npsf_side = 61 / undersample
+    npsf_side = get_npsf_side( undersample )
     suffix = '%d_%d' % (npsf_side, npsf_side)
 
     # arrays for new boundaries
@@ -161,78 +163,39 @@ def make_psf_cube(undersample):
 
     # Set the new boundaries. Assumes X and Y have equal number of grid points
     # Had to do this carefully to make sure all pixels are encountered only once.
-    for yy in range(len(npsf_side)):
+    for yy in range(npsf_side):
         # Select the original grid boxes that are within this new box.
         yy_orig_lo = yy*undersample
-        yy_orig_hi = yy_orig_lo + undersample
-        yy_orig_use = yy_orig_lo + (yy_orig_hi - yy_orig_lo)/2)
+        yy_orig_hi = yy_orig_lo + (undersample-1)
+        yy_orig_use = yy_orig_lo + ((yy_orig_hi - yy_orig_lo)/2)
 
-        if yy_orig_hi > 61:
-            yy_orig_hi = 61
-        if yy_orig_use >= 61
+        if yy_orig_hi >= 61:
+            yy_orig_hi = 60
+        if yy_orig_use >= 61:
             yy_orig_use = 61 - 1
 
-        for xx in range(len(npsf_side)):
+        ly[yy] = t_orig.ly[yy_orig_lo]
+        uy[yy] = t_orig.uy[yy_orig_hi]
+
+        for xx in range(npsf_side):
             # Select the original grid boxes that are within this new box.
             xx_orig_lo = xx*undersample
-            xx_orig_hi = xx_orig_lo + undersample
-            xx_orig_use = xx_orig_lo + (xx_orig_hi - xx_orig_lo)/2)
+            xx_orig_hi = xx_orig_lo + (undersample-1)
+            xx_orig_use = xx_orig_lo + ((xx_orig_hi - xx_orig_lo)/2)
 
-            if xx_orig_hi > 61:
-                xx_orig_hi = 61
-            if xx_orig_use >= 61
+            if xx_orig_hi >= 61:
+                xx_orig_hi = 60
+            if xx_orig_use >= 61:
                 xx_orig_use = 61 - 1
 
             pp = yy*npsf_side + xx
             pp_orig_use = yy_orig_use*61 + xx_orig_use
-            
-    # The inner loop should be X and the outer loop Y.
-    for yy in range(len(t_orig.ly)):
-        for xx in range(len(t_orig.lx)):
-            pp = yy*len(t_orig.lx) + xx
 
-            # Oversample indices
-            for ys in range(oversample):
-                for xs in range(oversample):
-                    # New indices into the final output arrays
-                    xi = (xx*oversample) + xs
-                    yi = (yy*oversample) + ys
-                    pi = yi*npsf_side + xi
+            lx[xx] = t_orig.lx[xx_orig_lo]
+            ux[xx] = t_orig.ux[xx_orig_hi]
 
-        
-        
-    for ii in range(len(t_orig.lx)):
-        dx_orig = t_orig.ux[ii] - t_orig.lx[ii]
-        dy_orig = t_orig.uy[ii] - t_orig.ly[ii]
-        dx_new = dx_orig / oversample
-        dy_new = dy_orig / oversample
+            psf[pp] = psf_orig[pp_orig_use]
 
-        for ss in range(oversample):
-            i2 = ii*oversample + ss
-            lx[i2] = t_orig.lx[ii] + ss*dx_new
-            ly[i2] = t_orig.ly[ii] + ss*dy_new
-
-    for ii in range(len(ux)-1):
-        ux[ii] = lx[ii+1]
-        uy[ii] = ly[ii+1]
-    ux[-1] = t_orig.ux[-1]
-    uy[-1] = t_orig.uy[-1]
-
-
-    # The inner loop should be X and the outer loop Y.
-    for yy in range(len(t_orig.ly)):
-        for xx in range(len(t_orig.lx)):
-            pp = yy*len(t_orig.lx) + xx
-
-            # Oversample indices
-            for ys in range(oversample):
-                for xs in range(oversample):
-                    # New indices into the final output arrays
-                    xi = (xx*oversample) + xs
-                    yi = (yy*oversample) + ys
-                    pi = yi*npsf_side + xi
-
-                    psf[pi,:,:] = psf_orig[pp,:,:]
 
     pyfits.writeto('psf_cube_'+suffix+'.fits', psf, clobber=True)
 
@@ -241,9 +204,9 @@ def make_psf_cube(undersample):
         _out.write('%4d %4d %4d %4d\n' % (lx[ii], ux[ii], ly[ii], uy[ii]))
     _out.close()
 
-def run_starfinder(oversample):
+def run_starfinder(undersample):
     # Dimensions of new grid
-    npsf_side = 8 * oversample
+    npsf_side = get_npsf_side( undersample )
     suffix = '%d_%d' % (npsf_side, npsf_side)
 
     try:
@@ -255,8 +218,8 @@ def run_starfinder(oversample):
 
     _idl = open(idlRoot, 'w')
 
-    _idl.write('.r find_stf_tmt_grid\n')
-    cmd = 'find_stf_tmt_grid, "image.fits", "psf_cube_%s.fits", "svpar_%s.txt", 0.9\n' % \
+    _idl.write('.r find_stf_nirc2_grid\n')
+    cmd = 'find_stf_nirc2_grid, "image.fits", "psf_cube_%s.fits", "svpar_%s.txt", 0.9\n' % \
         (suffix, suffix)
     _idl.write(cmd)
     _idl.close()
@@ -267,68 +230,72 @@ def run_starfinder(oversample):
     # Copy the output starlist
     shutil.copy('image_0.9_stf.lis', 'grid_' + suffix + '/image_'+suffix+'_0.9_stf.lis')
 
-def run_calibrate(oversample):
+def run_calibrate(undersample):
     # Dimensions of new grid
-    npsf_side = 8 * oversample
+    npsf_side = get_npsf_side(undersample)
     suffix = '%d_%d' % (npsf_side, npsf_side)
 
-    cmd = 'calibrate_new -N /u/jlu/data/gc/source_list/photo_calib.dat -c 12 -R -M 1 '
+    cmd = 'calibrate_new -N /u/jlu/data/gc/source_list/photo_calib.dat -c 4 -R -M 1 '
     cmd += 'grid_' + suffix + '/image_'+suffix+'_0.9_stf.lis'
 
     os.system(cmd)
 
-def run_align(oversample):
+def run_align(undersample):
     # Dimensions of new grid
-    npsf_side = 8 * oversample
+    npsf_side = get_npsf_side(undersample)
     suffix = '%d_%d' % (npsf_side, npsf_side)
 
     _list = open('grid_' + suffix + '/align_' + suffix + '.list', 'w')
-    _list.write('image_input_positions.lis 30\n')
-    _list.write('grid_' + suffix + '/image_' + suffix + '_0.9_stf_cal.lis 30 ref\n')
+    _list.write('image_input_positions.lis 9\n')
+    _list.write('grid_' + suffix + '/image_' + suffix + '_0.9_stf_cal.lis 8 ref\n')
     _list.close()
 
-    cmd = 'java align -v -p -a 2 -R 15 -N /u/jlu/data/gc/source_list/label.dat'
+    cmd = 'java align -v -p -a 0 -R 1 -N /u/jlu/data/gc/source_list/label.dat'
     cmd += ' -r grid_' + suffix + '/align_' + suffix
     cmd += ' grid_' + suffix + '/align_' + suffix + '.list '
 
     os.system(cmd)
 
-def run_all(oversample):
+def run_all(undersample):
     """
     Run starfinder, align resulting list with input positions, make plot
-    for image.fits with an oversampled PSF. You can always have ovserample=1.
+    for image.fits with an undersampled PSF. You can always have ovserample=1.
     """
+    npsf_side = get_npsf_side(undersample)
+    print('*** Running Test for {0} x {0} PSF grid ***'.format(npsf_side))
+
     print 'Making PSF cube'
-    make_psf_cube(oversample)
+    make_psf_cube(undersample)
 
     print 'Running Starfinder'
-    run_starfinder(oversample)
+    run_starfinder(undersample)
 
     print 'Running calibrate'
-    run_calibrate(oversample)
+    run_calibrate(undersample)
 
     print 'Running align'
-    run_align(oversample)
+    run_align(undersample)
 
     print 'Plotting'
-    plot_vector_diff(oversample)
+    plot_vector_diff(undersample)
 
 
 
-def plot_vector_diff(oversample):
+def plot_vector_diff(undersample):
     """
     Make a vector plot of the differences between the input positions
     and the output positions after running starfinder.
     """
     # Dimensions of new grid
-    npsf_side = 8 * oversample
+    npsf_side = get_npsf_side(undersample)
     suffix = '%d_%d' % (npsf_side, npsf_side)
 
     s = starset.StarSet('grid_' + suffix + '/align_'+suffix)
 
     cnt = s.getArray('velCnt')
     mag = s.getArray('mag')
-    idx = np.where((cnt == 2) & (mag < 16))[0]
+    idx = np.where((cnt == 2) & (mag < 15))[0]
+    print 'Using {0} stars out of {1}'.format(len(idx), len(cnt))
 
     newStars = [s.stars[ii] for ii in idx]
     s.stars = newStars
@@ -340,27 +307,96 @@ def plot_vector_diff(oversample):
 
     dx = x1 - x0
     dy = y1 - y0
+    dr = np.hypot(dx, dy)
     
     # Boundaries
-    lx = np.array([  0, 512,1024,1536,2048,2560,3072,3584])
-    ux = np.array([512,1024,1536,2048,2560,3072,3584,4096])
-    ly = np.array([  0, 512,1024,1536,2048,2560,3072,3584])
-    uy = np.array([512,1024,1536,2048,2560,3072,3584,4096])
+    t = atpy.Table('svpar_' + suffix + '.txt', type='ascii')
+    lx = t.col1
+    ux = t.col2
+    ly = t.col3
+    uy = t.col4
     xedges = np.unique( np.append(lx, ux) )
     yedges = np.unique( np.append(ly, uy) )
 
     py.clf()
-    q = py.quiver(x0, y0, dx, dy, scale=0.1)
-    py.quiverkey(q, 0.1, 0.95, 0.1, '0.1 pixel', color='red', coordinates='axes')
-
-    print('Mean Delta-X: {0:9.5f} +/- {1:9.5f} pixels'.format(dx.mean(), dx.std()))
-    print('Mean Delta-Y: {0:9.5f} +/- {1:9.5f} pixels'.format(dy.mean(), dy.std()))
+    q = py.quiver(x0, y0, dx, dy, scale=0.2)
+    py.xlim(0, 1200)
+    py.ylim(0, 1200)
+    py.quiverkey(q, 0.5, 0.97, 0.02, '0.02 pixel (0.2 mas)', color='red', coordinates='axes')
 
     for xx in xedges:
         py.axvline(xx, linestyle='--')
     for yy in yedges:
         py.axhline(yy, linestyle='--')
-    
+
     py.savefig('plots/vec_diff_'+suffix+'.png')
 
+    xmean = statsIter.mean(dx, hsigma=5, lsigma=5, iter=5)
+    ymean = statsIter.mean(dy, hsigma=5, lsigma=5, iter=5)
+    rmean = statsIter.mean(dr, hsigma=5, lsigma=5, iter=5)
+    xstd = statsIter.std(dx, hsigma=5, lsigma=5, iter=5)
+    ystd = statsIter.std(dy, hsigma=5, lsigma=5, iter=5)
+    rstd = statsIter.std(dr, hsigma=5, lsigma=5, iter=5)
+    print('Mean Delta-X: {0:9.5f} +/- {1:9.5f} pixels'.format(xmean, xstd))
+    print('Mean Delta-Y: {0:9.5f} +/- {1:9.5f} pixels'.format(ymean, ystd))
+    print('Mean Delta-R: {0:9.5f} +/- {1:9.5f} pixels'.format(rmean, rstd))
+    f_name = 'diff_stats_' + suffix + '.txt'
+    f_stat = open(f_name, 'w')
+    hdr = '#{0:>5s} {1:>10s} {2:>10s} {3:>10s} {4:>10s} {5:>10s} {6:>10s}\n'
+    fmt = '{0:6d} {1:10.5f} {2:10.5f} {3:10.5f} {4:10.5f} {5:10.5f} {6:10.5f}\n'
+    f_stat.write(hdr.format('Npsf', 'Xmean', 'Ymean', 'Rmean', 'Xstd', 'Ystd', 'Rstd'))
+    f_stat.write(fmt.format(npsf_side, xmean, ymean, rmean, xstd, ystd, rstd))
+    f_stat.close()
+
+    return f_name
+    
+
+def plot_offset_vs_grid_size():
+    """
+    Read in all the possible tests and plot up the astrometric
+    error vs. the number of PSFs per side.
+    """
+    data = atpy.Table('diff_stats_all.txt', type='ascii')
+
+    py.clf()
+    
+    # py.plot(data.Npsf, data.Xstd, 'r.')
+    # py.plot(data.Npsf, data.Ystd, 'b.')
+    py.plot(data.Npsf, data.Rmean, 'go-')
+    py.xlabel('Number of PSFs per Side')
+    py.ylabel('STD[ in - out ] (pix)')
+    py.xlim(0, 20)
+    py.savefig('plots/npsf_vs_diff.png')
+    
+def plot_all():
+    undersamples = np.array([61, 30, 25, 20, 15, 12, 10,
+                             9, 8, 7, 6, 5, 4, 3, 2, 1])
+
+    f_all = open('diff_stats_all.txt', 'w')
+    writeHdr = True
+    for uu in undersamples:
+        #run_align(uu)
+        f_name = plot_vector_diff(uu)
+
+        f_uu = open(f_name, 'r')
+        if writeHdr:
+            f_all.write( f_uu.readline() )
+            writeHdr = False
+        else:
+            f_uu.readline()
+        f_all.write(f_uu.readline())
+        f_uu.close()
+    f_all.close()
+        
+
+    plot_offset_vs_grid_size()
+
+
+
+def get_npsf_side(undersample):
+    npsf_side = 61 / undersample
+    if (npsf_side*undersample) < 61:
+        npsf_side += 1
+
+    return npsf_side
 
