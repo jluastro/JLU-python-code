@@ -86,52 +86,47 @@ def test_broken_dice():
     # I know that this random number, input to dice cluster,
     # breaks things.
     ###
-    r = np.array([0.001, 0.051])
+    r = np.arange(0, 1, 0.05)
     # r = 0.051
 
     # Setup an IMF object
     massLimits = np.array([0.3, 1.2, 100])
-    imfSlopes = np.array([-1.0, -2.35])
+    imfSlopes = np.array([-1.0, -2.0])
     totalMass = 1.0e4
 
     test_imf = imf.IMF_broken_powerlaw(massLimits, imfSlopes)
     test_imf.imf_norm_cl(totalMass)
 
 
-    # Go through the steps in dice cluster
-    r = np.atleast_1d(r)  # Make sure it is an array
+    m = test_imf.imf_dice_star_cl(r)
+    m_check = np.array([ 0.30000000, 0.33781459, 0.38039566, 0.42834401, 0.48233618,
+                         0.54313400, 0.61159530, 0.68868605, 0.77549398, 0.87324393,
+                         0.98331514, 1.10726066, 1.24776735, 1.42348243, 1.65679880,
+                         1.98159236, 2.46477998, 3.25959271, 4.81097989, 9.18029750])
+
+    npt.assert_almost_equal(m, m_check)
+
+def test_boundary_double_count():
+    """
+    Test randomly selected masses right at the mass boundaries.
+    """
+    # Setup an IMF object
+    massLimits = np.array([0.1, 1.0, 10.0, 100.0])
+    imfSlopes = np.array([-1.0, -2.0, -1.5])
+    totalMass = 1.0e3
+
+    test_imf = imf.IMF_broken_powerlaw(massLimits, imfSlopes)
+    test_imf.imf_norm_cl(totalMass)
+
+    # Test where some random number (used to generate masses) exactly
+    # equals the lamda values.
+    lamda = test_imf.lamda
+    rin = lamda / lamda[-1]
+
+    m = test_imf.imf_dice_star_cl(rin)
+    npt.assert_almost_equal(m, massLimits)
     
-    x = r * test_imf.lamda[-1]
-    y = np.zeros(len(r), dtype=float)
-    z = np.ones(len(r), dtype=float)
-
-    for i in range(test_imf.nterms):
-        aux = x - test_imf.lamda[i]
-
-        # Only continue for those entries that are in later segments
-        idx = np.where(aux >= 0)[0]
-
-        # Maybe we are all done?
-        if len(idx) == 0:
-            break
-
-        x_tmp = x[idx]
-        aux_tmp = aux[idx]
-
-        # len(idx) entries
-        t1 = aux_tmp / (test_imf.coeffs[i] * test_imf.k)
-        t1 += imf.imf_prim_power(test_imf.mLimitsLow[i], test_imf.powers[i])
-        y_i = imf.gamma_closed(x_tmp, test_imf.lamda[i], test_imf.lamda[i+1])
-        y_i *= imf.imf_inv_prim_power(t1, test_imf.powers[i])
-
-        # Save results into the y array
-        y[idx] += y_i
-
-        z *= imf.delta(x - test_imf.lamda[i])
-
-
-
-
+    
     
 
     
