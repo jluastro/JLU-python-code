@@ -70,7 +70,8 @@ def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
 
     return new_std
 
-def mean_std_clip(indata, clipsig=3.0, maxiter=5, converge_num=0.02, verbose=0):
+def mean_std_clip(indata, clipsig=3.0, maxiter=5, converge_num=0.02,
+                  verbose=0, return_nclip=False):
     """
     Computes an iteratively sigma-clipped mean on a
     data set. Clipping is done about median, but mean
@@ -124,9 +125,9 @@ def mean_std_clip(indata, clipsig=3.0, maxiter=5, converge_num=0.02, verbose=0):
 
     while (c1 >= c2) and (iter < maxiter):
         lastct = ct
-        medval = numpy.median(skpix)
-        sig = numpy.std(skpix)
-        wsm = numpy.where( abs(skpix-medval) < clipsig*sig )
+        medval = np.median(skpix)
+        sig = np.std(skpix)
+        wsm = np.where( abs(skpix-medval) < clipsig*sig )
         ct = len(wsm[0])
         if ct > 0:
             skpix = skpix[wsm]
@@ -135,13 +136,17 @@ def mean_std_clip(indata, clipsig=3.0, maxiter=5, converge_num=0.02, verbose=0):
         c2 = converge_num * lastct
         iter += 1
 
-    mean  = numpy.mean( skpix )
-    sigma = robust_sigma( skpix )
+    mean  = np.mean( skpix )
+    sigma = np.std( skpix )
 
     if verbose:
         prf = 'MEANCLIP:'
         print '%s %.1f-sigma clipped mean' % (prf, clipsig)
         print '%s Mean computed in %i iterations' % (prf, iter)
+        print '%s Clipped %i of %i stars' % (prf, indata.size - len(skpix), indata.size)
         print '%s Mean = %.6f, sigma = %.6f' % (prf, mean, sigma)
 
-    return mean, sigma
+    if return_nclip:
+        return mean, sigma, len(skpix)
+    else:
+        return mean, sigma
