@@ -7,17 +7,20 @@ import numpy as np
 module_dir = os.path.dirname(__file__)
 
 def makedark(files, output):
-    """Make dark image for NIRC2 data. Run in the calib/ directory.
-    All output and temporary files will be created in a darks/
-    subdirectory. 
+    """
+    Make dark image for NIRC2 data. Makes a calib/ directory
+    and stores all output there. All output and temporary files
+    will be created in a darks/ subdirectory. 
 
     files: integer list of the files. Does not require padded zeros.
     output: output file name. Include the .fits extension.
     """
-    curDir = os.getcwd() + '/'
+    redDir = os.getcwd() + '/'  # Reduce directory.
+    curDir = redDir + 'calib/'
     darkDir = util.trimdir(curDir + 'darks/')
-    rawDir = util.trimdir(os.path.abspath(curDir + '../../raw') + '/')
+    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
 
+    util.mkdir(curDir)
     util.mkdir(darkDir)
     
     _out = darkDir + output
@@ -39,9 +42,10 @@ def makedark(files, output):
     
 
 def makeflat(onFiles, offFiles, output, normalizeFirst=False):
-    """Make flat field image for NIRC2 data. Run in the calib/ directory.
-    All output and temporary files will be created in a flats/
-    subdirectory.
+    """
+    Make flat field image for NIRC2 data. Makes a calib/ directory
+    and stores all output there. All output and temporary files
+    will be created in a flats/ subdirectory. 
     
     onFiles: integer list of lamps ON files. Does not require padded zeros.
     offFiles: integer list of lamps OFF files. Does not require padded zeros.
@@ -53,10 +57,12 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False):
     twilight flats.
     output: output file name. Include the .fits extension.
     """
-    curDir = os.getcwd() + '/'
+    redDir = os.getcwd() + '/'
+    curDir = redDir + 'calib/'
     flatDir = util.trimdir(curDir + 'flats/')
-    rawDir = util.trimdir(os.path.abspath(curDir + '../../raw') + '/')
+    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
 
+    util.mkdir(curDir)
     util.mkdir(flatDir)
 
     _on = flatDir + 'lampsOn.fits'
@@ -150,9 +156,9 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False):
         ir.normflat(_norm, _out, sample=flatRegion)
 
 def makemask(dark, flat, output):
-    """Make bad pixel mask for NIRC2 data. Run in the calib/ directory.
-    All output and temporary files will be created in a masks/
-    subdirectory.
+    """Make bad pixel mask for NIRC2 data. Makes a calib/ directory
+    and stores all output there. All output and temporary files
+    will be created in a masks/ subdirectory. 
     
     @param dark: The full relative path to a dark file. This is used to
         construct a hot pixel mask. Use a long (t>20sec) exposure dark.
@@ -164,22 +170,24 @@ def makemask(dark, flat, output):
         subdirectory.
     @type output: str
     """
-    curDir = os.getcwd() + '/'
-    maskDir = util.trimdir(curDir + 'masks/')
-    rawDir = util.trimdir(os.path.abspath(curDir + '../../raw') + '/')
-    dataDir = util.trimdir(os.path.abspath(curDir + '../../..') + '/')
+    redDir = os.getcwd() + '/'
+    calDir = redDir + 'calib/'
+    maskDir = util.trimdir(calDir + 'masks/')
+    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
+    dataDir = util.trimdir(os.path.abspath(redDir + '../..') + '/')
 
+    util.mkdir(calDir)
     util.mkdir(maskDir)
 
     _out = maskDir + output
-    _dark = curDir + dark
-    _flat = curDir + flat
+    _dark = redDir + dark
+    _flat = redDir + flat
     _nirc2mask = module_dir + '/masks/nirc2mask.fits'
 
     util.rmall([_out])
 
     # Make hot pixel mask
-    whatDir = os.getcwd() + '/' + dark
+    whatDir = redDir + dark
     print(whatDir)
 
     text_output = ir.imstatistics(_dark, fields="mean,stddev", 

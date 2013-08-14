@@ -68,11 +68,9 @@ def go():
     ####################
     #
     # Calibration files:
+    #     everything created under calib/
     #
     ####################
-    util.mkdir('calib')
-    os.chdir('calib')
-
     # Darks - created in subdir darks/
     # Files n0001 - n0009
     #  - darks needed to make bad pixel mask
@@ -92,7 +90,6 @@ def go():
     calib.makemask('darks/dark_2.8s_10ca.fits', 'flats/flat_kp.fits',
                    'supermask.fits')
 
-    os.chdir('../')
 
     ####################
     #
