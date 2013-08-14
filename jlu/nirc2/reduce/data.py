@@ -2,12 +2,12 @@ import os, sys
 import pyfits, math
 import user, asciidata
 from pyraf import iraf as ir
-from . import nirc2
-from . import util
-from . import dar
+import nirc2
+import util
 import time
 import pdb
 import numpy as np
+import dar
 
 module_dir = os.path.dirname(__file__)
 
@@ -1194,15 +1194,15 @@ def combine_register(outroot, refImage, diffPA):
         _coo.write('%.2f  %.2f\n' % (coords[0][ii+1], coords[1][ii+1]))
         _coo.close()
 
+        util.rmall([shiftFile])
         print 'inFile = ', inFile
         ir.xregister.coords = tmpCooFile
-        ir.xregister(inFile, refImage, regions, shiftFile, append='yes')
+        ir.xregister(inFile, refImage, regions, shiftFile)
 
         _shifts = asciidata.open(shiftFile)
         shiftsTable[0][ii] = _shifts[0][0]
         shiftsTable[1][ii] = _shifts[1][0]
         shiftsTable[2][ii] = _shifts[2][0]
-
 
     # # Read in the shifts file. Column format is:
     # # Filename.fits  xshift  yshift

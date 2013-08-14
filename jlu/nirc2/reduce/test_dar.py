@@ -5,7 +5,7 @@ import pylab as py
 import math, datetime
 import pyfits
 from gcwork import objects
-from keckdar import dar
+import dar
 
 def diffDarOnOff(cleanDir1, cleanDir2):
     files1tmp = glob.glob(cleanDir1 + '/c????.fits')

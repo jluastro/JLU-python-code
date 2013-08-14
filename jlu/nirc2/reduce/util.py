@@ -30,9 +30,9 @@ def getcwd():
     newdir2 = newdir1.replace('/net/uni/Groups/ghez/jlu', '/u/jlu/work')
     newdir3 = newdir2.replace('/net/dione/data0/ghez', '/u/ghezgroup')
     newdir4 = newdir3.replace('/scr2/jlu/data', '/u/jlu/data')
-    newdir3 +=  '/'
+    newdir4 +=  '/'
 
-    return newdir3
+    return newdir4
 
 def trimdir(olddir):
     """
@@ -42,7 +42,7 @@ def trimdir(olddir):
     newdir2 = newdir1.replace('/net/uni/Groups/ghez/jlu', '/u/jlu/work')
     newdir3 = newdir2.replace('/net/dione/data0/ghez', '/u/ghezgroup')
     newdir4 = newdir3.replace('/scr2/jlu/data', '/u/jlu/data')
-    return newdir3
+    return newdir4
 
 def cp_change_prefix(arg1,arg2):
     """

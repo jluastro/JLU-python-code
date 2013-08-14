@@ -3,15 +3,20 @@ import asciidata, glob
 import numpy as np
 import pylab as py
 import math
-import refro, refco
 import pyfits
 import datetime
 import urllib
-import os
-from . import nirc2
-from . import util
+import os, sys
+import nirc2
+import util
 
 module_dir = os.path.dirname(__file__)
+
+# Setup SLALIB python/fortran modules
+slalib_dir = module_dir + '/slalib_pyf'
+if slalib_dir not in sys.path:
+    sys.path.append(slalib_dir)
+import refro, refco
 
 def get_atm_conditions(year):
     """
@@ -260,7 +265,7 @@ def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None):
 
     xout = outputRoot + '_x.fits'
     yout = outputRoot + '_y.fits'
-    gcutil.rmall([xout, yout])
+    util.rmall([xout, yout])
     fits[0].data = x
     fits[0].writeto(xout, output_verify='silentfix')
     fits[0].data = y

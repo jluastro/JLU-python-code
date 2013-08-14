@@ -1,5 +1,5 @@
 import os, sys
-from . import util
+import util
 import pyfits, asciidata
 import numpy as np
 from pyraf import iraf as ir
@@ -309,22 +309,25 @@ def makesky_fromsci(files, nite, wave):
         ir.imdelete(nsc[ii])
         ir.imcopy(skies[ii], nn[ii], verbose="no")
 
-    # Make list for combinng
+    # Make list for combinng. Reset the skyDir to an IRAF variable.
+    ir.set(skydir=skyDir)
     f_on = open(skylist, 'w')
-    f_on.write('\n'.join(nn) + '\n')
+    for ii in range(len(nn)):
+        nn_new = nn[ii].replace(skyDir, "skydir$")
+        f_on.write(nn_new + '\n')
     f_on.close()
 
     # Calculate some sky statistics, but reject high (star-like) pixels
     sky_mean = np.zeros([len(skies)], dtype=float)
     sky_std = np.zeros([len(skies)], dtype=float)
 
-    text = ir.imstat('@'+skylist, fields='midpt,stddev', nclip=10, 
+    text = ir.imstat("@" + skylist, fields='midpt,stddev', nclip=10, 
                      lsigma=10, usigma=3, format=0, Stdout=1)
 
-    for i in range(len(skies)):
-        fields = text[i].split()
-        sky_mean[i] = float(fields[0])
-        sky_std[i] = float(fields[0])
+    for ii in range(len(nn)):
+        fields = text[ii].split()
+        sky_mean[ii] = float(fields[0])
+        sky_std[ii] = float(fields[1])
 
     sky_mean_all = sky_mean.mean()
     sky_std_all = sky_std.mean()
