@@ -8,11 +8,10 @@ import time
 import pdb
 import numpy as np
 import dar
+import bfixpix
 
 module_dir = os.path.dirname(__file__)
 
-ir.task(bfixpix = module_dir + "/cl/bfixpix.cl")
-ir.task(bfixpix_one = module_dir + "/cl/bfixpix_one.cl")
 distCoef = ''
 distXgeoim = module_dir + '/distortion/nirc2dist_xgeoim.fits'
 distYgeoim = module_dir + '/distortion/nirc2dist_ygeoim.fits'
@@ -151,7 +150,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _n = 'n' + root + '.fits'
             _ss = 'ss' + root + '.fits'
             _ff = 'ff' + root + '.fits'
-            _ff_f = _ff + 'f' + '.fits'
+            _ff_f = _ff + '_f' + '.fits'
             _ff_s = _ff + '_s' + '.fits'
             _bp = 'bp' + root + '.fits'
             _cd = 'cd' + root + '.fits'
@@ -193,7 +192,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Fix bad pixels ###
             # Produces _ff_f file
-            ir.bfixpix(_ff, _statmask, '')
+            pdb.set_trace()
+            
+            bfixpix.bfixpix(_ff, _statmask)
             ir.imdelete(_ff_s)
 
             ### Fix cosmic rays and make cosmic ray mask. ###
@@ -570,17 +571,17 @@ def calcStrehl(files, wave, field=None):
     # Loop through all the files and determine the coordinates of the
     # strehl source from what is in the *.coo file.
     for root in roots:
-	_coo = cleanDir + 'c' + root + '.coo'
-	_fits = cleanDir + 'c' + root + '.fits'
+        _coo = cleanDir + 'c' + root + '.coo'
+        _fits = cleanDir + 'c' + root + '.fits'
 
         # Read xstrehl, ystrehl coordinates from header
         hdr = pyfits.getheader(_fits,ignore_missing_end=True)
         xystr = [float(hdr['XSTREHL']), float(hdr['YSTREHL'])]
 
-	_coord = cleanDir + 'c' + root + '.coord'
-	file(_coord, 'w').write('%7.2f  %7.2f\n' % (xystr[0], xystr[1]))
+        _coord = cleanDir + 'c' + root + '.coord'
+        file(_coord, 'w').write('%7.2f  %7.2f\n' % (xystr[0], xystr[1]))
 
-	_clis.write('%s\n' % _fits)
+        _clis.write('%s\n' % _fits)
 
     _clis.close()
 
@@ -758,29 +759,36 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
     satLvl_combo = 0.0
 
+    # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
+    ir.set(cleanDir=cleanDir)
+
     print 'combine: drizzling images together'
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
+        _c_ir = _c.replace(cleanDir, 'cleanDir$')
 
-  	# Cleaned but distorted image
-	_cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
+        # Cleaned but distorted image
+        _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         _cdwt = cleanDir + 'weight/cdwt.fits'
+        _cd_ir = _cd.replace(cleanDir, 'cleanDir$')
+        _cdwt_ir = _cdwt.replace(cleanDir, 'cleanDir$')
+
         util.rmall([_cdwt])
 
         # Multiply each distorted image by it's weight
-        ir.imarith(_cd, '*', weights[i], _cdwt)
+        ir.imarith(_cd_ir, '*', weights[i], _cdwt_ir)
 
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
-        itime_tmp = ir.hselect(_cdwt, "ITIME", "yes", Stdout=1)
+        itime_tmp = ir.hselect(_cdwt_ir, "ITIME", "yes", Stdout=1)
         itime = float(itime_tmp[0]) * weights[i]
-        ir.hedit(_cdwt, 'ITIME', itime, verify='no', show='no')
+        ir.hedit(_cdwt_ir, 'ITIME', itime, verify='no', show='no')
 
-	# Get pixel shifts
-	xsh = shifts[1][i]
-	ysh = shifts[2][i]
+        # Get pixel shifts
+        xsh = shifts[1][i]
+        ysh = shifts[2][i]
 
         # Read in PA of each file to feed into drizzle for rotation
         hdr = pyfits.getheader(_c,ignore_missing_end=True)
@@ -793,6 +801,9 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             (xgeoim, ygeoim) = dar.darPlusDistortion(_cdwt, darRoot,
                                                      xgeoim=distXgeoim,
                                                      ygeoim=distYgeoim)
+
+            xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
+            ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
         
@@ -800,13 +811,13 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         f_dlog.write(time.ctime())
 
         if (mask == True):
-            _mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
+            _mask = 'cleanDir$masks/mask' + roots[i] + '.fits'
         else:
             _mask = ''
         ir.drizzle.in_mask = _mask
         ir.drizzle.outweig = _wgt
 
-        ir.drizzle(_cdwt, _tmpfits, xsh=xsh, ysh=ysh, Stdout=f_dlog)
+        ir.drizzle(_cdwt_ir, _tmpfits, xsh=xsh, ysh=ysh, Stdout=f_dlog)
 
         # Create .max file with saturation level for final combined image 
         # by weighting each individual satLevel and summing.

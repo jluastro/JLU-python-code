@@ -8,7 +8,7 @@ string  mask	    {prompt = "mask file (0 == goodpix, >0 == badpix)"}
 string  clean       {"", prompt = "cleaned version of input file, if necc"}
 string  outsuffix   {"default", prompt = "fixpix'ed output suffix"}
 string  msksuffix   {"default", prompt = "badpix significance mask suffix"}
-bool    box	    {yes, prompt = "3x3 box (yes) or 3x3 cross (no)"}
+bool    box	        {yes, prompt = "3x3 box (yes) or 3x3 cross (no)"}
 #
 begin
 #
@@ -17,7 +17,6 @@ string inp,msk,cle,sout,mout
 string outf,outm
 string medimg,medscl
 real ct,it,st
-
 
 inp = input
 msk = mask
@@ -32,26 +31,26 @@ imgtools
 if (sout == "default" || sout == "def") outf = inp//"f"
 if (mout == "default" || mout == "def") outm = inp//"_s"
 if (cle == "") cle = inp
-if (access(outf)) delete(outf,verify=no)
+if (access(outf)) imdelete(outf,verify=no)
 #imcopy(inp,outf,verbose = yes)
 printf("%s -> %s\n",inp,outf)
 
-medimg= "medimg.hhh"
-medscl= "medscl.hhh"
+medimg = "medimg.fits"
+medscl = "medscl.fits"
 
-if (access(medimg)) imdelete(medimg,verify=no)
-if (access(medscl)) imdelete(medscl,verify=no)
+if (access(medimg)) imdelete(medimg, verify=no)
+if (access(medscl)) imdelete(medscl, verify=no)
 
 # median the image
 
 if (box) {
- median(cle,medimg,3,3,
-   zloreject = INDEF, zhireject = INDEF, boundary = "nearest",
-   constant = 0.,verbose = no)
+   median(cle,medimg,3,3,
+          zloreject = INDEF, zhireject = INDEF, boundary = "nearest",
+          constant = 0.,verbose = no)
 } else {
- rmedian(cle,medimg,0,1.4,
-       ratio = 1., theta = 0., zloreject = INDEF, zhireject = INDEF,
-       boundary = "nearest",constant = 0., verbose = no)
+   rmedian(cle,medimg,0,1.4,
+           ratio = 1., theta = 0., zloreject = INDEF, zhireject = INDEF,
+           boundary = "nearest",constant = 0., verbose = no)
 }
 
 # scale the median image to input image

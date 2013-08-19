@@ -6,7 +6,7 @@ import pdb
 def rmall(files):
     """Remove list of files without confirmation."""
     for file in files:
-	if os.access(file, os.F_OK): os.remove(file)
+        if os.access(file, os.F_OK): os.remove(file)
 
 
 def mkdir(dir):

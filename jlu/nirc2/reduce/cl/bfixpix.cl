@@ -29,7 +29,7 @@ if ( substr(inp,1,1) == "@" ) {
     list = ""
     list = substr(inp,2,strlen(inp))
     while ( fscan(list, fileName) != EOF) {
-	bfixpix_one( fileName, msk, cle, outsuffix=sout, msksuffix=mout, box=bx )
+    	bfixpix_one( fileName, msk, cle, outsuffix=sout, msksuffix=mout, box=bx )
     }
 } else {
     bfixpix_one( inp, msk, cle, outsuffix=sout, msksuffix=mout, box=bx )
