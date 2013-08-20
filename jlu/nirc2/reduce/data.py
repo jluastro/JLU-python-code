@@ -150,8 +150,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _n = 'n' + root + '.fits'
             _ss = 'ss' + root + '.fits'
             _ff = 'ff' + root + '.fits'
-            _ff_f = _ff + '_f' + '.fits'
-            _ff_s = _ff + '_s' + '.fits'
+            _ff_f = 'ff' + root + '_f' + '.fits'
+            _ff_s = 'ff' + root + '_s' + '.fits'
             _bp = 'bp' + root + '.fits'
             _cd = 'cd' + root + '.fits'
             _ce = 'ce' + root + '.fits'
@@ -192,10 +192,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Fix bad pixels ###
             # Produces _ff_f file
-            pdb.set_trace()
-            
             bfixpix.bfixpix(_ff, _statmask)
-            ir.imdelete(_ff_s)
+            util.rmall([_ff_s])
 
             ### Fix cosmic rays and make cosmic ray mask. ###
             clean_cosmicrays(_ff_f, _crmask, wave)
