@@ -402,7 +402,6 @@ class IMF_broken_powerlaw(object):
         
         x = r * self.lamda[-1]
         y = np.zeros(len(r), dtype=float)
-        z = np.ones(len(r), dtype=float)
 
         for i in range(self.nterms):
             aux = x - self.lamda[i]
@@ -426,12 +425,17 @@ class IMF_broken_powerlaw(object):
             # Save results into the y array
             y[idx] += y_i
 
-            z *= delta(x - self.lamda[i])
+        # Handle interval boundaries (not outer edges) and give
+        # them a weight of 0.5 to avoid double counting.
+        # This multiplies by 0.5 for x - lamda[i] == 0
+        for i in range(1, self.nterms):
+            y *= delta(x - self.lamda[i])  
 
         if returnFloat:
-            return y[0] * z[0]
+            return y[0]
         else:
-            return y * z
+            return y
+        
 
 class IMF_Chabrier_2003(object):
     def __init__(self, massLimits, powers):
@@ -681,7 +685,6 @@ class IMF_Chabrier_2003(object):
         
         x = r * self.lamda[-1]
         y = np.zeros(len(r), dtype=float)
-        z = np.ones(len(r), dtype=float)
 
         for i in range(self.nterms):
             aux = x - self.lamda[i]
@@ -705,12 +708,16 @@ class IMF_Chabrier_2003(object):
             # Save results into the y array
             y[idx] += y_i
 
-            z *= delta(x - self.lamda[i])
+        # Handle interval boundaries (not outer edges) and give
+        # them a weight of 0.5 to avoid double counting.
+        # This multiplies by 0.5 for x - lamda[i] == 0
+        for i in range(1, self.nterms):
+            y *= delta(x - self.lamda[i])  
 
         if returnFloat:
-            return y[0] * z[0]
+            return y[0]
         else:
-            return y * z
+            return y
 
 class Salpeter_1955(IMF_broken_powerlaw):
     def __init__(self):
