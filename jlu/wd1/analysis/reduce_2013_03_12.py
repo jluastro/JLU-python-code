@@ -712,4 +712,4 @@ def opt_completeness_all():
 
     comp_all.write('{0}completeness_matched_all.fits'.format(root_dir))
 
-    
+
