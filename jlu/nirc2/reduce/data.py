@@ -12,9 +12,17 @@ import bfixpix
 
 module_dir = os.path.dirname(__file__)
 
+# Remember to change these if you are going to use the wide camera.
+# You can change them in your reduce.py file after importing data.py
+# Narrow Camera
 distCoef = ''
-distXgeoim = module_dir + '/distortion/nirc2dist_xgeoim.fits'
-distYgeoim = module_dir + '/distortion/nirc2dist_ygeoim.fits'
+distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
+distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
+# Wide Camera
+#distCoef = module_dir + '/distortion/coeffs/nirc2_cubic_wide'
+#distXgeoim = ''
+#distYgeoim = ''
+
 supermaskName = 'supermask.fits'
 outputVerify = 'ignore'
 
