@@ -1,4 +1,4 @@
-import asciidata
+import atpy
 import pyfits
 from jlu.util import constants as c
 from jlu.stellarModels import extinction
@@ -74,14 +74,14 @@ def Vega():
 
 
 class EarthAtmosphere(spectrum.ArraySpectralElement):
-    def __init__(self, dataFile='/u/jlu/data/w51/09jun26/weather/atmosphere_transmission.dat'):
+    def __init__(self, dataFile='/u/jlu/code/python/jlu/nirc2/earth_transmission.fits'):
         self.data_file = dataFile
 
         # also get the atmospheric transmission curve
-        atmData = asciidata.open(self.data_file)
+        atmData = atpy.Table(self.data_file)
 
-        wave = atmData[0].tonumpy()
-        trans = atmData[1].tonumpy()
+        wave = atmData.Microns
+        trans = atmData.Transmission
 
         # Convert wavelength to angstrom
         wave *= 10**4
@@ -189,7 +189,7 @@ for ff in range(len(filter_names)):
     filter_mag0[filt] = foo[2]
 
 
-def nearIR(distance, logAge, redlawClass=RedLawNishiyama09):
+def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
     """
     For a sampling of effective temperatures and extinctions, calculate the
     J, H, K, Kp, Ks, Lp magnitudes for a population at the specified
@@ -198,6 +198,10 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09):
     Input Parameters:
     distance in pc
     logAge
+
+    Optional Input Parameters:
+    redlawClass - default = RedLawNishiyama09
+    AKsGrid -- default [0 - 5; 0.1 steps]
 
     Output stored in a pickle file named syn_nir_d#####_a####.dat.
     
@@ -239,7 +243,8 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09):
     temp = temp[idx]
 
     # We will also run through a range of extinctions
-    AKsGrid = np.arange(0, 5, 0.1)
+    if AKsGrid == None:
+        AKsGrid = np.arange(0, 5, 0.1)
 
     # Fetch earth, vega, and extinction objects
     earth = EarthAtmosphere()

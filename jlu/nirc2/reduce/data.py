@@ -822,8 +822,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             _mask = ''
         ir.drizzle.in_mask = _mask
         ir.drizzle.outweig = _wgt
+        ir.drizzle.xsh = xsh
+        ir.drizzle.ysh = ysh
 
-        ir.drizzle(_cdwt_ir, _tmpfits, xsh=xsh, ysh=ysh, Stdout=f_dlog)
+        ir.drizzle(_cdwt_ir, _tmpfits, Stdout=f_dlog)
 
         # Create .max file with saturation level for final combined image 
         # by weighting each individual satLevel and summing.
@@ -973,7 +975,11 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         else:
             _mask = ''
         ir.drizzle.in_mask = _mask
-        ir.drizzle(cdwt, fits, outweig=wgt, xsh=xsh, ysh=ysh, Stdout=log)
+        ir.drizzle.outweig = wgt
+        ir.drizzle.xsh = xsh
+        ir.drizzle.ysh = ysh
+        
+        ir.drizzle(cdwt, fits, Stdout=log)
 
     for f in f_log:
 	f.close()

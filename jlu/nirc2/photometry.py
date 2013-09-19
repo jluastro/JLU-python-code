@@ -1,7 +1,7 @@
 from pyraf import iraf as ir
 import pyfits
 import math
-import asciidata
+import atpy
 import numpy as np
 import pylab as py
 import pickle, glob
@@ -33,8 +33,9 @@ def setup_phot(imageRoot, silent=False,
     ir.datapars.datamin = 'INDEF'
 
     if os.path.exists(imageRoot + '.max'):
-        max_table = asciidata.open(imageRoot + '.max')
-        max = float(max_table[0][0])
+        max_file = open(imageRoot + '.max', 'r')
+        max_line = max_file.readline()
+        max = float(max_line)
         ir.datapars.datamax = max
 
         if not silent:
@@ -180,10 +181,10 @@ def get_filter_profile(filter):
         print 'Choices are: ', filters
         return
 
-    table = asciidata.open(rootDir + filter + '.dat')
+    table = atpy.Table(rootDir + filter + '.dat', type='ascii')
 
-    wavelength = table[0].tonumpy()
-    transmission = table[1].tonumpy()
+    wavelength = table[table.keys()[0]]
+    transmission = table[table.keys()[1]]
 
     # Lets fix wavelength array for duplicate values
     diff = np.diff(wavelength)
@@ -264,9 +265,9 @@ def test_filter_profile_interp():
 
 def test_atmosphere_profile_interp():
     atmDir = '/u/jlu/data/w51/09jun26/weather/atmosphere_transmission.dat'
-    atmData = asciidata.open(atmDir)
-    atm_wave = atmData[0].tonumpy()
-    atm_trans = atmData[1].tonumpy()
+    atmData = atpy.Table(atmDir, type='ascii')
+    atm_wave = atmData[atmData.keys()[0]]
+    atm_trans = atmData[atmData.keys()[1]]
 
     atm_interp = interpolate.splrep(atm_wave, atm_trans, k=1, s=1)
 
