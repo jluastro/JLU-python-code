@@ -111,6 +111,8 @@ def go():
     #
     #    -- If you have more than one position angle, make sure to
     #       clean them seperatly.
+    #    -- Strehl and Ref src should be the pixel coordinates of a bright
+    #       (but non saturated) source.
     sci_files1 = range(108, 237+1)
     refSrc1 = [407.77, 673.87]
     strSrc1 = [521.79, 398.92]

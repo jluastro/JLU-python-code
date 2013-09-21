@@ -173,6 +173,8 @@ def makemask(dark, flat, output):
     redDir = os.getcwd() + '/'
     calDir = redDir + 'calib/'
     maskDir = util.trimdir(calDir + 'masks/')
+    flatDir = util.trimdir(calDir + 'flats/')
+    darkDir = util.trimdir(calDir + 'darks/')
     rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
     dataDir = util.trimdir(os.path.abspath(redDir + '../..') + '/')
 
@@ -180,8 +182,8 @@ def makemask(dark, flat, output):
     util.mkdir(maskDir)
 
     _out = maskDir + output
-    _dark = redDir + dark
-    _flat = redDir + flat
+    _dark = darkDir + dark
+    _flat = flatDir + flat
     _nirc2mask = module_dir + '/masks/nirc2mask.fits'
 
     util.rmall([_out])
