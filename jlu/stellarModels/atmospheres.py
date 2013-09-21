@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-import asciidata
+import atpy
 import pyfits
 import pysynphot
 

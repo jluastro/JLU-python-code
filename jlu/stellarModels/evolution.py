@@ -1,6 +1,5 @@
 import numpy as np
 import pylab as py
-import asciidata
 import pyfits
 import os
 import math
@@ -12,6 +11,7 @@ from matplotlib import mlab
 from scipy import interpolate
 import time
 from gcreduce import gcutil
+from astropy.table import Table
     
 def get_geneva_isochrone(metallicity=0.02, logAge=8.0):
     """
@@ -31,12 +31,13 @@ def get_geneva_isochrone(metallicity=0.02, logAge=8.0):
         print '  ' + genevaFile
         return None
 
-    table = asciidata.open(genevaFile)
+    table = Table.read(genevaFile, format='ascii')
+    cols = table.keys()
 
-    mass = table[1].tonumpy()
-    logT = table[3].tonumpy()
-    logg = table[4].tonumpy()
-    logL = table[5].tonumpy()
+    mass = table[cols[1]]
+    logT = table[cols[3]]
+    logg = table[cols[4]]
+    logL = table[cols[5]]
 
     obj = objects.DataHolder()
     obj.mass = mass
@@ -76,12 +77,13 @@ def get_meynetmaeder_isochrone(logAge, metallicity=0.02, rotation=True):
                                     metallicity=metallicity, 
                                     rotation=rotation)
         
-    data = asciidata.open(isoFile)
-    mass = data[1].tonumpy()
-    logT = data[2].tonumpy()
-    logg = data[7].tonumpy()
-    logL = data[8].tonumpy()
-    logT_WR = data[10].tonumpy()
+    data = Table.read(isoFile, format='ascii')
+    cols = data.keys()
+    mass = data[cols[1]]
+    logT = data[cols[2]]
+    logg = data[cols[7]]
+    logL = data[cols[8]]
+    logT_WR = data[cols[10]]
     
     obj = objects.DataHolder()
     obj.mass = mass
@@ -196,12 +198,13 @@ def get_palla_stahler_isochrone(logAge):
     pms_isochrones = '/u/jlu/work/models/preMS/pallaStahler1999/' + \
         'pms_isochrones.txt'
 
-    data = asciidata.open(pms_isochrones)
+    data = Table.read(pms_isochrones, format='ascii')
+    cols = data.keys()
 
-    mass = data[0].tonumpy()
-    temp = data[1].tonumpy()
-    lum = data[2].tonumpy()
-    age = data[3].tonumpy()
+    mass = data[cols[0]]
+    temp = data[cols[1]]
+    lum = data[cols[2]]
+    age = data[cols[3]]
 
     # Interpolate to get the isochrone at the proper age.
     inputAge = 10**logAge / 10**6
@@ -223,11 +226,13 @@ def get_padova_isochrone(logAge, metallicity=0.02):
     # our own thing.
     isoFile = '%siso_%.2f.dat' % (mod_dir, logAge)
 
-    data = asciidata.open(isoFile)
-    mass = data[1].tonumpy()
-    logL = data[3].tonumpy()
-    logT = data[4].tonumpy()
-    logg = data[5].tonumpy()
+    data = Table.read(isoFile, format='ascii')
+    cols = data.keys()
+
+    mass = data[cols[1]]
+    logL = data[cols[3]]
+    logT = data[cols[4]]
+    logg = data[cols[5]]
 
     obj = objects.DataHolder()
     obj.mass = mass
@@ -256,11 +261,13 @@ def get_siess_isochrone(logAge, metallicity=0.02):
         print 'Generating new isochrone!!'
         make_isochrone_siess(logAge, metallicity=metallicity)
 
-    data = asciidata.open(isoFile)
-    mass = data[0].tonumpy()
-    logT = data[1].tonumpy()
-    logL = data[2].tonumpy()
-    logg = data[3].tonumpy()
+    data = Table.read(isoFile, format='ascii')
+    cols = data.keys()
+    
+    mass = data[cols[0]]
+    logT = data[cols[1]]
+    logL = data[cols[2]]
+    logg = data[cols[3]]
 
     obj = objects.DataHolder()
     obj.mass = mass
@@ -720,14 +727,15 @@ def get_merged_isochrone(logAge, metallicity=0.02):
     isoFile = '/u/jlu/work/models/merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
     isoFile += 'iso_%.2f.dat' % logAge
 
-    data = asciidata.open(isoFile)
+    data = Table.read(isoFile, format='ascii')
+    cols = data.keys()
     
     iso = objects.DataHolder()
-    iso.mass = data[0].tonumpy()
-    iso.logT = data[1].tonumpy()
-    iso.logL = data[2].tonumpy()
-    iso.logg = data[3].tonumpy()
-    iso.logT_WR = data[4].tonumpy()
+    iso.mass = data[cols[0]]
+    iso.logT = data[cols[1]]
+    iso.logL = data[cols[2]]
+    iso.logg = data[cols[3]]
+    iso.logT_WR = data[cols[4]]
 
     return iso
                      
@@ -758,20 +766,21 @@ def get_siess_tracks(metallicity=0.02):
     data.masses = []
 
     for ff in range(len(files)):
-        d = asciidata.open(files[ff])
+        d = Table.read(files[ff], format='ascii')
+        cols = d.keys()
 
         track = StarTrack(d[9][0])
 
-        track.phase = d[1].tonumpy()
-        track.log_L = np.log10( d[2].tonumpy() )
-        track.mag_bol = d[3].tonumpy()
-        track.Reff = d[4].tonumpy()
-        track.R_total = d[5].tonumpy()
-        track.log_Teff = np.log10( d[6].tonumpy() )
-        track.density_eff = d[7].tonumpy()
-        track.log_g = d[8].tonumpy()
-        track.M = d[9].tonumpy()
-        track.log_age = np.log10( d[10].tonumpy() )
+        track.phase = d[cols[1]]
+        track.log_L = np.log10( d[cols[2]] )
+        track.mag_bol = d[cols[3]]
+        track.Reff = d[cols[4]]
+        track.R_total = d[cols[5]]
+        track.log_Teff = np.log10( d[cols[6]] )
+        track.density_eff = d[cols[7]]
+        track.log_g = d[cols[8]]
+        track.M = d[cols[9]]
+        track.log_age = np.log10( d[cols[10]] )
 
         data.tracks.append(track)
         data.masses.append(track.M_init)
@@ -880,12 +889,13 @@ def old_meynetmaeder_code():
 
 
     for ff in range(count):
-        d = asciidata.open(files[ff])
+        d = Table.read(files[ff], format='ascii')
+        cols = d.keys()
 
-        ageTmp = d[1].tonumpy()
-        massTmp = d[2].tonumpy()
-        logLTmp = d[3].tonumpy()
-        logTTmp = d[4].tonumpy()
+        ageTmp = d[cols[1]]
+        massTmp = d[cols[2]]
+        logLTmp = d[cols[3]]
+        logTTmp = d[cols[4]]
 
         tempTmp = 10**logTTmp
         lumTmp = 10**logLTmp
