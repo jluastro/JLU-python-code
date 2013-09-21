@@ -3,6 +3,8 @@ import pylab as py
 import pyfits
 import glob
 import os
+from jlu.util import img_scale
+import atpy
 
 ngc1851_data = '/u/jlu/data/gsaoi/commission/reduce/ngc1851/'
 
@@ -65,4 +67,35 @@ def image_info():
 
     f_out.close()
 
+    
+def ngc1851_image():
+    """
+    Plot an image of NGC 1851 for the paper.
+    """
+    image_root = '/u/jlu/data/gsaoi/commission/reduce/ngc1851/combo/ngc1851'
+
+    # Load up the PSF stars file to get the coordinates.
+    stars = atpy.Table(image_root + '_psf_stars_pixel.txt', type='ascii')
+
+    stars.Xarc = stars.X * scale
+    stars.Yarc = stars.Y * scale
+
+    scale = 0.00995
+
+    # gc = aplpy.FITSFigure(image_file)
+    # gc.show_grayscale()
+
+    img = pyfits.getdata(image_root + '.fits')
+    img = img_scale.log(img, scale_min=0, scale_max=1e4)
+    #img = img_scale.sqrt(img, scale_min=500, scale_max=5e4)
+    # img = img_scale.linear(img, scale_min=500, scale_max=4e4)
+
+    xmin = ((0 - cooPix[0]) * scale * -1.0) + cooAsec[0]
+    xmax = ((img.shape[1] - cooPix[0]) * scale * -1.0) + cooAsec[0]
+    ymin = ((0 - cooPix[1]) * scale) + cooAsec[1]
+    ymax = ((img.shape[0] - cooPix[1]) * scale) + cooAsec[1]
+    extent = [xmin, xmax, ymin, ymax]
+
+    py.clf()
+    py.imshow(img, extent=extent, cmap=py.cm.gray_r)
     
