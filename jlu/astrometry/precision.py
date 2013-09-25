@@ -2,6 +2,7 @@ import asciidata
 import numpy as np
 import pylab as py
 from gcwork import starset
+import math
 
 def plotAllAOvsMag(radius=4):
     rootDir = '/u/ghezgroup/data/gc/'
@@ -237,3 +238,15 @@ def accuracyFromResiduals(radiusCut=4):
     _logfile.write('Median Accuracy for K=11-14:   %5.2f\n' %
                    np.median(medRes[foo]))
     _logfile.close()
+
+def calc_vel_err(t, pos_err):
+    vel_err = pos_err / math.sqrt( ((t - t.mean())**2).sum() )
+
+    print vel_err
+
+def calc_pos_err(t, vel_err):
+    pos_err = vel_err * math.sqrt( ((t - t.mean())**2).sum() )
+
+    print pos_err
+    
+    
