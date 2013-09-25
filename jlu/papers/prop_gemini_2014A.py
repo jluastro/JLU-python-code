@@ -2,16 +2,17 @@ from jlu.nirc2 import synthetic as syn
 import os
 import numpy as np
 import pylab as py
+import math
 
-def plot_cluster_isochrones():
+def plot_cluster_isochrones(redo_iso=False):
     """
     Plot isochrones and mass-luminosity functions for M17, Wd 2, Wd 1, and RSGC 1.
     """
     # Cluster Info
     name = ['M17', 'Wd 2', 'Wd 1', 'RSGC 1']
-    dist = np.array([1600, 2800, 3600, 6600])
+    dist = np.array([2100, 4160, 3600, 6000])
     age = np.array([1., 2., 5., 12.]) * 1.0e6
-    AV = np.array([5., 10., 10., 27.])
+    AV = np.array([5., 6.5, 10., 23.])
 
     # Derived properties
     logage = np.log10(age)
@@ -24,10 +25,10 @@ def plot_cluster_isochrones():
         pickleFile = 'syn_nir_d' + str(dist[ii]).zfill(5) + '_a' \
             + str(int(round(logage[ii]*100))).zfill(3) + '.dat'
 
-        if not os.path.exists(pickleFile):
+        if (not os.path.exists(pickleFile)) or (redo_iso == True):
                 AKsGrid = np.array([AKs[ii]])
                 syn.nearIR(dist[ii], logage[ii], AKsGrid=AKsGrid)
-
+                
         iso_all.append( syn.load_nearIR_dict(pickleFile) )
 
 
@@ -72,7 +73,7 @@ def plot_cluster_isochrones():
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('J magnitude')
     py.xlim(0, 5)
-    py.ylim(30, 8)
+    py.ylim(26, 9)
 
 
     py.subplot(1, 3, 2)
@@ -85,7 +86,7 @@ def plot_cluster_isochrones():
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('H magnitude')
     py.xlim(0, 5)
-    py.ylim(30, 8)
+    py.ylim(26, 9)
 
     py.subplot(1, 3, 3)
     for ii in range(len(iso_all)):
@@ -95,7 +96,7 @@ def plot_cluster_isochrones():
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('K magnitude')
     py.xlim(0, 5)
-    py.ylim(30, 8)
+    py.ylim(26, 9)
 
     py.savefig('clusters_mass_luminosity_jhk.png')
 
@@ -133,4 +134,39 @@ print('')
               
     
 
+def ast_err(tint_in_min, fwhm_in_mas, snr):
+    ast_err = 0.180 * math.sqrt((5.4 / tint_in_min) + (fwhm_in_mas / 75.)**2 * (160.0/snr)**2)
+
+    print ast_err, ' mas'
+    return ast_err
+
+def overheads(tint, coadds, dithers, nPerDither, readmode='bright'):
+    """
+    """
+    readmode_dict = {'bright': 5.6,
+                     'faint': 22.4,
+                     'very faint': 44.8}
+
+    readmode_list = readmode_dict.keys()
+    if readmode not in readmode_list:
+        print 'Incorrect read mode specified. Must be one of:'
+        print readmode_list
+        return
+
+    read_overhead = readmode_dict[readmode]
     
+    overhead = 21 + read_overhead * coadds + 6.5 * (coadds - 1)
+    overhead *= dithers * nPerDither
+    overhead += 30 * dithers
+
+    integration = tint * coadds * dithers * nPerDither
+
+    # Convert to minutes
+    overhead /= 60.0
+    integration /= 60.0
+
+    totalTime = overhead + integration
+
+    print 'Total Clock Time: {0:5.0f} min  or  {1:5.1f} hr'.format(totalTime, totalTime/60.)
+    print 'Overheads:        {0:5.0f} min  or  {1:5.1f} hr'.format(overhead, overhead/60.)
+    print 'Integration Time: {0:5.0f} min  or  {1:5.1f} hr'.format(integration, integration/60.)
