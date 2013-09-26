@@ -9,10 +9,10 @@ def plot_cluster_isochrones(redo_iso=False):
     Plot isochrones and mass-luminosity functions for M17, Wd 2, Wd 1, and RSGC 1.
     """
     # Cluster Info
-    name = ['M17', 'Wd 2', 'Wd 1', 'RSGC 1']
-    dist = np.array([2100, 4160, 3600, 6000])
-    age = np.array([1., 2., 5., 12.]) * 1.0e6
-    AV = np.array([5., 6.5, 10., 23.])
+    name = ['M17', 'Wd 2', 'Wd 1', 'RSGC 1', 'RSGC 2']
+    dist = np.array([2100, 4160, 3600, 6000, 6000])
+    age = np.array([1., 2., 5., 12., 17.]) * 1.0e6
+    AV = np.array([5., 6.5, 10., 23., 10.])
 
     # Derived properties
     logage = np.log10(age)
@@ -38,7 +38,7 @@ def plot_cluster_isochrones(redo_iso=False):
     py.figure(1)
     py.clf()
     py.subplots_adjust(left=0.15)
-    colors = ['green', 'cyan', 'blue', 'red']
+    colors = ['green', 'cyan', 'blue', 'red', 'purple']
     for ii in range(len(iso_all)):
         iso = iso_all[ii]
         
@@ -72,7 +72,7 @@ def plot_cluster_isochrones(redo_iso=False):
                 color=colors[ii], label=name[ii])
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('J magnitude')
-    py.xlim(0, 5)
+    py.xlim(0, 20)
     py.ylim(26, 9)
 
 
@@ -85,7 +85,7 @@ def plot_cluster_isochrones(redo_iso=False):
               loc=3, ncol=4, frameon=False)
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('H magnitude')
-    py.xlim(0, 5)
+    py.xlim(0, 20)
     py.ylim(26, 9)
 
     py.subplot(1, 3, 3)
@@ -95,7 +95,7 @@ def plot_cluster_isochrones(redo_iso=False):
                 color=colors[ii], label=name[ii])
     py.xlabel(r'Stellar Mass (M$_\dot$)')
     py.ylabel('K magnitude')
-    py.xlim(0, 5)
+    py.xlim(0, 20)
     py.ylim(26, 9)
 
     py.savefig('clusters_mass_luminosity_jhk.png')
