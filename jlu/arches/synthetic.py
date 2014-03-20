@@ -20,7 +20,7 @@ import os, glob
 import tempfile
 import scipy
 import matplotlib
-import pymc
+#import pymc
 import pdb
 
 defaultAKs = 3.1
@@ -97,7 +97,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         (logAge, AKs, distance)
     print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
 
-    outFile = '/u/jlu/work/arches/models/iso/'
+    outFile = '/Users/mwhosek/Desktop/699-2/isochrones/'
     outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(distance).zfill(4))
 
@@ -106,18 +106,22 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     # Get solar mettalicity models for a population at a specific age.
     evol = evolution.get_merged_isochrone(logAge=logAge)
 
+    #------------I WILL REMOVE THIS 3/2014 TO GET BETTER SAMPLING------#
     # Lets do some trimming down to get rid of repeat masses or 
     # mass resolutions higher than 1/1000. We will just use the first
     # unique mass after rounding by the nearest 0.001.
-    mass_rnd = np.round(evol.mass, decimals=2)
-    tmp, idx = np.unique(mass_rnd, return_index=True)
-
+    #mass_rnd = np.round(evol.mass, decimals=2)
+    #tmp, idx = np.unique(mass_rnd, return_index=True)
+    #------------------------------------------------------------------#
+    #Eliminate cases where log g is less than 0
+    idx = np.where(evol.logg > 0)
+    
     mass = evol.mass[idx]
     logT = evol.logT[idx]
     logg = evol.logg[idx]
     logL = evol.logL[idx]
     isWR = logT != evol.logT_WR[idx]
-
+    
     temp = 10**logT
 
     # Output magnitudes for each temperature and extinction value.
@@ -158,7 +162,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         R = R_all[ii] # in pc
 
         # Get the atmosphere model now. Wavelength is in Angstroms
-        star = atm.get_merged_atmosphere(temperature=T, 
+        star = atm.get_phoenix_atmosphere(temperature=T, 
                                          gravity=gravity)
 
         # Trim wavelength range down to JHKL range (0.5 - 4.25 microns)
