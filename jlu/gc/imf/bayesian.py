@@ -3,7 +3,7 @@ import pylab as py
 from jlu.stellarModels import evolution
 from jlu.nirc2 import synthetic
 from jlu.stellarModels import atmospheres
-from jlu.papers import lu_gc_imf
+#from jlu.papers import lu_gc_imf
 from scipy import interpolate
 from scipy import stats
 from gcwork import objects

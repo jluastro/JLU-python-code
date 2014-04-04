@@ -3372,7 +3372,8 @@ def plot_model_klf_2_10_Myr():
     plot_model_klf(logAgeList=logAgeList, suffix='_2_10_Myr')
 
 def plot_model_klf(logAgeList=[6.80], suffix=None):
-    imfSlope=1.35
+    #imfSlope=1.35
+    imfSlope=1.7
 
     """
     Make a plot of several model KLFs all together.

@@ -536,7 +536,7 @@ def plot_matchup_err(matchupFile, minMagGood=-13.5, maxMagGood=-5):
     # Photometric errors
     py.figure(1)
     py.clf()
-    py.semilogy(tab.m, tab.me, 'k.')
+    py.semilogy(tab.m, tab.me, 'k.', alpha=0.2)
     py.xlabel('Instrumental Magnitude')
     py.ylabel('Photometric RMS Error (pix)')
     py.ylim(0.001, 1)
@@ -547,8 +547,8 @@ def plot_matchup_err(matchupFile, minMagGood=-13.5, maxMagGood=-5):
     # Astrometric errors
     py.figure(2)
     py.clf()
-    py.semilogy(tab.m, tab.xe, 'r.', label='X')
-    py.semilogy(tab.m, tab.ye, 'b.', label='Y')
+    py.semilogy(tab.m, tab.xe, 'r.', label='X', alpha=0.2)
+    py.semilogy(tab.m, tab.ye, 'b.', label='Y', alpha=0.2)
     py.xlabel('Instrumental Magnitude')
     py.ylabel('Astrometric RMS Error (pix)')
     py.ylim(0.001, 1)
@@ -558,13 +558,13 @@ def plot_matchup_err(matchupFile, minMagGood=-13.5, maxMagGood=-5):
     py.savefig('plot_pos_err_%s.png' % matchupFile)
 
     # Lets get the median errors inside the acceptable range.
-    tabTrim = tab.where((tab.m > minMagGood) & (tab.m < maxMagGood))
+    tabTrim = tab.where((tab.m > minMagGood) & (tab.m < maxMagGood) & (tab.me < 9))
     xerr = np.median(tabTrim.xe)
     yerr = np.median(tabTrim.ye)
     merr = np.median(tabTrim.me)
 
-    print 'Median Errors for Stars Between [%.1f, %.1f] in %s' % \
-        (minMagGood, maxMagGood, matchupFile)
+    print 'Median Errors for %d of %d Stars Between [%.1f, %.1f] in %s' % \
+        (len(tabTrim), len(tab), minMagGood, maxMagGood, matchupFile)
     print '     Photometric Error: %.2f mag' % (merr)
     print '   X Astrometric Error: %.3f pix' % (xerr)
     print '   Y Astrometric Error: %.3f pix' % (yerr)

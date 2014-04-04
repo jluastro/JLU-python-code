@@ -6,7 +6,6 @@ import math
 import atpy
 import pylab as py
 import numpy as np
-from jlu.hst import starlists
 from jlu.hst import images
 from jlu.hst import astrometry as ast
 import glob
@@ -14,6 +13,9 @@ from matplotlib import colors
 from jlu.util import statsIter
 import pdb
 import os
+from HST_flystar import reduce as flystar
+from HST_flystar import starlists
+from astropy.table import Table
 
 workDir = '/u/jlu/data/Wd1/hst/reduce_2013_09_07/'
 codeDir = '/u/jlu/code/fortran/hst/'
@@ -134,6 +136,150 @@ def run_img2xym_wfc3ir(year, filter, suffix=''):
         os.chdir('../../')
         _log.close()
             
+    return
+
+def xym_acswfc_pass1():
+    """
+    Match and align the 3 exposures. Make a new star list (requiring 2 out of
+    3 images). Also make sure the new starlist has only positive pxel values.
+    """
+    year = '2005'
+    filt = 'F814W'
+
+    xym_dir = '{0}_{1}/01.XYM/'.format(year, filt)
+
+    flystar.xym2mat('ref1', year, filt, camera='f5 c5', mag='m-13.5,-10', clobber=True)
+    flystar.xym2bar('ref1', year, filt, camera='f5 c5', Nepochs=2, clobber=True)
+
+    starlists.make_matchup_positive(xym_dir + 'MATCHUP.XYMEEE.ref1')
+    
+def xym_acswfc_pass2():
+    """
+    Re-do the alignment with the new positive master file. Edit IN.xym2mat to 
+    change 00 epoch to use the generated matchup file with f5, c0 
+    (MATCHUP.XYMEEE.01.all.positive). Make sure to remove all the old MAT.* and 
+    TRANS.xym2mat files because there is a big shift in the transformation from 
+    the first time we ran it.
+    """
+    year = '2005'
+    filt = 'F814W'
+
+    xym_dir = '{0}_{1}/01.XYM/'.format(year, filt)
+
+    flystar.xym2mat('ref2', year, filt, camera='f5 c5', mag='m-13.5,-10',
+                    ref='MATCHUP.XYMEEE.ref1.positive', ref_mag='m-13.5,-10',
+                    ref_camera='f5 c0', clobber=True)
+    flystar.xym2bar('ref2', year, filt, Nepochs=2, zeropoint='', 
+                    camera='f5 c5', clobber=True)
+
+
+def plot_quiver_one_pass(reread=False):
+    """
+    Plot a quiver vector plot between F814W in 2005 and F160W in 2010 and 2013.
+    This is just to check that we don't hae any gross flows between the two cameras.
+    """
+    if reread:
+        t2005 = starlists.read_matchup('MATCHUP.XYMEEE.F814W.ref5')
+        t2010 = starlists.read_matchup('MATCHUP.XYMEEE.F160W.2010.ref5')
+        t2013 = starlists.read_matchup('MATCHUP.XYMEEE.F160W.2013.ref5')
+
+        t2005.write('MATCHUP.XYMEEE.F814W.ref5.fits')
+        t2010.write('MATCHUP.XYMEEE.F160W.2010.ref5.fits')
+        t2013.write('MATCHUP.XYMEEE.F160W.2013.ref5.fits')
+    else:
+        t2005 = Table.read('MATCHUP.XYMEEE.F814W.ref5.fits')
+        t2010 = Table.read('MATCHUP.XYMEEE.F160W.2010.ref5.fits')
+        t2013 = Table.read('MATCHUP.XYMEEE.F160W.2013.ref5.fits')
+
+    good = np.where((t2005['m'] < -8) & (t2010['m'] < -8) & (t2013['m'] < -8) &
+                    (t2005['xe'] < 0.05) & (t2010['xe'] < 0.05) & (t2013['xe'] < 0.05) & 
+                    (t2005['ye'] < 0.05) & (t2010['ye'] < 0.05) & (t2013['ye'] < 0.05) & 
+                    (t2005['me'] < 0.05) & (t2010['me'] < 0.05) & (t2013['me'] < 0.05))[0]
+
+    g2005 = t2005[good]
+    g2010 = t2010[good]
+    g2013 = t2013[good]
+
+    dx_05_10 = (g2010['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
+    dy_05_10 = (g2010['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
+
+    dx_05_13 = (g2013['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
+    dy_05_13 = (g2013['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
+
+    dx_10_13 = (g2013['x'] - g2010['x']) * ast.scale['WFC'] * 1e3
+    dy_10_13 = (g2013['y'] - g2010['y']) * ast.scale['WFC'] * 1e3
+
+    small = np.where((np.abs(dx_05_10) < 20) & (np.abs(dy_05_10) < 20) & 
+                     (np.abs(dx_05_13) < 20) & (np.abs(dy_05_13) < 20) & 
+                     (np.abs(dx_10_13) < 20) & (np.abs(dy_10_13) < 20))[0]
+
+    print len(g2005), len(small), len(dx_05_10)
+    g2005 = g2005[small]
+    g2010 = g2010[small]
+    g2013 = g2013[small]
+    dx_05_10 = dx_05_10[small]
+    dx_05_13 = dx_05_13[small]
+    dx_10_13 = dx_10_13[small]
+    dy_05_10 = dy_05_10[small]
+    dy_05_13 = dy_05_13[small]
+    dy_10_13 = dy_10_13[small]
+    print len(g2005), len(small), len(dx_05_10)
+    
+    py.clf()
+    q = py.quiver(g2005['x'], g2005['y'], dx_05_10, dy_05_10, scale=2e2)
+    py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    py.title('2010 - 2005')
+    py.savefig('vec_diff_ref5_05_10.png')
+
+    py.clf()
+    q = py.quiver(g2005['x'], g2005['y'], dx_05_13, dy_05_13, scale=2e2)
+    py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    py.title('2013 - 2005')
+    py.savefig('vec_diff_ref5_05_13.png')
+
+    py.clf()
+    q = py.quiver(g2005['x'], g2005['y'], dx_10_13, dy_10_13, scale=1e2)
+    py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    py.title('2013 - 2010')
+    py.savefig('vec_diff_ref5_10_13.png')
+
+    py.clf()
+    py.plot(dx_05_10, dy_05_10, 'k.', ms=2)
+    lim = 10
+    py.axis([-lim, lim, -lim, lim])
+    py.xlabel('X Proper Motion (mas)')
+    py.ylabel('Y Proper Motion (mas)')
+    py.title('2010 - 2005')
+    py.savefig('pm_diff_ref5_05_10.png')
+
+    py.clf()
+    py.plot(dx_05_13, dy_05_13, 'k.', ms=2)
+    py.axis([-lim, lim, -lim, lim])
+    py.xlabel('X Proper Motion (mas)')
+    py.ylabel('Y Proper Motion (mas)')
+    py.title('2013 - 2005')
+    py.savefig('pm_diff_ref5_05_13.png')
+
+    py.clf()
+    py.plot(dx_10_13, dy_10_13, 'k.', ms=2)
+    py.axis([-lim, lim, -lim, lim])
+    py.xlabel('X Proper Motion (mas)')
+    py.ylabel('Y Proper Motion (mas)')
+    py.title('2013 - 2010')
+    py.savefig('pm_diff_ref5_10_13.png')
+
+    print '2010 - 2005'
+    print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std())
+    print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_10.mean(), dye=dy_05_10.std())
+
+    print '2013 - 2005'
+    print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std())
+    print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_13.mean(), dye=dy_05_13.std())
+
+    print '2013 - 2010'
+    print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std())
+    print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
+    
     
 def plot_vpd_across_field(nside=4, interact=False):
     """

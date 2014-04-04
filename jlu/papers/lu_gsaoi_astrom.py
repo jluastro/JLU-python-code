@@ -99,3 +99,7 @@ def ngc1851_image():
     py.clf()
     py.imshow(img, extent=extent, cmap=py.cm.gray_r)
     
+
+    
+                    
+    
