@@ -74,8 +74,8 @@ class StarSet(object):
             star = objects.Star(_vel[0])
             self.stars.append(star)
 
-            if (len(self.stars) % 100) == 0:
-                print 'Processing star {0}: {1}'.format(len(self.stars), time.ctime())
+            #if (len(self.stars) % 100) == 0:
+            #    print 'Processing star {0}: {1}'.format(len(self.stars), time.ctime())
 
             # Parse velocity file
             star.velCnt = int(_vel[1])
