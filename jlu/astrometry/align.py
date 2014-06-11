@@ -18,7 +18,7 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
     and magnitude system.
 
     For two stars to be matched, they must be within a specified radius (dr_tol) and
-    delta-magnitude (dm_tol). For stars with more than neighbor (within the tolerances),
+    delta-magnitude (dm_tol). For stars with more than 1 neighbor (within the tolerances),
     if one is found that is the best match in both brightness and positional offsets
     (closest in both), then the match is made. Otherwise,
     their is a conflict and no match is returned for the star.
@@ -90,7 +90,7 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
     idxs1 = np.ones(x1.size, dtype=int) * -1
     idxs2 = np.ones(x1.size, dtype=int) * -1
 
-    # The matchingn will be done using a KDTree.
+    # The matching will be done using a KDTree.
     kdt = KDT(coords2)
 
     # This returns the number of neighbors within the specified
@@ -167,7 +167,6 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
 
             idxs1[i1_nn[keep]] = i1_nn[keep]
             idxs2[i1_nn[keep]] = i2_keep_2D[ii_keep, dr_keep]
-                
 
     idxs1 = idxs1[idxs1 >= 0]
     idxs2 = idxs2[idxs2 >= 0]        
@@ -183,6 +182,10 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
 
         # Handle them in brightness order -- brightest first in the first starlist
         fsort = m1[dups].argsort()
+
+        # For every duplicate, match to the star that is closest in space and 
+        # magnitude. HMMMM.... this doesn't seem like it will work optimally.
+
  
     return idxs1, idxs2, dr, dm
  
