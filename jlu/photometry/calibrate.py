@@ -507,7 +507,7 @@ def find_cal_stars(calibs, stars, options):
     # Loop through all the calibrators and find their match in the starlist
     # search radius = 0.25 arcsec for bright sources
     searchRadius = 0.25 / options.plate_scale   
-    searchMag = 1.5
+    searchMag = 3.0  # 1.5
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
