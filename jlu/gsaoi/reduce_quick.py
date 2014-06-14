@@ -210,9 +210,9 @@ def convertFile(fitsfile, outputDir=None, clobber=False):
     convertList = []
     for i in range(1,len(fo)):
         print "breaking out extension ",i," of file ",fname
-        xname = fo[i].header['CCDNAME'].upper()
+        xname = fo[i].header['CCDNAME'].lower()
         try:
-            xver = str(fo[i].header['EXTVER'])
+            xver = str(fo[i].header['EXTNAME']).strip().lower()
         except:
             xver = ''
         if xver:
