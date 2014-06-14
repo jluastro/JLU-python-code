@@ -175,14 +175,14 @@ def fieldDensity():
         
         
 
-def properMotions(galacticLat, distance, clusterName):
+def properMotions(galacticLong, distance, clusterName):
     """
     Calculate the range of proper motions for different
     possible distances. Assume a constant circular rotation 
     of the galaxy of 220 km/s.
 
     Inputs:
-    galacticLat -- in degrees.
+    galacticLong -- in degrees.
     """
     cc = objects.Constants()
 
@@ -191,9 +191,9 @@ def properMotions(galacticLat, distance, clusterName):
     # R  - distance from the object to the GC. Need this to get velocity.
     # Theta0 - rotational velocity at solar circle (Reid et al. 2009)
     #
-    # l  - galacticLat in radians
+    # l  - galacticLong in radians
     # 
-    l = math.radians(galacticLat)
+    l = math.radians(galacticLong)
     R0 = 8.4        # kpc
     Theta0 = 254.0  # km/s
     
@@ -235,7 +235,7 @@ def properMotions(galacticLat, distance, clusterName):
     py.plot(d, pm_lo, 'r--', linewidth=2)
     py.xlabel('Distance (kpc)', fontsize=22, fontweight='bold')
     py.ylabel('Proper Motion (mas/yr)', fontsize=22, fontweight='bold')
-    title = '%s (l = %d)' % (clusterName, galacticLat)
+    title = '%s (l = %d)' % (clusterName, galacticLong)
     py.title(title, fontsize=22, fontweight='bold')
     
 

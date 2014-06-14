@@ -1,0 +1,4 @@
+from gcwork import pairwise
+import pickle
+pw = pickle.load(open('tables/pairwise_wrt_S1-5.pickle'))
+reload(pairwise)

@@ -1,0 +1,1061 @@
+from pylab import *
+from numpy import *
+import asciidata
+import histogram2d as h2d
+import math
+from gcwork import objects
+import histNofill
+from scipy import stats
+
+root = '/net/uni/Groups/ghez/ghez/analysis/Ro/'
+
+def plotMassRo(mbincnt=50, r0bincnt=50, showContour=True, outfile='massRo',
+               file=root+'06_10_20/MC3/mc_zero1e4d.log'):
+    """
+    Plot a 2D histogram of mass and Ro values output by an efit monte
+    carlo. Saves the plot to a EPS and PNG file. You must pass in the file
+    name containing the simulation results. Parameters are:
+
+    outfile:  Root name of the file to save the plot to (def=massRo)
+    file:     Name of the file containing the efit output. By default
+              this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/06_10_20/MC3/mc_zero1e4d.log
+              as an example file.
+    mbincnt:  Number of bins across the mass axis in the histogram (def=50)
+    r0bincnt: Number of bins across the Ro axis in the histogram (def=50)
+    showContour:  Set to True (default value) to draw contours.
+    """
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file)
+
+    # Make things into arrays of floats, etc.
+    r0 = table[0].tonumpy()  # in pc
+    x0 = table[1].tonumpy()  # in pix
+    y0 = table[2].tonumpy()  # in pix
+    a = table[3].tonumpy()   # in mas
+    p = table[4].tonumpy()   # in yrs
+
+    # convert semi-major axis and period into mass
+    m = (a * r0 / 1000.0)**3 / p**2
+
+    ##########
+    #
+    # Make 2D histogram
+    #
+    ##########
+    (hist, r0bins, mbins) = h2d.histogram2d(r0, m, bins=(r0bincnt, mbincnt))
+
+    # Need to convert the 2d histogram into floats
+    probDist = array(hist, dtype=float)
+
+    # We can turn the histogram into a probability distribution
+    # just by dividing by the total number of trials
+    probDist /= float(len(m))
+
+    if (showContour == True):
+        levels = getContourLevels(probDist)
+
+    ##########
+    #
+    # Plotting
+    #
+    ##########
+    rc('text', usetex=True)
+
+    # Clear the plot
+    clf()
+
+    # Display the 2D histogram
+    # Convert bins into x10^6 Msun and kpc
+    mbins /= 1.0e6
+    r0bins /= 1.0e3
+    imshow(probDist, cmap=cm.hot_r, origin='lower', aspect='auto',
+           extent=[r0bins[0], r0bins[-1], mbins[0], mbins[-1]])
+
+    # Make a colorbar
+    #colorbar()
+
+    # Draw contours
+    if (showContour == True):
+        contour(probDist, levels, origin=None, colors='black',
+                extent=[r0bins[0], r0bins[-1], mbins[0], mbins[-1]])
+
+    # Stretch axes
+    axis('tight')
+
+    # Draw labels using latex by putting "r" before the string
+    font = {'fontname' : 'Sans',
+	    'fontsize' : 20}
+    xlabel(r'R$_o$ (kpc)', font)
+    ylabel(r'Mass ($\times$10$^6$ M$_\odot$)', font)
+
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+    
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+
+    savefig('massRo.eps')
+    savefig('massRo.png')
+
+
+    # Turn of Latex Processing
+    rc('text', usetex=False)
+
+def plotRoVz(vzbincnt=50, r0bincnt=50, showContour=True, outfile='massRo',
+               file=root+'08_02_16/MCdir/bias_cent_vel3d/mc_zero.new.1e2.log'):
+    """
+    Plot a 2D histogram of Ro and Vz values output by an efit monte
+    carlo. Saves the plot to a EPS and PNG file. You must pass in the file
+    name containing the simulation results. Parameters are:
+
+    outfile:  Root name of the file to save the plot to (def=massRo)
+    file:     Name of the file containing the efit output. By default
+              this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/08_02_16/MCdir/bias_cent_vel3d/mc_zero.log
+              as an example file.
+    vzbincnt:  Number of bins across the mass axis in the histogram (def=50)
+    r0bincnt: Number of bins across the Ro axis in the histogram (def=50)
+    showContour:  Set to True (default value) to draw contours.
+    """
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file)
+
+    # Make things into arrays of floats, etc.
+    r0 = table[0].tonumpy()  # in pc
+    x0 = table[1].tonumpy()  # in pix
+    y0 = table[2].tonumpy()  # in pix
+    a = table[3].tonumpy()   # in mas
+    p = table[4].tonumpy()   # in yrs
+    vz = table[12].tonumpy()   # in km/sec
+    
+    ##########
+    #
+    # Make 2D histogram
+    #
+    ##########
+    (hist, vzbins, r0bins) = h2d.histogram2d(vz, r0, bins=(vzbincnt, r0bincnt))
+
+    # Need to convert the 2d histogram into floats
+    probDist = array(hist, dtype=float)
+
+    # We can turn the histogram into a probability distribution
+    # just by dividing by the total number of trials
+    probDist /= float(len(r0))
+
+    if (showContour == True):
+        levels = getContourLevels(probDist)
+
+    ##########
+    #
+    # Plotting
+    #
+    ##########
+    rc('text', usetex=True)
+
+    # Clear the plot
+    clf()
+
+    # Display the 2D histogram
+    # Convert r0bins into kpc
+    r0bins /= 1.0e3
+    imshow(probDist, cmap=cm.hot_r, origin='lower', aspect='auto',
+           extent=[vzbins[0], vzbins[-1], r0bins[0], r0bins[-1]])
+
+    # Make a colorbar
+    #colorbar()
+
+    # Draw contours
+    if (showContour == True):
+        contour(probDist, levels, origin=None, colors='black',
+                extent=[vzbins[0], vzbins[-1], r0bins[0], r0bins[-1]])
+
+    # Stretch axes
+    #axis('tight')
+    axis([-120, 80, 6, 11])
+
+    # Draw labels using latex by putting "r" before the string
+    font = {'fontname' : 'Sans',
+	    'fontsize' : 20}
+    xlabel(r'V$_z$ (km/sec)', font)
+    ylabel(r'R$_o$ (kpc)', font)
+
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+    
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+
+    savefig('RoVz.eps')
+    savefig('RoVz.png')
+
+
+    # Turn of Latex Processing
+    rc('text', usetex=False)
+
+
+def plotMassDensity(mbincnt=50, dbincnt=50, 
+		    showContour=True, outfile='massDensity',
+		    file=root+'07_05_18/mc_zero3e4.log'):
+    """
+    Plot a 2D histogram of mass and density values output by an efit monte
+    carlo. The density is calculated from the mass and the periapse passage 
+    of the star's orbit found in the log file (presumably S0-2).
+    Saves the plot to a EPS file. You must pass in the file name
+    containing the simulation results. Parameters are:
+
+    outfile:  Root name of the file to save the plot to (def=massDensity)
+    file:     Name of the file containing the efit output. By default
+              this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/07_05_18/mc_zero3e4.log
+              as an example file.
+    mbincnt:  Number of bins across the mass axis in the histogram (def=50)
+    dbincnt: Number of bins across the density axis in the histogram (def=50)
+    showContour:  Set to True (default value) to draw contours.
+    """
+    cc = objects.Constants()
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file)
+
+    # Make things into arrays of floats, etc.
+    r0 = table[0].tonumpy()     # in pc
+    x0 = table[1].tonumpy()     # in pix
+    y0 = table[2].tonumpy()     # in pix
+    amas = table[3].tonumpy()   # in mas
+    p = table[4].tonumpy()      # in yrs
+    e = table[5].tonumpy()
+
+    # convert semi-major axis into AU
+    a = amas * r0 / 1000.0
+
+    # convert semi-major axis and period into mass
+    m = a**3 / p**2
+
+    # calculate periapse distance (in pc)
+    pdist = a * (1.0 - e) / cc.au_in_pc
+
+    # determine density (solar masses per pc^3)
+    density = m / ((4.0/3.0) * math.pi * pdist**3)
+
+    ##########
+    #
+    # Make 2D histogram
+    #
+    ##########
+    # Lets put everything in log scale first
+    mlog = log10(m)
+    dlog = log10(density)
+
+    (hist, mbins, dbins) = h2d.histogram2d(mlog, dlog, bins=(mbincnt, dbincnt))
+
+    # Need to convert the 2d histogram into floats
+    probDist = array(hist, dtype=float)
+
+    # We can turn the histogram into a probability distribution
+    # just by dividing by the total number of trials
+    probDist /= float(len(m))
+
+    if (showContour == True):
+        levels = getContourLevels(probDist)
+
+    ##########
+    #
+    # Plotting
+    #
+    ##########
+    rc('text', usetex=True)
+
+    # Clear the plot
+    clf()
+
+    # Display the 2D histogram
+    # Convert bins into x10^6 Msun and kpc
+    imshow(probDist, cmap=cm.hot_r, origin='lower', aspect='auto',
+           extent=[mbins[0], mbins[-1], dbins[0], dbins[-1]])
+
+    # Make a colorbar
+    #colorbar()
+
+    # Draw contours
+    if (showContour == True):
+        contour(probDist, levels, origin=None, colors='black',
+                extent=[mbins[0], mbins[-1], dbins[0], dbins[-1]])
+
+    # Stretch axes
+    axis('tight')
+
+    # Draw labels using latex by putting "r" before the string
+    font = {'fontname' : 'Sans',
+	    'fontsize' : 20}
+    xlabel(r'$\log_{10} M$ (M$_\odot$)', font)
+    ylabel(r'$\log_{10} \rho$ (M$_\odot$/pc$^3$)', font)
+
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+    
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+
+    savefig(outfile + '.eps')
+    savefig(outfile + '.png')
+
+    # Turn of Latex Processing
+    rc('text', usetex=False)
+
+
+def plotSgraXY(bincnt=50, outfile='bhPosition', showContour=True,
+               file=root+'07_09_05/MC04/mc_zero.log'):
+    """
+    Plot a 2D histogram of x0 and y0 values output by an efit monte
+    carlo. Saves the plot to a EPS file. You must pass in the file name
+    containing the simulation results. Parameters are:
+
+    outfile:  Root name of the file to save the plot to (def=bhPosition)
+    file:     Name of the file containing the efit output. By default
+              this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/07_09_05/MC04/mc_zero.log
+              as an example file.
+    bincnt:  Number of bins across the axes in the histogram (def=50)
+    """
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file)
+
+    # Make things into arrays of floats, etc.
+    x0 = table[1].tonumpy()  # in pix
+    y0 = table[2].tonumpy()  # in pix
+
+    ##########
+    #
+    # Make 2D histogram
+    #
+    ##########
+    (hist, x0bins, y0bins) = h2d.histogram2d(x0, y0, bins=(bincnt, bincnt))
+
+    # Need to convert the 2d histogram into floats
+    probDist = array(hist, dtype=float)
+
+    # We can turn the histogram into a probability distribution
+    # just by dividing by the total number of trials
+    probDist /= float(len(x0))
+
+    # Determine levels for contours
+    levels = getContourLevels(probDist)
+
+    ##########
+    #
+    # Plotting
+    #
+    ##########
+    rc('text', usetex=True)
+
+    # Clear the plot
+    clf()
+    subplots_adjust(left=0.16, bottom=0.12, right=0.95, top=0.92)
+
+    # Display the 2D histogram
+    # Convert bins into x10^6 Msun and kpc
+    imshow(probDist, cmap=cm.hot_r, origin='lower', aspect='auto',
+           extent=[x0bins[0], x0bins[-1], y0bins[0], y0bins[-1]])
+
+    # Make a colorbar
+    #colorbar()
+
+    # Draw contours
+    if (showContour == True):
+        contour(probDist, levels, origin=None, colors='black',
+                extent=[x0bins[0], x0bins[-1], y0bins[0], y0bins[-1]])
+
+    # Stretch axes
+    axis('equal')
+
+    # Draw labels using latex by putting "r" before the string
+    font = {'fontname' : 'Sans',
+	    'fontsize' : 20}
+    xlabel(r'$\Delta$RA Offset (")', font)
+    ylabel(r'$\Delta$Dec. Offset (")', font)
+
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+    
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+
+    savefig(outfile + '.eps')
+    savefig(outfile + '.png')
+
+    # Turn of Latex Processing
+    rc('text', usetex=False)
+
+def plotComparePos(bincnt=50, outfile='bhComparePos',
+                   file1=root+'08_02_16/MCdir/bias_cent_vel3d/mc_zero.log',
+                   file2=root+'08_02_16/MCdir_16/bias_cent_vel/mc_zero.log',
+                   sgra=root+'08_02_16/points/SgrA.deep_lgsao.points'):
+    """
+    Plot a 2D histogram of x0 and y0 values output by an efit monte
+    carlo. Saves the plot to a EPS file. You must pass in the file name
+    containing the simulation results. Parameters are:
+
+    outfile:  Root name of the file to save the plot to (def=bhComparePos)
+    file1:    Name of the file containing the efit output for S0-2.
+              By default this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/07_09_05/MC04/mc_zero.log
+    file2:    Name of the file containing the efit output for S0-16.
+              By default this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/07_09_05/MC04_16/mc_zero.log
+    sgra:     The points file for Sgr A*. By default this is set to
+              /net/uni/Groups/ghez/ghez/analysis/Ro/07_09_05/points/04jul/SgrA.points
+    bincnt:   Number of bins across the axes in the histogram (def=50)
+    """
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table1 = asciidata.open(file1)
+    table2 = asciidata.open(file2)
+
+    # Make things into arrays of floats, etc.
+    x01 = table1[1].tonumpy()  # in pix
+    y01 = table1[2].tonumpy()  # in pix
+    x02 = table2[1].tonumpy()  # in pix
+    y02 = table2[2].tonumpy()  # in pix
+
+    ##########
+    #
+    # Make 2D histogram
+    #
+    ##########
+    (hist1, x0bins1, y0bins1) = h2d.histogram2d(x01, y01, bins=(bincnt, bincnt))
+    (hist2, x0bins2, y0bins2) = h2d.histogram2d(x02, y02, bins=(bincnt, bincnt))
+
+    # Need to convert the 2d histogram into floats
+    probDist1 = array(hist1, dtype=float)
+    probDist2 = array(hist2, dtype=float)
+
+    # We can turn the histogram into a probability distribution
+    # just by dividing by the total number of trials
+    probDist1 /= float(len(x01))
+    probDist2 /= float(len(x02))
+
+    # Find the dynamical center based on S0-2's orbit
+    maxPix = probDist1.flatten().argmax()
+    sgraDynX = x0bins1[maxPix % probDist1.shape[1]]
+    sgraDynY = y0bins1[maxPix / probDist1.shape[1]]
+    #scale = 9.950 # mas/pixel
+    scale = 1000.0 # mas/pixel
+    print 'Using Dynamical Center as Reference (mas): x = %5.1f; y = %5.1f' % \
+          (sgraDynX*scale, sgraDynY*scale)
+    print 'Using plate scale of %8.3f mas/pixel' % (scale)
+
+    # Get contour levels.
+    levels1 = getContourLevels(probDist1)
+    levels2 = getContourLevels(probDist2)
+
+
+    ##########
+    #
+    # Get photometric positions of Sgr A*
+    #
+    ##########
+    sgraTable = asciidata.open(sgra)
+    sgraX = sgraTable[1].tonumpy()
+    sgraY = sgraTable[2].tonumpy()
+    sgraXerr = sgraTable[3].tonumpy()
+    sgraYerr = sgraTable[4].tonumpy()
+
+    ##########
+    #
+    # Convert everything into arcsec offset from the
+    # dynamical center (set by S0-2's orbit).
+    #
+    ##########
+    #sgraX = (sgraX - sgraDynX) * -scale
+    #sgraY = (sgraY - sgraDynY) * scale
+    #x0bins1 = (x0bins1 - sgraDynX) * -scale
+    #x0bins2 = (x0bins2 - sgraDynX) * -scale
+    #y0bins1 = (y0bins1 - sgraDynY) * scale
+    #y0bins2 = (y0bins2 - sgraDynY) * scale
+    
+    sgraX = (sgraX) * -scale
+    sgraY = (sgraY) * scale
+    x0bins1 = (x0bins1) * -scale
+    x0bins2 = (x0bins2) * -scale
+    y0bins1 = (y0bins1) * scale
+    y0bins2 = (y0bins2) * scale
+    
+    ##########
+    #
+    # Plotting
+    #
+    ##########
+    rc('text', usetex=True)
+
+    # Clear the plot
+    clf()
+    subplots_adjust(left=0.16, bottom=0.12, right=0.95, top=0.92)
+
+   # Plot SgrA*-Radio 
+    an = linspace(0, 2*pi, 100)
+    plot(3.8*cos(an), 4.2*sin(an), 'k--')
+    plot(2.*3.8*cos(an), 2.*4.2*sin(an), 'k--')
+    plot(3.*3.8*cos(an), 3.*4.2*sin(an), 'k--')
+
+    # Display the 2D histogram
+    # Convert bins into x10^6 Msun and kpc
+    c1 = contour(probDist1, levels1, origin=None, colors='blue',
+                 extent=[x0bins1[0], x0bins1[-1], y0bins1[0], y0bins1[-1]])
+    c2 = contour(probDist2, levels2, origin=None, colors='red',
+                 extent=[x0bins2[0], x0bins2[-1], y0bins2[0], y0bins2[-1]])
+
+    errorbar(sgraX, sgraY, xerr=sgraXerr, yerr=sgraYerr, fmt='k.')
+
+
+    # Draw labels using latex by putting "r" before the string
+    font = {'fontname' : 'Sans',
+	    'fontsize' : 20}
+    xlabel(r'$\Delta$RA Offset (mas)', font)
+    ylabel(r'$\Delta$Dec. Offiset (mas)', font)
+
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+    
+    # Set the label axis formatting.
+    thePlot = gca()
+    setp( thePlot.get_xticklabels(), fontsize=16, fontweight='bold')
+    setp( thePlot.get_yticklabels(), fontsize=16, fontweight='bold')
+
+    legend((c1, c2), ('S0-2', 'S0-16'))
+    legText = gca().get_legend().get_texts()
+    setp( legText[0], color='b')
+    setp( legText[1], color='r')
+
+    # Stretch axes
+    axis('equal')
+    rng = axis()
+    xlim(rng[1], rng[0])
+
+    savefig(outfile + '.eps')
+    savefig(outfile + '.png')
+
+    # Turn of Latex Processing
+    rc('text', usetex=False)
+
+
+def compareParams(column, file1=root+'08_02_16/MC/mc_zero.log.a',
+                  file2=root+'08_02_16/MCast/mc_zero.log'):
+    """
+    Compare parameters via their 1D PDFs. 
+
+    Input Parameters:
+    column - a string indicating what variable from the efit MC should
+    be plotted. Here are the options:
+
+    'r0' (column #1 of efit MC file)
+    'x0' (column #2 of efit MC file)
+    'y0' (column #3 of efit MC file)
+    'a'  (column #4 of efit MC file)
+    'p'  (column #5 of efit MC file)
+    'e'  (column #6 of efit MC file)
+    'm'  (combine columns #1, #4, #5 of efit MC file)
+    'periapse' (Periapse distance)
+    """
+    cc = objects.Constants()
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file1)
+
+    # Make things into arrays of floats, etc.
+    r01 = table[0].tonumpy()  # in pc
+    x01 = table[1].tonumpy()  # in pix (working on abs, scale = 1)
+    y01 = table[2].tonumpy()  # in pix (working on abs, scale = 1)
+    a1 = table[3].tonumpy()   # in mas
+    p1 = table[4].tonumpy()   # in yrs
+    e1 = table[5].tonumpy()
+
+    # convert semi-major axis and period into mass
+    m1 = (a1 * r01 / 1000.0)**3 / p1**2
+
+    # calculate periapse distance (in pc)
+    pdist1 = a1 * r01 * (1.0 - e1) / (cc.au_in_pc * 1000.0)
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(file2)
+
+    # Make things into arrays of floats, etc.
+    r02 = table[0].tonumpy()  # in pc
+    x02 = table[1].tonumpy()  # in pix
+    y02 = table[2].tonumpy()  # in pix
+    a2 = table[3].tonumpy()   # in mas
+    p2 = table[4].tonumpy()   # in yrs
+    e2 = table[5].tonumpy()
+
+    # convert semi-major axis and period into mass
+    m2 = (a2 * r02 / 1000.0)**3 / p2**2
+
+    # calculate periapse distance (in pc)
+    pdist2 = a2 * r02 * (1.0 - e2) / (cc.au_in_pc * 1000.0)
+
+    if (column == 'r0'): 
+        var1 = r01
+        var2 = r02
+        axisLabel = 'Ro (pc)'
+    if (column == 'x0'): 
+        var1 = x01 * 1000.0
+        var2 = x02 * 1000.0
+        axisLabel = 'Sgr A* X Position (mas)'
+    if (column == 'y0'): 
+        var1 = y01 * 1000.0
+        var2 = y02 * 1000.0
+        axisLabel = 'Sgr A* X Position (mas)'
+    if (column == 'p'): 
+        var1 = p1
+        var2 = p2
+        axisLabel = 'Period (yr)' 
+    if (column == 'a'): 
+        var1 = a1
+        var2 = a2
+        axisLabel = 'Semi-Major Axis (mas)' 
+    if (column == 'e'): 
+        var1 = e1
+        var2 = e2
+        axisLabel = 'Eccentricity' 
+    if (column == 'm'): 
+        var1 = m1
+        var2 = m2
+        axisLabel = 'Mass (Msun)' 
+    if (column == 'periapse'): 
+        var1 = pdist1
+        var2 = pdist2
+        axisLabel = 'Periapse Distance (pc)' 
+    
+    minVar = concatenate((var1, var2)).min()
+    maxVar = concatenate((var1, var2)).max()
+    binsIn = arange(minVar, maxVar, (maxVar - minVar) / 10.0)
+
+    (bins1, data1) = histNofill.hist(binsIn, var1)
+    (bins2, data2) = histNofill.hist(binsIn, var2)
+
+    foo = stats.stats.ks_2samp(var1, var2)
+    print 'KS Test: Distance Statistic (0 is same) = %5.2f' % (foo[0])
+
+    clf()
+    hist1 = plot(bins1, data1/data1.sum(), color='red', linewidth=3)
+    hist2 = plot(bins2, data2/data2.sum(), color='blue', linewidth=3)
+    legend((hist1, hist2), (file1, file2))
+    xlabel(axisLabel)
+    ylabel('Probability')
+
+    savefig('compareParams_' + column + '.png')
+    savefig('compareParams_' + column + '.eps')
+
+
+def plotParamsProb(mcfile=root+'08_02_16/MCdir/bias_cent_vel3d/mc_zero.new.1e2.log',
+                  paramfile=root+'08_02_16/output/output.s02.vel3d.5b.param1'):
+    """
+    Plot the 1D PDFs for all the parameters generated in the
+    efit Monte Carlo runs. 
+
+    Input Parameters:
+    mcfile -- the Monte Carlo results file.
+    paramfile -- the param file from the chi2 analysis (single line)
+
+    Output Files:
+    plotParamsProb_**.eps -- plot of the probability distribution
+    plotParamsProb_**.png    for each parameter.
+
+    plotParamsProb_limits.txt -- File containing the best fit solution,
+    the most probabie solution, and the 1, 2, and 3 sigma limits.
+
+    Here are all the variables (and associated limits) that are plotted:
+
+    x0    = 'Sgr A* X Position (mas)'
+    y0    = 'Sgr A* Y Position (mas)'
+    r0    = 'Ro (pc)'
+    p     = 'Period (yr)'
+    a     = 'Semi-Major Axis (mas)' 
+    e     = 'Eccentricity'
+    t0    = 'Epoch of Periapse (yr)'
+    w     = 'Argument of Periapse (deg)'
+    i     = 'Inclination (deg)'
+    o     = 'Angle of the Ascending Node (deg)'
+    vx    = 'Sgr A* X Velocity (mas/yr)'
+    vy    = 'Sgr A* Y Velocity (mas/yr)'
+    vz    = 'Sgr A* Z Velocity (km/s)'
+    m     = 'Mass (million solar masses)' 
+    pdist = 'Periapse Distance (AU)' 
+
+    """
+    cc = objects.Constants()
+
+    # param1
+    table = asciidata.open(paramfile)
+
+    # Make things into arrays of floats, etc.
+    r0_fit = float( table[0][0] )  # in pc
+    x0_fit = float( table[1][0] )  # in pix (working on abs, scale = 1)
+    y0_fit = float( table[2][0] )  # in pix (working on abs, scale = 1)
+    a_fit = float( table[3][0] )   # in mas
+    p_fit = float( table[4][0] )   # in yrs
+    e_fit = float( table[5][0] )
+    t0_fit = float( table[6][0] )
+    w_fit = float( table[7][0] )
+    i_fit = float( table[8][0] )
+    o_fit = float( table[9][0] )
+    vx_fit = float( table[10][0] )  # mas/yr
+    vy_fit = float( table[11][0] )  # mas/yr
+    vz_fit = float( table[12][0] )  # km/s
+
+    # convert semi-major axis and period into mass
+    m_fit = (a_fit * r0_fit / 1000.0)**3 / p_fit**2
+
+    # calculate periapse distance (in AU)
+    pdist_fit = a_fit * r0_fit * (1.0 - e_fit) / (1000.0)
+
+    # Set up axis labels and units
+    x0_fit *= 1000.0  # in mas (assumed scale = 1)
+    y0_fit *= 1000.0  # in mas (assumed scale = 1)
+    m_fit /= 1e6      # in millions of solar masses
+
+    # Read in the efit monte carlo output file. Reading in this way
+    # organizes stuff by column (e.g. table[0] = first column
+    table = asciidata.open(mcfile)
+
+    # Make things into arrays of floats, etc.
+    r0 = table[0].tonumpy()  # in pc
+    x0 = table[1].tonumpy()  # in pix (working on abs, scale = 1)
+    y0 = table[2].tonumpy()  # in pix (working on abs, scale = 1)
+    a = table[3].tonumpy()   # in mas
+    p = table[4].tonumpy()   # in yrs
+    e = table[5].tonumpy()
+    t0 = table[6].tonumpy()
+    w = table[7].tonumpy()
+    i = table[8].tonumpy()
+    o = table[9].tonumpy()
+    vx = table[10].tonumpy()  # mas/yr
+    vy = table[11].tonumpy()  # mas/yr
+    vz = table[12].tonumpy()  # km/s
+
+    # We need some cleanup... there is some junk in these results
+    idx = (where((r0 > 1000) & (abs(x0) < 1) & (abs(y0) < 1) & (a > 0)))[0]
+    r0 = r0[idx]
+    x0 = x0[idx]
+    y0 = y0[idx]
+    a = a[idx]
+    p = p[idx]
+    e = e[idx]
+    t0 = t0[idx]
+    w = w[idx]
+    i = i[idx]
+    o = o[idx]
+    vx = vx[idx]
+    vy = vy[idx]
+    vz = vz[idx]
+
+    # convert semi-major axis and period into mass
+    m = (a * r0 / 1000.0)**3 / p**2
+
+    # calculate periapse distance (in AU)
+    pdist = a * r0 * (1.0 - e) / (1000.0)
+
+    # Set up axis labels and units
+    x0 *= 1000.0  # in mas (assumed scale = 1)
+    y0 *= 1000.0  # in mas (assumed scale = 1)
+    m /= 1e6      # in millions of solar masses
+
+    axisLabel_x0 = 'Sgr A* X Position (mas)'
+    axisLabel_y0 = 'Sgr A* Y Position (mas)'
+    axisLabel_r0 = 'Ro (pc)'
+    axisLabel_p = 'Period (yr)'
+    axisLabel_a = 'Semi-Major Axis (mas)' 
+    axisLabel_e = 'Eccentricity'
+    axisLabel_t0 = 'Epoch of Periapse (yr)'
+    axisLabel_w = 'Argument of Periapse (deg)'
+    axisLabel_i = 'Inclination (deg)'
+    axisLabel_o = 'Angle of the Ascending Node (deg)'
+    axisLabel_vx = 'Sgr A* X Velocity (mas/yr)'
+    axisLabel_vy = 'Sgr A* Y Velocity (mas/yr)'
+    axisLabel_vz = 'Sgr A* Z Velocity (km/s)'
+    axisLabel_m = 'Mass (million solar masses)' 
+    axisLabel_pdist = 'Periapse Distance (AU)' 
+
+    _out = open('plotParamsProb_limits.txt', 'w')
+    _out.write('%6s  %10s  %10s    ' % ('#Param', 'BestFit', 'PeakProb'))
+    _out.write('%10s %10s   %10s %10s   ' % \
+               ('1sigma_lo', '1sigma_hi', '1sig(-)', '1sig(+)'))
+    _out.write('%10s %10s   %10s %10s   ' % \
+               ('2sigma_lo', '2sigma_hi', '2sig(-)', '2sig(+)'))
+    _out.write('%10s %10s   %10s %10s\n' % \
+               ('3sigma_lo', '3sigma_hi', '3sig(-)', '3sig(+)'))
+    
+    def plotProb(var, label, suffix, bestFit):
+        # Compute the probability distribution
+        # (not the probability density function)
+        (prob, bins) = matplotlib.mlab.hist(var, bins=40, normed=False)
+        prob = array(prob, dtype=float) / prob.sum() # normalize
+        
+        # Calculate the peak of the probability distribution
+        # and the confidence intervals from the 1D Probs.
+        sid = (prob.argsort())[::-1]  #  indices for a reverse sort
+        probSort = prob[sid]
+
+        peakPix = sid[0]
+        peakVal = bins[peakPix]
+        peakProb = prob[peakPix]
+
+        # Make a cumulative distribution function starting from the
+        # highest pixel value. This way we can find the level above
+        # which 68% of the trials will fall.
+        cdf = cumsum(probSort)
+
+        # Determine point at which we reach XX confidence
+        idx1 = (where(cdf > 0.6827))[0] # 1 sigma
+        idx2 = (where(cdf > 0.9545))[0] # 2 sigma
+        idx3 = (where(cdf > 0.9973))[0] # 3 sigma
+
+        if ((len(idx1) < 2) or (len(idx2) < 2) or (len(idx3) < 2)):
+            clf()
+            hist(var)
+            print 'Min, Max = ', var.min(), var.max()
+            print idx1
+            print idx2
+            print idx3
+        
+        level1 = probSort[idx1[0]]
+        level2 = probSort[idx2[0]]
+        level3 = probSort[idx3[0]]
+
+
+        # Find the range of values 
+        idx1 = (where((prob > level1)))[0]
+        idx2 = (where((prob > level2)))[0]
+        idx3 = (where((prob > level3)))[0]
+
+        # Parameter Range:
+        range1 = array([ bins[idx1[0]], bins[idx1[-1]] ])
+        range2 = array([ bins[idx2[0]], bins[idx2[-1]] ])
+        range3 = array([ bins[idx3[0]], bins[idx3[-1]] ])
+
+        # Plus/Minus Errors:
+        pmErr1 = abs(range1 - peakVal)
+        pmErr2 = abs(range2 - peakVal)
+        pmErr3 = abs(range3 - peakVal)
+
+        pmErr1_best = abs(range1 - bestFit)
+        pmErr2_best = abs(range2 - bestFit)
+        pmErr3_best = abs(range3 - bestFit)
+        
+
+        # Find the min and max values for each confidence
+        print ''
+        print 'Best Fit vs. Peak of Prob. Dist. for the %s' % label
+        print '   %6s = %f   vs.   %f' % (suffix, bestFit, peakVal)
+        print '1, 2, 3 Sigma Confidence Intervals for the %s' % label
+        print '   68.27%% = [%10.4f -- %10.4f] or -/+ [%10.4f, %10.4f] [%10.4f, %10.4f]' % \
+              (range1[0], range1[1], pmErr1_best[0], pmErr1_best[1], pmErr1[0], pmErr1[1])
+        print '   95.45%% = [%10.4f -- %10.4f] or -/+ [%10.4f, %10.4f] [%10.4f, %10.4f]' % \
+              (range2[0], range2[1], pmErr2_best[0], pmErr2_best[1], pmErr2[0], pmErr2[1])
+        print '   99.73%% = [%10.4f -- %10.4f] or -/+ [%10.4f, %10.4f] [%10.4f, %10.4f]' % \
+              (range3[0], range3[1], pmErr3_best[0], pmErr3_best[1], pmErr3[0], pmErr3[1])
+
+        # Write in an output file:
+        _out.write('%6s  %10.4f  %10.4f    ' % (suffix, bestFit, peakVal))
+        _out.write('%10.4f %10.4f  %10.4f %10.4f    ' % \
+                   (range1[0], range1[1], pmErr1[0], pmErr1[1]))
+        _out.write('%10.4f %10.4f  %10.4f %10.4f    ' % \
+                   (range2[0], range2[1], pmErr2[0], pmErr2[1]))
+        _out.write('%10.4f %10.4f  %10.4f %10.4f\n' % \
+                   (range3[0], range3[1], pmErr3[0], pmErr3[1]))
+       
+        clf()
+        (pbins, pprob) = histNofill.convertForPlot(bins, prob)
+        plot(pbins, pprob, color='black')
+        xlabel(label)
+        ylabel('Probability')
+    
+        # Plot the best-fit value
+        #quiver([bestFit], [peakProb * 1.1], [0], [-peakProb*0.1])
+
+        if (suffix == 't0'):
+            gca().get_xaxis().set_major_formatter(FormatStrFormatter('%.2f'))
+            
+        savefig('plotParamsProb_' + suffix + '.png')
+        savefig('plotParamsProb_' + suffix + '.eps')
+
+        return (pbins, pprob)
+
+
+    (x0bins, x0hist) = plotProb(x0, axisLabel_x0, 'x0', x0_fit)
+    (y0bins, y0hist) = plotProb(y0, axisLabel_y0, 'y0', y0_fit)
+    (r0bins, r0hist) = plotProb(r0, axisLabel_r0, 'r0', r0_fit)
+    (pbins, phist) = plotProb(p, axisLabel_p, 'p', p_fit)
+    (abins, ahist) = plotProb(a, axisLabel_a, 'a', a_fit)
+    (ebins, ehist) = plotProb(e, axisLabel_e, 'e', e_fit)
+    (t0bins, t0hist) = plotProb(t0, axisLabel_t0, 't0', t0_fit)
+    (wbins, whist) = plotProb(w, axisLabel_w, 'w', w_fit)
+    (ibins, ihist) = plotProb(i, axisLabel_i, 'i', i_fit)
+    (obins, ohist) = plotProb(o, axisLabel_o, 'o', o_fit)
+    (vxbins, vxhist) = plotProb(vx, axisLabel_vx, 'vx', vx_fit)
+    (vybins, vyhist) = plotProb(vy, axisLabel_vy, 'vy', vy_fit)
+    (vzbins, vzhist) = plotProb(vz, axisLabel_vz, 'vz', vz_fit)
+    (mbins, mhist) = plotProb(m, axisLabel_m, 'm', m_fit)
+    (pdbins, pdhist) = plotProb(pdist, axisLabel_pdist, 'pdist', pdist_fit)
+
+    _out.close()
+
+
+    # Now lets make 2 combined plots with panels for each parameter
+    # Plot 1:
+    #   x0  y0  r0
+    #   vx  vy  vz
+    #   m
+
+    rc('axes', titlesize=10, labelsize=10)
+    rc('xtick', labelsize=8)
+    rc('ytick', labelsize=8)
+
+    figure(2, figsize=(11, 13))
+    clf()
+    subplots_adjust(bottom=0.05, left=0.09, right=0.95, top=0.97)
+
+    # Row 1
+    subplot(5, 3, 1)
+    plot(x0bins, x0hist, color='black')
+    xlabel(axisLabel_x0)
+    ylabel('Probability')
+
+    subplot(5, 3, 2)
+    plot(y0bins, y0hist, color='black')
+    xlabel(axisLabel_y0)
+    ylabel('Probability')
+
+    subplot(5, 3, 3)
+    plot(r0bins, r0hist, color='black')
+    xlabel(axisLabel_r0)
+    ylabel('Probability')
+
+    # Row 2
+    subplot(5, 3, 4)
+    plot(vxbins, vxhist, color='black')
+    xlabel(axisLabel_vx)
+    ylabel('Probability')
+
+    subplot(5, 3, 5)
+    plot(vybins, vyhist, color='black')
+    xlabel(axisLabel_vy)
+    ylabel('Probability')
+
+    subplot(5, 3, 6)
+    plot(vzbins, vzhist, color='black')
+    xlabel(axisLabel_vz)
+    ylabel('Probability')
+
+    # Row 3
+    subplot(5, 3, 8)
+    plot(mbins, mhist, color='black')
+    xlabel(axisLabel_m)
+    ylabel('Probability')
+
+    # Row 4
+    subplot(5, 3, 10)
+    plot(pbins, phist, color='black')
+    xlabel(axisLabel_p)
+    ylabel('Probability')
+
+    subplot(5, 3, 11)
+    plot(t0bins, t0hist, color='black')
+    xlabel(axisLabel_t0)
+    ylabel('Probability')
+    gca().get_xaxis().set_major_formatter(FormatStrFormatter('%.2f'))
+
+    subplot(5, 3, 12)
+    plot(ebins, ehist, color='black')
+    xlabel(axisLabel_e)
+    ylabel('Probability')
+
+    # Row 5
+    subplot(5, 3, 13)
+    plot(ibins, ihist, color='black')
+    xlabel(axisLabel_i)
+    ylabel('Probability')
+
+    subplot(5, 3, 14)
+    plot(wbins, whist, color='black')
+    xlabel(axisLabel_w)
+    ylabel('Probability')
+
+    subplot(5, 3, 15)
+    plot(obins, ohist, color='black')
+    xlabel(axisLabel_o)
+    ylabel('Probability')
+
+    savefig('plotParamsProb_all.png')
+    savefig('plotParamsProb_all.eps')
+    close(2)
+
+    rc('axes', titlesize=14, labelsize=14)
+    rc('xtick', labelsize=12)
+    rc('ytick', labelsize=12)
+
+#----------
+#
+# Contours
+#
+#----------
+def getContourLevels(probDist):
+    """
+    If we want to overlay countours, we need to figure out the
+    appropriate levels. The algorithim is:
+        1. Sort all pixels in the 2D histogram (largest to smallest)
+        2. Make a cumulative distribution function
+        3. Find the level at which 68% of trials are enclosed.
+    """
+    # Get indices for sorted pixel values (smallest to largest)
+    sid0 = probDist.flatten().argsort()
+    # Reverse indices, now largest to smallest
+    sid = sid0[::-1]
+    # Sort the actual pixel values
+    pixSort = probDist.flatten()[sid]
+    
+    # Make a cumulative distribution function starting from the
+    # highest pixel value. This way we can find the level above
+    # which 68% of the trials will fall.
+    cdf = cumsum(pixSort)
+    
+    # Determine point at which we reach 68% level
+    percents = array([0.6827, 0.9545, 0.9973])
+    levels = zeros(len(percents), dtype=float)
+    for ii in range(len(levels)):
+        # Get the index of the pixel at which the CDF
+        # reaches this percentage (the first one found)
+        idx = (where(cdf < percents[ii]))[0]
+        
+        # Now get the level of that pixel
+        levels[ii] = pixSort[idx[-1]]
+        
+    return levels
