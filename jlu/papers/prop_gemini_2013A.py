@@ -141,8 +141,22 @@ def properMotions(galacticLat, distance, clusterName):
     py.savefig(outfile + '.eps')
 
 
-def overheads(tint, coadds, dithers, nPerDither):
-    overhead = 21 + 5.6 * coadds + 6.5 * (coadds - 1)
+def overheads(tint, coadds, dithers, nPerDither, readmode='bright'):
+    """
+    """
+    readmode_dict = {'bright': 5.6,
+                     'faint': 22.4,
+                     'very faint': 44.8}
+
+    readmode_list = readmode_dict.keys()
+    if readmode not in readmode_list:
+        print 'Incorrect read mode specified. Must be one of:'
+        print readmode_list
+        return
+
+    read_overhead = readmode_dict[readmode]
+    
+    overhead = 21 + read_overhead * coadds + 6.5 * (coadds - 1)
     overhead *= dithers * nPerDither
     overhead += 30 * dithers
 

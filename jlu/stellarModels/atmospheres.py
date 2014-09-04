@@ -1,6 +1,7 @@
 import numpy as np
 import pylab as py
-import asciidata
+#import atpy
+from astropy.table import Table
 import pyfits
 import pysynphot
 
@@ -159,7 +160,8 @@ def test_merged_atmospheres(metallicity=0, gravity=4):
 
 
 def get_merged_atmosphere(metallicity=0, temperature=20000, gravity=4):
-    if temperature < 4000:
+    if temperature < 4000 or (temperature < 7000 and gravity < 4.0):
+        print 'Phoenix Model Atmosphere Used'
         return get_phoenix_atmosphere(metallicity=metallicity,
                                       temperature=temperature,
                                       gravity=gravity)
@@ -169,7 +171,8 @@ def get_merged_atmosphere(metallicity=0, temperature=20000, gravity=4):
     #                                     temperature=temperature,
     #                                     gravity=gravity)
 
-    if temperature >= 4000 and temperature < 7000:
+    if temperature >= 4000 and temperature < 7000 and gravity >= 4.0:
+        print 'Nextgen atmosphere used'
         return get_nextgen_atmosphere(metallicity=metallicity,
                                       temperature=temperature,
                                       gravity=gravity)

@@ -87,7 +87,7 @@ def cardelli(wavelength, Rv):
     return extinction
 
 
-def nishiyama09(wavelength, AKs, makePlot=False):
+def nishiyama09(wavelength, AKs, makePlot=False, k=3):
     # Data pulled from Nishiyama et al. 2009, Table 1
 
     filters = ['V', 'J', 'H', 'Ks', '[3.6]', '[4.5]', '[5.8]', '[8.0]']
@@ -96,7 +96,7 @@ def nishiyama09(wavelength, AKs, makePlot=False):
     A_AKs_err = np.array([0.04,  0.04, 0.03, 0.00, 0.010, 0.010, 0.010, 0.010])
 
     # Interpolate over the curve
-    spline_interp = interpolate.splrep(wave, A_AKs, k=3, s=0)
+    spline_interp = interpolate.splrep(wave, A_AKs, k=k, s=0)
 
     A_AKs_at_wave = interpolate.splev(wavelength, spline_interp)
     A_at_wave = AKs * A_AKs_at_wave
@@ -153,6 +153,49 @@ def romanzuniga07(wavelength, AKs, makePlot=False):
         py.xlabel('Wavelength (microns)')
         py.ylabel('Extinction (magnitudes)')
         py.title('Roman Zuniga et al. 2007')
+
+    
+    return A_at_wave
+
+def wd1_extinction(wavelength, AKs, makePlot=False):
+    # Data pulled from Nishiyama et al. 2009, Table 1
+
+    filters = ['B', 'V', 'R','I','J', 'K', 'Ks']
+    wave =    np.array([0.44,0.551, 0.64, 0.79, 1.25, 2.14, 2.22])
+    A_V =     np.array([1.373, 1.000, 0.748, 0.578, 0.198, 0.0768866, 0.066])
+
+    # Reference: http://adsabs.harvard.edu/abs/2013msao.confE..62D
+    # Since the paper only have A_K, in order to obtain A_Ks, we do
+    # spline_interp = interpolate.splrep(wave, A_V, k=1, s=0) 
+    # k=3 leads to a nagative A_Ks=-0.0113756
+    # k=2 leads to A_Ks=0.038111
+    # when k=1, A_Ks=, Thus this value is added into array A_V
+
+    A_AKs = A_V * (1 / 0.0768866)
+    # Interpolate over the curve
+    spline_interp = interpolate.splrep(wave, A_AKs, k=3, s=0) 
+
+    A_AKs_at_wave = interpolate.splev(wavelength, spline_interp)
+    A_at_wave = AKs * A_AKs_at_wave
+
+    if makePlot:
+        py.clf()
+        py.errorbar(wave, A_AKs, yerr=A_AKs_err, fmt='bo', 
+                    markerfacecolor='none', markeredgecolor='blue',
+                    markeredgewidth=2)
+        
+        # Make an interpolated curve.
+        wavePlot = np.arange(wave.min(), wave.max(), 0.1)
+        extPlot = interpolate.splev(wavePlot, spline_interp)
+        py.loglog(wavePlot, extPlot, 'k-')
+
+        # Plot a marker for the computed value.
+        py.plot(wavelength, A_AKs_at_wave, 'rs',
+                markerfacecolor='none', markeredgecolor='red',
+                markeredgewidth=2)
+        py.xlabel('Wavelength (microns)')
+        py.ylabel('Extinction (magnitudes)')
+        py.title('Nishiyama et al. 2009')
 
     
     return A_at_wave

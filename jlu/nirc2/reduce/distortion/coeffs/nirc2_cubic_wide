@@ -1,0 +1,8 @@
+# This is a cubic distortion for the PC
+# taken from the WFPC2 Instrument Handbook
+cubic
+4.06e-1 1.0008 -3.24e-3 -1.75e-6 -5.6e-7
+10.0e-6 -6.8e-9 8e-10 -3.6e-9 9.0e-10
+
+3.4e-2 2.1e-4 9.9477e-1 -4.4e-7 -9.2e-7
+-1.57e-6 2e-10 2.6e-9 5e-10 5.9e-9

@@ -44,13 +44,13 @@ class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
     You can call reddening(AKs) which will return an ArraySpectralElement
     that can then be manipulated with spectra.
     """
-    def __init__(self):
+    def __init__(self, k=3):
         # Fetch the extinction curve, pre-interpolate across 1-8 microns
         wave = np.arange(0.5, 8.0, 0.001)
         
         # This will eventually be scaled by AKs when you
         # call reddening(). Right now, calc for AKs=1
-        Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False)
+        Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False, k=k)
 
         # Convert wavelength to angstrom
         wave *= 10**4
@@ -125,7 +125,7 @@ vega = Vega()
 redlaw = RedLawNishiyama09()
 
 
-def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
+def make_observed_isochrone_hst(logAge, AKs=defaultAKs, isoDir='iso',
                                 distance=defaultDist, verbose=False):
     startTime = time.time()
 
@@ -133,7 +133,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         (logAge, AKs, distance)
     print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
 
-    outFile = '/u/jlu/work/wd1/models/iso/'
+    outFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
     outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(distance).zfill(4))
 
@@ -236,8 +236,161 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     endTime = time.time()
     print '      Time taken: %d seconds' % (endTime - startTime)
 
-def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist):
-    inFile = '/u/jlu/work/wd1/models/iso/'
+
+# Little helper utility to get all the bandpass/zeropoint info.
+def get_filter_info(name, vega=vega):
+    filter = ObsBandpass(name)
+
+    vega_obs = obs.Observation(vega, filter, binset=filter.wave, force='taper')
+    vega_flux = vega_obs.binflux.sum()
+    vega_mag = 0.03
+
+    filter.flux0 = vega_flux
+    filter.mag0 = vega_mag
+    
+    return filter
+
+# Little helper utility to get the magnitude of an object through a filter.
+def mag_in_filter(star, filter, extinction):
+    """
+    Assumes that extinction is already resampled to same wavelengths
+    as filter.
+    """
+    star_in_filter = obs.Observation(star, filter*extinction,
+                                     binset=filter.wave, force='taper')
+    star_flux = star_in_filter.binflux.sum()
+    star_mag = -2.5 * math.log10(star_flux / filter.flux0) + filter.mag0
+
+    return star_mag
+
+
+
+def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
+                                     distance=defaultDist, verbose=False):
+
+    redlaw_k = RedLawNishiyama09(k=k)
+    isoDir = 'iso_k{0}'.format(k)
+    
+    startTime = time.time()
+
+    print 'Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
+        (logAge, AKs, distance)
+    print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
+
+    outFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
+    outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
+                                                 str(distance).zfill(4))
+
+    c = constants
+
+    # Get solar mettalicity models for a population at a specific age.
+    evol = evolution.get_merged_isochrone(logAge=logAge)
+
+    # Lets do some trimming down to get rid of repeat masses or 
+    # mass resolutions higher than 1/1000. We will just use the first
+    # unique mass after rounding by the nearest 0.001.
+    mass_rnd = np.copy(evol.mass)
+
+    idx = np.where(evol.mass > 10)[0]
+    mass_rnd[idx] = np.round(evol.mass[idx], decimals=0)
+    print mass_rnd[0:10]
+
+    mass_rnd = np.round(mass_rnd, decimals=1)
+    print mass_rnd[0:10]
+
+    tmp, idx = np.unique(mass_rnd, return_index=True)
+    print 'Number of stars {0}'.format(len(idx))
+
+    mass = evol.mass[idx]
+    logT = evol.logT[idx]
+    logg = evol.logg[idx]
+    logL = evol.logL[idx]
+    isWR = logT != evol.logT_WR[idx]
+
+    temp = 10**logT
+
+    # Output magnitudes for each temperature and extinction value.
+    mag814w = np.zeros(len(temp), dtype=float)
+    mag125w = np.zeros(len(temp), dtype=float)
+    mag139m = np.zeros(len(temp), dtype=float)
+    mag160w = np.zeros(len(temp), dtype=float)
+
+    filt814w = get_filter_info('acs,f814w,wfc1')
+    filt125w = get_filter_info('wfc3,ir,f125w')
+    filt139m = get_filter_info('wfc3,ir,f139m')
+    filt160w = get_filter_info('wfc3,ir,f160w')
+
+    # Make reddening
+    red814w = redlaw_k.reddening(AKs).resample(filt814w.wave)
+    red125w = redlaw_k.reddening(AKs).resample(filt125w.wave)
+    red139m = redlaw_k.reddening(AKs).resample(filt139m.wave)
+    red160w = redlaw_k.reddening(AKs).resample(filt160w.wave)
+
+    # Convert luminosity to erg/s
+    L_all = 10**(logL) * c.Lsun # luminsoity in erg/s
+
+    # Calculate radius
+    R_all = np.sqrt(L_all / (4.0 * math.pi * c.sigma * temp**4))
+    R_all /= (c.cm_in_AU * c.AU_in_pc)
+
+    # For each temperature extract the synthetic photometry.
+    for ii in range(len(temp)):
+        gravity = logg[ii]
+        L = L_all[ii] # in erg/s
+        T = temp[ii]  # in Kelvin
+        R = R_all[ii] # in pc
+
+        # Get the atmosphere model now. Wavelength is in Angstroms
+        star = atm.get_merged_atmosphere(temperature=T, 
+                                         gravity=gravity)
+
+        # Trim wavelength range down to JHKL range (0.5 - 4.25 microns)
+        star = spectrum.trimSpectrum(star, 5000, 42500)
+
+        # Convert into flux observed at Earth (unreddened)
+        star *= (R / distance)**2  # in erg s^-1 cm^-2 A^-1
+
+        # ----------
+        # Now to the filter integrations
+        # ----------
+        mag814w[ii] = mag_in_filter(star, filt814w, red814w)
+        mag125w[ii] = mag_in_filter(star, filt125w, red125w)
+        mag139m[ii] = mag_in_filter(star, filt139m, red139m)
+        mag160w[ii] = mag_in_filter(star, filt160w, red160w)
+
+        if verbose:
+            print 'M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F814W = %4.2f  F125W = %4.2f  F139M = %4.2f  F160W = %4.2f' % \
+                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag814w[ii], mag125w[ii], mag139m[ii], mag160w[ii])
+
+
+    iso = objects.DataHolder()
+    iso.M = mass
+    iso.T = temp
+    iso.logg = logg
+    iso.logL = logL
+    iso.mag814w = mag814w
+    iso.mag125w = mag125w
+    iso.mag139m = mag139m
+    iso.mag160w = mag160w
+    iso.isWR = isWR
+    
+    _out = open(outFile, 'wb')
+    pickle.dump(mass, _out)
+    pickle.dump(temp, _out)
+    pickle.dump(logg, _out)
+    pickle.dump(logL, _out)
+    pickle.dump(mag814w, _out)
+    pickle.dump(mag125w, _out)
+    pickle.dump(mag139m, _out)
+    pickle.dump(mag160w, _out)
+    pickle.dump(isWR, _out)
+    _out.close()
+
+    endTime = time.time()
+    print '      Time taken: %d seconds' % (endTime - startTime)
+
+def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist, isoDir='iso'):
+    inFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
     inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(distance).zfill(4))
 
@@ -245,7 +398,7 @@ def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist):
 
     if not os.path.exists(inFile):
         # File doesn't exist, but if only distance has changed we can simply rescale.
-        inFile = '/u/jlu/work/wd1/models/iso/'
+        inFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
         inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(defaultDist).zfill(4))
         if not os.path.exists(inFile):
@@ -277,32 +430,3 @@ def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist):
         iso.mag160w += deltaDM
 
     return iso
-
-
-# Little helper utility to get all the bandpass/zeropoint info.
-def get_filter_info(name, vega=vega):
-    filter = ObsBandpass(name)
-
-    vega_obs = obs.Observation(vega, filter, binset=filter.wave, force='taper')
-    vega_flux = vega_obs.binflux.sum()
-    vega_mag = 0.03
-
-    filter.flux0 = vega_flux
-    filter.mag0 = vega_mag
-    
-    return filter
-
-# Little helper utility to get the magnitude of an object through a filter.
-def mag_in_filter(star, filter, extinction):
-    """
-    Assumes that extinction is already resampled to same wavelengths
-    as filter.
-    """
-    star_in_filter = obs.Observation(star, filter*extinction,
-                                     binset=filter.wave, force='taper')
-    star_flux = star_in_filter.binflux.sum()
-    star_mag = -2.5 * math.log10(star_flux / filter.flux0) + filter.mag0
-
-    return star_mag
-
-

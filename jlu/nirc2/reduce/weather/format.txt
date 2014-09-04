@@ -1,0 +1,2 @@
+year month day hour minute(HST) wind_speed(kts) wind_direction(dec) temperature(C) relative_humidity(%) pressure(mb-if present)
+

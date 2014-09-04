@@ -1,0 +1,64 @@
+!    -*- f90 -*-
+! Note: the context of this file is case sensitive.
+
+python module refco ! in 
+    interface  ! in :refco
+        subroutine slrfco(hm,tdk,pmb,rh,wl,phi,tlr,eps,refa,refb) ! in :refco:refco.f
+            double precision :: hm
+            double precision :: tdk
+            double precision :: pmb
+            double precision :: rh
+            double precision :: wl
+            double precision :: phi
+            double precision :: tlr
+            double precision :: eps
+            double precision,intent(out) :: refa
+            double precision,intent(out) :: refb
+        end subroutine slrfco
+        subroutine slrfro(zobs,hm,tdk,pmb,rh,wl,phi,tlr,eps,ref) ! in :refco:refro.f
+            double precision :: zobs
+            double precision :: hm
+            double precision :: tdk
+            double precision :: pmb
+            double precision :: rh
+            double precision :: wl
+            double precision :: phi
+            double precision :: tlr
+            double precision :: eps
+            double precision :: ref
+        end subroutine slrfro
+        subroutine slatms(rt,tt,dnt,gamal,r,dn,rdndr) ! in :refco:atms.f
+            double precision :: rt
+            double precision :: tt
+            double precision :: dnt
+            double precision :: gamal
+            double precision :: r
+            double precision :: dn
+            double precision :: rdndr
+        end subroutine slatms
+        subroutine slatmt(r0,t0,alpha,gamm2,delm2,c1,c2,c3,c4,c5,c6,r,t,dn,rdndr) ! in :refco:atmt.f
+            double precision :: r0
+            double precision :: t0
+            double precision :: alpha
+            double precision :: gamm2
+            double precision :: delm2
+            double precision :: c1
+            double precision :: c2
+            double precision :: c3
+            double precision :: c4
+            double precision :: c5
+            double precision :: c6
+            double precision :: r
+            double precision :: t
+            double precision :: dn
+            double precision :: rdndr
+        end subroutine slatmt
+        function slda1p(angle) ! in :refco:drange.f
+            double precision :: angle
+            double precision :: slda1p
+        end function slda1p
+    end interface 
+end python module refco
+
+! This file was auto-generated with f2py (version:2_5585).
+! See http://cens.ioc.ee/projects/f2py2e/

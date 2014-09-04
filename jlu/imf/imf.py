@@ -21,7 +21,7 @@ defaultCSFamp = 0.50
 defaultCSFindex = 0.45
 defaultCSFmax = 3
 
-def sample_imf(massLimits, imfSlopes, totalMass,
+def sample_imf(massLimits, imfSlopes, normMass, normMassRange=None,
                makeMultiples=True, 
                multiMFamp=defaultMFamp, multiMFindex=defaultMFindex,
                multiCSFamp=defaultCSFamp, multiCSFindex=defaultCSFindex,
@@ -42,18 +42,27 @@ def sample_imf(massLimits, imfSlopes, totalMass,
     To specify an multi-part powerlaw with N segments:
     massLimits - numpy array of size N+1 with the upper and lower mass limits for each segment
     imfSlopes - numpy array of size N with the power law slopes (alpha) for each segment.
+
+    Optional Inputs:
+    --------------------
+    normMassRange -- None = use the total mass range set in massLimits. Otherwise,
+                      set a 2-element array with the minimum and maximum mass range.
     """
 
-    if (massLimits[-1] > totalMass) and verbose:
+    if (massLimits[-1] > normMass) and verbose:
         print 'sample_imf: Setting maximum allowed mass to %d' % \
-            (totalMass)
+            (normMass)
 
-        massLimits[-1] = totalMass
+        massLimits[-1] = normMass
 
     imf = IMF_broken_powerlaw(massLimits, imfSlopes)
-    imf.imf_norm_cl(totalMass)
+    if normMassRange == None:
+        imf.imf_norm_cl(normMass)
+    else:
+        imf.imf_norm_cl(normMass, Mmin=normMassRange[0], Mmax=normMassRange[1])
 
     # First estimate the mean number of stars expected
+    totalMass = imf.imf_int_mxi(massLimits[0], massLimits[-1])
     meanNumber = imf.imf_int_xi(massLimits[0], massLimits[-1])
 
     simTotalMass = 0
@@ -417,12 +426,17 @@ class IMF_broken_powerlaw(object):
             # Save results into the y array
             y[idx] += y_i
 
-            z *= delta(x - self.lamda[i])
+        # Handle interval boundaries (not outer edges) and give
+        # them a weight of 0.5 to avoid double counting.
+        # This multiplies by 0.5 for x - lamda[i] == 0
+        for i in range(1, self.nterms):
+            y *= delta(x - self.lamda[i])  
 
         if returnFloat:
-            return y[0] * z[0]
+            return y[0]
         else:
-            return y * z
+            return y
+        
 
 class IMF_Chabrier_2003(object):
     def __init__(self, massLimits, powers):
@@ -696,12 +710,16 @@ class IMF_Chabrier_2003(object):
             # Save results into the y array
             y[idx] += y_i
 
-            z *= delta(x - self.lamda[i])
+        # Handle interval boundaries (not outer edges) and give
+        # them a weight of 0.5 to avoid double counting.
+        # This multiplies by 0.5 for x - lamda[i] == 0
+        for i in range(1, self.nterms):
+            y *= delta(x - self.lamda[i])  
 
         if returnFloat:
-            return y[0] * z[0]
+            return y[0]
         else:
-            return y * z
+            return y
 
 class Salpeter_1955(IMF_broken_powerlaw):
     def __init__(self):
@@ -751,46 +769,28 @@ def imf_prim_power(m, power):
     """
     returnFloat = (type(m) == float) and (type(power) == float)
 
-#-----------------------------------------------
-# Notes before changing the code.
-#   m is either a array or a float, if m is an array it always has the same length as power.
-#   problem comes out when m is a float and power is an array with an element=0.
-#   for example, power=(0,-2.4) and m=(1.2)
-#   val will be(2., -0.269).  The second number is from (1.2**(-2.4))/(-2.4), but I have no idea on how '2.' coming out.
-#   If I change m=(1.0), the first number is still '2.'. 
-#-----------------------------------------------
-
-#    print 'm is:',m
-#    print 'power is:', power
     m = np.atleast_1d(m)
 
     power = np.atleast_1d(power)
 
     z = 1.0 + power
 
-    val=np.zeros(len(power))
+    val = (m ** z) / z
 
-#    val = (m**z) / z
-#    val[power == -1] = np.log(m[power == -1])
+    # Handle the cases where power == -1
+    idx = np.where(power == -1)[0]
 
-##-----------------------------------------------
-## Bon's changed
-    if len(m)==1:
-        for i in range (len(z)):
-            if z[i]!=0:
-                val[i]=(m[0]**z[i])/z[i]
-            else:
-                val[i]=np.log(m[0])
-
-    if len(m)>1:
-        for i in range(len(z)):
-            if z[i]!=0:
-                val[i]=(m[i]**z[i])/z[i]
-            else:
-                val[i]=np.log(m[i])
-##-----------------------------------------------
-#    print 'val is:', val
-
+    if len(idx) > 0:
+        if len(power) == 1:
+            # len(power == 1) and any len(m)
+            val = np.log(m)
+        elif len(m) == 1:
+            # len(m) == 1 and len(power) > 1
+            val[idx] = np.log(m)
+        else:
+            # len(m) > 1 and len(power) > 1 and len(m) == len(power)
+            val[idx] = np.log(m[idx])
+    
     if returnFloat:
         return val[0]
     else:
@@ -800,15 +800,40 @@ def imf_inv_prim_power(x, power):
     """
     returns ((1+power) * x)**(1.0 / (1 + power)) and handles the case 
     when power == -1.
+
+    Inputs
+    ------------
+    x : float or array
+    power : float
     """
+
     returnFloat = (type(x) == float) and (type(power) == float)
 
     x = np.atleast_1d(x)
+
     power = np.atleast_1d(power)
 
     z = 1.0 + power
+
+    # if power == -1:
+    #     val = np.exp(x)
+    # else:
     val = (z * x)**(1.0 / z)
-    val[power == -1] = np.exp(x[power == -1])
+
+    # Handle the cases where power == -1
+    idx = np.where(power == -1)[0]
+
+    if len(idx) > 0:
+        if len(power) == 1:
+            # len(power == 1) and any len(x)
+            val = np.exp(x)
+        elif len(x) == 1:
+            # len(m) == 1 and len(power) > 1
+            val[idx] = np.exp(x)
+        else:
+            # len(x) > 1 and len(power) > 1 and len(x) == len(power)
+            val[idx] = np.exp(x[idx])
+
 
     if returnFloat:
         return val[0]

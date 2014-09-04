@@ -1,0 +1,8 @@
+# This is the distortion solution for the
+# wide camera computed by Brian Cameron (Caltech)
+cubic
+-6.32775e-1 1.00258 -1.07553e-3 -8.44603e-7 -8.66153e-7
+1.03161e-5 -2.80832e-9 2.11712e-12 -8.90944e-10 -3.14757e-11
+
+2.17931e-2 -1.39196e-3 9.96806e-1 -2.813e-7 -5.77556e-7
+-1.44116e-6 5.30766e-10 4.39543e-9 -3.07567e-10 7.84907e-9
