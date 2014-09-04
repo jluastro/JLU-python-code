@@ -1,6 +1,6 @@
 import pylab as py
 import numpy as np
-import pymultinest
+# import pymultinest
 import scipy.stats
 import atpy
 import math
@@ -692,3 +692,343 @@ def plot_test_amplitude(out_file_root):
     py.ylabel('alpha')
     py.savefig(outroot + 'posterior_2d.png')
 
+
+def test_imf_sampling(totalMass=1.0e4, imfSlope=2.35):
+    minMass = 1.0
+    maxMass = 150.0
+
+    n_runs = 100
+    log_mass_bins = np.arange(0, 2.5, 0.2)
+    hists1 = np.zeros((n_runs, len(log_mass_bins)-1), dtype=float)
+    hists2 = np.zeros((n_runs, len(log_mass_bins)-1), dtype=float)
+    
+    for nn in range(n_runs):
+        mass1, isMulti1, compMass1 = sample_imf(totalMass, 
+                                                minMass, maxMass, 
+                                                imfSlope)
+        mass2, isMulti2, compMass2 = sample_imf_var_max_mass(totalMass, 
+                                                             minMass, maxMass, 
+                                                             imfSlope)
+        H1, b1 = np.histogram(np.log10(mass1), bins=log_mass_bins)
+        H2, b2 = np.histogram(np.log10(mass2), bins=log_mass_bins)
+
+        hists1[nn] = H1
+        hists2[nn] = H2
+
+    bin_cent = log_mass_bins[:-1] + np.diff(log_mass_bins)
+
+    py.figure(1)
+    py.clf()
+    for nn in range(n_runs):
+        py.semilogy(bin_cent, hists1[nn], 'k-', alpha=0.2)
+        py.semilogy(bin_cent, hists2[nn], 'r-', alpha=0.2)
+    py.ylim(1, 1200)
+    py.savefig('test_imf_sampling_all_m%d_a%.2f.png' % (totalMass, imfSlope))
+
+
+    means1 = hists1.mean(axis=0)
+    stds1 = hists1.std(axis=0)
+    means2 = hists2.mean(axis=0)
+    stds2 = hists2.std(axis=0)
+
+    py.figure(2)
+    py.clf()
+    py.errorbar(bin_cent, means1, yerr=stds1, fmt='ko')
+    py.errorbar(bin_cent, means2, yerr=stds2, fmt='ro')
+    py.gca().set_yscale('log')
+    py.ylim(1, 1200)
+    py.xlim(0, 2.5)
+    py.savefig('test_imf_sampling_avg_m%d_a%.2f.png' % (totalMass, imfSlope))
+
+
+defaultAKs = 2.7
+defaultDist = 8000
+defaultFilter = 'Kp'
+defaultMFamp = 0.44
+defaultMFindex = 0.51
+defaultCSFamp = 0.50
+defaultCSFindex = 0.45
+defaultCSFmax = 3
+
+def sample_imf(totalMass, minMass, maxMass, imfSlope,
+               multiMFamp=defaultMFamp, multiMFindex=defaultMFindex,
+               multiCSFamp=defaultCSFamp, multiCSFindex=defaultCSFindex,
+               multiCSFmax=defaultCSFmax,
+               makeMultiples=True, multiQindex=-0.4, multiQmin=0.01,
+               verbose=False):
+    """
+    Randomly sample from an IMF of the specified slope and mass
+    limits until the desired total mass is reached. The maximum
+    stellar mass is not allowed to exceed the total cluster mass.
+    The simulated total mass will not be exactly equivalent to the
+    desired total mass; but we will take one star above or below
+    (whichever brings us closer to the desired total) the desired
+    total cluster mass break point.
+
+    IMF Slope is 2.35 for Salpeter.
+    """
+    if (maxMass > totalMass) and verbose:
+        print 'sample_imf: Setting maximum allowed mass to %d' % \
+            (totalMass)
+        maxMass = totalMass
+
+    # p(m) = A * m^-imfSlope
+    # Setup useful variables
+    nG = 1 - imfSlope  # This is also -Gamma, hence nG name
+
+    if imfSlope != 1:
+        A =  nG / (maxMass**nG - minMass**nG)
+    else:
+        A = 1.0 / (math.log(maxMass) - math.log(minMass))
+
+    # Generative function for primary masses
+    def cdf_inv_not_1(x, minMass, maxMass, nG):
+        return (x * (maxMass**nG - minMass**nG) + minMass**nG)**(1.0/nG)
+
+    # This is the special case for alpha = 1.0
+    def cdf_inv_1(x, minMass, maxMass, nG):
+        return minMass * (maxMass / minMass)**x
+
+    # Generative function for companion mass ratio (q = m_comp/m_primary)
+    def q_cdf_inv(x, qLo, beta):
+        b = 1.0 + beta
+        return (x * (1.0 - qLo**b) + qLo**b)**(1.0/b)
+
+    # First estimate the mean number of stars expected
+    if imfSlope != 1:
+        if imfSlope != 2: 
+            nGp1 = 1 + nG
+            meanMass = A * (maxMass**nGp1 - minMass**nGp1) / nGp1
+        else:
+            meanMass = A * (math.log(maxMass) - math.log(minMass))
+
+        cdf_inv = cdf_inv_not_1
+    else:
+        meanMass = A * (maxMass - minMass)
+        cdf_inv = cdf_inv_1
+
+    meanNumber = round(totalMass / meanMass)
+
+    simTotalMass = 0
+    newStarCount = round(meanNumber)
+    if not makeMultiples:
+        newStarCount *= 1.1
+
+    masses = np.array([], dtype=float)
+    isMultiple = np.array([], dtype=bool)
+    compMasses = []
+    systemMasses = np.array([], dtype=float)
+
+    def binary_properties(mass):
+        # Multiplicity Fraction
+        mf = multiMFamp * mass**multiMFindex
+        mf[mf > 1] = 1
+
+        # Companion Star Fraction
+        csf = multiCSFamp * mass**multiCSFindex
+        csf[csf > 3] = multiCSFmax
+
+        return mf, csf
+
+    loopCnt = 0
+
+    while simTotalMass < totalMass:
+        # Generate a random distribution 20% larger than
+        # the number we expect to need.
+        uniX = np.random.rand(newStarCount)
+
+        # Convert into the IMF from the inverted CDF
+        newMasses = cdf_inv(uniX, minMass, maxMass, nG)
+
+        if makeMultiples:
+            compMasses = [[] for ii in range(len(newMasses))]
+
+            # Determine the multiplicity of every star
+            MF, CSF = binary_properties(newMasses)
+            newIsMultiple = np.random.rand(newStarCount) < MF
+            newSystemMasses = newMasses.copy()
+        
+            # Calculate number and masses of companions
+            for ii in range(len(newMasses)):
+                if newIsMultiple[ii]:
+                    n_comp = 1 + np.random.poisson((CSF[ii]/MF[ii]) - 1)
+                    q_values = q_cdf_inv(np.random.rand(n_comp), multiQmin, multiQindex)
+                    m_comp = q_values * newMasses[ii]
+
+                    # Only keep companions that are more than the minimum mass
+                    mdx = np.where(m_comp >= minMass)
+                    compMasses[ii] = m_comp[mdx]
+                    newSystemMasses[ii] += compMasses[ii].sum()
+
+                    # Double check for the case when we drop all companions.
+                    # This happens a lot near the minimum allowed mass.
+                    if len(mdx) == 0:
+                        newIsMultiple[ii] == False
+
+            newSimTotalMass = newSystemMasses.sum()
+            isMultiple = np.append(isMultiple, newIsMultiple)
+            systemMasses = np.append(systemMasses, newSystemMasses)
+        else:
+            newSimTotalMass = newMasses.sum()
+
+        # Append to our primary masses array
+        masses = np.append(masses, newMasses)
+
+        if (loopCnt >= 0) and verbose:
+            print 'sample_imf: Loop %d added %.2e Msun to previous total of %.2e Msun' % \
+                (loopCnt, newSimTotalMass, simTotalMass)
+
+        simTotalMass += newSimTotalMass
+        newStarCount = meanNumber * 0.1  # increase by 20% each pass
+        loopCnt += 1
+        
+    # Make a running sum of the system masses
+    if makeMultiples:
+        massCumSum = systemMasses.cumsum()
+    else:
+        massCumSum = masses.cumsum()
+
+    # Find the index where we are closest to the desired
+    # total mass.
+    #idx = np.abs(massCumSum - totalMass).argmin()
+    idx = np.where(massCumSum <= totalMass)[0][-1]
+
+    masses = masses[:idx+1]
+
+    if makeMultiples:
+        systemMasses = systemMasses[:idx+1]
+        isMultiple = isMultiple[:idx+1]
+        compMasses = compMasses[:idx+1]
+    else:
+        isMultiple = np.zeros(len(masses), dtype=bool)
+
+    return (masses, isMultiple, compMasses)
+
+
+def sample_imf_var_max_mass(totalMass, minMass, maxMass, imfSlope,
+                            multiMFamp=defaultMFamp, 
+                            multiMFindex=defaultMFindex,
+                            multiCSFamp=defaultCSFamp, 
+                            multiCSFindex=defaultCSFindex,
+                            multiCSFmax=defaultCSFmax,
+                            makeMultiples=True, 
+                            multiQindex=-0.4, multiQmin=0.01,
+                            verbose=False):
+
+    # p(m) = A * m^-imfSlope
+    # Setup useful variables
+    nG = 1 - imfSlope  # This is also -Gamma, hence nG name
+
+    if imfSlope != 1:
+        A =  nG / (maxMass**nG - minMass**nG)
+    else:
+        A = 1.0 / (math.log(maxMass) - math.log(minMass))
+
+    # Generative function for primary masses
+    def cdf_inv_not_1(x, minMass, maxMass, nG):
+        return (x * (maxMass**nG - minMass**nG) + minMass**nG)**(1.0/nG)
+
+    # This is the special case for alpha = 1.0
+    def cdf_inv_1(x, minMass, maxMass, nG):
+        return minMass * (maxMass / minMass)**x
+
+    # Generative function for companion mass ratio (q = m_comp/m_primary)
+    def q_cdf_inv(x, qLo, beta):
+        b = 1.0 + beta
+        return (x * (1.0 - qLo**b) + qLo**b)**(1.0/b)
+
+    # First estimate the mean number of stars expected
+    if imfSlope != 1:
+        if imfSlope != 2: 
+            nGp1 = 1 + nG
+            meanMass = A * (maxMass**nGp1 - minMass**nGp1) / nGp1
+        else:
+            meanMass = A * (math.log(maxMass) - math.log(minMass))
+
+        cdf_inv = cdf_inv_not_1
+    else:
+        meanMass = A * (maxMass - minMass)
+        cdf_inv = cdf_inv_1
+
+    meanNumber = round(totalMass / meanMass)
+
+    simTotalMass = 0
+    newStarCount = round(meanNumber)
+    if not makeMultiples:
+        newStarCount *= 1.1
+
+    masses = np.array([], dtype=float)
+    isMultiple = np.array([], dtype=bool)
+    compMasses = []
+    systemMasses = np.array([], dtype=float)
+
+    def binary_properties(mass):
+        # Multiplicity Fraction
+        mf = multiMFamp * mass**multiMFindex
+        if mf > 1:
+            mf = 1
+
+        # Companion Star Fraction
+        csf = multiCSFamp * mass**multiCSFindex
+        if csf > 3:
+            csf = multiCSFmax
+
+        return mf, csf
+
+    loopCnt = 0
+    simTotalMass = 0
+
+    while simTotalMass < totalMass:
+        # Determine the allowable maximum mass given the 
+        # already generated masses
+        simMaxMass = totalMass - simTotalMass
+
+        # Generate a single star
+        uniX = np.random.rand()
+        newMass = cdf_inv(uniX, minMass, simMaxMass, nG)
+
+        if makeMultiples:
+            compMasses = []
+
+            # Determine the multiplicity of every star
+            MF, CSF = binary_properties(newMass)
+            newIsMultiple = np.random.rand() < MF
+            newSystemMass = newMass
+        
+            # Calculate number and masses of companions
+            if newIsMultiple:
+                n_comp = 1 + np.random.poisson((CSF/MF) - 1)
+                q_values = q_cdf_inv(np.random.rand(n_comp), multiQmin, multiQindex)
+                m_comp = q_values * newMass
+
+                # Only keep companions that are more than the minimum mass
+                mdx = np.where(m_comp >= minMass)
+                compMass = m_comp[mdx]
+                newSystemMass += compMass.sum()
+                
+                # Double check for the case when we drop all companions.
+                # This happens a lot near the minimum allowed mass.
+                if len(mdx) == 0:
+                    newIsMultiple == False
+
+            simTotalMass += newSystemMass
+            isMultiple = np.append(isMultiple, newIsMultiple)
+            systemMasses = np.append(systemMasses, newSystemMass)
+        else:
+            simTotalMass += newMass
+
+        # Append to our primary masses array
+        masses = np.append(masses, newMass)
+        loopCnt += 1
+        
+    # Make a running sum of the system masses
+    if makeMultiples:
+        massCumSum = systemMasses.cumsum()
+    else:
+        massCumSum = masses.cumsum()
+
+    if not makeMultiples:
+        isMultiple = np.zeros(len(masses), dtype=bool)
+
+    return (masses, isMultiple, compMasses)
+    
