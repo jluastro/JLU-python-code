@@ -61,6 +61,43 @@ class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
                                                   name='Nishiyama09',
                                                   litref='Nishiyama+ 2009')
 
+def nishiyama09(wavelength, AKs, makePlot=False):
+    # Data pulled from Nishiyama et al. 2009, Table 1
+
+    filters = ['V', 'J', 'H', 'Ks', '[3.6]', '[4.5]', '[5.8]', '[8.0]']
+    wave =      np.array([0.551, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
+    A_AKs =     np.array([16.13, 3.02, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    A_AKs_err = np.array([0.04,  0.04, 0.03, 0.00, 0.010, 0.010, 0.010, 0.010])
+
+    # Interpolate over the curve
+    spline_interp = interpolate.splrep(wave, A_AKs, k=3, s=0)
+
+    A_AKs_at_wave = interpolate.splev(wavelength, spline_interp)
+    A_at_wave = AKs * A_AKs_at_wave
+
+    if makePlot:
+        py.clf()
+        py.errorbar(wave, A_AKs, yerr=A_AKs_err, fmt='bo', 
+                    markerfacecolor='none', markeredgecolor='blue',
+                    markeredgewidth=2)
+        
+        # Make an interpolated curve.
+        wavePlot = np.arange(wave.min(), wave.max(), 0.1)
+        extPlot = interpolate.splev(wavePlot, spline_interp)
+        py.loglog(wavePlot, extPlot, 'k-')
+
+        # Plot a marker for the computed value.
+        py.plot(wavelength, A_AKs_at_wave, 'rs',
+                markerfacecolor='none', markeredgecolor='red',
+                markeredgewidth=2)
+        py.xlabel('Wavelength (microns)')
+        py.ylabel('Extinction (magnitudes)')
+        py.title('Nishiyama et al. 2009')
+
+    
+    return A_at_wave
+
+
 class RedLawRomanZuniga07(pysynphot.reddening.CustomRedLaw):
     """
     You can call reddening(AKs) which will return an ArraySpectralElement

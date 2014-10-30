@@ -70,10 +70,10 @@ def sample_imf(massLimits, imfSlopes, normMass, normMassRange=None,
     if not makeMultiples:
         newStarCount *= 1.1
 
-    masses = np.array([], dtype=float)
+    masses = np.array([], dtype=np.float32)
     isMultiple = np.array([], dtype=bool)
     compMasses = []
-    systemMasses = np.array([], dtype=float)
+    systemMasses = np.array([], dtype=np.float32)
 
     loopCnt = 0
 
@@ -175,7 +175,7 @@ class IMF_broken_powerlaw(object):
 
         # Calculate the coeffs to make the function continuous
         nterms = len(self.powers)
-        coeffs = np.ones(nterms, dtype=float)
+        coeffs = np.ones(nterms, dtype=np.float32)
 
         # First term is just 1.0
         # Subsequent terms are products of previous terms and then some.
@@ -203,7 +203,7 @@ class IMF_broken_powerlaw(object):
         returnFloat = type(m) == float
         
         m = np.atleast_1d(m)
-        xi = np.zeros(len(m), dtype=float)
+        xi = np.zeros(len(m), dtype=np.float32)
         
         for i in range(len(xi)):
             tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
@@ -223,7 +223,7 @@ class IMF_broken_powerlaw(object):
         """
         returnFloat = type(m) == float
         m = np.atleast_1d(m)
-        mxi = np.zeros(len(m), dtype=float)
+        mxi = np.zeros(len(m), dtype=np.float32)
         
         for i in range(len(mxi)):
             tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
@@ -254,7 +254,7 @@ class IMF_broken_powerlaw(object):
         returnFloat = type(a) == float
 
         a = np.atleast_1d(a)
-        val = np.zeros(len(a), dtype=float)
+        val = np.zeros(len(a), dtype=np.float32)
 
         for i in range(len(val)):
             t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
@@ -279,7 +279,7 @@ class IMF_broken_powerlaw(object):
         returnFloat = type(a) == float
         
         a = np.atleast_1d(a)
-        val = np.zeros(len(a), dtype=float)
+        val = np.zeros(len(a), dtype=np.float32)
 
         for i in range(len(val)):
             t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
@@ -401,7 +401,8 @@ class IMF_broken_powerlaw(object):
         r = np.atleast_1d(r)  # Make sure it is an array
         
         x = r * self.lamda[-1]
-        y = np.zeros(len(r), dtype=float)
+        y = np.zeros(len(r), dtype=np.float32)
+        z = np.ones(len(r), dtype=np.float32)
 
         for i in range(self.nterms):
             aux = x - self.lamda[i]
@@ -458,7 +459,7 @@ class IMF_Chabrier_2003(object):
 
         # Calculate the coeffs to make the function continuous
         nterms = len(self.powers)
-        coeffs = np.ones(nterms, dtype=float)
+        coeffs = np.ones(nterms, dtype=np.float32)
 
         # First term is just 1.0
         # Subsequent terms are products of previous terms and then some.
@@ -486,7 +487,7 @@ class IMF_Chabrier_2003(object):
         returnFloat = type(m) == float
         
         m = np.atleast_1d(m)
-        xi = np.zeros(len(m), dtype=float)
+        xi = np.zeros(len(m), dtype=np.float32)
         
         for i in range(len(xi)):
             tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
@@ -506,7 +507,7 @@ class IMF_Chabrier_2003(object):
         """
         returnFloat = type(m) == float
         m = np.atleast_1d(m)
-        mxi = np.zeros(len(m), dtype=float)
+        mxi = np.zeros(len(m), dtype=np.float32)
         
         for i in range(len(mxi)):
             tmp = gamma_closed(m[i], self.mLimitsLow, self.mLimitsHigh)
@@ -537,7 +538,7 @@ class IMF_Chabrier_2003(object):
         returnFloat = type(a) == float
 
         a = np.atleast_1d(a)
-        val = np.zeros(len(a), dtype=float)
+        val = np.zeros(len(a), dtype=np.float32)
 
         for i in range(len(val)):
             t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
@@ -562,7 +563,7 @@ class IMF_Chabrier_2003(object):
         returnFloat = type(a) == float
         
         a = np.atleast_1d(a)
-        val = np.zeros(len(a), dtype=float)
+        val = np.zeros(len(a), dtype=np.float32)
 
         for i in range(len(val)):
             t1 = theta_open(a[i] - self.mLimitsHigh) * self.coeffs
@@ -684,7 +685,8 @@ class IMF_Chabrier_2003(object):
         r = np.atleast_1d(r)  # Make sure it is an array
         
         x = r * self.lamda[-1]
-        y = np.zeros(len(r), dtype=float)
+        y = np.zeros(len(r), dtype=np.float32)
+        z = np.ones(len(r), dtype=np.float32)
 
         for i in range(self.nterms):
             aux = x - self.lamda[i]
@@ -933,7 +935,7 @@ def theta_closed(x):
     isFloat = type(x) == float
 
     x = np.atleast_1d(x)
-    val = np.ones(len(x), dtype=float)
+    val = np.ones(len(x), dtype=np.float32)
     val[x < 0] = 0.0
 
     if isFloat:
@@ -949,7 +951,7 @@ def theta_open(x):
     isFloat = type(x) == float
 
     x = np.atleast_1d(x)
-    val = np.zeros(len(x), dtype=float)
+    val = np.zeros(len(x), dtype=np.float32)
     val[x > 0] = 1.0
 
     if isFloat:
@@ -965,7 +967,7 @@ def delta(x):
     isFloat = type(x) == float
 
     x = np.atleast_1d(x)
-    val = np.ones(len(x), dtype=float)
+    val = np.ones(len(x), dtype=np.float32)
     val[x == 0] = 0.5
 
     if isFloat:

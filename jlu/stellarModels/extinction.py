@@ -3,6 +3,29 @@ import pylab as py
 from scipy import interpolate
 import scipy
 
+class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
+    """
+    You can call reddening(AKs) which will return an ArraySpectralElement
+    that can then be manipulated with spectra.
+    """
+    def __init__(self):
+        # Fetch the extinction curve, pre-interpolate across 1-8 microns
+        wave = np.arange(0.5, 8.0, 0.001)
+        
+        # This will eventually be scaled by AKs when you
+        # call reddening(). Right now, calc for AKs=1
+        Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False)
+
+        # Convert wavelength to angstrom
+        wave *= 10**4
+
+        pysynphot.reddening.CustomRedLaw.__init__(self, wave=wave, 
+                                                  waveunits='angstrom',
+                                                  Avscaled=Alambda_scaled,
+                                                  name='Nishiyama09',
+                                                  litref='Nishiyama+ 2009')
+
+
 def schoedel09(wavelength, AKs):
     """
     Return the extinction based on the Schoedel et al. 2009 extinction
@@ -101,8 +124,6 @@ def nishiyama09(wavelength, AKs, makePlot=False, k=3):
     return A_at_wave
 
 def romanzuniga07(wavelength, AKs, makePlot=False):
-    # Data pulled from Nishiyama et al. 2009, Table 1
-
     filters = ['J', 'H', 'Ks', '[3.6]', '[4.5]', '[5.8]', '[8.0]']
     wave =      np.array([1.240, 1.664, 2.164, 3.545, 4.442, 5.675, 7.760])
     A_AKs =     np.array([2.299, 1.550, 1.000, 0.618, 0.525, 0.462, 0.455])
