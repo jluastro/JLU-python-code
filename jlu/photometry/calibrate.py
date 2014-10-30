@@ -522,7 +522,7 @@ def find_cal_stars(calibs, stars, options):
         dm = abs(stars.mag - calibs.mag[c] - magAdjust)
 
         # Find the matches within our tolerance.
-        if (calibs.mag[c] < 12):
+        if (calibs.mag[c] < 14):
             # For the bright stars we have the default search radius:
             idx = np.where((dr < searchRadius) & (dm < searchMag))[0]
         else:

@@ -111,11 +111,16 @@ def ms_jhk(distance, AV):
 
 
 def clusterProperMotions():
-    name = ['W49A', 'Wd1', 'W51', 'Wd2', 'DBS2003-179']
-    dist = [11.4,   3.6,   5.5,   2.8,   7.9]
-    ra = ['19:10:18', '16:47:04', '19:22:14', '10:23:58', '17:11:32']
-    dec = ['+09:06:21', '-45:51:05', '+14:03:09', '-57:45:49', '-39:10:47']
+    # name = ['W49A', 'Wd1', 'W51', 'Wd2', 'DBS2003-179']
+    # dist = [11.4,   3.6,   5.5,   2.8,   7.9]
+    # ra = ['19:10:18', '16:47:04', '19:22:14', '10:23:58', '17:11:32']
+    # dec = ['+09:06:21', '-45:51:05', '+14:03:09', '-57:45:49', '-39:10:47']
 
+    name = ['Arches']
+    dist = [8.0]
+    ra = ['17:45:50.52']
+    dec = ['-28:49:20.46']
+    
     for ii in range(len(name)):
         obj = ephem.FixedBody()
         obj._ra = ephem.hours(ra[ii])
@@ -263,7 +268,7 @@ def properMotions(galacticLong, distance, clusterName):
     py.fill_between(d, pm_min, pm_max, color='grey', alpha=0.3)
     py.plot([distance], [pm[ii]], 'k*', ms=10)
 
-    py.ylim(-9, 0)
+    py.ylim(-11, 0)
     
     ax = py.gca()
     for tick in ax.xaxis.get_major_ticks(): 

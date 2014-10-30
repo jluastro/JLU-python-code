@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-from HST_flystar import reduce as red
+from hst_flystar import reduce as red
 import os
 import shutil
 from jlu.hst import starlists
@@ -152,7 +152,7 @@ def align_year(year, filt, recopy=False):
 
     # First pass runs with the reference simply being the first image.
     red.xym2mat('ref0', year, filt, mag='m-99,-13', radius_key=[10], 
-                ref='MATCHUP.XYMEEE.f814w', ref_camera='f5 c0', ref_mag='m-99,-18',
+                ref='MATCHUP.XYMEEE.f814w', ref_camera='f5 c0', ref_mag='m-99,-17',
                 clobber=True)
     red.xym2mat('ref1', year, filt, mag='m-99,-13', radius_key=[10], 
                 ref='MATCHUP.XYMEEE.f814w', ref_camera='f5 c0', ref_mag='m-99,-17')
@@ -216,7 +216,7 @@ def make_residuals_table_year_2pos(year, filt, pos1, pos2):
     dir_xym = year + '_' + filt + '/01.XYM/'
 
     
-    # Readin the matchup file with the final positions and errors.
+    # Read in the matchup file with the final positions and errors.
     stars = starlists.read_matchup(dir_xym + 'MATCHUP.XYMEEE.ref4')
 
     # For each image, read in the raw pixel coordinates, the transformed 
@@ -373,7 +373,6 @@ def make_residuals_table_year_pos(year, filt, pos):
     idx = np.where((stars['m']>-11) & (stars['m']<-6) & 
                    (stars['xe']<0.05) & (stars['ye']<0.05) & 
                    (stars['me']<0.1))[0]
-
 
     stars = stars[idx]
     xraw = xraw[:, idx]

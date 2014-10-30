@@ -3,8 +3,8 @@ from numpy import *
 import numpy as np
 import asciidata
 import starTables as tabs
-from gcwork import starset
-from gcwork import objects
+from jlu.gc.gcwork import starset
+from jlu.gc.gcwork import objects
 import sqlite3 as sqlite
 import pdb
 

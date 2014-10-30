@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 import os
 from scipy import interpolate
+import jlu
 
 def setup_phot(imageRoot, silent=False,
                apertures=[25,50,75,100,125,150,175,200],
@@ -171,7 +172,8 @@ def get_filter_profile(filter):
     py.xlabel('Wavelength (microns)')
     py.ylabel('Transmission')
     """
-    rootDir = '/u/jlu/code/python/jlu/nirc2/filters/'
+    base_path = os.path.dirname(jlu.__file__)
+    rootDir = base_path + '/nirc2/filters/'
 
     filters = ['J', 'H', 'K', 'Kcont', 'Kp', 'Ks', 'Lp', 'Ms',
                'Hcont', 'Brgamma', 'FeII']

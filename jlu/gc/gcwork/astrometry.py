@@ -14,13 +14,13 @@ import asciidata, pyfits, pickle
 import os, sys, math
 import numpy as np
 import pylab as py
-from gcwork import starset
-from gcwork import starTables
-from gcwork import objects
-from gcwork import util
-from gcwork import young
-from gcwork import orbits
-#from gcwork import analyticOrbits
+from jlu.gc.gcwork import starset
+from jlu.gc.gcwork import starTables
+from jlu.gc.gcwork import objects
+from jlu.gc.gcwork import util
+from jlu.gc.gcwork import young
+from jlu.gc.gcwork import orbits
+#from jlu.gc.gcwork import analyticOrbits
 from gcreduce import gcutil
 from scipy import stats
 import refro, refco
