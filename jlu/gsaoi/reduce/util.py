@@ -2,6 +2,7 @@ import os, errno, shutil
 import pyfits
 import pdb
 import glob
+import numpy as np
 from astropy.io import fits
 
 def rmall(files):
@@ -134,7 +135,7 @@ def mk_log(directory, output='gsaoi_log.txt'):
         fileroot, fileext = os.path.splitext(filename)
         line += '{0:16} '.format(fileroot)
         
-        line += '{0:15s} '.format(hdr['OBJECT'].replace(" ","")
+        line += '{0:15s} '.format(hdr['OBJECT'].replace(" ",""))
         line += '{0:15s} '.format(hdr['FILTER1'])
 
         ra = hdr['RA']

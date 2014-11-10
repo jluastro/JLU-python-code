@@ -31,7 +31,7 @@ def doit(raw_path, clean_path, filters=None, dates=None):
     
     
     
-def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_coadds=4):
+def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4']):
 
     '''
     Note, must be ran from pyraf interavtive terminal
@@ -53,14 +53,22 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_coadds=
     sky = []
     flat = []
     sci = []
+    
     for i in files:
         head = fits.getheader(i)
+        sci=False
+        for j in sci_keys:
+            if head['OBJ'] == j:
+                sci=True
         if head['OBJ'] == sky_key:
             sky.append(i)
         elif head['OBJ'] == flat_key:
             flat.append(i)
-        elif head['COADDS'] >= sci_coadds:
-            sci.append(i)
+        else:
+            sci_b=False
+            for j in sci_keys:
+                if head['OBJ'] == j:
+                    sci.append(i)
 
             
     gsaoi.gaflat(flat_s, outimage='flat.fits')
