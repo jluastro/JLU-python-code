@@ -11,12 +11,12 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     day_diff is number of days it groups images by
     ret decides if anything is returned
     frame_file is a file list that contains the information about the fits images needed to make the directory structure
-    directory is the directory to look for fits files, only relevant if frame_file=None
+    directory is the directory to look for fits files, is location that files will be copied from
     WARNING Assumes that the frames are in rank order of ascending date
 
     \object name
            \epoch date
-              \clean \raw \reduce
+              \clean  \reduce
                              \night date
                                  \filters
                                 
@@ -82,7 +82,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             for k in uni_filt:
                 util.mkdir(date[ep_ind]+'/reduce/'+j+'/'+k)
                 for frame in frames[np.logical_or(np.logical_or(sky_bool,dome_bool),sci_bool)]:
-                    shutil.copy(frame+'.fits', date[ep_ind]+'/reduce/'+j+'/'+k)
+                    shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+j+'/'+k)
                         
                 
                 

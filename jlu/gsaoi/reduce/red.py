@@ -3,29 +3,43 @@ from pyraf.iraf import gsaoi
 from . import struc
 import os, shutil
 from astropy.io import fits 
+import numpy as np
 
-def doit(raw_path, clean_path, filters=None, dates=None):
+def doit(epoch_dates ,clean_path,  log_file=None, filters=None, dates=None):
     '''
     optional arguments for filters and dates
+    Must either give log file to base data on, or use both filters and dates arguements
+    filters/dates must be in same form as those that created the directory structure
+
+    Clean_path is the path to where you want the cleaned images to be saved
+    epoch dates is a list of the dates the epoch dolders are based on
     
     '''
 
 
-    if filters == None and dates == None:
-        filters, dates = struc.mk_struc(directory=raw_path, ret=True)
-    elif filters == None and dates != None:
-        filters , dum = struc.mk_struc(directory=raw_path, ret=True)
-    elif filters != None and dates == None:
-        dum, dates = struc.mk_struc(directory=raw_path, ret=True)
-    else:
-       struc.mk_struc(directory=raw_path)
+    if log_File !=None:
+        if filters ==None and dates = None:
+            frame,s obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
+            filters  = np.unique(filt1)
+            dates = np.unique(date)
+        elif filters != None and dates = None:
+            frame,s obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
+            dates = np.unique(date)
+        elif filters == None and dates != None:
+            frame,s obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
+            filters = np.unique(filt1)
+    
         
         
     os.chdir('reduce')
     cwd = os.getcwd()
-    for i in dates:
-        for j in filters:
-            red_dir(cwd+'/'+i+'/'+j, clean_path)
+    for i in epoch_dates:
+        util.mkdir(clean_path+'/'+i)
+        for j in dates:
+            util.mkdir(clean_path+'/'+i+'/'j
+            for k in filters:
+                util.mkdir(clean_path+'/'+i+'/'+j+'/'+k)
+                red_dir(cwd+'/'+i+'/'+j+'/'k, clean_path+'/'+i+'/'+j+'/'+k)
             
             
     
