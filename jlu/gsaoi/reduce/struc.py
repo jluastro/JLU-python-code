@@ -3,6 +3,7 @@ import os, shutil
 from astropy.io import fits 
 import glob 
 import numpy as np
+import math
 
 def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky'):
     '''
@@ -17,7 +18,6 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     \object name
            \epoch date
               \clean  \reduce
-                             \night date
                                  \filters
                                 
     
@@ -47,7 +47,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     sci_bool = np.zeros(len(frames), dtype=bool)
     for i in range(len(sci_keys)):
         sci_bool = sci_bool + (obj == sci_keys[i])
-    print sci_bool
+        #print sci_bool
     
     #find minimum of date
     obs_breaks = []
@@ -73,7 +73,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
         util.mkdir(date[ep_ind])
         util.mkdir(date[ep_ind]+'/reduce')
         util.mkdir(date[ep_ind]+'/clean')
-        util.mkdir(date[ep_ind]+'/raw')
+        #util.mkdir(date[ep_ind]+'/raw')
         #find nights in epoch, make directories for them
         uni_nights = np.unique(date[epoch_bool_ars[i]])
         for j in uni_nights:
@@ -81,8 +81,8 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             uni_filt = np.unique(filt1[date==j])
             for k in uni_filt:
                 util.mkdir(date[ep_ind]+'/reduce/'+j+'/'+k)
-                for frame in frames[np.logical_or(np.logical_or(sky_bool,dome_bool),sci_bool)]:
-                    shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+j+'/'+k)
+                for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(np.logical_or(sky_bool,dome_bool),sci_bool),filt1==k), date==j)]):
+                        shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+j+'/'+k)
                         
                 
                 

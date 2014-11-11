@@ -3,6 +3,7 @@ import pyfits
 import pdb
 import glob
 import numpy as np
+import math
 from astropy.io import fits
 
 def rmall(files):
