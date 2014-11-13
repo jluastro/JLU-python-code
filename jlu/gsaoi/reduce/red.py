@@ -116,7 +116,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
 
     gsaoi.gaflat('g//@flat.lis', rawpath=raw_dir, gaprep_pref=prep_dir, outsufx='flat')
-    flat_name= "g"+dome[0]+"_flat.fits"
+    flat_name= "g"+dome_list[0]+"_flat.fits"
     
     gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg="flat.fits")
     gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq=yes, fl_dqprop=yes, flatimg=raw_dir+flat_name, gaprep_pref=prep_dir)
