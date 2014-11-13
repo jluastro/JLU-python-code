@@ -5,6 +5,8 @@ import os, shutil
 from astropy.io import fits 
 import numpy as np
 import util
+gemini
+gsaoi
 
 def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, dates=None):
     '''
@@ -20,7 +22,6 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
       \object name
            \epoch date
               \clean  \reduce
-                             \night date
                                  \filters
     
     '''
@@ -39,6 +40,7 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
             filters = np.unique(filt1)
     else:
         frame_list=None
+
     
         
         
@@ -50,15 +52,15 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
             for k in filters:
                 util.mkdir(obj_path+'/clean/'+i+'/'+j+'/'+k)
                 if frame_list != None:
-                    red_dir(cwd+'/'+i+'/reduce/'+j+'/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[np.logical_and(date==j, filt1==k)])
+                    red_dir(cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
-                    red_dir(cwd+'/'+i+'/reduce/'+j+'/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
+                    red_dir(cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
             
             
     
     
     
-def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], frame_list = None):
+def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd 2 pos 1','Wd 2 pos 2', 'Wd 2 pos 3', 'Wd 2 pos 4'], frame_list = None):
 
     '''
     Note, must be ran from pyraf interavtive terminal
@@ -71,46 +73,59 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     os.chdir(directory)
     if frame_list == None:
-        frame_list = glob.glob(os.getcwd() + '/*.fits')
+        frame_list = glob.glob(util.getcwd() + '/*.fits')
   
 
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
 
-    sky_f = open('sky.lis', 'w')
     sci_f = open('obj.lis', 'w')
     dome_f = open('flat.lis', 'w')
-    
+    dome_list = []
+    sky_f = open('sky.lis','w')
     
     for i in frame_list:
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         
         head = fits.getheader(i+'.fits')
         if head['OBJECT'] == sky_key:
             print >> sky_f, i
-        elif head['OBJECT'] == flat_key:
+        elif head['OBJECT']==flat_key:
             print >> dome_f, i
+            dome_list.append(i)
         else:
             for j in sci_keys:
-                if head['OBJECT'].replace(" ","") == j:
+                if head['OBJECT'] == j:
                     print >> sci_f, i
 
     sky_f.close()
     sci_f.close()
     dome_f.close()
 
+    
+    #execfile("/u/mws/reduce/red_dir_script.py")
+
+    
     gemini.unlearn()
     gsaoi.unlearn()
-    
-    rawdir = './'
-    
-    gsaoi.gaflat('@flat.lis', rawpath=rawdir)
-    gsaoi.gaprepare('@sky.lis',rawpath=rawdir)
-    gsaoi.gareduce('g//@sky.lis',rawpath=rawdir)
-    gsaoi.gasky('@sky.lis', outimage='sky.fits',rawpath=rawdir)
-    gsaoi.gareduce(sci_s, fl_sky='yes', fl_flat='yes',rawpath=rawdir)
 
-    for i in sci:
-        shutil.copy(i, clean_dir)
+    raw_dir = util.getcwd() 
+    prep_dir = util.getcwd()+'g'
+    print raw_dir
+    prep_dir = raw_dir + 'g'
+    gsaoi.gaprepare('*.fits', rawpath=raw_dir, outpref="g", fl_vardq="yes", logfile="gaprep.log")
+    
+    
+
+    gsaoi.gaflat('g//@flat.lis', rawpath=raw_dir, gaprep_pref=prep_dir, outsufx='flat')
+    flat_name= "g"+dome[0]+"_flat.fits"
+    
+    gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg="flat.fits")
+    gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq=yes, fl_dqprop=yes, flatimg=raw_dir+flat_name, gaprep_pref=prep_dir)
+    
+    gsaoi.gareduce('g//@sci.lis',fl_vardq="yes", fl_dqprop="yes", fl_dark="no", fl_sky='yes',skyimg=raw_dir+'sky.fits',  fl_flat='yes',flatimg=raw_dir+flatname)
+
+    #for i in sci:
+    #    shutil.copy('g'+i+'.fits', clean_dir)
     
     
         

@@ -75,14 +75,11 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
         util.mkdir(date[ep_ind]+'/clean')
         #util.mkdir(date[ep_ind]+'/raw')
         #find nights in epoch, make directories for them
-        uni_nights = np.unique(date[epoch_bool_ars[i]])
-        for j in uni_nights:
-            util.mkdir(date[ep_ind]+'/reduce/'+j)
-            uni_filt = np.unique(filt1[date==j])
-            for k in uni_filt:
-                util.mkdir(date[ep_ind]+'/reduce/'+j+'/'+k)
-                for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(np.logical_or(sky_bool,dome_bool),sci_bool),filt1==k), date==j)]):
-                        shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+j+'/'+k)
+        uni_filt = np.unique(filt1[epoch_bool_ars[i]])
+        for k in uni_filt:
+            util.mkdir(date[ep_ind]+'/reduce/'+k)
+            for ii,frame in enumerate(frames[np.logical_and(np.logical_or(np.logical_or(sky_bool,dome_bool),sci_bool),filt1==k)]):
+                    shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+k)
                         
                 
                 
