@@ -102,7 +102,6 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     dome_f.close()
 
     
-    #execfile("/u/mws/reduce/red_dir_script.py")
 
     
     gemini.unlearn()
