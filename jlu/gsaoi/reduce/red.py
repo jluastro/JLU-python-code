@@ -5,8 +5,7 @@ import os, shutil
 from astropy.io import fits 
 import numpy as np
 import util
-gemini
-gsaoi
+
 
 def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, dates=None):
     '''
