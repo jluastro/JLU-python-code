@@ -104,8 +104,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     
 
-    print >> ir_scr, 'gemini' 
-    print >> ir_scr, 'gsaoi'
+    print >> ir_scr, 'from pyraf.iraf import gemini' 
+    print >> ir_scr, 'from pyraf.iraf import gsaoi'
     
     print >> ir_scr, 'gemini.unlearn()'
     print >> ir_scr, 'gsaoi.unlearn()'
