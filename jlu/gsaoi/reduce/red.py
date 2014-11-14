@@ -106,7 +106,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     gemini.unlearn()
     gsaoi.unlearn()
 
-    raw_dir = util.getcwd()
+    #raw_dir = util.getcwd()
+    raw_dir = './'
     prep_dir = raw_dir+'g'
     #print raw_dir
     gsaoi.gaprepare('*.fits', rawpath="+"'"+raw_dir+"'"+", outpref=prep_dir fl_vardq='yes', logfile='gaprep.log')
