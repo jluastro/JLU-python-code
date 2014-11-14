@@ -33,7 +33,7 @@ def getcwd():
     newdir2 = newdir1.replace('/net/uni/Groups/ghez/jlu', '/u/jlu/work')
     newdir3 = newdir2.replace('/net/dione/data0/ghez', '/u/ghezgroup')
     newdir4 = newdir3.replace('/scr2/jlu/data', '/u/jlu/data')
-    newdir5 = newdir4.replace('/net/calla.ifa.hawaii.edu/Volumes/indicium/g/lu/data/', '/g/lu/data')
+    newdir5 = newdir4.replace('/net/calla.ifa.hawaii.edu/Volumes/indicium/g/lu/data/', '/g/lu/data/')
     newdir5 +=  '/'
 
     return newdir5
