@@ -1,5 +1,5 @@
-from pyraf.iraf import gemini
-from pyraf.iraf import gsaoi
+from pyraf import iraf
+#from pyraf.iraf import gsaoi
 import struc
 import os, shutil
 from astropy.io import fits 
@@ -102,7 +102,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     dome_f.close()
 
     
-    
+    iraf.gemini()
+    iraf.gsaoi()
     gemini.unlearn()
     gsaoi.unlearn()
 
@@ -110,7 +111,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     raw_dir = './'
     prep_dir = raw_dir+'g'
     #print raw_dir
-    gsaoi.gaprepare('*.fits', rawpath=raw_dir, outpref=prep_dir, fl_vardq='yes', logfile='gaprep.log')
+    gaprepare('*.fits', rawpath=raw_dir, outpref=prep_dir, fl_vardq='yes', logfile='gaprep.log')
     
     
 
