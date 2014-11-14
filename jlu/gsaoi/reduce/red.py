@@ -1,5 +1,6 @@
 from pyraf.iraf import gemini
-from pyraf.iraf import gsaoi 
+from pyraf.iraf import gsaoi
+from pyraf.iraf import pyexecute 
 import struc
 import os, shutil
 from astropy.io import fits 
