@@ -124,7 +124,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     print >> ir_scr, "gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg='flat.fits')"
     print >> ir_scr, "gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg="+raw_dir+flat_name+", gaprep_pref="+prep_dir+")"
     
-    print >> ir_scr, "gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg="+raw_dir+"'sky.fits',  fl_flat='yes',flatimg="+raw_dir+flatname+")"
+    print >> ir_scr, "gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg="+raw_dir+"'sky.fits',  fl_flat='yes',flatimg="+raw_dir+flat_name+")"
 
     ir_scr.close()
     pyexecute(script_name)
