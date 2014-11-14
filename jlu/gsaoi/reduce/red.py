@@ -107,7 +107,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     exec('gsaoi')
     
     exec('gemini.unlearn()')
-    exec('gsaoi.unlearn()'
+    exec('gsaoi.unlearn()')
 
     raw_dir = './' 
     prep_dir = raw_dir+'g'
