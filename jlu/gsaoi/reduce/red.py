@@ -1,6 +1,5 @@
-#from pyraf.iraf import gemini
-#from pyraf.iraf import gsaoi 
-from pyraf.iraf import pyexecute
+from pyraf.iraf import gemini
+from pyraf.iraf import gsaoi 
 import struc
 import os, shutil
 from astropy.io import fits 
@@ -111,10 +110,10 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     print >> ir_scr, 'gemini.unlearn()'
     print >> ir_scr, 'gsaoi.unlearn()'
 
-    raw_dir = './' 
+    raw_dir = util.getcwd()
     prep_dir = raw_dir+'g'
     #print raw_dir
-    print >> ir_scr, "gsaoi.gaprepare('*.fits', rawpath="+"'"+raw_dir+"'"+", outpref="+"'"+prep_dir+"'"+", fl_vardq='yes', logfile='gaprep.log'"
+    print >> ir_scr, "gsaoi.gaprepare('*.fits', rawpath="+"'"+raw_dir+"'"+", outpref="+"'"+prep_dir+"'"+", fl_vardq='yes', logfile='gaprep.log')"
     
     
 
@@ -122,9 +121,9 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     flat_name= "g"+dome_list[0]+"_flat.fits"
     
     print >> ir_scr, "gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg='flat.fits')"
-    print >> ir_scr, "gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg="+"'"+raw_dir+"'"+flat_name+"'"+", gaprep_pref="+"'"+prep_dir+"'"+")"
+    print >> ir_scr, "gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg="+"'"+raw_dir+flat_name+"'"+")"
     
-    print >> ir_scr, "gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg="+"'"+raw_dir+"'"+"'sky.fits',  fl_flat='yes',flatimg="+"'"+raw_dir+flat_name+"'"+")"
+    print >> ir_scr, "gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg="+"'"+raw_dir+"'sky.fits',  fl_flat='yes',flatimg="+"'"+raw_dir+flat_name+"'"+")"
 
     ir_scr.close()
     pyexecute(script_name)
