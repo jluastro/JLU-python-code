@@ -104,24 +104,24 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     iraf.gemini()
     iraf.gsaoi()
-    gemini.unlearn()
-    gsaoi.unlearn()
+    iraf.gemini.unlearn()
+    iraf.gsaoi.unlearn()
 
     #raw_dir = util.getcwd()
     raw_dir = './'
     prep_dir = raw_dir+'g'
     #print raw_dir
-    gaprepare('*.fits', rawpath=raw_dir, outpref=prep_dir, fl_vardq='yes', logfile='gaprep.log')
+    iraf.gsaoi.gaprepare('*.fits', rawpath=raw_dir, outpref=prep_dir, fl_vardq='yes', logfile='gaprep.log')
     
     
 
-    gsaoi.gaflat('g//@flat.lis', rawpath=raw_dir, gaprep_pref=prep_dir, outsufx='flat')
+    iraf.gsaoi.gaflat('g//@flat.lis', rawpath=raw_dir, gaprep_pref=prep_dir, outsufx='flat')
     flat_name= "g"+dome_list[0]+"_flat.fits"
     
-    gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=raw_dir+flat_name)
-    gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=raw_dir+flat_name)
+    iraf.gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=raw_dir+flat_name)
+    iraf.gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=raw_dir+flat_name)
     
-    gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg=raw_dir+'sky.fits',  fl_flat='yes',flatimg=raw_dir+flat_name)
+    iraf.gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg=raw_dir+'sky.fits',  fl_flat='yes',flatimg=raw_dir+flat_name)
 
     
 
