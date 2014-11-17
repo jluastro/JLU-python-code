@@ -111,7 +111,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #raw_dir = './'
     #prep_dir = raw_dir+'g'
     #print raw_dir
-    iraf.gsaoi.gaprepare('*.fits', rawpath=raw_dir, fl_vardq='yes', logfile='gaprep.log')
+    iraf.gsaoi.gaprepare('*.fits', fl_vardq='yes', logfile='gaprep.log')
     
     
 
