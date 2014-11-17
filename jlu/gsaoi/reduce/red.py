@@ -82,7 +82,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     dome_f = open('flat.lis', 'w')
     dome_list = []
     sky_f = open('sky.lis','w')
-    script = open('script.py')
+    scri = open('script.py', 'w')
     
     for i in frame_list:
         #import pdb; pdb.set_trace()
@@ -133,6 +133,9 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     print >> script, 'from pyraf.iraf import gemini'
     print >> script, 'from pyraf.iraf import gsaoi'
     print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
+
+    script.close()
+    import script
     
     
         
