@@ -82,7 +82,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     dome_f = open('flat.lis', 'w')
     dome_list = []
     sky_f = open('sky.lis','w')
-    scri = open('script.py', 'w')
+    script = open('script.py', 'w')
     
     for i in frame_list:
         #import pdb; pdb.set_trace()
