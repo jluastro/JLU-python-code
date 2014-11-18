@@ -1,5 +1,3 @@
-#from pyraf import iraf
-#from pyraf.iraf import gsaoi
 import struc
 import os, shutil
 from astropy.io import fits 
@@ -51,10 +49,12 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
             util.mkdir(obj_path+'/clean/'+i+'/'+j)
             for k in filters:
                 util.mkdir(obj_path+'/clean/'+i+'/'+j+'/'+k)
+                os.chdir(cwd+'/'+i+'/reduce/'+k)
+                print 'Changed directory to ' + cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k
                 if frame_list != None:
-                    red_dir(cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    red_dir('./',obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
-                    red_dir(cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
+                    red_dir('./',obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
             
             
     
@@ -71,8 +71,9 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     sci_coadds is the minimum number of coadds required for an image to be considered a science image
     '''
 
-    from pyraf import iraf
+    
     os.chdir(directory)
+    print 'current working directory is ' + util.getcwd()
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
         for i in range(len(frame_list)):
@@ -106,11 +107,13 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     sci_f.close()
     dome_f.close()
 
+
+    from pyraf.iraf import gemini
+    from pyraf.iraf import gsaoi
     
-    iraf.gemini()
-    iraf.gsaoi()
-    iraf.gemini.unlearn()
-    iraf.gsaoi.unlearn()
+    
+    #gemini.unlearn()
+    #xsgsaoi.unlearn()
 
     #raw_dir = util.getcwd()
     #raw_dir = './'
@@ -118,17 +121,17 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print raw_dir
 
     
-    iraf.gsaoi.gaprepare('*.fits', fl_vardq='yes', logfile='gaprep.log')
+    gsaoi.gaprepare('*.fits', fl_vardq='yes', logfile='gaprep.log')
     
     
 
-    iraf.gsaoi.gaflat('g//@flat.lis', outsufx='flat')
+    gsaoi.gaflat('g//@flat.lis', outsufx='flat')
     flat_name= "g"+dome_list[0]+"_flat.fits"
     
-    iraf.gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=flat_name)
-    iraf.gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
+    gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=flat_name)
+    gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
-    iraf.gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
+    gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
     
 
