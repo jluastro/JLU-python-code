@@ -109,8 +109,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     #iraf.gemini()
     #iraf.gsaoi()
-    #iraf.gemini.unlearn()
-    #iraf.gsaoi.unlearn()
+    iraf.gemini.unlearn()
+    iraf.gsaoi.unlearn()
 
     #raw_dir = util.getcwd()
     #raw_dir = './'
@@ -122,24 +122,24 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     
 
-    #iraf.gsaoi.gaflat('g//@flat.lis', outsufx='flat')
-    #flat_name= "g"+dome_list[0]+"_flat.fits"
+    iraf.gsaoi.gaflat('g//@flat.lis', outsufx='flat')
+    flat_name= "g"+dome_list[0]+"_flat.fits"
     
-    #iraf.gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=flat_name)
-    #iraf.gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
+    iraf.gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=flat_name)
+    iraf.gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
-    #iraf.gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
+    iraf.gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
     
 
     #for i in sci:
     #    shutil.copy('g'+i+'.fits', clean_dir)
-    print >> script, 'from pyraf.iraf import gemini'
-    print >> script, 'from pyraf.iraf import gsaoi'
-    print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
+    #print >> script, 'from pyraf.iraf import gemini'
+    #print >> script, 'from pyraf.iraf import gsaoi'
+    #print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
 
-    script.close()
-    import script
+    #script.close()
+    #import script
     
     
         
