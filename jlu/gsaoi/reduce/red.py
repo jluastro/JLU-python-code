@@ -80,6 +80,9 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             frame_list[i] = frame_list[i].replace('.fits','')
   
 
+    print frame_list
+    print util.getcwd()
+    
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
 
     
@@ -129,8 +132,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     flat_name= dome_list[0]+"_flat.fits"
     print flat_name
     
-    gsaoi.gareduce('g//@sky.lis', fl_flat='yes', flatimg=flat_name)
-    gsaoi.gasky('g//@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
+    gsaoi.gareduce('@sky.lis', fl_flat='yes', flatimg=flat_name)
+    gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
     gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
