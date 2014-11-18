@@ -71,6 +71,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     sci_coadds is the minimum number of coadds required for an image to be considered a science image
     '''
 
+    from pyraf import iraf
     os.chdir(directory)
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
