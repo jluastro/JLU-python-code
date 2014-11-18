@@ -74,6 +74,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     os.chdir(directory)
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
+        for frame in frame_list:
+            frame_list[i] = frame_list[i].replace('.fits','')
   
 
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
