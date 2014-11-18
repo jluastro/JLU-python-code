@@ -74,7 +74,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     os.chdir(directory)
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
-        for frame in frame_list:
+        for i in range(len(frame_list)):
             frame_list[i] = frame_list[i].replace('.fits','')
   
 
