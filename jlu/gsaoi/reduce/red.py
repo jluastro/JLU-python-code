@@ -5,6 +5,7 @@ import os, shutil
 from astropy.io import fits 
 import numpy as np
 import util
+import glob
 
 
 def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, dates=None):
@@ -72,7 +73,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     os.chdir(directory)
     if frame_list == None:
-        frame_list = glob.glob(util.getcwd() + '/*.fits')
+        frame_list = glob.glob(util.getcwd()+'*.fits')
   
 
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
@@ -114,7 +115,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print raw_dir
 
     
-    #iraf.gsaoi.gaprepare('*.fits', fl_vardq='yes', logfile='gaprep.log')
+    iraf.gsaoi.gaprepare('*.fits', fl_vardq='yes', logfile='gaprep.log')
     
     
 
