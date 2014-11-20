@@ -44,13 +44,13 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
         
     cwd = util.getcwd()
     for i in epoch_dates:
-        util.mkdir(cwd+'/clean/'+i)
+        util.mkdir(cwd+'clean/'+i)
         for j in dates:
-            util.mkdir(cwd+'/clean/'+i+'/'+j)
+            util.mkdir(cwd+'clean/'+i+'/'+j)
             for k in filters:
-                util.mkdir(cwd+'/clean/'+i+'/'+j+'/'+k)
+                util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
-                print 'Working in ' + cwd+'/'+i+'/reduce/'+k
+                print 'Working in ' + cwd+i+'/reduce/'+k
                 if frame_list != None:
                     red_dir(cwd+i+'/reduce/'+k,cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
