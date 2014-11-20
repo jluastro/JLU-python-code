@@ -94,14 +94,14 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
         
         head = fits.getheader(directory+'/'+i+'.fits')
         if head['OBJECT'] == sky_key:
-            print >> util.getcwd()+sky_f, i
+            print >> sky_f, i
         elif head['OBJECT']==flat_key:
-            print >> util.getcwd()+dome_f, i
+            print >> dome_f, i
             dome_list.append(i)
         else:
             for j in sci_keys:
                 if head['OBJECT'] == j:
-                    print >> util.getcwd()+sci_f, i
+                    print >> sci_f, i
 
     sky_f.close()
     sci_f.close()
