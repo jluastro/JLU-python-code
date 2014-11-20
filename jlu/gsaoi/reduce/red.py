@@ -109,6 +109,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     sky_f.close()
     sci_f.close()
     dome_f.close()
+    all_f.close()
 
     
 
@@ -125,8 +126,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print raw_dir
 
     util.rmall(['gaprep.log'])
-    
-    gsaoi.gaprepare('@all.lis', fl_vardq='yes', rawpath='',outpref=directory+'g', logfile='gaprep.log')
+    print 'ARguements for gaprepare', '@all.lis', directory+'g' 
+    gsaoi.gaprepare('@all.lis',outpref=directory+'g', logfile='gaprep.log')
     
     
 
