@@ -94,7 +94,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     for i in frame_list:
         #import pdb; pdb.set_trace()
-        print >> all_f, directory+i
+        print >> all_f, directory+i+'.fits'
         head = fits.getheader(directory+i+'.fits')
         if head['OBJECT'] == sky_key:
             print >> sky_f, i
