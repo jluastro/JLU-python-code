@@ -84,10 +84,10 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
 
     
-    sci_f = open(directory+'obj.lis', 'w')
-    dome_f = open(directory+'flat.lis', 'w')
-    all_f = open(directory+'all.lis', 'w')
-    sky_f = open(directory+'sky.lis','w')
+    sci_f = open(directory+'/obj.lis', 'w')
+    dome_f = open(directory+'/flat.lis', 'w')
+    all_f = open(directory+'/all.lis', 'w')
+    sky_f = open(directory+'/sky.lis','w')
     dome_list = []
     
     
