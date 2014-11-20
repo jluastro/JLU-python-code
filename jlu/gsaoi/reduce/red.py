@@ -147,12 +147,12 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=directory+flat_name)
     shutil.move('sky.fits', directory+'sky.fits')
     
-    gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory,gaprep_pref=directory+'rg', fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
+    gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
 
     util.rmall(['obj.lis','sky.lis','flat.lis'])
 
     for i in sci_l:
-        shutil.move(dir_ap+'rg'+i, clean_dir+'rg'+i)
+        shutil.move('rg'+i, clean_dir+'rg'+i)
     #print >> script, 'from pyraf.iraf import gemini'
     #print >> script, 'from pyraf.iraf import gsaoi'
     #print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
