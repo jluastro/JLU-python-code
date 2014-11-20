@@ -73,7 +73,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     
     #os.chdir(directory)
-    print 'current working directory is ' + util.getcwd()
+    
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
         for i in range(len(frame_list)):
@@ -92,7 +92,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     for i in frame_list:
         #import pdb; pdb.set_trace()
         
-        head = fits.getheader(directory+'/'+i+'.fits')
+        head = fits.getheader(directory+i+'.fits')
         if head['OBJECT'] == sky_key:
             print >> sky_f, i
         elif head['OBJECT']==flat_key:
@@ -117,7 +117,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #xsgsaoi.unlearn()
 
     #raw_dir = util.getcwd()
-    raw_dir = './'
+    #raw_dir = './'
     #prep_dir = raw_dir+'g'
     #print raw_dir
 
