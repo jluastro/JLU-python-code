@@ -87,7 +87,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     sci_f = open('obj.lis', 'w')
     dome_f = open('flat.lis', 'w')
     all_f = open('all.lis', 'w')
-    sky_f = open('/sky.lis','w')
+    sky_f = open('sky.lis','w')
     dome_list = []
     
     
