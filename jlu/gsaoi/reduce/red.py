@@ -135,7 +135,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     
 
-    gsaoi.gaflat('@flat.lis', outsufx='flat')
+    gsaoi.gaflat('@flat.lis', outsufx='flat', fl_vardq='yes')
     flat_name=  'g'+dome_list[0]+"_flat.fits"
     shutil.move('g'+dome_list[0]+"_flat.fits", directory+'g'+dome_list[0]+"_flat.fits")
     
@@ -143,11 +143,12 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print flat_name
     
     #gsaoi.gareduce('@sky.lis', rawpath=directory, gaprep_pref = directory+'g',calpath=directory, fl_flat='yes', flatimg=flat_name)
-    gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=directory+'g'+flat_name)
+    gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=directory+flat_name)
+    shutil.move('sky.fits', directory+'sky.fits')
     
-    #gsaoi.gareduce(directory+'//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
+    gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
-    #util.rmall(['obj.lis','sky.lis','flat.lis']]
+    util.rmall(['obj.lis','sky.lis','flat.lis']]
 
     #for i in sci:
     #    shutil.copy('g'+i+'.fits', clean_dir)
@@ -157,7 +158,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     #script.close()
     #import script
-    return 
+    
     
     
         
