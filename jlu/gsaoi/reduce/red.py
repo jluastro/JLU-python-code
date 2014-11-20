@@ -121,8 +121,8 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     from pyraf.iraf import gsaoi
     
     
-    #gemini.unlearn()
-    #xsgsaoi.unlearn()
+    gemini.unlearn()
+    gsaoi.unlearn()
 
     #raw_dir = util.getcwd()
     #raw_dir = './'
@@ -141,7 +141,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     flat_name=directory+flat_name
     #print flat_name
     
-    gsaoi.gareduce('@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
+    gsaoi.gareduce('@sky.lis', rawpath=directory, gaprep_pref = directory+'g',cal_path='', fl_flat='yes', flatimg=flat_name)
     #gsaoi.gasky(directory+'@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
     #gsaoi.gareduce(directory+'//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
