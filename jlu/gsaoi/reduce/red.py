@@ -101,14 +101,14 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
         print >> all_f, dir_ap+i+'.fits'
         head = fits.getheader(dir_ap+i+'.fits')
         if head['OBJECT'] == sky_key:
-            print >> sky_f, i
+            print >> sky_f, dir_ap+'g'+i
         elif head['OBJECT']==flat_key:
-            print >> dome_f, dir_ap+i
+            print >> dome_f, dir_ap+'g'+i
             dome_list.append(i)
         else:
             for j in sci_keys:
                 if head['OBJECT'] == j:
-                    print >> sci_f, dir_ap+i
+                    print >> sci_f, dir_ap+'g'+i
 
     sky_f.close()
     sci_f.close()
@@ -135,7 +135,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     
 
-    #gsaoi.gaflat(directory+'@flat.lis', outsufx='flat')
+    gsaoi.gaflat('@flat.lis', outsufx='flat')
     #flat_name= directory + 'g'+dome_list[0]+"_flat.fits"
     #print flat_name
     
