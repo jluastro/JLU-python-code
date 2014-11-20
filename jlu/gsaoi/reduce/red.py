@@ -77,7 +77,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     print 'Reduction being performed in ', directory
     
     if frame_list == None:
-        frame_list = glob.glob(util.getcwd()+'*.fits')
+        frame_list = glob.glob(directory+'*.fits')
         for i in range(len(frame_list)):
             frame_list[i] = frame_list[i].replace('.fits','')
   
