@@ -55,7 +55,7 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
                     red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
                     red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
-                return
+                
             
             
     
@@ -109,6 +109,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             for j in sci_keys:
                 if head['OBJECT'] == j:
                     print >> sci_f, dir_ap+'g'+i+'.fits'
+                    sci_l.append(i+'.fits')
 
     sky_f.close()
     sci_f.close()
@@ -125,7 +126,6 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     gsaoi.unlearn()
 
     #raw_dir = util.getcwd()
-    #raw_dir = './'
     #prep_dir = raw_dir+'g'
     #print raw_dir
 
@@ -146,12 +146,12 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=directory+flat_name)
     shutil.move('sky.fits', directory+'sky.fits')
     
-    gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
+    gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory,gaprep_pref=directory+'rg', fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
 
     util.rmall(['obj.lis','sky.lis','flat.lis'])
 
-    #for i in sci:
-    #    shutil.copy('g'+i+'.fits', clean_dir)
+    for i in sci_l:
+        shutil.move(dir_ap+'rg'+i, clean_dir+'rg'+i)
     #print >> script, 'from pyraf.iraf import gemini'
     #print >> script, 'from pyraf.iraf import gsaoi'
     #print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
