@@ -79,8 +79,12 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     if frame_list == None:
         frame_list = glob.glob(directory+'*.fits')
+        dir_ap = ''
         for i in range(len(frame_list)):
             frame_list[i] = frame_list[i].replace('.fits','')
+    else:
+        dir_ap=directory
+            
   
     
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
@@ -96,16 +100,16 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     for i in frame_list:
         #import pdb; pdb.set_trace()
         print >> all_f, i+'.fits'
-        head = fits.getheader(i+'.fits')
+        head = fits.getheader(dir_ap+i+'.fits')
         if head['OBJECT'] == sky_key:
             print >> sky_f, i
         elif head['OBJECT']==flat_key:
-            print >> dome_f, i
+            print >> dome_f, dir_ap+i
             dome_list.append(i)
         else:
             for j in sci_keys:
                 if head['OBJECT'] == j:
-                    print >> sci_f, i
+                    print >> sci_f, dir_ap+i
 
     sky_f.close()
     sci_f.close()
