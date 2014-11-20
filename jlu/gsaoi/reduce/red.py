@@ -131,15 +131,17 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     util.rmall(['gaprep.log'])
     print 'Arguements for gaprepare', '@all.lis', directory+'g' 
-    gsaoi.gaprepare('@all.lis',outpref=directory+'g', logfile='gaprep.log')
+    gsaoi.gaprepare('@all.lis',outpref=directory+'g',fl_vardq='yes', logfile='gaprep.log')
     
     
 
     gsaoi.gaflat('@flat.lis', outsufx='flat')
-    #flat_name= directory + 'g'+dome_list[0]+"_flat.fits"
+    flat_name=  'g'+dome_list[0]+"_flat.fits"
+    shutil.move('g'+dome_list[0]+"_flat.fits", directory+'g'+dome_list[0]+"_flat.fits")
+    flat_name=directory+flat_name
     #print flat_name
     
-    #gsaoi.gareduce(directory+'@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
+    gsaoi.gareduce('@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
     #gsaoi.gasky(directory+'@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
     #gsaoi.gareduce(directory+'//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
