@@ -52,9 +52,9 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in ' + cwd+'/'+i+'/reduce/'+k
                 if frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    red_dir(cwd+i+'/reduce/'+k,cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
-                    red_dir(cwd+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
+                    red_dir(cwd+i+'/reduce/'+k,cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
             
             
     
