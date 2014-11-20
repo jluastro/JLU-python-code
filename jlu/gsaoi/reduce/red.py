@@ -84,10 +84,10 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
 
     
-    sci_f = open(directory+'/obj.lis', 'w')
-    dome_f = open(directory+'/flat.lis', 'w')
-    all_f = open(directory+'/all.lis', 'w')
-    sky_f = open(directory+'/sky.lis','w')
+    sci_f = open('obj.lis', 'w')
+    dome_f = open('flat.lis', 'w')
+    all_f = open('all.lis', 'w')
+    sky_f = open('/sky.lis','w')
     dome_list = []
     
     
@@ -128,14 +128,14 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     
 
-    gsaoi.gaflat(directory+'@flat.lis', outsufx='flat')
-    flat_name= directory + 'g'+dome_list[0]+"_flat.fits"
-    print flat_name
+    #gsaoi.gaflat(directory+'@flat.lis', outsufx='flat')
+    #flat_name= directory + 'g'+dome_list[0]+"_flat.fits"
+    #print flat_name
     
-    gsaoi.gareduce(directory+'@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
-    gsaoi.gasky(directory+'@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
+    #gsaoi.gareduce(directory+'@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
+    #gsaoi.gasky(directory+'@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
-    gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
+    #gsaoi.gareduce(directory+'//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
     #util.rmall(['obj.lis','sky.lis','flat.lis']]
 
