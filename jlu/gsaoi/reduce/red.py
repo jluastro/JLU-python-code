@@ -94,6 +94,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     all_f = open('all.lis', 'w')
     sky_f = open('sky.lis','w')
     dome_list = []
+    sci_l = []
     
     
     for i in frame_list:
