@@ -85,7 +85,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     sci_f = open(directory+'obj.lis', 'w')
     dome_f = open(directory+'flat.lis', 'w')
-    dome_list = []
+    all_f = open(directory+'all.lis', 'w')
     sky_f = open(directory+'sky.lis','w')
     
     
@@ -122,7 +122,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print raw_dir
 
     
-    gsaoi.gaprepare(directory+'*.fits', fl_vardq='yes', rawpath=raw_dir, logfile='gaprep.log')
+    gsaoi.gaprepare(directory+'@all.llis', fl_vardq='yes', rawpath=raw_dir, logfile='gaprep.log')
     
     
 
