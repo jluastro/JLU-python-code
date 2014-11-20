@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, dates=None):
+def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
