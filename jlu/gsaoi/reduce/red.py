@@ -42,19 +42,19 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
     
         
         
-    cwd = os.getcwd()
+    cwd = util.getcwd()
     for i in epoch_dates:
         util.mkdir(obj_path+'/clean/'+i)
         for j in dates:
             util.mkdir(obj_path+'/clean/'+i+'/'+j)
             for k in filters:
                 util.mkdir(obj_path+'/clean/'+i+'/'+j+'/'+k)
-                os.chdir(cwd+'/'+i+'/reduce/'+k)
+                #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Changed directory to ' + cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k
                 if frame_list != None:
-                    red_dir('./',obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    red_dir(cwd+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
-                    red_dir('./',obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
+                    red_dir(cwd+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
             
             
     
@@ -72,44 +72,42 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     '''
 
     
-    os.chdir(directory)
+    #os.chdir(directory)
     print 'current working directory is ' + util.getcwd()
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
         for i in range(len(frame_list)):
             frame_list[i] = frame_list[i].replace('.fits','')
   
-
-    print frame_list
-    print util.getcwd()
     
     #go through the fits files and make 3 lists, one of skies, one of domes one of science frames
 
     
-    sci_f = open('obj.lis', 'w')
-    dome_f = open('flat.lis', 'w')
+    sci_f = open(directory+'obj.lis', 'w')
+    dome_f = open(directory+'flat.lis', 'w')
     dome_list = []
-    sky_f = open('sky.lis','w')
-    script = open('script.py', 'w')
+    sky_f = open(directory+'sky.lis','w')
+    
     
     for i in frame_list:
         #import pdb; pdb.set_trace()
         
-        head = fits.getheader(i+'.fits')
+        head = fits.getheader(directory+'/'+i+'.fits')
         if head['OBJECT'] == sky_key:
-            print >> sky_f, i
+            print >> util.getcwd()+sky_f, i
         elif head['OBJECT']==flat_key:
-            print >> dome_f, i
+            print >> util.getcwd()+dome_f, i
             dome_list.append(i)
         else:
             for j in sci_keys:
                 if head['OBJECT'] == j:
-                    print >> sci_f, i
+                    print >> util.getcwd()+sci_f, i
 
     sky_f.close()
     sci_f.close()
     dome_f.close()
 
+    
 
     from pyraf.iraf import gemini
     from pyraf.iraf import gsaoi
@@ -128,16 +126,16 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     
 
-    gsaoi.gaflat('g//@flat.lis', outsufx='flat')
-    flat_name= dome_list[0]+"_flat.fits"
+    gsaoi.gaflat(directory+'@flat.lis', outsufx='flat')
+    flat_name= directory + 'g'+dome_list[0]+"_flat.fits"
     print flat_name
     
-    gsaoi.gareduce('@sky.lis', fl_flat='yes', flatimg=flat_name)
-    gsaoi.gasky('@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
+    gsaoi.gareduce(directory+'@sky.lis', rawpath=directory, gaprep_pref = directory+'g', fl_flat='yes', flatimg=flat_name)
+    gsaoi.gasky(directory+'@sky.lis', outimages='sky.fits', fl_vardq='yes', fl_dqprop='yes', flatimg=flat_name)
     
     gsaoi.gareduce('g//@sci.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no', fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
-    
+    #util.rmall(['obj.lis','sky.lis','flat.lis']]
 
     #for i in sci:
     #    shutil.copy('g'+i+'.fits', clean_dir)
