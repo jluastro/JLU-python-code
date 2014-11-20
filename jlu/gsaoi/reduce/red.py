@@ -50,7 +50,7 @@ def doit(epoch_dates ,obj_path,  clean_path=None, log_file=None, filters=None, d
             for k in filters:
                 util.mkdir(obj_path+'/clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
-                print 'Changed directory to ' + cwd+'/'+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k
+                print 'Working in ' + cwd+'/'+i+'/reduce/'+k
                 if frame_list != None:
                     red_dir(cwd+i+'/reduce/'+k,obj_path+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
                 else:
