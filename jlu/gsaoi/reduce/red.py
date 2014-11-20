@@ -52,7 +52,8 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in ' + cwd+i+'/reduce/'+k
                 if frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    #red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k)
                 else:
                     red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
                 return
@@ -95,7 +96,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     for i in frame_list:
         #import pdb; pdb.set_trace()
         print >> all_f, i+'.fits'
-        head = fits.getheader(i+'.fits')
+        head = fits.getheader(directory+i+'.fits')
         if head['OBJECT'] == sky_key:
             print >> sky_f, i
         elif head['OBJECT']==flat_key:
@@ -126,7 +127,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     #print raw_dir
 
     util.rmall(['gaprep.log'])
-    print 'ARguements for gaprepare', '@all.lis', directory+'g' 
+    print 'Arguements for gaprepare', '@all.lis', directory+'g' 
     gsaoi.gaprepare('@all.lis',outpref=directory+'g', logfile='gaprep.log')
     
     
