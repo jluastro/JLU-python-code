@@ -148,7 +148,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg='sky.fits',  fl_flat='yes',flatimg=flat_name)
 
-    util.rmall(['obj.lis','sky.lis','flat.lis']]
+    util.rmall(['obj.lis','sky.lis','flat.lis'])
 
     #for i in sci:
     #    shutil.copy('g'+i+'.fits', clean_dir)
