@@ -73,6 +73,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     
     #os.chdir(directory)
+    print 'Reduction being performed in ', directory
     
     if frame_list == None:
         frame_list = glob.glob(util.getcwd()+'*.fits')
