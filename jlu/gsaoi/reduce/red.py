@@ -50,11 +50,11 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
             for k in filters:
                 util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
-                print 'Working in ' + cwd+i+'/reduce/'+k
+                print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list[filt1==k])
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[filt1==k])
                 else:
-                    red_dir(cwd+i+'/reduce/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k, frame_list=frame_list)
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
                 
             
             
