@@ -63,6 +63,8 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             num_done += obs_bool[i]
         epoch_bool_ars.append((mjd[obs_breaks[-1]]+14 > mjd) * (mjd[obs_breaks[-1]] < mjd))
         #import pdb; pdb.set_trace()
+    print obs_breaks
+    print epoch_bool_ars
         
         
          
@@ -75,7 +77,6 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
         util.mkdir(date[ep_ind]+'/clean')
         #util.mkdir(date[ep_ind]+'/raw')
         #find nights in epoch, make directories for them
-        uni_filt = np.unique(filt1[epoch_bool_ars[i]])
         uni_date = np.unique(date[epoch_bool_ars[i]])
         print uni_date, uni_filt
         for night in uni_date:
