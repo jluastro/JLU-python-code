@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None):
+def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -51,8 +51,11 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None)
                 util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
-                if frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[filt1==k])
+                if use_dir_cl:
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=None)
+                    
+                elif frame_list != None:
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_and((filt1==k),date==j),np.logical_and((filt1==k), )
                 else:
                     red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
                 
