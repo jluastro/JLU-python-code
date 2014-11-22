@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False,  sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4']), mjd_break=[56750,56800]:
+def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False,  sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], mjd_break=[56750,56800]):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
