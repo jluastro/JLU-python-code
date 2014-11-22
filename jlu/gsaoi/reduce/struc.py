@@ -86,7 +86,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             uni_filt=np.unique(filt1[epoch_bool_ars[i]*(night==date)])
             print uni_filt
             for k in uni_filt:
-                if np.any(sci_bool):
+                if np.any(sci_bool[(filt1==k)*(date==night)])):
                     util.mkdir(date[ep_ind]+'/reduce/'+night+'/'+k)
                     for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
                         shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
