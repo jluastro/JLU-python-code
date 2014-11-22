@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False):
+def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False,  sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4']):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -40,7 +40,10 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None,
         frame_list=None
 
     
-        
+    sci_bool=np.zeros(len(frame_list), dtype=bool)
+    for i in sci_keys:
+        sci_bool = sci_bool + (obj==i)
+                
         
     cwd = util.getcwd()
     for i in epoch_dates:
@@ -51,13 +54,14 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None,
                 util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
-                if use_dir_cl:
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=None)
+                if np.any((filt1==k)*(date==j)*(sci_bool)):
+                    if use_dir_cl:
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=None)
                     
-                elif frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_or(np.logical_and((filt1==k),date==j),np.logical_and((filt1==k),obj=='Domeflat'))] )
-                else:
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
+                    elif frame_list != None:
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_or(np.logical_and((filt1==k),date==j),np.logical_and((filt1==k),obj=='Domeflat'))] )
+                    else:
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
                 
             
             
