@@ -66,6 +66,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     print obs_breaks
     print epoch_bool_ars
     print mjd
+    import pdb ; pbd.Set_trace()
         
         
          
