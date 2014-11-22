@@ -64,10 +64,10 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
         num_done += np.sum(obs_bool)
         epoch_bool_ars.append((mjd[obs_breaks[-1]]+14 > mjd) * (mjd[obs_breaks[-1]] < mjd))
         #import pdb; pdb.set_trace()
-    print obs_breaks
-    print epoch_bool_ars
-    print mjd
-    import pdb ; pdb.set_trace()
+        #print obs_breaks
+        #print epoch_bool_ars
+        #print mjd
+    
         
         
          
