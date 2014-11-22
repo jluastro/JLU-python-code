@@ -48,7 +48,7 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None,
     cwd = util.getcwd()
     for index, i in enumerate(epoch_dates):
         util.mkdir(cwd+'clean/'+i)
-        for j in dates[mjd<mjd_break[index]]:
+        for j in date[mjd<mjd_break[index]]:
             util.mkdir(cwd+'clean/'+i+'/'+j)
             for k in filters:
                 util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
