@@ -55,7 +55,7 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None,
                     red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=None)
                     
                 elif frame_list != None:
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_and((filt1==k),date==j),np.logical_and((filt1==k), )
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_or(np.logical_and((filt1==k),date==j),np.logical_and((filt1==k),obj=='Domeflat'))] )
                 else:
                     red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
                 
