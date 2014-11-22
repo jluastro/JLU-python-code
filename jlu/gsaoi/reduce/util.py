@@ -164,3 +164,180 @@ def mk_log(directory, output='gsaoi_log.txt'):
 
     _out.close()
     return directory + '/' +  output
+
+
+def convertFile(fitsfile, outputDir=None, clobber=False):
+    """Takes a full path to a fits file and converts it to simple fits format if it can.
+    Names the converted extensions to be like
+       
+    j1570d10t_crj.fits ===> NEXTEND number of files named like 
+
+          j1570d10t_crj_EXTNAME_EXTVER.fits
+
+    Copied from
+    http://apsis.googlecode.com/svn-history/r2/trunk/apsis/python/utils/fUtil.py
+
+    """
+    warningsList = []
+
+    dir,fname = os.path.split(fitsfile)
+    base,ext  = os.path.splitext(fname)
+    
+    fo = pyfits.open(fitsfile)
+
+    if len(fo) == 1:
+        warningsList.append("WARNING: File "+fname+" is not multi-extension. Not converted.")
+        print "File "+fname+" is not multi-extension. Not converted."
+        return None
+
+    # first check that BSCALE and BZERO are *not* in the primary header.
+    # remove them if they are and record a WARNING
+
+    try:
+        del fo[0].header.ascard['BSCALE']
+        warningsList.append("WARNING: BSCALE keyword found in primary header: "+fname)
+        print "WARNING: BSCALE keyword found in primary header: "+fname
+    except:
+        pass
+    try:
+        del fo[0].header.ascard['BZERO']
+        warningsList.append("WARNING: BZERO keyword found in primary header: "+fname)
+        print "WARNING: BZERO keyword found in primary header: "+fname
+    except:
+        pass    
+
+    convertList = []
+    for i in range(1,len(fo)):
+        print "breaking out extension ",i," of file ",fname
+        xname = fo[i].header['CCDNAME'].lower()
+        try:
+            xver = str(fo[i].header['EXTNAME']).strip().lower()
+        except:
+            xver = ''
+        if xver:
+            newfile = base+"_"+xname+"_"+xver + ext
+        else:
+            newfile = base+"_"+xname + ext
+
+        if outputDir == None:
+            outputDir = dir
+
+        nfits = os.path.join(outputDir, newfile)
+        convertList.append(nfits)
+
+        f1 = pyfits.HDUList()
+        f1.append(pyfits.PrimaryHDU())
+
+        # Adjust header keywords for simple fits format.
+        # Delete some keywords which must go away in simple fits format
+        # First, get a copy of the Primary header into the new file
+
+        f1[0].header = fo[0].header.copy()
+
+        # These are primary header keywords that need to disappear.
+        try:
+            del f1[0].header['EXTEND']
+            del f1[0].header['NEXTEND']
+        except:
+            passw
+
+        # delete some of the extension-only keywords
+        try:
+            del fo[i].header['XTENSION']
+            del fo[i].header['INHERIT']
+            del fo[i].header['CCDNAME']
+            del fo[i].header['EXTVER']
+            del fo[i].header['PCOUNT']
+            del fo[i].header['GCOUNT']
+        except:
+            pass
+
+        # get the index of first HISTORY comment in the header we're updating
+        # remember to increment this in the loop as we insert keys
+        ihist = f1[0].header.get_history()
+        if len(ihist) == 0:
+            print 'Primary header has no HISTORY keyword.'
+            print 'Appending extension keywords...'
+            ihist = len(f1[0].header)
+
+        # Now go through all keywords of extension and pass them
+        # into the new simple fits header.
+        # This is how I'd like to do it, but it doesn't work this way
+        # for key,item in fo[i].header.ascard.keys(),fo[i].header.ascard:
+        # keylist = fo[i].header.ascard.keys()
+
+        # Below, an ascard object has attributes key,value,comment which allows 
+        # direct access to these values.
+
+        for item in fo[i].header.cards:
+            key = item.key
+            val = item.value
+            
+            if not key and not val:
+                continue
+            elif not key and val:
+                f1[0].header.insert(ihist, item)
+                ihist += 1
+                continue
+
+            #print "setting keyword,",key
+
+            # if the 'key' is already in the header because it was copied
+            # from the primary, we just want to update it with the value
+            # of the keyword in the extension; no need to update ihist
+            if (f1[0].header.has_key(key) and key != 'COMMENT' and key != 'HISTORY'):
+                try:
+                    f1[0].header.update(key,fo[i].header[key])
+                except pyfits.FITS_SevereError,err:
+                    warningsList.append("WARNING: FITS Error encountered in header,"+str(err))
+                    print "FITS Error encountered in header:",err
+                continue
+
+            # if it's NAXIS1, insert after NAXIS
+
+            if key == 'NAXIS1':
+                try:
+                    inaxis = f1[0].header.ascard.index_of('NAXIS')
+                except KeyError,err:
+                    raise pyfits.FITS_FatalError,"Cannot find NAXIS keyword!"
+
+                # NOTE: dereferencing 'key' to get item at this point 
+                # was no good.  For repeated 'keys', as for example with
+                # 'COMMENT' lines, this just gave back the first one.
+                # item = fo[i].header.ascard[key]
+
+                f1[0].header.ascard.insert(inaxis+1,item)
+                ihist += 1
+
+            # if it's NAXIS2, insert after NAXIS1 if it's already there,
+            # otherwise, insert after NAXIS
+
+            elif key == 'NAXIS2':
+                try:
+                    inaxis2 = f1[0].header.ascard.index_of('NAXIS1') + 1
+                except:
+                    try:
+                        inaxis2 = f1[0].header.ascard.index_of('NAXIS') + 1
+                    except KeyError,err:
+                        raise pyfits.FITS_FatalError,"Cannot find NAXIS keyword!"
+
+                    f1[0].header.ascard.insert(inaxis2,item)
+                    ihist += 1
+
+            # if key is not NAXIS1 or NAXIS2, just insert before HISTORY
+            else:
+                f1[0].header.ascard.insert(ihist,item)
+                ihist += 1
+
+        # Fix the filename keyword
+        f1[0].header.update('FILENAME',newfile)
+
+        # And finally, get the data.
+        f1[0].data = fo[i].data
+        f1.writeto(nfits, clobber=clobber)
+
+        del f1
+
+    fo.close()
+    
+    return convertList, warningsList
