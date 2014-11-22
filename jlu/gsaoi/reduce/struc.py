@@ -54,15 +54,14 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     obs_breaks = []
     obs_bool = np.ones(len(mjd), dtype=bool)
     epoch_bool_ars = []
-    num_done = 1
+    num_done = 0
     
     while np.any(obs_bool):
         print num_done
-        obs_breaks.append(np.argmin(mjd[obs_bool])+num_done-1)
+        obs_breaks.append(np.argmin(mjd[obs_bool])+num_done)
         obs_bool = obs_bool * (mjd[obs_breaks[-1]]+14 < mjd)
         print obs_bool
-        for i in range(len(mjd)):
-            num_done += obs_bool[i]
+        num_done += np.sum(obs_bool)
         epoch_bool_ars.append((mjd[obs_breaks[-1]]+14 > mjd) * (mjd[obs_breaks[-1]] < mjd))
         #import pdb; pdb.set_trace()
     print obs_breaks
