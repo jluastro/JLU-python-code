@@ -46,11 +46,11 @@ def doit(frame_file, epoch_start_in=0):
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
                             print 'extra sky frames added to  '+ i+k, ex_skies
                     else:
-                        ex_skies=None
+                        ex_skies=[]
                             
                     #only give in list of frames that 
                     print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=np.concatenate(frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies) )
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)) )
                 
             
             
