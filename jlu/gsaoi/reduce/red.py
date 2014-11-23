@@ -30,7 +30,7 @@ def doit(frame_file, epoch_start_in=0):
     
         
     cwd = util.getcwd()
-    for index, i in enumerate(epoch_dates[epoch_start_in:):
+    for index, i in enumerate(epoch_dates[epoch_start_in:]):
         util.mkdir(cwd+'clean/'+i)
         for j in np.unique(date[epoch_bool_ars[index]]):
             filters = np.unique(filt1[epoch_bool_ars[index]])
