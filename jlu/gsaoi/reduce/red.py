@@ -41,12 +41,12 @@ def doit(frame_file):
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     
                     #only give in list of frames that 
-                    print np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
+                    print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)] )
                 
             
-            
-            
+            np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j,epoch_bool_ars[index]),dome_bool),filt1==k))
+            np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
     
     
 def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd 2 pos 1','Wd 2 pos 2', 'Wd 2 pos 3', 'Wd 2 pos 4'], frame_list = None):
