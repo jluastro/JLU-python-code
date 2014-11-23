@@ -366,7 +366,6 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     limits = [np.min(mjd)]
     obs_bool = np.ones(len(mjd), dtype=bool)
     index = 1
-    obs_break_in = []
     while np.any(obs_bool):
         
         epoch_dates.append(date[np.argmin(mjd[obs_bool])+num_done])
@@ -377,6 +376,6 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
         index += 1  
         
 
-    print epoch_dates
-    return sky_bool, sci_bool, dome_bool, obs_break_in, epoch_bool_ars
+    
+    return sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars
     
