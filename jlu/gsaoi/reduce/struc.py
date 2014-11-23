@@ -71,7 +71,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
                             shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
                         if not np.any(sky_bool[(filt1==k)*(date==night)]):
                             #find skyies that are closest temporaly to the observations
-                            arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[night][0]))
+                            arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[date==night][0]))
                             night_sky = date[(filt1==k)][arg]
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
                             for kk in ex_skies:
