@@ -142,7 +142,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     for i in sci_l:
         for k in range(4):
-            iraf.imcopy('rg'+i, 'rg'+i.replace('.fits',str(k)+'.fits'))
+            iraf.imcopy('rg'+i+'['+str(k)+'][inherit+]' , 'rg'+i.replace('.fits',str(k)+'.fits'))
             shutil.move('rg'+i.replace('.fits',str(k)+'.fits'), clean_dir+'rg'+i.replace('.fits',str(k)+'.fits'))
     #print >> script, 'from pyraf.iraf import gemini'
     #print >> script, 'from pyraf.iraf import gsaoi'
