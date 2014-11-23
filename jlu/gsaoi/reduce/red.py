@@ -32,7 +32,7 @@ def doit(frame_file):
     cwd = util.getcwd()
     for index, i in enumerate(epoch_dates):
         util.mkdir(cwd+'clean/'+i)
-        for j in np.unique(date[epoch_bool_ars[i]]):
+        for j in np.unique(date[epoch_bool_ars[index]]):
             util.mkdir(cwd+'clean/'+i+'/'+k)
             for k in filters:
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
