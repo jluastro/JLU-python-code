@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(frame_file. epoch_start_in=0):
+def doit(frame_file, epoch_start_in=0):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
