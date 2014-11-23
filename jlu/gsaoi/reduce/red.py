@@ -44,7 +44,6 @@ def doit(frame_file, epoch_start_in=0):
                             arg = np.argmin(np.abs(mjd[(filt1==k)*(sky_bool)]-mjd[date==j][0]))
                             night_sky = date[(filt1==k)*(sky_bool)][arg]
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
-                            import pdb; pdb.set_trace()
                             print 'extra sky frames added to  '+ i+k, ex_skies
                     else:
                         ex_skies=None
