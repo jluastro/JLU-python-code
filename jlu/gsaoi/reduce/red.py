@@ -24,7 +24,7 @@ def doit(frame_file):
     
     '''
 
-    frame_list, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
+    frames, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
     sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
     
     
@@ -39,12 +39,10 @@ def doit(frame_file):
                 util.mkdir(cwd+'clean/'+i+'/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
-                    if frame_list != None:
-                        #only give in list of frames that 
-                        print np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frame_list[np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
-                    else:
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frame_list)
+                    
+                    #only give in list of frames that 
+                    print np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
                 
             
             
