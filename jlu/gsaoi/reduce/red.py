@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None, use_dir_cl=False,  sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], mjd_break=[0,56750,56800]):
+def doit(frame_file , clean_path=None):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -25,47 +25,30 @@ def doit(epoch_dates , clean_path=None, log_file=None, filters=None, dates=None,
     '''
 
     
-    if log_file !=None:
-        if filters ==None and dates == None:
-            frame_list, obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
-            filters  = np.unique(filt1)
-            dates = np.unique(date)
-        elif filters != None and dates == None:
-            frame_list, obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
-            dates = np.unique(date)
-        elif filters == None and dates != None:
-            frame_list, obj ,filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(log_file)
-            filters = np.unique(filt1)
-    else:
-        frame_list=None
-
+    sky_bool, sci_bool, dome_bool, obs_breaks, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
     
-    sci_bool=np.zeros(len(frame_list), dtype=bool)
-    for i in sci_keys:
-        sci_bool = sci_bool + (obj==i)
-                
+    
         
     cwd = util.getcwd()
     for index, i in enumerate(epoch_dates):
         util.mkdir(cwd+'clean/'+i)
-        for j in date[(mjd<mjd_break[index+1])*(mjd>mjd_break[index])]:
+        for j in np.unique(date[epoch_bool_ars[i]]):
             util.mkdir(cwd+'clean/'+i+'/'+j)
             for k in filters:
                 util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
-                    if use_dir_cl:
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=None)
-                    
-                    elif frame_list != None:
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_or(np.logical_and((filt1==k),date==j),np.logical_and((filt1==k),obj=='Domeflat'))] )
+                    if frame_list != None:
+                        #only give in list of frames that 
+                        print np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
                     else:
                         red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
                 
             
             
-    
+            
     
     
 def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd 2 pos 1','Wd 2 pos 2', 'Wd 2 pos 3', 'Wd 2 pos 4'], frame_list = None):
@@ -128,6 +111,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     from pyraf.iraf import gemini
     from pyraf.iraf import gsaoi
+    from pyraf.iraf import iraf 
     
     
     gemini.unlearn()
@@ -159,7 +143,9 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     util.rmall(['obj.lis','sky.lis','flat.lis'])
 
     for i in sci_l:
-        shutil.move('rg'+i, clean_dir+'rg'+i)
+        for k in range(4):
+            iraf.imcopy('rg'+i, 'rg'+i.replace('.fits',str(k)+'.fits'))
+            shutil.move('rg'+i.replace('.fits',str(k)+'.fits'), clean_dir+'rg'+i.replace('.fits',str(k)+'.fits'))
     #print >> script, 'from pyraf.iraf import gemini'
     #print >> script, 'from pyraf.iraf import gsaoi'
     #print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
