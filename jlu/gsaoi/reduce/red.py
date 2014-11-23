@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(frame_file , clean_path=None):
+def doit(frame_file):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -24,7 +24,7 @@ def doit(frame_file , clean_path=None):
     
     '''
 
-    
+    frames, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
     sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
     
     
@@ -33,18 +33,17 @@ def doit(frame_file , clean_path=None):
     for index, i in enumerate(epoch_dates):
         util.mkdir(cwd+'clean/'+i)
         for j in np.unique(date[epoch_bool_ars[i]]):
-            util.mkdir(cwd+'clean/'+i+'/'+j)
+            util.mkdir(cwd+'clean/'+i+'/'+k)
             for k in filters:
-                util.mkdir(cwd+'clean/'+i+'/'+j+'/'+k)
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     if frame_list != None:
                         #only give in list of frames that 
                         print np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list[np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frame_list[np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
                     else:
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+j+'/'+k+'/', frame_list=frame_list)
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frame_list)
                 
             
             
