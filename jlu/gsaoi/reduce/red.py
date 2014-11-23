@@ -24,7 +24,7 @@ def doit(frame_file):
     
     '''
 
-    frames, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
+    frame_list, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
     sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
     
     
