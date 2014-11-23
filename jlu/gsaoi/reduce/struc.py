@@ -45,7 +45,8 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
 
     sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
         
-         
+
+    import pdb; pdb.set_trace()
 
     #get list of filters
     for i, ep_date in enumerate(epoch_dates):
