@@ -6,7 +6,7 @@ import util
 import glob
 
 
-def doit(frame_file):
+def doit(frame_file. epoch_start_in=0):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -30,7 +30,7 @@ def doit(frame_file):
     
         
     cwd = util.getcwd()
-    for index, i in enumerate(epoch_dates):
+    for index, i in enumerate(epoch_dates[epoch_start_in:):
         util.mkdir(cwd+'clean/'+i)
         for j in np.unique(date[epoch_bool_ars[index]]):
             filters = np.unique(filt1[epoch_bool_ars[index]])
@@ -44,6 +44,7 @@ def doit(frame_file):
                             arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[date==night][0]))
                             night_sky = date[(filt1==k)][arg]
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
+                            print 'extra sky frames added to'+ i+k+ex_skies
                     else:
                         ex_skies=None
                             
