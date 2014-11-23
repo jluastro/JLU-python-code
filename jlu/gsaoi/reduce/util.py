@@ -377,5 +377,6 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
         index += 1  
         
 
+    print epoch_dates
     return sky_bool, sci_bool, dome_bool, obs_break_in, epoch_bool_ars
     
