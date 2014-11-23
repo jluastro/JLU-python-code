@@ -39,10 +39,17 @@ def doit(frame_file):
                 util.mkdir(cwd+'clean/'+i+'/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
-                    
+                    if not np.any(sky_bool[(filt1==k)*(date==night)]):
+                            #find skyies that are closest temporaly to the observations
+                            arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[night][0]))
+                            night_sky = date[(filt1==k)][arg]
+                            ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
+                    else:
+                        ex_skies=None
+                            
                     #only give in list of frames that 
                     print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)] )
+                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=np.concatenate(frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies) )
                 
             
             
