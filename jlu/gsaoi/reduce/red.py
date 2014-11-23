@@ -45,9 +45,7 @@ def doit(frame_file):
                     red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)] )
                 
             
-            np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j,epoch_bool_ars[index]),dome_bool),filt1==k))
-            np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
-    
+            
     
 def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd 2 pos 1','Wd 2 pos 2', 'Wd 2 pos 3', 'Wd 2 pos 4'], frame_list = None):
 
@@ -144,12 +142,6 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
         for k in range(4):
             iraf.imcopy('rg'+i+'['+str(k)+'][inherit+]' , 'rg'+i.replace('.fits',str(k)+'.fits'))
             shutil.move('rg'+i.replace('.fits',str(k)+'.fits'), clean_dir+'rg'+i.replace('.fits',str(k)+'.fits'))
-    #print >> script, 'from pyraf.iraf import gemini'
-    #print >> script, 'from pyraf.iraf import gsaoi'
-    #print >> script, 'gsaoi.gareduce('+'"'+'*.fits'+'"'+', fl_vardq='+'"'+'yes'+'"'+')'
-
-    #script.close()
-    #import script
     
     
     
