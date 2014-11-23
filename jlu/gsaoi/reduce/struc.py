@@ -74,6 +74,8 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
                             arg = np.argmin(np.abs(mjd[(filt1==k)*sky_bool]-mjd[date==night][0]))
                             night_sky = date[(filt1==k)*sky_bool][arg]
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
+                            print 'adding extra skies to ',ep_date+'/reduce/'+night+'/'+k
+                            print 'frames added are ', ex_skies
                             for kk in ex_skies:
                                 shutil.copy(directory+'/'+kk+'.fits', ep_date+'/reduce/'+night+'/'+k)
                                       
