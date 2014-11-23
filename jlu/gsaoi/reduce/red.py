@@ -33,9 +33,10 @@ def doit(frame_file):
     for index, i in enumerate(epoch_dates):
         util.mkdir(cwd+'clean/'+i)
         for j in np.unique(date[epoch_bool_ars[index]]):
-            util.mkdir(cwd+'clean/'+i+'/'+k)
+            
             for k in filters:
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
+                util.mkdir(cwd+'clean/'+i+'/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     if frame_list != None:
