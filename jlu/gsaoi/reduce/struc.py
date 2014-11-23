@@ -5,7 +5,7 @@ import glob
 import numpy as np
 import math
 
-def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky'):
+def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky', copy_files=True):
     '''
     Should be in directory called 'object name'
     creates structure as follows
@@ -43,32 +43,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     '''
     frames, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
 
-    sky_bool = obj == sky_key
-    dome_bool = obj == dome_key
-    sci_bool = np.zeros(len(frames), dtype=bool)
-    for i in range(len(sci_keys)):
-        sci_bool = sci_bool + (obj == sci_keys[i])
-        #print sci_bool
-    
-    #find minimum of date
-    obs_breaks = []
-    obs_bool = np.ones(len(mjd), dtype=bool)
-    epoch_bool_ars = []
-    num_done = 0
-    
-    while np.any(obs_bool):
-        print num_done
-        obs_breaks.append(np.argmin(mjd[obs_bool])+num_done+1)
-        obs_bool = obs_bool * (mjd[obs_breaks[-1]]+14 < mjd)
-        print obs_bool
-        num_done += np.sum(obs_bool)
-        epoch_bool_ars.append((mjd[obs_breaks[-1]]+14 > mjd) * (mjd[obs_breaks[-1]] < mjd))
-        #import pdb; pdb.set_trace()
-        #print obs_breaks
-        #print epoch_bool_ars
-        #print mjd
-    
-        
+    sky_bool, sci_bool, dome_bool, obs_breaks, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
         
          
 
@@ -88,10 +63,11 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             for k in uni_filt:
                 if np.any(sci_bool[(filt1==k)*(date==night)]):
                     util.mkdir(date[ep_ind]+'/reduce/'+night+'/'+k)
-                    for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
-                        shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
-                    for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
-                        shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
+                    if copy_files:
+                        for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
+                            shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
+                        for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
+                            shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
                         
                 
                 
@@ -106,10 +82,6 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             
         return filters_uni, date_list 
     
-    
-    
-    
-
     
     
     
