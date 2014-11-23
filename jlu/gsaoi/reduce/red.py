@@ -41,7 +41,7 @@ def doit(frame_file):
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     
                     #only give in list of frames that 
-                    print np.logical_and(np.logical_and(np.logial_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
+                    print np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)
                     red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=frames[np.logical_and(np.logical_and(np.logical_or(np.logical_and(np.logical_or(sci_bool,sky_bool),date==j),dome_bool),filt1==k),epoch_bool)] )
                 
             
