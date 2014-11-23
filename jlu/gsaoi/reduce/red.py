@@ -41,7 +41,7 @@ def doit(frame_file, epoch_start_in=0):
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     if not np.any(sky_bool[(filt1==k)*(date==j)]):
                             #find skyies that are closest temporaly to the observations
-                            arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[date==night][0]))
+                            arg = np.argmin(np.abs(mjd[(filt1==k)]-mjd[date==j][0]))
                             night_sky = date[(filt1==k)][arg]
                             ex_skies = frames[sky_bool*(filt1==k)*(date==night_sky)]
                             print 'extra sky frames added to'+ i+k+ex_skies
