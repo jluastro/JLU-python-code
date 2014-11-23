@@ -43,17 +43,17 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
     '''
     frames, obj, filt1, ra, dec, date, exptime, coadds, mjd = util.read_log(frame_file)
 
-    sky_bool, sci_bool, dome_bool, obs_breaks, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
+    sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
         
          
 
     #get list of filters
-    for i, ep_ind in enumerate(obs_breaks):
-        print 'Making Directory '+date[ep_ind]
-        util.mkdir(date[ep_ind])
-        util.mkdir(date[ep_ind]+'/reduce')
-        util.mkdir(date[ep_ind]+'/clean')
-        #util.mkdir(date[ep_ind]+'/raw')
+    for i, ep_date in enumerate(epoch_dates):
+        print 'Making Directory '+ep_date
+        util.mkdir(ep_date)
+        util.mkdir(ep_date+'/reduce')
+        util.mkdir(ep_date+'/clean')
+        #util.mkdir(ep_date+'/raw')
         #find nights in epoch, make directories for them
         uni_date = np.unique(date[epoch_bool_ars[i]])
         print uni_date
@@ -62,12 +62,12 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             print uni_filt
             for k in uni_filt:
                 if np.any(sci_bool[(filt1==k)*(date==night)]):
-                    util.mkdir(date[ep_ind]+'/reduce/'+night+'/'+k)
+                    util.mkdir(ep_date+'/reduce/'+night+'/'+k)
                     if copy_files:
                         for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
-                            shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
+                            shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
                         for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
-                            shutil.copy(directory+'/'+frame+'.fits', date[ep_ind]+'/reduce/'+night+'/'+k)
+                            shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
                         
                 
                 

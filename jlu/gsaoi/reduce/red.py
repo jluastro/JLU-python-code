@@ -25,7 +25,7 @@ def doit(frame_file , clean_path=None):
     '''
 
     
-    sky_bool, sci_bool, dome_bool, obs_breaks, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
+    sky_bool, sci_bool, dome_bool, epoch_dates, epoch_bool_ars = util.mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd)
     
     
         
