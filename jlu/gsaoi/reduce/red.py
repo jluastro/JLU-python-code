@@ -1,4 +1,4 @@
-import struc
+from . import struc
 import os, shutil
 from astropy.io import fits 
 import numpy as np
