@@ -6,7 +6,21 @@ import util
 import glob
 
 
-def doit(frame_file, epoch_start_in=0):
+def full_reduc(frame_file,raw_dir,red_dir=None, mix_flats=True, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky', mk_struc=True ):
+    '''
+    frame_file -- string, filename of log file (can be made with util.mk_log)
+    raw_dir - string, pathname to directory containing raw fits files
+    red_dir - keyword, path to reduction directory, if None assumes reduction directory is cwd.  Expected to be directory \object_name
+    mix_flats - boolean, determines whether flats are expected to be per epoch or only one set for all observations
+    '''
+    if red_dir:
+        os.chdir(red_dir)
+    if mk_struc:
+        struc.mk_struc(frame_file=frame_file, directory=raw_dir, sci_keys=sci_keys, dome_key=dome_key, sky_key=sky_key, mix_flats=mix_flats)
+
+    doit(frame_file, mix_flats=mix_flats, sky_key=sky_key, flat_key=dome_key, sci_keys=sci_keys)
+               
+def doit(frame_file, epoch_start_in=0, mix_flats=True, sky_key='sky', flat_key='Domeflat', sci_keys= ['Wd 2 pos 1','Wd 2 pos 2', 'Wd 2 pos 3', 'Wd 2 pos 4']):
     '''
     optional arguments for filters and dates
     Must either give log file to base data on, or use both filters and dates arguements
@@ -15,12 +29,14 @@ def doit(frame_file, epoch_start_in=0):
     Clean_path is the path to where you want the cleaned images to be saved
     epoch dates is a list of the dates the epoch dolders are based on
 
-    obj_path is the path to the directory \object name, assumes strucute as shown below
+    obj_path is the path to the directory \object name, assumes structure as shown below
 
       \object name
            \epoch date
               \clean  \reduce
                                  \filters
+
+    mix_flats -- Boolean, if true dome flats from all nights in the relevant filter will be used
     
     '''
 
@@ -49,9 +65,12 @@ def doit(frame_file, epoch_start_in=0):
                         ex_skies=[]
                             
                     #only give in list of frames that 
-                    print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
-                    red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)) )
-                
+                    #print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
+                    if mix_flats:
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+'/clean/'+i+'/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
+                    else:
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)],ex_skies)) )
+                np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)
             
             
     
@@ -148,9 +167,10 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
 
     for i in sci_l:
         for k in range(4):
-            iraf.imcopy('rg'+i+'['+str(k)+'][inherit+]' , 'rg'+i.replace('.fits',str(k)+'.fits'))
-            shutil.move('rg'+i.replace('.fits',str(k)+'.fits'), clean_dir+'rg'+i.replace('.fits',str(k)+'.fits'))
-    
+            
+            iraf.imcopy('rg'+i+'['+str(k+1)+'][inherit+]' , 'rg'+i.replace('.fits',str(k+1)+'.fits'))
+            shutil.move('rg'+i.replace('.fits',+str(k+1)+'.fits'), clean_dir+'rg'+i.replace('.fits','_'+str(k+1)+'.fits'))
+            os.remove('rg'+i)
     
     
         
