@@ -5,7 +5,7 @@ import glob
 import numpy as np
 import math
 
-def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky', copy_files=True):
+def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= ['Wd2pos1','Wd2pos2', 'Wd2pos3', 'Wd2pos4'], dome_key='Domeflat', sky_key='sky', copy_files=True, mix_flats=True):
     '''
     Should be in directory called 'object name'
     creates structure as follows
@@ -23,7 +23,10 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
                                 
     
 
-    Expects that you are in the direcrtory 'object name' 
+    Expects that you are in the direcrtory 'object name'
+    Reduction Commments
+    --Currently mixes all 
+    ---
     '''
 
     if not frame_file:
@@ -64,11 +67,16 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
             for k in uni_filt:
                 if np.any(sci_bool[(filt1==k)*(date==night)]):
                     util.mkdir(ep_date+'/reduce/'+night+'/'+k)
+                    util.mkdir(ep_date+'/clean/'+k)
                     if copy_files:
                         for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
                             shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
-                        for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
-                            shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
+                        if mix_skies:
+                            for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
+                                shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
+                        else:
+                            for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)*date==night]):
+                                shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
                         if not np.any(sky_bool[(filt1==k)*(date==night)]):
                             #find skyies that are closest temporaly to the observations
                             arg = np.argmin(np.abs(mjd[(filt1==k)*sky_bool]-mjd[date==night][0]))
