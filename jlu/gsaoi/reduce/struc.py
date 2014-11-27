@@ -1,4 +1,4 @@
-import util
+from . import util
 import os, shutil
 from astropy.io import fits 
 import glob 
@@ -71,7 +71,7 @@ def mk_struc(frame_file=None, directory=None, ret=False, day_diff=14, sci_keys= 
                     if copy_files:
                         for ii,frame in enumerate(frames[np.logical_and(np.logical_and(np.logical_or(sky_bool,sci_bool),filt1==k),date==night)]):
                             shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
-                        if mix_skies:
+                        if mix_flats:
                             for ii, frame in enumerate(frames[np.logical_and(dome_bool, filt1==k)]):
                                 shutil.copy(directory+'/'+frame+'.fits', ep_date+'/reduce/'+night+'/'+k)
                         else:
