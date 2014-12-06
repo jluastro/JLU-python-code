@@ -52,7 +52,7 @@ def doit(frame_file, epoch_start_in=0, mix_flats=True, sky_key='sky', flat_key='
             filters = np.unique(filt1[epoch_bool_ars[index+epoch_start_in]])
             for k in filters:
                 #os.chdir(cwd+'/'+i+'/reduce/'+k)
-                util.mkdir(cwd+i+'clean/'+'/'+k)
+                util.mkdir(cwd+i+'/clean/'+'/'+k)
                 print 'Working in  '+cwd+i+'/reduce/'+j+'/'+k+'/'
                 if np.any((filt1==k)*(date==j)*(sci_bool)):
                     if not np.any(sky_bool[(filt1==k)*(date==j)]):
@@ -67,7 +67,7 @@ def doit(frame_file, epoch_start_in=0, mix_flats=True, sky_key='sky', flat_key='
                     #only give in list of frames that 
                     #print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
                     if mix_flats:
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
                     else:
                         red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)],ex_skies)) )
                 np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)
@@ -170,6 +170,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             
             iraf.imcopy('rg'+i+'['+str(k+1)+'][inherit+]' , 'rg'+i.replace('.fits',str(k+1)+'.fits'))
             shutil.move('rg'+i.replace('.fits',str(k+1)+'.fits'), clean_dir+'rg'+i.replace('.fits','_'+str(k+1)+'.fits'))
+            shutilcopy('rg'+i, directory+'rg'+i)
         os.remove('rg'+i)
     
     
