@@ -7,9 +7,9 @@ from scipy import interpolate
 
 class transform:
     
-    def __init__(self, x1, y1, x_ref, y_ref, order=3, num_knots=5, smooth=False, smooth_fac=None, weights=None ):
+    def __init__(self, x1, y1, x_ref, y_ref, order_poly=3,order_spline=3 num_knots=5, smooth=False, smooth_fac=None, weights=None ):
         '''
-        Wrapper to find high order fit to delta distances
+        
     
         args
         ----------------------------
@@ -26,18 +26,18 @@ class transform:
         weights - array of weights for the input data points, must be same length
         x_new, y_new - transformed coordinates, correspondds to reference frame
         spline_x, spline_y - spline transformation objects (see scipy.interpolate.BivariateSpline)
-        coeff_x,xoeff_y - polynomial coefficients for the polynomial fit
+        coeff_x,coeff_y - polynomial coefficients for the polynomial fit
         '''
-        order_dict = {1:3,2:6,3:10,4:15,5:21,6:28}
-        num_poly_param = order_dict[order]
+        
+        order_dict = {1:3,2:6,3:10,4:15,5:21,6:28,7:36}
+        num_poly_param = order_dict[order_poly]
     
         #x1, y1, x_ref, y_ref = match_simple(x1in, x2in, y1in, y2in, m1in, m_ref)
 
-    
         '''
-        With basic match, fit deltax , deltay with high order polynomial 
+        Fit polynomial to requested order
         '''
-
+        
         coeff_x, coeff_y = fit_poly(x1, y1, x_ref, y_ref, num_poly_param)
         x_poly = poly(np.array([x1,y1]), coeff_x)
         y_poly = poly(np.array([x1, y1]), coeff_y)
@@ -47,8 +47,8 @@ class transform:
         Now do spline fit on residual
         '''
 
-        x_new , spline_x =  fit_spline(x_poly, y_poly, x_ref, num_knots=num_knots, smooth=smooth, smooth_fac=smooth_fac, weights=weights)
-        y_new , spline_y =  fit_spline(x_poly, y_poly, y_ref, num_knots=num_knots, smooth=smooth, smooth_fac=smooth_fac, weights=weights)
+        x_new , spline_x =  fit_spline(x_poly, y_poly, x_ref, num_knots=num_knots, smooth=smooth, smooth_fac=smooth_fac, weights=weights, order=order_spline)
+        y_new , spline_y =  fit_spline(x_poly, y_poly, y_ref, num_knots=num_knots, smooth=smooth, smooth_fac=smooth_fac, weights=weights, order=order_spline)
 
         self.spline_x = spline_x
         self.spline_y = spline_y
@@ -59,7 +59,7 @@ class transform:
     
     def evaluate(self, x,y):
         x_poly = poly(np.array([x,y]), self.coeff_x)
-        y_poly = poly(np.array([x, y]), self.coeff_y)
+        y_poly = poly(np.array([x,y]), self.coeff_y)
 
         x_prime = self.spline_x.ev(x_poly, y_poly)
         y_prime = self.spline_y.ev(x_poly, y_poly)
