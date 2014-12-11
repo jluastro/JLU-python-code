@@ -22,7 +22,41 @@ def test_sanity():
     print cx, cy 
 
     
+def test_obj(amp=1, order_poly=3, num_knots=5, noise=.1, lenxx = 3, lenxy = 2, lenyx=5, lenyy=8, weights=None):
+    '''
+    tests total transform object in high_order
+    '''
 
+    x = (np.random.random(1000) -.5 ) * 4096
+    y = (np.random.random(1000) -.5 ) * 4096
+
+    xref, yref = periodic_dist(x,y,amp, lenxx, lenxy, lenyx, lenyy)
+    xref = xref + noise * np.random.randn(len(xref)) 
+    yref = yref + noise * np.random.randn(len(yref))
+
+    t = high_order.transform(x, y, xref, yref, order_poly=order_poly, num_knots=num_knots, weights=weights)
+
+    x_u = (np.random.random(1000) -.5 ) * 4096
+    y_u = (np.random.random(1000) -.5 ) * 4096
+
+    xref_u, yref_u = periodic_dist(x_u,y_u,amp, lenxx, lenxy, lenyx, lenyy)
+    xref_u = xref_u + noise * np.random.randn(len(xref_u)) 
+    yref_u = yref_u + noise * np.random.randn(len(yref_u))
+
+    xref_u_f , yref_u_f = t.evaluate(x_u, y_u)
+
+    print 'average residual i  x is ', np.sum(np.abs(xref_u_f - xref_u)) / len(xref_u_f)
+    print 'average residual i  y is ', np.sum(np.abs(yref_u_f - yref_u)) /  len(yref_u_f)
+
+    return t 
+    
+def periodic_dist(x, y, amp, lenxx, lenxy, lenyx, lenyy):
+    '''
+    caulaates periodic noise to test transformation
+    '''
+    x_new = x + amp**2 * np.cos(2*np.pi * x /((np.max(x)-np.min(x))*lenxx)) * np.cos(2*np.pi * x /((np.max(y)-np.min(y))*lenxy))
+    y_new = y + amp**2 * np.cos(2*np.pi * x /((np.max(x)-np.min(x))*lenyx)) * np.cos(2*np.pi * x /((np.max(y)-np.min(y))*lenyy))
+    return x_new, y_new
 
 def test_transform(num_free_param=10,co_ran=.1):
 

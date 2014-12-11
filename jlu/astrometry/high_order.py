@@ -7,7 +7,7 @@ from scipy import interpolate
 
 class transform:
     
-    def __init__(self, x1, y1, x_ref, y_ref, order_poly=3,order_spline=3 num_knots=5, smooth=False, smooth_fac=None, weights=None ):
+    def __init__(self, x1, y1, x_ref, y_ref, order_poly=3,order_spline=3 ,num_knots=5, smooth=False, smooth_fac=None, weights=None ):
         '''
         
     
