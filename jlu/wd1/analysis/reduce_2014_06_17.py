@@ -408,28 +408,36 @@ def plot_quiver_one_pass_refClust():
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
 
 
-def prep_plot_quiver_align():
+def prep_plot_quiver_align(align_root, orig=True):
     """
     Read in the align file, trim down to only stars with m_2010_F160W < 20)
     and save output to a FITS table.
     """
-    s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
+    # s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
+    s = starset.StarSet(workDir + '21.ALIGN_KS2/' + align_root)
 
     name = s.getArray('name')
 
-    x_2005_814 = s.getArrayFromEpoch(0, 'xorig')
-    x_2010_125 = s.getArrayFromEpoch(1, 'xorig')
-    x_2010_139 = s.getArrayFromEpoch(2, 'xorig')
-    x_2010_160 = s.getArrayFromEpoch(3, 'xorig')
-    x_2013_160 = s.getArrayFromEpoch(4, 'xorig')
-    x_2013_160s = s.getArrayFromEpoch(5, 'xorig')
+    if orig:
+        x_col_name = 'xorig'
+        y_col_name = 'yorig'
+    else:
+        x_col_name = 'xpix'
+        y_col_name = 'ypix'
+    
+    x_2005_814 = s.getArrayFromEpoch(0, x_col_name)
+    x_2010_125 = s.getArrayFromEpoch(1, x_col_name)
+    x_2010_139 = s.getArrayFromEpoch(2, x_col_name)
+    x_2010_160 = s.getArrayFromEpoch(3, x_col_name)
+    x_2013_160 = s.getArrayFromEpoch(4, x_col_name)
+    x_2013_160s = s.getArrayFromEpoch(5, x_col_name)
 
-    y_2005_814 = s.getArrayFromEpoch(0, 'yorig')
-    y_2010_125 = s.getArrayFromEpoch(1, 'yorig')
-    y_2010_139 = s.getArrayFromEpoch(2, 'yorig')
-    y_2010_160 = s.getArrayFromEpoch(3, 'yorig')
-    y_2013_160 = s.getArrayFromEpoch(4, 'yorig')
-    y_2013_160s = s.getArrayFromEpoch(5, 'yorig')
+    y_2005_814 = s.getArrayFromEpoch(0, y_col_name)
+    y_2010_125 = s.getArrayFromEpoch(1, y_col_name)
+    y_2010_139 = s.getArrayFromEpoch(2, y_col_name)
+    y_2010_160 = s.getArrayFromEpoch(3, y_col_name)
+    y_2013_160 = s.getArrayFromEpoch(4, y_col_name)
+    y_2013_160s = s.getArrayFromEpoch(5, y_col_name)
     
     m_2005_814 = s.getArrayFromEpoch(0, 'mag')
     m_2010_125 = s.getArrayFromEpoch(1, 'mag')
@@ -477,12 +485,23 @@ def prep_plot_quiver_align():
                names=colnames)
 
     t['name'] = 'align_starlist'
-    t.write('align_t_5ep.fits')
+
+    out_name = align_root + '_pos'
+    if orig:
+        out_name += '_orig'
+    out_name += '.fits'
+
+    t.write(out_name, overwrite=True)
                
-        
-def plot_quiver_align():
-    t = Table.read('align_t_5ep.fits')
-    
+    return
+
+def plot_quiver_align(align_root, orig=True):
+    out_name = align_root + '_pos'
+    if orig:
+        out_name += '_orig'
+    out_name += '.fits'
+    t = Table.read(out_name)
+
     good = np.where((t['m_2005_814'] < 17.5) & (t['m_2010_160'] < 16.7) & (t['m_2013_160'] < 16.7) &
                     (t['x_2005_814'] > -1) & (t['x_2010_160'] > -1) & (t['x_2013_160'] > -1) &
                     (t['y_2005_814'] > -1) & (t['y_2010_160'] > -1) & (t['y_2013_160'] > -1) &
@@ -515,7 +534,11 @@ def plot_quiver_align():
 
     qscale = 2e2
 
-    plot_dir = workDir + '21.ALIGN_KS2/plots/'
+    plot_dir = workDir + '21.ALIGN_KS2/plots'
+    if orig:
+        plot_dir += '_ks2/'
+    else:
+        plot_dir += '_' + align_root + '/'
             
     py.clf()
     q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_10, dy_05_10, scale=qscale)
