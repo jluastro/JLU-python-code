@@ -241,7 +241,7 @@ def plot_comparison(tableSuffix, posLim=0.15, magLimits=[-13,-1], errLim=0.04,
 
     py.plot(dx[idx], dy[idx], 'k.', ms=2)
     py.xlabel('X KS2 - One Pass')
-    py.xlabel('Y KS2 - One Pass')
+    py.ylabel('Y KS2 - One Pass')
     py.axis([-posLim, posLim, -posLim, posLim])
     py.savefig('plot_dxdy_vpd%s.png' % tableSuffix)
 
