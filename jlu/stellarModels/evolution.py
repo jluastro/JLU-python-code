@@ -12,12 +12,14 @@ from scipy import interpolate
 import time
 from gcreduce import gcutil
 from astropy.table import Table
+
+models_dir = '/u/jlu/work/models/'
     
 def get_geneva_isochrone(metallicity=0.02, logAge=8.0):
     """
     Metallicity in Z (def = solor of 0.02).
     """
-    rootDir = '/u/jlu/work/models/geneva/iso/'
+    rootDir = models_dir + 'geneva/iso/'
     
     metalPart = str(int(metallicity * 1000)).zfill(3)
     agePart = str(int(logAge * 100)).zfill(4)
@@ -59,7 +61,7 @@ def get_meynetmaeder_isochrone(logAge, metallicity=0.02, rotation=True):
     """
     inputAge = 10**logAge # years
 
-    rootDir = '/u/jlu/work/models/geneva/meynetMaeder/'
+    rootDir = models_dir + 'geneva/meynetMaeder/'
 
     metalPart = 'z' + str(int(metallicity * 1000)).zfill(2)
     rotPart = 'S0'
@@ -95,7 +97,7 @@ def get_meynetmaeder_isochrone(logAge, metallicity=0.02, rotation=True):
     return obj
 
 def make_isochrone_meynetmaeder(logAge, metallicity=0.02, rotation=True):
-    rootDir = '/u/jlu/work/models/geneva/meynetMaeder/'
+    rootDir = models_dir + 'geneva/meynetMaeder/'
 
     metalPart = 'z' + str(int(metallicity * 1000)).zfill(2)
     rotPart = 'S0'
@@ -149,7 +151,7 @@ def fetch_meynet_maeder_2003():
     
             print 'Saving %s' % file
 
-            root = '/u/jlu/work/models/geneva/meynetMaeder2003/'
+            root = models_dir + 'geneva/meynetMaeder2003/'
             outfile = open(root + file, 'w')
             outfile.write(contents)
             outfile.close()
@@ -185,7 +187,7 @@ def fetch_meynet_maeder_2005():
     
             print 'Saving %s' % file
 
-            root = '/u/jlu/work/models/geneva/meynetMaeder2005/'
+            root = models_dir + 'geneva/meynetMaeder2005/'
             outfile = open(root + file, 'w')
             outfile.write(contents)
             outfile.close()
@@ -195,7 +197,7 @@ def fetch_meynet_maeder_2005():
 
     
 def get_palla_stahler_isochrone(logAge):
-    pms_isochrones = '/u/jlu/work/models/preMS/pallaStahler1999/' + \
+    pms_isochrones = models_dir + 'preMS/pallaStahler1999/' + \
         'pms_isochrones.txt'
 
     data = Table.read(pms_isochrones, format='ascii')
@@ -213,7 +215,7 @@ def get_palla_stahler_isochrone(logAge):
     umass = np.unique(mass)
 
 def get_padova_isochrone(logAge, metallicity=0.02):
-    mod_dir = '/u/jlu/work/models/padova/'
+    mod_dir = models_dir + 'padova/'
 
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
@@ -243,7 +245,7 @@ def get_padova_isochrone(logAge, metallicity=0.02):
     return obj
 
 def get_siess_isochrone(logAge, metallicity=0.02):
-    pms_dir = '/u/jlu/work/models/preMS/siess2000/'
+    pms_dir = models_dir + 'preMS/siess2000/'
 
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
@@ -286,7 +288,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
     """
     age = 10**log_age
 
-    rootDir = '/u/jlu/work/models/preMS/siess2000/'
+    rootDir = models_dir + 'preMS/siess2000/'
     metSuffix = 'z' + str(metallicity).split('.')[-1]
     rootDir += metSuffix + '/'
 
@@ -480,8 +482,8 @@ def test_merged_isochrones(logAge):
     py.xlabel('log Teff')
     py.ylabel('log L')
 
-    py.savefig('/u/jlu/work/models/test/merged_iso_%.2f.png' % logAge)
-    py.savefig('/u/jlu/work/models/test/merged_iso_%.2f.eps' % logAge)
+    py.savefig(models_dir + 'test/merged_iso_%.2f.png' % logAge)
+    py.savefig(models_dir + 'test/merged_iso_%.2f.eps' % logAge)
 
     # Print out information about the intersection points
     print '##########'
@@ -538,7 +540,7 @@ def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
     the Padova evolutionary tracks for all ages over logAge=7.4 (~25 Myr).
     """
     # Root data directory for Meynet & Maeder isocrhones
-    rootDirMM = '/u/jlu/work/models/geneva/meynetMaeder/'
+    rootDirMM = models_dir + 'geneva/meynetMaeder/'
     metalPart = 'z' + str(int(metallicity * 1000)).zfill(2)
     rotPart = 'S0'
     if rotation:
@@ -546,12 +548,12 @@ def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
     rootDirMM += 'iso_' + metalPart + rotPart + '/'
 
     # Root data directory for Siess+ isochrones
-    rootDirSiess = '/u/jlu/work/models/preMS/siess2000/'
+    rootDirSiess = models_dir + 'preMS/siess2000/'
     metSuffix = 'z' + str(metallicity).split('.')[-1]
     rootDirSiess += metSuffix + '/iso/'
 
     # Root data directory for Geneva isochrones
-    rootDirPadova = '/u/jlu/work/models/padova/'
+    rootDirPadova = models_dir + 'padova/'
     metalSuffix = 'z' + str(metallicity).split('.')[-1]
     rootDirPadova += metalSuffix + '/'
 
@@ -561,7 +563,7 @@ def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
     isoFilesP = glob.glob(rootDirPadova + 'iso*')
 
     # Output of merged isochrones
-    outDir = '/u/jlu/work/models/merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
+    outDir = models_dir + 'merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
     gcutil.mkdir(outDir)
     
 
@@ -724,7 +726,7 @@ def merge_isochrone_siess_padova(logAge, metallicity=0.02):
 def get_merged_isochrone(logAge, metallicity=0.02):
     # Pre-calculated merged isochrones
     metSuffix = 'z' + str(metallicity).split('.')[-1]
-    isoFile = '/u/jlu/work/models/merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
+    isoFile = models_dir + 'merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
     isoFile += 'iso_%.2f.dat' % logAge
 
     data = Table.read(isoFile, format='ascii')
@@ -748,7 +750,7 @@ class Isochrone(object):
         self.log_age = log_age
 
 def get_siess_tracks(metallicity=0.02):
-    pms_dir = '/u/jlu/work/models/preMS/siess2000/'
+    pms_dir = models_dir + 'preMS/siess2000/'
 
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
