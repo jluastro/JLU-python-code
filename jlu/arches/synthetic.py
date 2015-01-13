@@ -2,7 +2,10 @@ import numpy as np
 import pylab as py
 from jlu.stellarModels import evolution
 from jlu.stellarModels import atmospheres as atm
-from popstar import reddening
+#from popstar import reddening
+#-------#
+from jlu.stellarModels import extinction as reddening
+#------#
 from scipy import interpolate
 from scipy import stats
 from gcwork import objects
