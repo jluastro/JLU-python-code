@@ -89,6 +89,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     mag153m = np.zeros(len(temp), dtype=float)
     magJ = np.zeros(len(temp), dtype=float)
     magH = np.zeros(len(temp), dtype=float)
+    magK = np.zeros(len(temp), dtype=float)
     magKp = np.zeros(len(temp), dtype=float)
     magLp = np.zeros(len(temp), dtype=float)
 
@@ -97,6 +98,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     filt153m = get_filter_info('wfc3,ir,f153m')
     filtJ = get_filter_info('nirc2,J')
     filtH = get_filter_info('nirc2,H')
+    filtK = get_filter_info('nirc2,K')
     filtKp = get_filter_info('nirc2,Kp')
     filtLp = get_filter_info('nirc2,Lp')
 
@@ -106,6 +108,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     red153m = redlaw.reddening(AKs).resample(filt153m.wave)
     redJ = redlaw.reddening(AKs).resample(filtJ.wave)
     redH = redlaw.reddening(AKs).resample(filtH.wave)
+    redK = redlaw.reddening(AKs).resample(filtK.wave)
     redKp = redlaw.reddening(AKs).resample(filtKp.wave)
     redLp = redlaw.reddening(AKs).resample(filtLp.wave)
 
@@ -141,6 +144,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         mag153m[ii] = mag_in_filter(star, filt153m, red153m)
         magJ[ii] = mag_in_filter(star, filtJ, redJ)
         magH[ii] = mag_in_filter(star, filtH, redH)
+        magK[ii] = mag_in_filter(star, filtK, redK)
         magKp[ii] = mag_in_filter(star, filtKp, redKp)
         magLp[ii] = mag_in_filter(star, filtLp, redLp)
 
@@ -159,6 +163,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     iso.mag153m = mag153m
     iso.magJ = magJ
     iso.magH = magH
+    iso.magK = magK
     iso.magKp = magKp
     iso.magLp = magLp
     iso.isWR = isWR
