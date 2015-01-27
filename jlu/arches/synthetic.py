@@ -1,8 +1,11 @@
 import numpy as np
 import pylab as py
 from jlu.stellarModels import evolution
-from jlu.stellarModels import extinction
 from jlu.stellarModels import atmospheres as atm
+#from popstar import reddening
+#-------#
+from jlu.stellarModels import extinction as reddening
+#------#
 from scipy import interpolate
 from scipy import stats
 from gcwork import objects
@@ -40,53 +43,8 @@ def Vega():
     
     return vega
 
-class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
-    """
-    You can call reddening(AKs) which will return an ArraySpectralElement
-    that can then be manipulated with spectra.
-    """
-    def __init__(self):
-        # Fetch the extinction curve, pre-interpolate across 1-8 microns
-        wave = np.arange(0.5, 8.0, 0.001)
-        
-        # This will eventually be scaled by AKs when you
-        # call reddening(). Right now, calc for AKs=1
-        Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False)
-
-        # Convert wavelength to angstrom
-        wave *= 10**4
-
-        pysynphot.reddening.CustomRedLaw.__init__(self, wave=wave, 
-                                                  waveunits='angstrom',
-                                                  Avscaled=Alambda_scaled,
-                                                  name='Nishiyama09',
-                                                  litref='Nishiyama+ 2009')
-
-class RedLawRomanZuniga07(pysynphot.reddening.CustomRedLaw):
-    """
-    You can call reddening(AKs) which will return an ArraySpectralElement
-    that can then be manipulated with spectra.
-    """
-    def __init__(self):
-        # Fetch the extinction curve, pre-interpolate across 1-8 microns
-        wave = np.arange(1.0, 8.0, 0.01)
-        
-        # This will eventually be scaled by AKs when you
-        # call reddening(). Right now, calc for AKs=1
-        Alambda_scaled = extinction.romanzuniga07(wave, 1.0, makePlot=False)
-
-        # Convert wavelength to angstrom
-        wave *= 10**4
-
-        pysynphot.reddening.CustomRedLaw.__init__(self, wave=wave, 
-                                                  waveunits='angstrom',
-                                                  Avscaled=Alambda_scaled,
-                                                  name='RomanZuniga07',
-                                                  litref='Roman-Zuniga+ 2007')
-
-
 vega = Vega()
-redlaw = RedLawNishiyama09()
+redlaw = reddening.RedLawNishiyama09()
 
 
 def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
@@ -97,7 +55,8 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         (logAge, AKs, distance)
     print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
 
-    outFile = '/Users/mwhosek/Desktop/699-2/isochrones/'
+    # outFile = '/u/mwhosek/Desktop/699-2/isochrones/'
+    outFile = '/u/jlu/work/arches/models/iso/'
     outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
                                                  str(distance).zfill(4))
 
@@ -128,14 +87,18 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     mag127m = np.zeros(len(temp), dtype=float)
     mag139m = np.zeros(len(temp), dtype=float)
     mag153m = np.zeros(len(temp), dtype=float)
+    magJ = np.zeros(len(temp), dtype=float)
     magH = np.zeros(len(temp), dtype=float)
+    magK = np.zeros(len(temp), dtype=float)
     magKp = np.zeros(len(temp), dtype=float)
     magLp = np.zeros(len(temp), dtype=float)
 
     filt127m = get_filter_info('wfc3,ir,f127m')
     filt139m = get_filter_info('wfc3,ir,f139m')
     filt153m = get_filter_info('wfc3,ir,f153m')
+    filtJ = get_filter_info('nirc2,J')
     filtH = get_filter_info('nirc2,H')
+    filtK = get_filter_info('nirc2,K')
     filtKp = get_filter_info('nirc2,Kp')
     filtLp = get_filter_info('nirc2,Lp')
 
@@ -143,7 +106,9 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     red127m = redlaw.reddening(AKs).resample(filt127m.wave)
     red139m = redlaw.reddening(AKs).resample(filt139m.wave)
     red153m = redlaw.reddening(AKs).resample(filt153m.wave)
+    redJ = redlaw.reddening(AKs).resample(filtJ.wave)
     redH = redlaw.reddening(AKs).resample(filtH.wave)
+    redK = redlaw.reddening(AKs).resample(filtK.wave)
     redKp = redlaw.reddening(AKs).resample(filtKp.wave)
     redLp = redlaw.reddening(AKs).resample(filtLp.wave)
 
@@ -177,7 +142,9 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         mag127m[ii] = mag_in_filter(star, filt127m, red127m)
         mag139m[ii] = mag_in_filter(star, filt139m, red139m)
         mag153m[ii] = mag_in_filter(star, filt153m, red153m)
+        magJ[ii] = mag_in_filter(star, filtJ, redJ)
         magH[ii] = mag_in_filter(star, filtH, redH)
+        magK[ii] = mag_in_filter(star, filtK, redK)
         magKp[ii] = mag_in_filter(star, filtKp, redKp)
         magLp[ii] = mag_in_filter(star, filtLp, redLp)
 
@@ -194,7 +161,9 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     iso.mag127m = mag127m
     iso.mag139m = mag139m
     iso.mag153m = mag153m
+    iso.magJ = magJ
     iso.magH = magH
+    iso.magK = magK
     iso.magKp = magKp
     iso.magLp = magLp
     iso.isWR = isWR
@@ -207,6 +176,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     pickle.dump(mag127m, _out)
     pickle.dump(mag139m, _out)
     pickle.dump(mag153m, _out)
+    pickle.dump(magJ, _out)
     pickle.dump(magH, _out)
     pickle.dump(magKp, _out)
     pickle.dump(magLp, _out)
@@ -233,6 +203,7 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     iso.mag127m = pickle.load(_in)
     iso.mag139m = pickle.load(_in)
     iso.mag153m = pickle.load(_in)
+    iso.magJ = pickle.load(_in)
     iso.magH = pickle.load(_in)
     iso.magKp = pickle.load(_in)
     iso.magLp = pickle.load(_in)

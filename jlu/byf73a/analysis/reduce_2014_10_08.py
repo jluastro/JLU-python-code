@@ -1,9 +1,10 @@
 """
-Research Note: Proper Motion Test (2014-06)
-Working Directory: /u/jlu/data/Wd1/hst/reduce_2014_06_17/
+Research Note: Proper Motion Test (2014-10-08)
+Working Directory: /u/jlu/data/Wd1/hst/reduce_2014_10_08/
 """
 import math
 import atpy
+import subprocess
 import pylab as py
 import numpy as np
 from jlu.hst import images
@@ -11,6 +12,7 @@ from jlu.hst import astrometry as ast
 import glob
 from matplotlib import colors
 from jlu.util import statsIter
+from jlu.util import fileUtil
 import pdb
 import os
 from hst_flystar import reduce as flystar
@@ -21,94 +23,125 @@ from astropy.table import Column
 from jlu.astrometry import align
 from jlu.gc.gcwork import starset 
 
-workDir = '/u/jlu/data/wd1/hst/reduce_2014_06_17/'
+workDir = '/u/jlu/data/byf73a/hst/reduce_2014_10_08/'
 codeDir = '/u/jlu/code/fortran/hst/'
 
 # Load this variable with outputs from calc_years()
-years = {'2005_F814W': 2005.485,
-         '2010_F125W': 2010.652,
-         '2010_F139M': 2010.652,
-         '2010_F160W': 2010.652,
-         '2013_F160W': 2013.199,
-         '2013_F160Ws': 2013.202}
+years = {'2014_F110W':  2014.748,
+         '2014_F160W':  2014.748,
+         '2014_F167N':  2014.748,
+         '2014_F110Ws': 2014.748}
 
-topStars = [{'name':'wd1_00001', 'x': 1838.81, 'y':  568.98, 'm160': -10.2},
-            {'name':'wd1_00002', 'x': 3396.91, 'y': 1389.27, 'm160': -10.1},
-            {'name':'wd1_00003', 'x': 3824.63, 'y': 3347.88, 'm160': -10.4},
-            {'name':'wd1_00004', 'x':  717.67, 'y': 3033.63, 'm160':  -9.9},
-            {'name':'wd1_00005', 'x': 2030.72, 'y': 2683.57, 'm160':  -9.7},
-            {'name':'wd1_00006', 'x':  676.98, 'y':  663.25, 'm160':  -9.6}]
+# topStars = [{'name':'wd1_00001', 'x': 1838.81, 'y':  568.98, 'm160': -10.2},
+#             {'name':'wd1_00002', 'x': 3396.91, 'y': 1389.27, 'm160': -10.1},
+#             {'name':'wd1_00003', 'x': 3824.63, 'y': 3347.88, 'm160': -10.4},
+#             {'name':'wd1_00004', 'x':  717.67, 'y': 3033.63, 'm160':  -9.9},
+#             {'name':'wd1_00005', 'x': 2030.72, 'y': 2683.57, 'm160':  -9.7},
+#             {'name':'wd1_00006', 'x':  676.98, 'y':  663.25, 'm160':  -9.6}]
 
+num_pos = 9
+
+
+def make_directories():
+    years = ['2014', '2014', '2014', '2014']
+    filts = ['F110W', 'F160W', 'F167N', 'F110Ws']
+
+    for ii in range(len(years)):
+        for nn in range(1, num_pos+1):
+            dir_root = '{0}/{1}_{2}_p{3}'.format(workDir, years[ii],
+                                                 filts[ii], str(nn))
+            fileUtil.mkdir(dir_root)
+
+            os.chdir(dir_root)
+
+            subprocess.call(['ln', '-s',
+                             '/u/jlu/data/HST/byf73a/13742/flt/' + filts[ii] + '_p' + str(nn),
+                            '00.DATA'])
+
+            fileUtil.mkdir(dir_root + '/01.XYM')
+
+    os.chdir(workDir)
     
 
-def run_img2xym_acswfc(directory):
+def calc_years():
     """
-    Run img2xym on ACS WFC data in the specified directory, <dir>. There is a specific
-    directory structure that is expected within <dir>:
-
-    00.DATA/
-    01.XYM/
+   Calculate the epoch for each data set.
     """
-    os.chdir(directory + '/01.XYM')
-
-    program = 'img2xymrduv'
-
-    ## Arguments include:
-    # hmin - dominance of peak. Something like the minimum SNR of a peak w.r.t. background.
-    hmin = 5
-    # fmin - minumum peak flux above the background
-    fmin = 500
-    # pmax - maximum flux allowed (absolute)
-    pmax = 99999
-    # psf - the library
-    psf = codeDir + 'PSFs/PSFSTD_ACSWFC_F814W_4SM3.fits'
-
-    ## Files to operate on:
-    dataDir = '../00.DATA/*flt.fits'
-
-    cmd_tmp = '{program} {hmin} {fmin} {pmax} {psf} {dataDir}'
-    cmd = cmd_tmp.format(program=program, hmin=hmin, fmin=fmin, pmax=pmax, psf=psf,
-                         dataDir=dataDir)
-
-    try:
-        os.system(cmd)
-    finally:
-        os.chdir('../../')
+    years = ['2014', '2014', '2014', '2014']
+    filts = ['F110W', 'F160W', 'F167N', 'F110Ws']
     
+    for ii in range(len(years)):
+        dataDir = '{0}/{1}_{2}/00.DATA/'.format(workDir, years[ii], filts[ii])
 
-def xym_acswfc_pass1():
-    """
-    Match and align the 3 exposures. Make a new star list (requiring 2 out of
-    3 images). Also make sure the new starlist has only positive pxel values.
-    """
-    year = '2005'
-    filt = 'F814W'
+        epoch = images.calc_mean_year(glob.glob(dataDir + '*_flt.fits'))
 
-    xym_dir = '{0}_{1}/01.XYM/'.format(year, filt)
+        print('{0}_{1} at {2:8.3f}'.format(years[ii], filts[ii], epoch))
 
-    flystar.xym2mat('ref1', year, filt, camera='f5 c5', mag='m-13.5,-10', clobber=True)
-    flystar.xym2bar('ref1', year, filt, camera='f5 c5', Nepochs=2, clobber=True)
+    return
 
-    starlists.make_matchup_positive(xym_dir + 'MATCHUP.XYMEEE.ref1')
+def run_img2xym(year, filt):
+    for nn in range(1, num_pos+1):
+        print 'RUN IMG2XYM: ' + year + ', ' + filt + ', pos ' + str(nn)
+        suffix = '_p{0}'.format(nn)
+        flystar.img2xym_wfc3ir(year, filt, suffix=suffix)
+
+    return
+
+def run_one_pass(year, filt):
+    for nn in range(1, num_pos+1):
+        print 'RUN ONE PASS: ' + year + ', ' + filt + ', pos ' + str(nn)
+        suffix = '_p{0}'.format(nn)
+        run_one_pass_single(year, filt, suffix)
+
+    return
+
+def run_one_pass_single(year, filt, suffix):
+    if year == '2014':
+        if filt == 'F110W':
+            Nepochs = [3, 3]
+        if filt == 'F167N':
+            Nepochs = [14, 10]
     
-def xym_acswfc_pass2():
-    """
-    Re-do the alignment with the new positive master file. Edit IN.xym2mat to 
-    change 00 epoch to use the generated matchup file with f5, c0 
-    (MATCHUP.XYMEEE.01.all.positive). Make sure to remove all the old MAT.* and 
-    TRANS.xym2mat files because there is a big shift in the transformation from 
-    the first time we ran it.
-    """
-    year = '2005'
-    filt = 'F814W'
+    flystar.xym2mat('v1', year, filt, mag="m-99,-4", ref_mag="m-99,-4",
+                    dir_suffix=suffix, clobber=True)
 
-    xym_dir = '{0}_{1}/01.XYM/'.format(year, filt)
+    flystar.xym2bar('v1', year, filt, dir_suffix=suffix, Nepochs=Nepochs[0],
+                    clobber=True)
 
-    flystar.xym2mat('ref2', year, filt, camera='f5 c5', mag='m-13.5,-10',
-                    ref='MATCHUP.XYMEEE.ref1.positive', ref_mag='m-13.5,-10',
-                    ref_camera='f5 c0', clobber=True)
-    flystar.xym2bar('ref2', year, filt, Nepochs=2, zeropoint='', 
-                    camera='f5 c5', clobber=True)
+    flystar.xym2mat('v2', year, filt, mag="m-99,-4", ref_mag="m-99,-4",
+                    dir_suffix=suffix, clobber=True,
+                    ref='MATCHUP.XYMEEE.v1', ref_camera='c0')
+    flystar.xym2bar('v2', year, filt, dir_suffix=suffix, Nepochs=Nepochs[1],
+                    clobber=False)
+
+    return
+
+def plot_matchup_one_pass(year, filt):
+    outfile = workDir + '/matchup_err_' + year + '_' + filt + '.txt'
+    _out = open(outfile, 'w')
+    
+    for nn in range(1, num_pos+1):
+        print ''
+        print '**************************************************'
+        print 'PLOT ONE PASS: ' + year + ', ' + filt + ', pos ' + str(nn)
+        print '**************************************************'
+
+        dir_root = '{0}/{1}_{2}_p{3}/01.XYM'.format(workDir, year,
+                                                    filt, str(nn))
+        os.chdir(dir_root)
+        stats = starlists.plot_matchup_err('MATCHUP.XYMEEE.v2', plotMagRange=[-13,0])
+
+        fmt = '{Norig:3d}  {Ngood:3d}  {minMagGood:5.2f}  {maxMagGood:5.2f}  '
+        fmt += '{merr:6.3f}  {xerr:7.3f}  {yerr:7.3f}\n'
+        _out.write(fmt.format(**stats))
+        
+    _out.close()
+    os.chdir(workDir)
+
+    return
+        
+#### Out OF DATE BELOW HERE ####
+
 
 def plot_cmd_one_pass(reread=False):
     """
@@ -408,36 +441,28 @@ def plot_quiver_one_pass_refClust():
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
 
 
-def prep_plot_quiver_align(align_root, orig=True):
+def prep_plot_quiver_align():
     """
     Read in the align file, trim down to only stars with m_2010_F160W < 20)
     and save output to a FITS table.
     """
-    # s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
-    s = starset.StarSet(workDir + '21.ALIGN_KS2/' + align_root)
+    s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
 
     name = s.getArray('name')
 
-    if orig:
-        x_col_name = 'xorig'
-        y_col_name = 'yorig'
-    else:
-        x_col_name = 'xpix'
-        y_col_name = 'ypix'
-    
-    x_2005_814 = s.getArrayFromEpoch(0, x_col_name)
-    x_2010_125 = s.getArrayFromEpoch(1, x_col_name)
-    x_2010_139 = s.getArrayFromEpoch(2, x_col_name)
-    x_2010_160 = s.getArrayFromEpoch(3, x_col_name)
-    x_2013_160 = s.getArrayFromEpoch(4, x_col_name)
-    x_2013_160s = s.getArrayFromEpoch(5, x_col_name)
+    x_2005_814 = s.getArrayFromEpoch(0, 'xorig')
+    x_2010_125 = s.getArrayFromEpoch(1, 'xorig')
+    x_2010_139 = s.getArrayFromEpoch(2, 'xorig')
+    x_2010_160 = s.getArrayFromEpoch(3, 'xorig')
+    x_2013_160 = s.getArrayFromEpoch(4, 'xorig')
+    x_2013_160s = s.getArrayFromEpoch(5, 'xorig')
 
-    y_2005_814 = s.getArrayFromEpoch(0, y_col_name)
-    y_2010_125 = s.getArrayFromEpoch(1, y_col_name)
-    y_2010_139 = s.getArrayFromEpoch(2, y_col_name)
-    y_2010_160 = s.getArrayFromEpoch(3, y_col_name)
-    y_2013_160 = s.getArrayFromEpoch(4, y_col_name)
-    y_2013_160s = s.getArrayFromEpoch(5, y_col_name)
+    y_2005_814 = s.getArrayFromEpoch(0, 'yorig')
+    y_2010_125 = s.getArrayFromEpoch(1, 'yorig')
+    y_2010_139 = s.getArrayFromEpoch(2, 'yorig')
+    y_2010_160 = s.getArrayFromEpoch(3, 'yorig')
+    y_2013_160 = s.getArrayFromEpoch(4, 'yorig')
+    y_2013_160s = s.getArrayFromEpoch(5, 'yorig')
     
     m_2005_814 = s.getArrayFromEpoch(0, 'mag')
     m_2010_125 = s.getArrayFromEpoch(1, 'mag')
@@ -485,23 +510,12 @@ def prep_plot_quiver_align(align_root, orig=True):
                names=colnames)
 
     t['name'] = 'align_starlist'
-
-    out_name = align_root + '_pos'
-    if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-
-    t.write(out_name, overwrite=True)
+    t.write('align_t_5ep.fits')
                
-    return
-
-def plot_quiver_align(align_root, orig=True):
-    out_name = align_root + '_pos'
-    if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-    t = Table.read(out_name)
-
+        
+def plot_quiver_align():
+    t = Table.read('align_t_5ep.fits')
+    
     good = np.where((t['m_2005_814'] < 17.5) & (t['m_2010_160'] < 16.7) & (t['m_2013_160'] < 16.7) &
                     (t['x_2005_814'] > -1) & (t['x_2010_160'] > -1) & (t['x_2013_160'] > -1) &
                     (t['y_2005_814'] > -1) & (t['y_2010_160'] > -1) & (t['y_2013_160'] > -1) &
@@ -534,11 +548,7 @@ def plot_quiver_align(align_root, orig=True):
 
     qscale = 2e2
 
-    plot_dir = workDir + '21.ALIGN_KS2/plots'
-    if orig:
-        plot_dir += '_ks2/'
-    else:
-        plot_dir += '_' + align_root + '/'
+    plot_dir = workDir + '21.ALIGN_KS2/plots/'
             
     py.clf()
     q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_10, dy_05_10, scale=qscale)
@@ -773,20 +783,6 @@ def plot_vpd_across_field(nside=4, interact=False):
     out = '{0}/plots/vec_proper_motion_grid_sig_nside{1}.png'
     py.savefig(out.format(workDir, nside))
 
-def calc_years():
-    """
-    Calculate the epoch for each data set.
-    """
-    years = ['2005', '2010', '2010', '2010', '2013', '2013']
-    filts = ['F814W', 'F125W', 'F139M', 'F160W', 'F160W', 'F160Ws']
-    
-    for ii in range(len(years)):
-        dataDir = '{0}/{1}_{2}/00.DATA/'.format(workDir, years[ii], filts[ii])
-
-        epoch = images.calc_mean_year(glob.glob(dataDir + '*_flt.fits'))
-
-        print('{0}_{1} at {2:8.3f}'.format(years[ii], filts[ii], epoch))
-        
     
 def make_master_lists():
     """
@@ -1358,9 +1354,7 @@ def make_catalog(use_RMSE=True):
     final = None
     good = None
 
-    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
-    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
-    d_all = Table.read('wd1_catalog_onepass.fits')
+    d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
 
     # TRIM out all stars that aren't detected in all 3 epochs:
     #    2005_814
@@ -1457,8 +1451,7 @@ def make_catalog(use_RMSE=True):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
-    # d.write('wd1_catalog.fits', format='fits')
-    d.write('wd1_catalog_onepass_vel.fits', format='fits', overwrite=True)
+    d.write('wd1_catalog.fits', format='fits')
     
     return
 

@@ -35,7 +35,7 @@ def test_miracle_match50():
     ##########
     # Test #2
     ##########
-    # Perturb x positions by very small amounts
+    # Perturb x positions by very small amountsn
     x2 = x1 + (np.random.randn(nstars) * 0.001)  
     y2 = y1 + (np.random.randn(nstars) * 0.001)
     m2 = m1 + (np.random.randn(nstars) * 0.001)

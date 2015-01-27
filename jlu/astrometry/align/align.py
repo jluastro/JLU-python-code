@@ -111,6 +111,9 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
     for nn in range(1, Nmatch_max+1):
         i1_nn = np.where(Nmatch == nn)[0]
 
+        if len(i1_nn) == 0:
+            continue
+
         if nn == 1:
             i2_nn = np.array([i2_match[mm][0] for mm in i1_nn])
             if dm_tol != None:
@@ -152,7 +155,7 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
 
                 # Double check that "min" choice is still within our
                 # detla-mag tolerence.
-                dm_tmp = np.choose(dm_min, dm)
+                dm_tmp = np.choose(dm_min, dm.T)
 
                 keep = (dm_min == dr_min) & (dm_tmp < dm_tol)
             else:
@@ -176,15 +179,15 @@ def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):
 
     # Deal with duplicates
     duplicates = [item for item, count in Counter(idxs2).iteritems() if count > 1]
-    print 'Found {0:d}'.format(len(duplicates))
-    for dd in range(len(duplicates)):
-        dups = np.where(idxs2 == duplicates[dd])[0]
+    print 'Found {0:d} out of {1:d} duplicates'.format(len(duplicates), len(dm))
+    # for dd in range(len(duplicates)):
+    #     dups = np.where(idxs2 == duplicates[dd])[0]
 
-        # Handle them in brightness order -- brightest first in the first starlist
-        fsort = m1[dups].argsort()
+    #     # Handle them in brightness order -- brightest first in the first starlist
+    #     fsort = m1[dups].argsort()
 
-        # For every duplicate, match to the star that is closest in space and 
-        # magnitude. HMMMM.... this doesn't seem like it will work optimally.
+    #     # For every duplicate, match to the star that is closest in space and 
+    #     # magnitude. HMMMM.... this doesn't seem like it will work optimally.
 
  
     return idxs1, idxs2, dr, dm

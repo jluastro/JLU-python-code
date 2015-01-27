@@ -11,8 +11,11 @@ from jlu.hst import astrometry as ast
 import glob
 from matplotlib import colors
 from jlu.util import statsIter
+from jlu.util import fileUtil
 import pdb
 import os
+import shutil
+import subprocess
 from hst_flystar import reduce as flystar
 from hst_flystar import starlists
 import astropy.table
@@ -21,7 +24,7 @@ from astropy.table import Column
 from jlu.astrometry import align
 from jlu.gc.gcwork import starset 
 
-workDir = '/u/jlu/data/wd1/hst/reduce_2014_06_17/'
+workDir = '/u/jlu/data/wd1/hst/reduce_2015_01_05/'
 codeDir = '/u/jlu/code/fortran/hst/'
 
 # Load this variable with outputs from calc_years()
@@ -39,7 +42,6 @@ topStars = [{'name':'wd1_00001', 'x': 1838.81, 'y':  568.98, 'm160': -10.2},
             {'name':'wd1_00005', 'x': 2030.72, 'y': 2683.57, 'm160':  -9.7},
             {'name':'wd1_00006', 'x':  676.98, 'y':  663.25, 'm160':  -9.6}]
 
-    
 
 def run_img2xym_acswfc(directory):
     """
@@ -293,7 +295,65 @@ def plot_quiver_one_pass(reread=False):
     print '2013 - 2010'
     print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std())
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
-    
+
+def make_refClust_catalog():
+    """
+    Make mat_all_good.fits where we matchup all the refClust starlists and
+    get a preliminary look at the VPD and CMD. Do this on a per-position basis.
+    """
+    for ii in range(1, 4+1):
+        pos_dir = 'match_refClust_pos{0}'.format(ii)
+        os.chdir(workDir + '03.MAT_POS/')
+        
+        fileUtil.mkdir(pos_dir)
+        shutil.copy('2005_F814W/01.XYM/MATCHUP.XYMEEE.F814W.2005.refClust', pos_dir)
+        os.chdir(workDir + '03.MAT_POS/' + pos_dir)
+        
+        # Call xym1mat to match against F814W for all combos
+        f814w = 'MATCHUP.XYMEEE.F814W.2005.refClust'
+
+        years = ['2010', '2010', '2010', '2013']
+        filts = ['F160W', 'F139M', 'F125W', 'F160W']
+
+        for jj in range(len(years)):
+            match = 'MATCHUP.XYMEEE.'
+            match += '{0}.{1}.pos{2}.refClust'.format(filts[jj], years[jj], ii)
+            out_root = 'mat_2005_{0}_{1}_pos{2}'.format(years[jj], filts[jj], ii)
+
+            match_dir = '../{0}_{1}_pos{2}/01.XYM/'.format(years[jj], filts[jj], ii)
+            shutil.copy(match_dir + match, './')
+            
+            cmd = ['xym1mat', f814w, match,
+                   out_root + '.mat', out_root + '.xym1', out_root + '.lnk',
+                   '14', '0.99']
+            subprocess.call(cmd)
+
+        # Process the output.
+        fmt = '{name:8s}  {x:10.4f} {y:10.4f} {m:8.4f}  '
+        fmt += '{xe:7.4f} {ye:7.4f} {me:7.4f}  '
+        fmt += '{n:2d}\n'
+        
+        # First 2005 (treated differently)
+        tab = starlists.read_matchup(f814w)
+        _final_2005 = open('final_2005_814_pos{0}.txt'.format(ii), 'w')
+        for tt in tab:
+            _final_2005.write(fmt.format(name=tt[13], x=tt[0], y=tt[1], m=tt[2],
+                                         xe=tt[3], ye=tt[4], me=tt[5], n=tt[10]))
+        _final_2005.close()
+
+        # All 2010 and 2013 data
+        for jj in range(len(years)):
+            suffix = '{0}_{1}_pos{2}'.format(years[jj], filts[jj], ii)
+            _final = open('final_' + suffix + '.txt', 'w')
+            tab = Table.read('mat_2005_' + suffix + '.lnk', format='ascii')
+
+            for tt in tab:
+                _final.write(fmt.format(name=tt[30], x=tt[19], y=tt[20], m=tt[21],
+                                        xe=tt[22], ye=tt[23], me=tt[24], n=tt[29]))
+            _final.close()
+                                        
+    return
+
 def plot_quiver_one_pass_refClust():
     """
     Plot a quiver vector plot between F814W in 2005 and F160W in 2010 and 2013.
@@ -408,36 +468,28 @@ def plot_quiver_one_pass_refClust():
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
 
 
-def prep_plot_quiver_align(align_root, orig=True):
+def prep_plot_quiver_align():
     """
     Read in the align file, trim down to only stars with m_2010_F160W < 20)
     and save output to a FITS table.
     """
-    # s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
-    s = starset.StarSet(workDir + '21.ALIGN_KS2/' + align_root)
+    s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
 
     name = s.getArray('name')
 
-    if orig:
-        x_col_name = 'xorig'
-        y_col_name = 'yorig'
-    else:
-        x_col_name = 'xpix'
-        y_col_name = 'ypix'
-    
-    x_2005_814 = s.getArrayFromEpoch(0, x_col_name)
-    x_2010_125 = s.getArrayFromEpoch(1, x_col_name)
-    x_2010_139 = s.getArrayFromEpoch(2, x_col_name)
-    x_2010_160 = s.getArrayFromEpoch(3, x_col_name)
-    x_2013_160 = s.getArrayFromEpoch(4, x_col_name)
-    x_2013_160s = s.getArrayFromEpoch(5, x_col_name)
+    x_2005_814 = s.getArrayFromEpoch(0, 'xorig')
+    x_2010_125 = s.getArrayFromEpoch(1, 'xorig')
+    x_2010_139 = s.getArrayFromEpoch(2, 'xorig')
+    x_2010_160 = s.getArrayFromEpoch(3, 'xorig')
+    x_2013_160 = s.getArrayFromEpoch(4, 'xorig')
+    x_2013_160s = s.getArrayFromEpoch(5, 'xorig')
 
-    y_2005_814 = s.getArrayFromEpoch(0, y_col_name)
-    y_2010_125 = s.getArrayFromEpoch(1, y_col_name)
-    y_2010_139 = s.getArrayFromEpoch(2, y_col_name)
-    y_2010_160 = s.getArrayFromEpoch(3, y_col_name)
-    y_2013_160 = s.getArrayFromEpoch(4, y_col_name)
-    y_2013_160s = s.getArrayFromEpoch(5, y_col_name)
+    y_2005_814 = s.getArrayFromEpoch(0, 'yorig')
+    y_2010_125 = s.getArrayFromEpoch(1, 'yorig')
+    y_2010_139 = s.getArrayFromEpoch(2, 'yorig')
+    y_2010_160 = s.getArrayFromEpoch(3, 'yorig')
+    y_2013_160 = s.getArrayFromEpoch(4, 'yorig')
+    y_2013_160s = s.getArrayFromEpoch(5, 'yorig')
     
     m_2005_814 = s.getArrayFromEpoch(0, 'mag')
     m_2010_125 = s.getArrayFromEpoch(1, 'mag')
@@ -485,23 +537,12 @@ def prep_plot_quiver_align(align_root, orig=True):
                names=colnames)
 
     t['name'] = 'align_starlist'
-
-    out_name = align_root + '_pos'
-    if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-
-    t.write(out_name, overwrite=True)
+    t.write('align_t_5ep.fits')
                
-    return
-
-def plot_quiver_align(align_root, orig=True):
-    out_name = align_root + '_pos'
-    if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-    t = Table.read(out_name)
-
+        
+def plot_quiver_align():
+    t = Table.read('align_t_5ep.fits')
+    
     good = np.where((t['m_2005_814'] < 17.5) & (t['m_2010_160'] < 16.7) & (t['m_2013_160'] < 16.7) &
                     (t['x_2005_814'] > -1) & (t['x_2010_160'] > -1) & (t['x_2013_160'] > -1) &
                     (t['y_2005_814'] > -1) & (t['y_2010_160'] > -1) & (t['y_2013_160'] > -1) &
@@ -534,11 +575,7 @@ def plot_quiver_align(align_root, orig=True):
 
     qscale = 2e2
 
-    plot_dir = workDir + '21.ALIGN_KS2/plots'
-    if orig:
-        plot_dir += '_ks2/'
-    else:
-        plot_dir += '_' + align_root + '/'
+    plot_dir = workDir + '21.ALIGN_KS2/plots/'
             
     py.clf()
     q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_10, dy_05_10, scale=qscale)
@@ -973,7 +1010,266 @@ def make_master_lists():
     _o160_10.close()
     _o160_13.close()
     _o160s_13.close()
+
+
+def make_pos_directories():
+    """
+    Make the individual position directories. The structure is complicated
+    enough that it is worth doing in code. All of this goes under
+
+        03.MAT_POS/
+
+    """
+    os.chdir(workDir + '/03.MAT_POS')
+
+    years = ['2005', '2010', '2013']
+
+    filts = {'2005': ['F814W'],
+             '2010': ['F125W', 'F139M', 'F160W'],
+             '2013': ['F160W', 'F160Ws']}
+
+    pos4_exceptions = ['2005_F814W', '2013_F160Ws']
+    old_mat_dir = '../02.MAT'
+
+    for year in years:
+        filts_in_year = filts[year]
+
+        for filt in filts_in_year:
+            epoch_filt = '{0}_{1}'.format(year, filt)
+
+            if epoch_filt in pos4_exceptions:
+                posits = ['']
+            else:
+                posits = ['pos1', 'pos2', 'pos3', 'pos4']
+
+            # Define the master file for this combo
+            master_file = '{0}/MASTER.{1}.{2}.ref5'.format(old_mat_dir, filt, year)
+            
+            for pos in posits:
+                ep_filt_pos = epoch_filt
+                if pos != '':
+                    ep_filt_pos += '_{0}'.format(pos)
+
+                # Make the directory
+                fileUtil.mkdir(ep_filt_pos)
+                fileUtil.mkdir(ep_filt_pos + '/01.XYM')
+
+                # Copy over the master file
+                shutil.copy(master_file, ep_filt_pos + '/01.XYM/')
+
+    return
+
+def calc_pos_number():
+    """
+    Calculate the position number (in 2005 ACS coordinate system) of all the
+    MAT.*** files in 02.MAT directory. This can then be used to separate out
+    which files are in pos1/ pos2/ pos3/ and pos4/. The schematic for the
+    positions is:
+
+        pos4    pos1
+        pos3    pos2
+
+    Just read in the MAT.*** file, take the average of columns 3 and 4 and use
+    rough, hard-coded quadrant separations to pick out the position. 
+    """
+    mat_files = glob.glob(workDir + '02.MAT/MAT.*')
+    epoch_filt = np.zeros(len(mat_files), dtype='S12')
+    pos = np.zeros(len(mat_files), dtype='S4')
+    mat_root = np.zeros(len(mat_files), dtype='S8')
+    xavg = np.zeros(len(mat_files), dtype=float)
+    yavg = np.zeros(len(mat_files), dtype=float)
+
+    for mm in range(len(mat_files)):
+        tab = starlists.read_mat(mat_files[mm])
+
+        # Get the average X and average Y position for this file
+        xavg[mm] = tab['xref'].mean()
+        yavg[mm] = tab['yref'].mean()
+
+        # Get the MAT root file name and number for printing
+        mat_root[mm] = os.path.split(mat_files[mm])[1]
+        mat_num = os.path.splitext(mat_root[mm])[1]
+        mat_num = int(mat_num[1:])
+
+        # Decide the epoch and the filter.
+        if (mat_num >= 0) and (mat_num <= 99):
+            epoch_filt[mm] = '2005_F814W'
+        if (mat_num >= 100) and (mat_num <= 129):
+            epoch_filt[mm] = '2010_F125W'
+        if (mat_num >= 130) and (mat_num <= 161):
+            epoch_filt[mm] = '2010_F139M'
+        if (mat_num >= 162) and (mat_num <= 199):
+            epoch_filt[mm] = '2010_F160W'
+        if (mat_num >= 200) and (mat_num <= 259):
+            epoch_filt[mm] = '2013_F160W'
+        if (mat_num >= 270) and (mat_num <= 299):
+            epoch_filt[mm] = '2013_F160Ws'
+            
+        # Decide the position
+        if (xavg[mm] > 2000) and (yavg[mm] > 2000):
+            pos[mm] = 'pos1'
+        if (xavg[mm] > 2000) and (yavg[mm] < 2000):
+            pos[mm] = 'pos2'
+        if (xavg[mm] < 2000) and (yavg[mm] < 2000):
+            pos[mm] = 'pos3'
+        if (xavg[mm] < 2000) and (yavg[mm] > 2000):
+            pos[mm] = 'pos4'
+
+
+
+    # Print output
+    efilt_unique = np.unique(epoch_filt)
+    pos_unique = np.unique(pos)
+    fmt = '{0:s} {1:s} {2:s}     {3:4.0f} {4:4.0f}'
+
+    for ee in efilt_unique:
+        for pp in pos_unique:
+            idx = np.where((epoch_filt == ee) & (pos == pp))[0]
+
+            print 
+            for ii in idx:
+                print fmt.format(mat_root[ii], epoch_filt[ii], pos[ii],
+                                 xavg[ii], yavg[ii])
+                    
+    return mat_root, epoch_filt, pos
+
+def setup_xym_by_pos():
+    """
+    Something
+    """
+    os.chdir(workDir + '/03.MAT_POS')
+
+    pos4_exceptions = ['2005_F814W', '2013_F160Ws']
+    old_mat_dir = '../02.MAT/'
+
+    # Get the MAT file names and positions.
+    mat_root, epoch_filt, pos = calc_pos_number()
+
+    # Read the old IN.xym2bar file to match MAT.??? to the *.xym files
+    mat_xym_files = read_in_xym2mat(old_mat_dir + 'IN.xym2mat')
+    
+    open_logs = {}
+    
+    for ii in range(len(mat_root)):
+        # copy stuff to this directory
+        to_dir = epoch_filt[ii]
+
+        if epoch_filt[ii] not in pos4_exceptions:
+            to_dir += '_' + pos[ii]
+
+        to_dir += '/01.XYM/'
+        print 'Copying to {0} for {1}'.format(to_dir, mat_root[ii])
         
+        # Get rid of the filter-related letters for the 02.MAT/ sub-dir.
+        efilt_strip = epoch_filt[ii].replace('W', '').replace('F', '').replace('M', '')
+
+        # Copy the old MAT file
+        from_file = old_mat_dir + efilt_strip + '/' + mat_root[ii]
+        shutil.copy(from_file, to_dir)
+        print '    Copy ' + from_file
+
+        # Copy the xym file
+        mat_num = mat_root[ii].split('.')[1]
+
+        xym_file = mat_xym_files[mat_num]
+        
+        shutil.copy(xym_file, to_dir)
+        print '    Copy ' + xym_file
+
+        # Keep a record of the match between XYM and MAT files
+        logfile = to_dir + 'xym_mat.txt'
+
+        if logfile not in open_logs.keys():
+            _log = open(logfile, 'w')
+            open_logs[logfile] = _log
+        else:
+            _log = open_logs[logfile]
+
+        # Just save the xym_file file name... not the path.
+        xym_file_base = os.path.split(xym_file)[1]
+        _log.write('{0} {1}\n'.format(mat_num, xym_file_base))
+
+    # Close all the log files
+    for key in open_logs:
+        open_logs[key].close()
+        
+    return
+
+
+def read_in_xym2mat(in_file):
+    _in = open(in_file, "r")
+    lines = _in.readlines()
+    _in.close()
+    
+    cnt_mat = len(lines) - 1
+
+    mat_num = np.zeros(cnt_mat, dtype='S3')
+    xym_files = np.zeros(cnt_mat, dtype='S80')
+
+    # Skip the first line
+    jj = 0
+    for ii in range(1, len(lines)):
+        # Split the line by spaces
+        line_split = lines[ii].split()
+        
+        # First entry is the MAT file number
+        mat_num[jj] = line_split[0]
+        xym_files[jj] = line_split[1][1:-1]
+
+        jj += 1
+
+    mat_xym_files = dict(zip(mat_num, xym_files))
+
+    return mat_xym_files
+
+
+            
+def xym_by_pos(year, filt, pos, Nepochs):
+    """
+    Re-do the alignment with the ref5 master frames (cluster members only);
+    but do the alignments on each position separately.
+
+    Doesn't work for 2005_F814W or 2013_F160Ws.
+    """
+    mat_dir = '{0}/03.MAT_POS/{1}_{2}_{3}/01.XYM/'.format(workDir, year, filt, pos)
+
+    master_file = 'MASTER.{0}.{1}.ref5'.format(filt, year)
+
+    # Read in the xym_mat.txt file that maps the MAT and XYM files together.
+    tab = Table.read(mat_dir + 'xym_mat.txt', format='ascii')
+    
+    # Make IN.xym2mat and IN.xym2bar file
+    _mat = open(mat_dir + 'IN.xym2mat', 'w')
+    _bar = open(mat_dir + 'IN.xym2bar', 'w')
+    
+    _mat.write('000 ' + master_file + ' c0\n')
+
+    for ii in range(len(tab)):
+        _mat.write('{0} {1} c9\n'.format(tab[ii][0], tab[ii][1]))
+        _bar.write('{0} {1} c9\n'.format(tab[ii][0], tab[ii][1]))
+
+    _mat.close()
+    _bar.close()
+
+    # Run xym2mat
+    os.chdir(mat_dir)
+    subprocess.call(['xym2mat', '22'])
+    subprocess.call(['xym2mat', '24'])
+    subprocess.call(['xym2mat', '25'])
+
+    # Make IN.xym2bar file
+    subprocess.call(['xym2bar', str(Nepochs)])
+
+    # Copy final output files
+    suffix = '.{0}.{1}.{2}.refClust'.format(filt, year, pos)
+    shutil.copy('MATCHUP.XYMEEE', 'MATCHUP.XYMEEE' + suffix)
+    shutil.copy('TRANS.xym2mat', 'TRANS.xym2mat' + suffix)
+    shutil.copy('TRANS.xym2bar', 'TRANS.xym2bar' + suffix)
+    shutil.copy('IN.xym2mat', 'IN.xym2mat' + suffix)
+    shutil.copy('IN.xym2bar', 'IN.xym2bar' + suffix)
+
+    return
+            
 def make_brite_list_2010():
     """
     Take an input list of MATCHUP files (assumes they have the same stars, and the
@@ -1358,9 +1654,7 @@ def make_catalog(use_RMSE=True):
     final = None
     good = None
 
-    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
-    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
-    d_all = Table.read('wd1_catalog_onepass.fits')
+    d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
 
     # TRIM out all stars that aren't detected in all 3 epochs:
     #    2005_814
@@ -1457,8 +1751,7 @@ def make_catalog(use_RMSE=True):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
-    # d.write('wd1_catalog.fits', format='fits')
-    d.write('wd1_catalog_onepass_vel.fits', format='fits', overwrite=True)
+    d.write('wd1_catalog.fits', format='fits')
     
     return
 
@@ -1520,7 +1813,7 @@ def check_vpd_ks2_astrometry():
     """
     Check the VPD and quiver plots for our KS2-extracted, re-transformed astrometry.
     """
-    catFile = workDir + '20.KS2_PMA/wd1_catalog.fits'
+    catFile = workDir + '21.ALIGN_KS2/wd1_catalog.fits'
     tab = atpy.Table(catFile)
 
     good = (tab.xe_160 < 0.05) & (tab.ye_160 < 0.05) & \

@@ -15,6 +15,7 @@ import pdb
 import pysynphot
 from pysynphot import spectrum
 from pysynphot import observation as obs
+import os
 
 # Define a function that will do filter integrations
 def magnitude_in_filter(filter, star, ext, AKs, atm, vega):
@@ -74,7 +75,11 @@ def Vega():
 
 
 class EarthAtmosphere(spectrum.ArraySpectralElement):
-    def __init__(self, dataFile='/u/jlu/code/python/jlu/nirc2/earth_transmission.fits'):
+    nirc2_base = os.path.dirname(nirc2phot.__file__)
+
+    earth_file = nirc2_base + '/earth_transmission.fits'
+    
+    def __init__(self, dataFile=earth_file):
         self.data_file = dataFile
 
         # also get the atmospheric transmission curve

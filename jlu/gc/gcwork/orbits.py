@@ -2,10 +2,10 @@ import asciidata, pyfits
 import os, sys, math
 from pylab import *
 from numpy import *
-from gcwork import starset
-from gcwork import objects
-from gcwork import util
-from gcwork import young
+from jlu.gc.gcwork import starset
+from jlu.gc.gcwork import objects
+from jlu.gc.gcwork import util
+from jlu.gc.gcwork import young
 import pdb
 
 def plotVelVsRadius():
