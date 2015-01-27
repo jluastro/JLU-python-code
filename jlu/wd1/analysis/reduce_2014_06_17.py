@@ -1398,7 +1398,9 @@ def make_catalog(use_RMSE=True):
     final = None
     good = None
 
-    d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
+    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
+    # d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
+    d_all = Table.read('wd1_catalog_onepass.fits')
 
     # TRIM out all stars that aren't detected in all 3 epochs:
     #    2005_814
@@ -1495,7 +1497,8 @@ def make_catalog(use_RMSE=True):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
-    d.write('wd1_catalog.fits', format='fits')
+    # d.write('wd1_catalog.fits', format='fits')
+    d.write('wd1_catalog_onepass_vel.fits', format='fits', overwrite=True)
     
     return
 
