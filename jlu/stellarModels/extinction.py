@@ -2,6 +2,7 @@ import numpy as np
 import pylab as py
 from scipy import interpolate
 import scipy
+import pysynphot
 
 class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
     """

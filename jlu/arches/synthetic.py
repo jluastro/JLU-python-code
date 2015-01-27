@@ -12,7 +12,7 @@ from pysynphot import observation as obs
 import pysynphot
 from jlu.util import constants
 from jlu.util import plfit
-from jlu.nirc2 import synthetic as nirc2syn
+# from jlu.nirc2 import synthetic as nirc2syn
 import pickle
 import time, datetime
 import math
