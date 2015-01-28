@@ -15,7 +15,7 @@ from pysynphot import observation as obs
 import pysynphot
 from jlu.util import constants
 from jlu.util import plfit
-# from jlu.nirc2 import synthetic as nirc2syn
+from jlu.nirc2 import synthetic as nirc2syn
 import pickle
 import time, datetime
 import math
@@ -48,7 +48,14 @@ redlaw = reddening.RedLawNishiyama09()
 
 
 def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
-                                distance=defaultDist, verbose=False):
+                                distance=defaultDist, verbose=False,
+                                massSampling=10):
+    """
+    massSampling - Sample the raw isochrone every ## steps. The default
+                   is massSampling = 10, which takes every 10th point.
+                   The isochrones are already very finely sampled. Must be
+                   an integer value.
+    """
     startTime = time.time()
 
     print 'Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
@@ -64,14 +71,8 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
 
     # Get solar mettalicity models for a population at a specific age.
     evol = evolution.get_merged_isochrone(logAge=logAge)
+    print 'Elapsed time while getting merged isochrone: ', time.time() - startTime
 
-    #------------I WILL REMOVE THIS 3/2014 TO GET BETTER SAMPLING------#
-    # Lets do some trimming down to get rid of repeat masses or 
-    # mass resolutions higher than 1/1000. We will just use the first
-    # unique mass after rounding by the nearest 0.001.
-    #mass_rnd = np.round(evol.mass, decimals=2)
-    #tmp, idx = np.unique(mass_rnd, return_index=True)
-    #------------------------------------------------------------------#
     #Eliminate cases where log g is less than 0
     idx = np.where(evol.logg > 0)
     
@@ -80,6 +81,12 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     logg = evol.logg[idx]
     logL = evol.logL[idx]
     isWR = logT != evol.logT_WR[idx]
+
+    mass = mass[::massSampling]
+    logT = logT[::massSampling]
+    logg = logg[::massSampling]
+    logL = logL[::massSampling]
+    isWR = isWR[::massSampling]
     
     temp = 10**logT
 
@@ -149,8 +156,8 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         magLp[ii] = mag_in_filter(star, filtLp, redLp)
 
         if verbose:
-            print 'M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F127M = %4.2f  F139M = %4.2f  F153M = %4.2f' % \
-                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag127m[ii], mag139m[ii], mag153m[ii])
+            print 'M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F127M = %4.2f  F139M = %4.2f  F153M = %4.2f elapsed time = %4s' % \
+                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag127m[ii], mag139m[ii], mag153m[ii], time.time() - startTime)
 
 
     iso = objects.DataHolder()
