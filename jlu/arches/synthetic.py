@@ -185,6 +185,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     pickle.dump(mag153m, _out)
     pickle.dump(magJ, _out)
     pickle.dump(magH, _out)
+    pickle.dump(magK, _out)
     pickle.dump(magKp, _out)
     pickle.dump(magLp, _out)
     pickle.dump(isWR, _out)
@@ -212,11 +213,13 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     iso.mag153m = pickle.load(_in)
     iso.magJ = pickle.load(_in)
     iso.magH = pickle.load(_in)
+    iso.magK = pickle.load(_in)
     iso.magKp = pickle.load(_in)
     iso.magLp = pickle.load(_in)
     iso.isWR = pickle.load(_in)
     _in.close()
 
+    pdb.set_trace()
     return iso
 
 # Little helper utility to get all the bandpass/zeropoint info.
