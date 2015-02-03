@@ -8,6 +8,7 @@ import pylab as py
 import numpy as np
 from jlu.hst import images
 from jlu.hst import astrometry as ast
+from jlu import photometry as photo
 import glob
 from matplotlib import colors
 from jlu.util import statsIter
@@ -467,103 +468,44 @@ def plot_quiver_one_pass_refClust():
     print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std())
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
 
-
-def prep_plot_quiver_align():
+def plot_quiver_align(pos, orig=''):
     """
-    Read in the align file, trim down to only stars with m_2010_F160W < 20)
-    and save output to a FITS table.
+    Set orig='orig' to plot xorig and yorig (straight from ks2) rather than
+    x and y from align output.
     """
-    s = starset.StarSet(workDir + '21.ALIGN_KS2/align_t_5ep')
-
-    name = s.getArray('name')
-
-    x_2005_814 = s.getArrayFromEpoch(0, 'xorig')
-    x_2010_125 = s.getArrayFromEpoch(1, 'xorig')
-    x_2010_139 = s.getArrayFromEpoch(2, 'xorig')
-    x_2010_160 = s.getArrayFromEpoch(3, 'xorig')
-    x_2013_160 = s.getArrayFromEpoch(4, 'xorig')
-    x_2013_160s = s.getArrayFromEpoch(5, 'xorig')
-
-    y_2005_814 = s.getArrayFromEpoch(0, 'yorig')
-    y_2010_125 = s.getArrayFromEpoch(1, 'yorig')
-    y_2010_139 = s.getArrayFromEpoch(2, 'yorig')
-    y_2010_160 = s.getArrayFromEpoch(3, 'yorig')
-    y_2013_160 = s.getArrayFromEpoch(4, 'yorig')
-    y_2013_160s = s.getArrayFromEpoch(5, 'yorig')
+    t = Table.read(workDir + '50.ALIGN_KS2/align_a4_t.fits')
     
-    m_2005_814 = s.getArrayFromEpoch(0, 'mag')
-    m_2010_125 = s.getArrayFromEpoch(1, 'mag')
-    m_2010_139 = s.getArrayFromEpoch(2, 'mag')
-    m_2010_160 = s.getArrayFromEpoch(3, 'mag')
-    m_2013_160 = s.getArrayFromEpoch(4, 'mag')
-    m_2013_160s = s.getArrayFromEpoch(5, 'mag')
-
-    xe_2005_814 = s.getArrayFromEpoch(0, 'xpixerr_p')
-    xe_2010_125 = s.getArrayFromEpoch(1, 'xpixerr_p')
-    xe_2010_139 = s.getArrayFromEpoch(2, 'xpixerr_p')
-    xe_2010_160 = s.getArrayFromEpoch(3, 'xpixerr_p')
-    xe_2013_160 = s.getArrayFromEpoch(4, 'xpixerr_p')
-    xe_2013_160s = s.getArrayFromEpoch(5, 'xpixerr_p')
-
-    ye_2005_814 = s.getArrayFromEpoch(0, 'ypixerr_p')
-    ye_2010_125 = s.getArrayFromEpoch(1, 'ypixerr_p')
-    ye_2010_139 = s.getArrayFromEpoch(2, 'ypixerr_p')
-    ye_2010_160 = s.getArrayFromEpoch(3, 'ypixerr_p')
-    ye_2013_160 = s.getArrayFromEpoch(4, 'ypixerr_p')
-    ye_2013_160s = s.getArrayFromEpoch(5, 'ypixerr_p')
-    
-    me_2005_814 = s.getArrayFromEpoch(0, 'snr')
-    me_2010_125 = s.getArrayFromEpoch(1, 'snr')
-    me_2010_139 = s.getArrayFromEpoch(2, 'snr')
-    me_2010_160 = s.getArrayFromEpoch(3, 'snr')
-    me_2013_160 = s.getArrayFromEpoch(4, 'snr')
-    me_2013_160s = s.getArrayFromEpoch(5, 'snr')
-
-    colnames = ['name',
-               'x_2005_814', 'x_2010_125', 'x_2010_139', 'x_2010_160', 'x_2013_160', 'x_2013_160s',
-               'y_2005_814', 'y_2010_125', 'y_2010_139', 'y_2010_160', 'y_2013_160', 'y_2013_160s',
-               'm_2005_814', 'm_2010_125', 'm_2010_139', 'm_2010_160', 'm_2013_160', 'm_2013_160s',
-               'xe_2005_814', 'xe_2010_125', 'xe_2010_139', 'xe_2010_160', 'xe_2013_160', 'xe_2013_160s',
-               'ye_2005_814', 'ye_2010_125', 'ye_2010_139', 'ye_2010_160', 'ye_2013_160', 'ye_2013_160s',
-               'me_2005_814', 'me_2010_125', 'me_2010_139', 'me_2010_160', 'me_2013_160', 'me_2013_160s']
-    
-    t = Table([name,
-               x_2005_814, x_2010_125, x_2010_139, x_2010_160, x_2013_160, x_2013_160s,
-               y_2005_814, y_2010_125, y_2010_139, y_2010_160, y_2013_160, y_2013_160s,
-               m_2005_814, m_2010_125, m_2010_139, m_2010_160, m_2013_160, m_2013_160s,
-               xe_2005_814, xe_2010_125, xe_2010_139, xe_2010_160, xe_2013_160, xe_2013_160s,
-               ye_2005_814, ye_2010_125, ye_2010_139, ye_2010_160, ye_2013_160, ye_2013_160s,
-               me_2005_814, me_2010_125, me_2010_139, me_2010_160, me_2013_160, me_2013_160s],
-               names=colnames)
-
-    t['name'] = 'align_starlist'
-    t.write('align_t_5ep.fits')
-               
-        
-def plot_quiver_align():
-    t = Table.read('align_t_5ep.fits')
-    
-    good = np.where((t['m_2005_814'] < 17.5) & (t['m_2010_160'] < 16.7) & (t['m_2013_160'] < 16.7) &
-                    (t['x_2005_814'] > -1) & (t['x_2010_160'] > -1) & (t['x_2013_160'] > -1) &
-                    (t['y_2005_814'] > -1) & (t['y_2010_160'] > -1) & (t['y_2013_160'] > -1) &
-                    (t['xe_2010_160'] < 0.05) & (t['xe_2013_160'] < 0.05) &
-                    (t['ye_2010_160'] < 0.05) & (t['ye_2013_160'] < 0.05) & 
-                    (t['me_2010_160'] < 0.05) & (t['me_2013_160'] < 0.05))[0]
-
+    good = np.where((t['m_2005_F814W'] < 17.5) &
+                    (t['m_2010_F160W_' + pos] < 18) &
+                    (t['m_2013_F160W_' + pos] < 18) &
+                    (t['x_2005_F814W'] > -1) &
+                    (t['x_2010_F160W_' + pos] > -1) &
+                    (t['x_2013_F160W_' + pos] > -1) &
+                    (t['y_2005_F814W'] > -1) &
+                    (t['y_2010_F160W_' + pos] > -1) &
+                    (t['y_2013_F160W_' + pos] > -1) &
+                    (t['xe_2010_F160W_' + pos] < 0.05) &
+                    (t['xe_2013_F160W_' + pos] < 0.05) &
+                    (t['ye_2010_F160W_' + pos] < 0.05) &
+                    (t['ye_2013_F160W_' + pos] < 0.05) & 
+                    (t['me_2010_F160W_' + pos] < 0.05) &
+                    (t['me_2013_F160W_' + pos] < 0.05))[0]
+    print 'Good = ', len(good)
     g = t[good]
 
-    dx_05_10 = (g['x_2010_160'] - g['x_2005_814']) * ast.scale['WFC'] * 1e3
-    dy_05_10 = (g['y_2010_160'] - g['y_2005_814']) * ast.scale['WFC'] * 1e3
+    dx_05_10 = (g['x'+orig+'_2010_F160W_' + pos] - g['x'+orig+'_2005_F814W']) * ast.scale['WFC'] * 1e3
+    dy_05_10 = (g['y'+orig+'_2010_F160W_' + pos] - g['y'+orig+'_2005_F814W']) * ast.scale['WFC'] * 1e3
 
-    dx_05_13 = (g['x_2013_160'] - g['x_2005_814']) * ast.scale['WFC'] * 1e3
-    dy_05_13 = (g['y_2013_160'] - g['y_2005_814']) * ast.scale['WFC'] * 1e3
+    dx_05_13 = (g['x'+orig+'_2013_F160W_' + pos] - g['x'+orig+'_2005_F814W']) * ast.scale['WFC'] * 1e3
+    dy_05_13 = (g['y'+orig+'_2013_F160W_' + pos] - g['y'+orig+'_2005_F814W']) * ast.scale['WFC'] * 1e3
 
-    dx_10_13 = (g['x_2013_160'] - g['x_2010_160']) * ast.scale['WFC'] * 1e3
-    dy_10_13 = (g['y_2013_160'] - g['y_2010_160']) * ast.scale['WFC'] * 1e3
+    dx_10_13 = (g['x'+orig+'_2013_F160W_' + pos] - g['x'+orig+'_2010_F160W_' + pos]) * ast.scale['WFC'] * 1e3
+    dy_10_13 = (g['y'+orig+'_2013_F160W_' + pos] - g['y'+orig+'_2010_F160W_' + pos]) * ast.scale['WFC'] * 1e3
 
     small = np.where((np.abs(dx_05_10) < 20) & (np.abs(dy_05_10) < 20) & 
                      (np.abs(dx_05_13) < 20) & (np.abs(dy_05_13) < 20) & 
                      (np.abs(dx_10_13) < 20) & (np.abs(dy_10_13) < 20))[0]
+    print 'Small = ', len(small)
 
     g = g[small]
     dx_05_10 = dx_05_10[small]
@@ -575,25 +517,25 @@ def plot_quiver_align():
 
     qscale = 2e2
 
-    plot_dir = workDir + '21.ALIGN_KS2/plots/'
+    plot_dir = workDir + '50.ALIGN_KS2/plots/'
             
     py.clf()
-    q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_10, dy_05_10, scale=qscale)
+    q = py.quiver(g['x_2005_F814W'], g['y_2005_F814W'], dx_05_10, dy_05_10, scale=qscale)
     py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     py.title('2010 - 2005')
-    py.savefig(plot_dir + 'vec_diff_ref5_05_10.png')
+    py.savefig(plot_dir + 'quiver_align_05_10_' + pos + orig + '.png')
 
     py.clf()
-    q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_13, dy_05_13, scale=qscale)
+    q = py.quiver(g['x_2005_F814W'], g['y_2005_F814W'], dx_05_13, dy_05_13, scale=qscale)
     py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     py.title('2013 - 2005')
-    py.savefig(plot_dir + 'vec_diff_ref5_05_13.png')
+    py.savefig(plot_dir + 'quiver_align_05_13_' + pos + orig + '.png')
 
     py.clf()
-    q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_10_13, dy_10_13, scale=qscale)
+    q = py.quiver(g['x_2005_F814W'], g['y_2005_F814W'], dx_10_13, dy_10_13, scale=qscale)
     py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     py.title('2013 - 2010')
-    py.savefig(plot_dir + 'vec_diff_ref5_10_13.png')
+    py.savefig(plot_dir + 'quiver_align_10_13_' + pos + orig + '.png')
 
     py.clf()
     py.plot(dx_05_10, dy_05_10, 'k.', ms=2)
@@ -602,7 +544,7 @@ def plot_quiver_align():
     py.xlabel('X Proper Motion (mas)')
     py.ylabel('Y Proper Motion (mas)')
     py.title('2010 - 2005')
-    py.savefig(plot_dir + 'pm_diff_ref5_05_10.png')
+    py.savefig(plot_dir + 'quiver_align_vpd_05_10_' + pos + orig + '.png')
     
     py.clf()
     py.plot(dx_05_13, dy_05_13, 'k.', ms=2)
@@ -610,7 +552,7 @@ def plot_quiver_align():
     py.xlabel('X Proper Motion (mas)')
     py.ylabel('Y Proper Motion (mas)')
     py.title('2013 - 2005')
-    py.savefig(plot_dir + 'pm_diff_ref5_05_13.png')
+    py.savefig(plot_dir + 'quiver_align_vpd_05_13_' + pos + orig + '.png')
 
     py.clf()
     py.plot(dx_10_13, dy_10_13, 'k.', ms=2)
@@ -618,7 +560,7 @@ def plot_quiver_align():
     py.xlabel('X Proper Motion (mas)')
     py.ylabel('Y Proper Motion (mas)')
     py.title('2013 - 2010')
-    py.savefig(plot_dir + 'pm_diff_ref5_10_13.png')
+    py.savefig(plot_dir + 'quiver_align_vpd_10_13_' + pos + orig + '.png')
 
     print '2010 - 2005'
     print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std())
@@ -632,7 +574,23 @@ def plot_quiver_align():
     print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std())
     print '   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std())
 
+    _out = open(plot_dir + 'quiver_align_stats_' + pos + orig + '.txt', 'w')
+    _out.write('2010 - 2005\n')
+    _out.write('   dx = {dx:6.2f} +/- {dxe:6.2f} mas\n'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std()))
+    _out.write('   dy = {dy:6.2f} +/- {dye:6.2f} mas\n'.format(dy=dy_05_10.mean(), dye=dy_05_10.std()))
 
+    _out.write('2013 - 2005\n')
+    _out.write('   dx = {dx:6.2f} +/- {dxe:6.2f} mas\n'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std()))
+    _out.write('   dy = {dy:6.2f} +/- {dye:6.2f} mas\n'.format(dy=dy_05_13.mean(), dye=dy_05_13.std()))
+
+    _out.write('2013 - 2010\n')
+    _out.write('   dx = {dx:6.2f} +/- {dxe:6.2f} mas\n'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std()))
+    _out.write('   dy = {dy:6.2f} +/- {dye:6.2f} mas\n'.format(dy=dy_10_13.mean(), dye=dy_10_13.std()))
+    _out.close()
+
+    
+
+    
     return
 
 def plot_vpd_across_field(nside=4, interact=False):
@@ -1272,6 +1230,10 @@ def xym_by_pos(year, filt, pos, Nepochs):
             
 def make_brite_list_2010():
     """
+    Copy over the MATCHUP ref5 files from the 02.MAT directory. It has to be ref5
+    because we want the starlists to be matched. The difference between ref5 and
+    refClust is very small.
+    
     Take an input list of MATCHUP files (assumes they have the same stars, and the
     same length) and trim out only the bright stars. The resulting output file contains
     the X and Y position (from the first file) and the list of all magnitudes for each star.
@@ -1280,7 +1242,8 @@ def make_brite_list_2010():
     that satisfies this criteria in any one of the filters will be added to the global
     bright list.
 
-    This is a modified version of the code that is in hst_flystar. The modifications include:
+    This is a modified version of the code that is in hst_flystar. The modifications
+    include:
     - for bright stars, detection in only 1 filter is required.
     - a set of hand selected brite stars are validated and added to the list.
     """
@@ -1289,6 +1252,10 @@ def make_brite_list_2010():
                     'MATCHUP.XYMEEE.F125W.2010.ref5']
     trimMags = [-8, -7, -8]
 
+    os.chdir(workDir + '12.KS2_2010')
+    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[0]), './')
+    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[1]), './')
+    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[2]), './')
 
     # Read in the matchup files.
     list_160 = starlists.read_matchup(matchup_file[0])
@@ -1394,7 +1361,7 @@ def make_brite_list_2010():
         print 'FAILED: finding some bright stars with '
         print 'no magnitudes in some filters'
         pdb.set_trace()
-            
+
     brite = open('BRITE.XYM', 'w')
     
     for ii in range(len(stars)):
@@ -1564,133 +1531,236 @@ def align_to_fits(align_root):
     2005_F814W, 2010_F125W, 2010_F139M, 2010_F160W, 2013_F160W, 2013_f160Ws
 
     """
-    s = starset.StarSet(workDir + '21.ALIGN_KS2/' + align_root)
+    s = starset.StarSet(workDir + '50.ALIGN_KS2/' + align_root)
 
     name = s.getArray('name')
 
-    x_2005_814 = s.getArrayFromEpoch(0, 'xorig')
-    x_2010_125 = s.getArrayFromEpoch(1, 'xorig')
-    x_2010_139 = s.getArrayFromEpoch(2, 'xorig')
-    x_2010_160 = s.getArrayFromEpoch(3, 'xorig')
-    x_2013_160 = s.getArrayFromEpoch(4, 'xorig')
-    x_2013_160s = s.getArrayFromEpoch(5, 'xorig')
+    # Setup the mapping between epoch, filter, pos and the align index.
+    align_idx = {0: '2005_F814W',
+                 1: '2010_F125W_pos1',
+                 2: '2010_F125W_pos2',
+                 3: '2010_F125W_pos3',
+                 4: '2010_F125W_pos4',
+                 5: '2010_F139M_pos1',
+                 6: '2010_F139M_pos2',
+                 7: '2010_F139M_pos3',
+                 8: '2010_F139M_pos4',
+                 9: '2010_F160W_pos1',
+                 10: '2010_F160W_pos2',
+                 11: '2010_F160W_pos3',
+                 12: '2010_F160W_pos4',
+                 13: '2013_F160W_pos1',
+                 14: '2013_F160W_pos2',
+                 15: '2013_F160W_pos3',
+                 16: '2013_F160W_pos4',
+                 17: '2013_F160Ws'}
 
-    y_2005_814 = s.getArrayFromEpoch(0, 'yorig')
-    y_2010_125 = s.getArrayFromEpoch(1, 'yorig')
-    y_2010_139 = s.getArrayFromEpoch(2, 'yorig')
-    y_2010_160 = s.getArrayFromEpoch(3, 'yorig')
-    y_2013_160 = s.getArrayFromEpoch(4, 'yorig')
-    y_2013_160s = s.getArrayFromEpoch(5, 'yorig')
-    
-    m_2005_814 = s.getArrayFromEpoch(0, 'mag')
-    m_2010_125 = s.getArrayFromEpoch(1, 'mag')
-    m_2010_139 = s.getArrayFromEpoch(2, 'mag')
-    m_2010_160 = s.getArrayFromEpoch(3, 'mag')
-    m_2013_160 = s.getArrayFromEpoch(4, 'mag')
-    m_2013_160s = s.getArrayFromEpoch(5, 'mag')
-    
-    xe_2005_814 = s.getArrayFromEpoch(0, 'xpixerr_p')
-    xe_2010_125 = s.getArrayFromEpoch(1, 'xpixerr_p')
-    xe_2010_139 = s.getArrayFromEpoch(2, 'xpixerr_p')
-    xe_2010_160 = s.getArrayFromEpoch(3, 'xpixerr_p')
-    xe_2013_160 = s.getArrayFromEpoch(4, 'xpixerr_p')
-    xe_2013_160s = s.getArrayFromEpoch(5, 'xpixerr_p')
+    num_epochs = len(align_idx)
 
-    ye_2005_814 = s.getArrayFromEpoch(0, 'ypixerr_p')
-    ye_2010_125 = s.getArrayFromEpoch(1, 'ypixerr_p')
-    ye_2010_139 = s.getArrayFromEpoch(2, 'ypixerr_p')
-    ye_2010_160 = s.getArrayFromEpoch(3, 'ypixerr_p')
-    ye_2013_160 = s.getArrayFromEpoch(4, 'ypixerr_p')
-    ye_2013_160s = s.getArrayFromEpoch(5, 'ypixerr_p')
-    
-    me_2005_814 = s.getArrayFromEpoch(0, 'snr')
-    me_2010_125 = s.getArrayFromEpoch(1, 'snr')
-    me_2010_139 = s.getArrayFromEpoch(2, 'snr')
-    me_2010_160 = s.getArrayFromEpoch(3, 'snr')
-    me_2013_160 = s.getArrayFromEpoch(4, 'snr')
-    me_2013_160s = s.getArrayFromEpoch(5, 'snr')
+    # Construct a list of columns and column names
+    columns = []
+    col_names = []
 
-    n_2005_814 = s.getArrayFromEpoch(0, 'nframes')
-    n_2010_125 = s.getArrayFromEpoch(1, 'nframes')
-    n_2010_139 = s.getArrayFromEpoch(2, 'nframes')
-    n_2010_160 = s.getArrayFromEpoch(3, 'nframes')
-    n_2013_160 = s.getArrayFromEpoch(4, 'nframes')
-    n_2013_160s = s.getArrayFromEpoch(5, 'nframes')
+    # For each epoch, add all the columns we want to keep.
+    for ii in range(num_epochs):
+        columns.append(s.getArrayFromEpoch(ii, 'xpix'))
+        col_names.append('x_' + align_idx[ii])
+        
+        columns.append(s.getArrayFromEpoch(ii, 'ypix'))
+        col_names.append('y_' + align_idx[ii])
 
-    colnames = ['name',
-               'x_2005_814', 'x_2010_125', 'x_2010_139', 'x_2010_160', 'x_2013_160', 'x_2013_160s',
-               'y_2005_814', 'y_2010_125', 'y_2010_139', 'y_2010_160', 'y_2013_160', 'y_2013_160s',
-               'm_2005_814', 'm_2010_125', 'm_2010_139', 'm_2010_160', 'm_2013_160', 'm_2013_160s',
-               'xe_2005_814', 'xe_2010_125', 'xe_2010_139', 'xe_2010_160', 'xe_2013_160', 'xe_2013_160s',
-               'ye_2005_814', 'ye_2010_125', 'ye_2010_139', 'ye_2010_160', 'ye_2013_160', 'ye_2013_160s',
-               'me_2005_814', 'me_2010_125', 'me_2010_139', 'me_2010_160', 'me_2013_160', 'me_2013_160s',
-               'n_2005_814', 'n_2010_125', 'n_2010_139', 'n_2010_160', 'n_2013_160', 'n_2013_160s']
+        columns.append(s.getArrayFromEpoch(ii, 'mag'))
+        col_names.append('m_' + align_idx[ii])
+
+        columns.append(s.getArrayFromEpoch(ii, 'ypixerr_p'))
+        col_names.append('xe_' + align_idx[ii])
+
+        columns.append(s.getArrayFromEpoch(ii, 'ypixerr_p'))
+        col_names.append('ye_' + align_idx[ii])
+
+        columns.append(s.getArrayFromEpoch(ii, 'snr'))
+        col_names.append('me_' + align_idx[ii])
+
+        columns.append(s.getArrayFromEpoch(ii, 'nframes'))
+        col_names.append('n_' + align_idx[ii])
+                
+        columns.append(s.getArrayFromEpoch(ii, 'xorig'))
+        col_names.append('xorig_' + align_idx[ii])
+
+        columns.append(s.getArrayFromEpoch(ii, 'yorig'))
+        col_names.append('yorig_' + align_idx[ii])
     
-    t = Table([name,
-               x_2005_814, x_2010_125, x_2010_139, x_2010_160, x_2013_160, x_2013_160s,
-               y_2005_814, y_2010_125, y_2010_139, y_2010_160, y_2013_160, y_2013_160s,
-               m_2005_814, m_2010_125, m_2010_139, m_2010_160, m_2013_160, m_2013_160s,
-               xe_2005_814, xe_2010_125, xe_2010_139, xe_2010_160, xe_2013_160, xe_2013_160s,
-               ye_2005_814, ye_2010_125, ye_2010_139, ye_2010_160, ye_2013_160, ye_2013_160s,
-               me_2005_814, me_2010_125, me_2010_139, me_2010_160, me_2013_160, me_2013_160s,
-               n_2005_814, n_2010_125, n_2010_139, n_2010_160, n_2013_160, n_2013_160s],
-               names=colnames)
+    t = Table(columns, names=col_names)
 
     t.table_name = align_root
-    t.write(workDir + '21.ALIGN_KS2/' + align_root + '.fits')
+    t.write(workDir + '50.ALIGN_KS2/' + align_root + '.fits')
 
     return
 
-def make_catalog(use_RMSE=True):
+def combine_mosaic_pos():
+    t = Table.read(workDir + '50.ALIGN_KS2/align_a4_t.fits')
+    
+    # First we need to combine all the positions of the mosaic together.
+    mosaic_epochs = ['2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
+    pos = ['pos1', 'pos2', 'pos3', 'pos4']
+
+    n_epochs = len(mosaic_epochs)
+    n_stars = len(t)
+    x_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    y_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    f_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    m_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    xe_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    ye_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    fe_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    me_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    wx_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    wy_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    wf_wavg = np.zeros((n_epochs, n_stars), dtype=float)
+    nframes = np.zeros((n_epochs, n_stars), dtype=float)
+
+    # Loop through each year+filter combination    
+    for ee in range(n_epochs):
+        print 'Working on: ' + mosaic_epochs[ee]
+        
+        for pp in range(len(pos)):
+            suffix = '_' + mosaic_epochs[ee] + '_' + pos[pp]
+            
+            x = t['x' + suffix]
+            y = t['y' + suffix]
+            m = t['m' + suffix]
+            xe = t['xe' + suffix]
+            ye = t['ye' + suffix]
+            me = t['me' + suffix]
+            n = t['n' + suffix]
+                  
+            # Identify the stars with detections in this list.
+            det = np.where((x > -1e4) & (xe > 0) &
+                           (y > -1e4) & (ye > 0) &
+                           (m > 0))[0]
+
+            # Convert the magnitudes to fluxes
+            f_det, fe_det = photo.mag2flux(m[det], me[det])
+            
+            # Calculate the weights
+            w_x = 1.0 / xe[det]**2
+            w_y = 1.0 / ye[det]**2
+            w_f = 1.0 / fe_det**2
+            
+            # Adding to the weighted average calculation
+            x_wavg[ee, det] += x[det] * w_x
+            y_wavg[ee, det] += y[det] * w_y
+            f_wavg[ee, det] += f_det * w_f
+
+            wx_wavg[ee, det] += w_x
+            wy_wavg[ee, det] += w_y
+            wf_wavg[ee, det] += w_f
+
+            nframes[ee, det] += n[det]
+
+        # Finished this epoch, finish the weighted average calculation
+        x_wavg[ee, :] /= wx_wavg[ee, :]
+        y_wavg[ee, :] /= wy_wavg[ee, :]
+        f_wavg[ee, :] /= wf_wavg[ee, :]
+
+        xe_wavg[ee, :] = (1.0 / wx_wavg[ee, :])**0.5
+        ye_wavg[ee, :] = (1.0 / wy_wavg[ee, :])**0.5
+        fe_wavg[ee, :] = (1.0 / wf_wavg[ee, :])**0.5
+
+        m_wavg[ee, :], me_wavg[ee, :] = photo.flux2mag(f_wavg[ee, :], fe_wavg[ee, :])
+
+        # Add new columns to the table
+        t.add_column(Column(x_wavg[ee, :], name='x_' + mosaic_epochs[ee]))
+        t.add_column(Column(y_wavg[ee, :], name='y_' + mosaic_epochs[ee]))
+        t.add_column(Column(m_wavg[ee, :], name='m_' + mosaic_epochs[ee]))
+
+        t.add_column(Column(xe_wavg[ee, :], name='xe_' + mosaic_epochs[ee]))
+        t.add_column(Column(ye_wavg[ee, :], name='ye_' + mosaic_epochs[ee]))
+        t.add_column(Column(me_wavg[ee, :], name='me_' + mosaic_epochs[ee]))
+        
+        t.add_column(Column(nframes[ee, :], name='n_' + mosaic_epochs[ee]))
+
+        
+    # Table Clean Up:
+    # Remove the position dependent columns from the table.
+    for ee in range(n_epochs):
+        for pp in range(len(pos)):
+            suffix = '_' + mosaic_epochs[ee] + '_' + pos[pp]
+
+            t.remove_column('x' + suffix)
+            t.remove_column('y' + suffix)
+            t.remove_column('m' + suffix)
+            t.remove_column('xe' + suffix)
+            t.remove_column('ye' + suffix)
+            t.remove_column('me' + suffix)
+            t.remove_column('n' + suffix)
+            t.remove_column('xorig' + suffix)
+            t.remove_column('yorig' + suffix)
+
+    # Remove the xorig and yorig for the other epochs
+    t.remove_column('xorig_2005_F814W')
+    t.remove_column('yorig_2005_F814W')
+    t.remove_column('xorig_2013_F160Ws')
+    t.remove_column('yorig_2013_F160Ws')
+
+    t.write(workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits',
+            format='fits', overwrite=True)
+
+                    
+def make_catalog(use_RMSE=True, vel_weight=None):
     """
     Read the align FITS table from all three epochs and fit a velocity to the
-    positions. 
-    """
-    # years = ['2005', '2010', '2013']
-    # filters = {'2005': ['814'], #Can expand this to include f127 and f139 if desired
-    #            '2010': ['125', '139', '160'],
-    #            '2013': ['160', '160s']}
+    positions.
 
+    use_RMSE - If True, use RMS error (standard deviation) for the positional error.
+               If False, convert the positional errors in "error on the mean" and
+               save to a different catalog name.
+    vel_weight - None, 'error', 'variance'
+            None = no weighting by errors in the velocity fit.
+            'error' = Weight by 1.0 / positional error in the velocity fit.
+            'variance' = Weight by 1.0 / (positional error)^2 in the velocity fit. 
+    """
+    
     final = None
     good = None
 
-    d_all = Table.read(workDir + '21.ALIGN_KS2/align_t.fits')
+    d_all = Table.read(workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits')
 
     # TRIM out all stars that aren't detected in all 3 epochs:
     #    2005_814
     #    2010_160
     #    2013_160
-    idx = np.where((d_all['x_2005_814'] > -999) &
-                   (d_all['x_2010_160'] > -999) &
-                   (d_all['x_2013_160'] > -999) &
-                   (d_all['n_2005_814'] > 1) &
-                   (d_all['n_2010_160'] > 1) &
-                   (d_all['n_2013_160'] > 1) &
-                   (d_all['xe_2005_814'] > 0) &
-                   (d_all['xe_2010_160'] > 0) &
-                   (d_all['xe_2013_160'] > 0) &
-                   (d_all['ye_2005_814'] > 0) &
-                   (d_all['ye_2010_160'] > 0) &
-                   (d_all['ye_2013_160'] > 0))[0]
+    idx = np.where((d_all['x_2005_F814W'] > -999) &
+                   (d_all['x_2010_F160W'] > -999) &
+                   (d_all['x_2013_F160W'] > -999) &
+                   (d_all['n_2005_F814W'] > 1) &
+                   (d_all['n_2010_F160W'] > 1) &
+                   (d_all['n_2013_F160W'] > 1) &
+                   (d_all['xe_2005_F814W'] > 0) &
+                   (d_all['xe_2010_F160W'] > 0) &
+                   (d_all['xe_2013_F160W'] > 0) &
+                   (d_all['ye_2005_F814W'] > 0) &
+                   (d_all['ye_2010_F160W'] > 0) &
+                   (d_all['ye_2013_F160W'] > 0))[0]
     
     print 'Kept {0:d} of {1:d} stars in all 3 epochs.'.format(len(idx), len(d_all))
     d = d_all[idx]
     
     #Changing rms errors into standard errors for the f153m data
-    xeom_2005_814 = d['xe_2005_814'] / np.sqrt(d['n_2005_814'])
-    yeom_2005_814 = d['ye_2005_814'] / np.sqrt(d['n_2005_814'])
-    xeom_2010_160 = d['xe_2010_160'] / np.sqrt(d['n_2010_160'])
-    yeom_2010_160 = d['ye_2010_160'] / np.sqrt(d['n_2010_160'])
-    xeom_2013_160 = d['xe_2013_160'] / np.sqrt(d['n_2013_160'])
-    yeom_2013_160 = d['ye_2013_160'] / np.sqrt(d['n_2013_160'])
+    xeom_2005_814 = d['xe_2005_F814W'] / np.sqrt(d['n_2005_F814W'])
+    yeom_2005_814 = d['ye_2005_F814W'] / np.sqrt(d['n_2005_F814W'])
+    xeom_2010_160 = d['xe_2010_F160W'] / np.sqrt(d['n_2010_F160W'])
+    yeom_2010_160 = d['ye_2010_F160W'] / np.sqrt(d['n_2010_F160W'])
+    xeom_2013_160 = d['xe_2013_F160W'] / np.sqrt(d['n_2013_F160W'])
+    yeom_2013_160 = d['ye_2013_F160W'] / np.sqrt(d['n_2013_F160W'])
     
     # Fit velocities. Will use an error-weighted t0, specified to each object
     t = np.array([years['2005_F814W'], years['2010_F160W'], years['2013_F160W']])
 
     if use_RMSE:
         # Shape = (nepochs, nstars)
-        xerr = np.array([d['xe_2005_814'], d['xe_2010_160'], d['xe_2013_160']])
-        yerr = np.array([d['ye_2005_814'], d['ye_2010_160'], d['ye_2013_160']])
+        xerr = np.array([d['xe_2005_F814W'], d['xe_2010_F160W'], d['xe_2013_F160W']])
+        yerr = np.array([d['ye_2005_F814W'], d['ye_2010_F160W'], d['ye_2013_F160W']])
     else:
         xerr = np.array([xeom_2005_814**2, xeom_2010_160**2, xeom_2013_160**2])
         yerr = np.array([yeom_2005_814**2, yeom_2010_160**2, yeom_2013_160**2])
@@ -1699,8 +1769,6 @@ def make_catalog(use_RMSE=True):
     w = np.transpose(w) #Getting the dimensions of w right
     numerator = np.sum(t * w, axis = 1)
     denominator = np.sum(w, axis = 1)
-    # numerator = numerator.astype(float) #Making sure these are floats before the division
-    # denominator = denominator.astype(float)
     t0_arr = numerator / denominator
 
     nstars = len(d)
@@ -1713,9 +1781,9 @@ def make_catalog(use_RMSE=True):
     #Calculating dt for each object
     dt = t - t0
 
-    d.add_column(Column(data=t[0],name='t_2005_814'))
-    d.add_column(Column(data=t[1],name='t_2010_160'))
-    d.add_column(Column(data=t[2],name='t_2013_160'))
+    d.add_column(Column(data=t[0],name='t_2005_F814W'))
+    d.add_column(Column(data=t[1],name='t_2010_F160W'))
+    d.add_column(Column(data=t[2],name='t_2013_F160W'))
     d.add_column(Column(data=t0[0],name='fit_t0'))
 
     d.add_column(Column(data=np.ones(nstars),name='fit_x0'))
@@ -1729,15 +1797,21 @@ def make_catalog(use_RMSE=True):
     d.add_column(Column(data=np.ones(nstars),name='fit_vye'))
 
     for ii in range(len(d)):
-        x = np.array([d['x_2005_814'][ii], d['x_2010_160'][ii], d['x_2013_160'][ii]])
-        y = np.array([d['y_2005_814'][ii], d['y_2010_160'][ii], d['y_2013_160'][ii]])
+        x = np.array([d['x_2005_F814W'][ii], d['x_2010_F160W'][ii], d['x_2013_F160W'][ii]])
+        y = np.array([d['y_2005_F814W'][ii], d['y_2010_F160W'][ii], d['y_2013_F160W'][ii]])
         xe = xerr[:, ii]
         ye = yerr[:, ii]
 
-        vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, cov=True)
-        vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, cov=True)
-        # vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe, cov=True)
-        # vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye, cov=True)
+        if (vel_weight != 'error') and (vel_weight != 'variance'):
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, cov=True)
+        if vel_weight == 'error':
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye, cov=True)
+        if vel_weight == 'variance':
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe**2, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye**2, cov=True)
+            
         vxErr = np.sqrt(-1.0 * vxCov.diagonal())
         vyErr = np.sqrt(-1.0 * vyCov.diagonal())
 
@@ -1751,63 +1825,25 @@ def make_catalog(use_RMSE=True):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
-    d.write('wd1_catalog.fits', format='fits')
+    catalog_name = 'wd1_catalog'
+    if use_RMSE:
+        catalog_name += '_RMSE'
+    else:
+        catalog_name += '_EOM'
+
+    if vel_weight == None:
+        catalog_name += '_wvelNone'
+    else:
+        if vel_weight == 'error':
+            catalog_name += '_wvelErr'
+        if vel_weight == 'variance':
+            catalog_name += '_wvelVar'
+    catalog_name += '.fits'
+
+    d.write(catalog_name, format='fits')
     
     return
 
-def make_catalog_old():
-    """
-    Combine 4 MATCHUP files into a single FITS file catalog.  Stars have to be
-    detected in all 4 filters in order to be included.
-
-    Output is wd1_catalog.fits
-    """
-    files = ['MATCHUP.XYMEEE.F814W.ks2_all',
-             'MATCHUP.XYMEEE.F160W.ks2_all',
-             'MATCHUP.XYMEEE.F139M.ks2_all',
-             'MATCHUP.XYMEEE.F125W.ks2_all']
-
-    suffixes = ['814', '160', '139', '125']
-
-    print 'Reading in star lists.'
-    final = None
-    for ff in range(len(files)):
-        tab = atpy.Table(files[ff], type='ascii')
-        tab.rename_column('col1', 'x_'+suffixes[ff])
-        tab.rename_column('col2', 'y_'+suffixes[ff])
-        tab.rename_column('col3', 'm_'+suffixes[ff])
-        tab.rename_column('col4', 'xe_'+suffixes[ff])
-        tab.rename_column('col5', 'ye_'+suffixes[ff])
-        tab.rename_column('col6', 'me_'+suffixes[ff])
-        tab.rename_column('col9', 'cntPos_'+suffixes[ff])
-        tab.rename_column('col10', 'cntMag_'+suffixes[ff])
-        tab.rename_column('col12', 'name')
-
-        tab.remove_columns(['col7', 'col8', 'col11', 'col13', 'col14'])
-
-        if final == None:
-            final = tab
-        else:
-            final.add_column('x_'+suffixes[ff], tab['x_'+suffixes[ff]])
-            final.add_column('y_'+suffixes[ff], tab['y_'+suffixes[ff]])
-            final.add_column('m_'+suffixes[ff], tab['m_'+suffixes[ff]])
-            final.add_column('xe_'+suffixes[ff], tab['xe_'+suffixes[ff]])
-            final.add_column('ye_'+suffixes[ff], tab['ye_'+suffixes[ff]])
-            final.add_column('me_'+suffixes[ff], tab['me_'+suffixes[ff]])
-            final.add_column('cntPos_'+suffixes[ff], tab['cntPos_'+suffixes[ff]])
-            final.add_column('cntMag_'+suffixes[ff], tab['cntMag_'+suffixes[ff]])
-
-
-    # Trim down the table to only those stars in all filters.
-    print 'Trimming stars not in all 4 filters.'
-    final2 = final.where((final.m_814 != 0) & (final.m_160 != 0) &
-                         (final.m_139 != 0) & (final.m_125 != 0) &
-                         (final.xe_814 < 9) & (final.xe_160 < 9) &
-                         (final.xe_139 < 9) & (final.xe_125 < 9))
-    final2.table_name = 'wd1_catalog'
-
-    final2.write('wd1_catalog.fits')
-  
 
 def check_vpd_ks2_astrometry():
     """
