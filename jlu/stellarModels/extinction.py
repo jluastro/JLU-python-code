@@ -2,6 +2,7 @@ import numpy as np
 import pylab as py
 from scipy import interpolate
 import scipy
+import pysynphot
 
 class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
     """
@@ -14,8 +15,8 @@ class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
         
         # This will eventually be scaled by AKs when you
         # call reddening(). Right now, calc for AKs=1
-        Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False)
-
+        #Alambda_scaled = extinction.nishiyama09(wave, 1.0, makePlot=False)
+        Alambda_scaled = nishiyama09(wave, 1.0, makePlot=False)
         # Convert wavelength to angstrom
         wave *= 10**4
 

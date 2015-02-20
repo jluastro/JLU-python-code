@@ -659,10 +659,10 @@ def make_brite_multi_filter(matchup_files, trimMags):
 
         if inAll == None:
             inAll = np.ones(len(starlists[0]), dtype=bool)
-        inAll[ np.where(table.m == 0) ] = False
+        inAll[ np.where(table['m'] == 0) ] = False
 
     # Trim down the lists to just those stars in all epochs.
-    foo = 'Trimming {0} of {1} stars that are not in all epochs'
+    foo = 'Trimming {0} of {1} stars that are in all epochs'
     print(foo.format(inAll.sum(), len(inAll)))
     for ff in range(len(starlists)):
         starlists[ff] = starlists[ff].where(inAll)
