@@ -2,7 +2,7 @@ import os, sys
 import math, copy
 import asciidata
 import numpy as np
-from gcwork import objects
+from jlu.gc.gcwork import objects
 #from pysqlite2 import dbapi2 as sqlite
 from sqlite3 import dbapi2 as sqlite
 import pdb
