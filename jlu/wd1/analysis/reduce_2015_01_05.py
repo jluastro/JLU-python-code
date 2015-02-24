@@ -1845,42 +1845,60 @@ def make_catalog(use_RMSE=True, vel_weight=None):
     return
 
 
-def check_vpd_ks2_astrometry():
+def plot_vpd(use_RMSE=False, vel_weight=None):
     """
     Check the VPD and quiver plots for our KS2-extracted, re-transformed astrometry.
     """
-    catFile = workDir + '21.ALIGN_KS2/wd1_catalog.fits'
+    catalog_name = 'wd1_catalog'
+    catalog_suffix = ''
+    if use_RMSE:
+        catalog_suffix += '_RMSE'
+    else:
+        catalog_suffix += '_EOM'
+
+    if vel_weight == None:
+        catalog_suffix += '_wvelNone'
+    else:
+        if vel_weight == 'error':
+            catalog_suffix += '_wvelErr'
+        if vel_weight == 'variance':
+            catalog_suffix += '_wvelVar'
+    catalog_name += catalog_suffix + '.fits'
+    
+    catFile = workDir + '50.ALIGN_KS2/' + catalog_name
     tab = atpy.Table(catFile)
 
-    good = (tab.xe_160 < 0.05) & (tab.ye_160 < 0.05) & \
-        (tab.xe_814 < 0.05) & (tab.ye_814 < 0.05) & \
-        (tab.me_814 < 0.05) & (tab.me_160 < 0.05)
+    good = (tab['fit_vxe'] < 0.01) & (tab['fit_vye'] < 0.01) & \
+        (tab['me_2005_F814W'] < 0.1) & (tab['me_2010_F160W'] < 0.1)
 
     tab2 = tab.where(good)
 
-    dx = (tab2.x_160 - tab2.x_814) * ast.scale['WFC'] * 1e3
-    dy = (tab2.y_160 - tab2.y_814) * ast.scale['WFC'] * 1e3
+    vx = tab2['fit_vx'] * ast.scale['WFC'] * 1e3
+    vy = tab2['fit_vy'] * ast.scale['WFC'] * 1e3
 
+    py.figure(1)
     py.clf()
-    q = py.quiver(tab2.x_814, tab2.y_814, dx, dy, scale=5e2)
-    py.quiverkey(q, 0.95, 0.85, 5, '5 mas', color='red', labelcolor='red')
-    py.savefig(workDir + '20.KS2_PMA/vec_diffs_ks2_all.png')
+    q = py.quiver(tab2['x_2005_F814W'], tab2['y_2005_F814W'], vx, vy, scale=5e2)
+    py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='red', labelcolor='red')
+    py.savefig(workDir + '50.ALIGN_KS2/vec_diffs_' + catalog_suffix + '.png')
 
+    py.figure(2)
     py.clf()
-    py.plot(dy, dx, 'k.', ms=2)
-    lim = 30
+    py.plot(vx, vy, 'k.', ms=2)
+    lim = 5
     py.axis([-lim, lim, -lim, lim])
-    py.xlabel('Y Proper Motion (mas)')
-    py.ylabel('X Proper Motion (mas)')
-    py.savefig(workDir + '20.KS2_PMA/vpd_ks2_all.png')
+    py.xlabel('X Proper Motion (mas/yr)')
+    py.ylabel('Y Proper Motion (mas/yr)')
+    py.savefig(workDir + '50.ALIGN_KS2/vpd_' + catalog_suffix + '.png')
 
-    idx = np.where((np.abs(dx) < 10) & (np.abs(dy) < 10))[0]
-    print('Cluster Members (within dx < 10 mas and dy < 10 mas)')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx[idx].mean(),
-                                                        dxe=dx[idx].std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy[idx].mean(),
-                                                        dye=dy[idx].std()))
+    idx = np.where((np.abs(vx) < 3) & (np.abs(vy) < 3))[0]
+    print('Cluster Members (within vx < 10 mas/yr and vy < 10 mas/yr)')
+    print('   vx = {vx:6.2f} +/- {vxe:6.2f} mas/yr'.format(vx=vx[idx].mean(),
+                                                           vxe=vx[idx].std()))
+    print('   vy = {vy:6.2f} +/- {vye:6.2f} mas/yr'.format(vy=vy[idx].mean(),
+                                                           vye=vy[idx].std()))
     
+    return
 
 def map_of_errors():
     t = atpy.Table(workDir + '20.KS2_PMA/wd1_catalog.fits')
