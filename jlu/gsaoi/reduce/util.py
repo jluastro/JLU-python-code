@@ -124,6 +124,7 @@ def mk_lis(directory='.', obj='Domeflat'):
     '''
 
     files = glob.glob(directory+'/*.fits')
+    file_lis = []
     
     for ff in files:
         hdr = fits.getheader(ff)
