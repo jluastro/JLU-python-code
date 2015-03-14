@@ -131,12 +131,11 @@ def mk_lis(directory='.', obj='Domeflat'):
 
         dir, filename = os.path.split(ff)
         fileroot, fileext = os.path.splitext(filename)
-        import pdb; pdb.set_trace()
-        
+       
         if hdr['OBJECT'] == obj:
             file_lis.append(fileroot)
 
-        return file_lis
+    return file_lis
         
 
         
