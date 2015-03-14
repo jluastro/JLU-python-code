@@ -117,7 +117,27 @@ def read_log(filename):
         mjd.append(float(dum[8]))
         
     return np.array(frames), np.array(obj), np.array(filt1), np.array(ra), np.array(dec), np.array(date), np.array(exptime), np.array(coadds), np.array(mjd)
+
+def mk_lis(directory='.', obj='Domeflat'):
+    '''
+    returns list of fit files that have obj keywoed = obj
+    '''
+
+    files = glob.glob(directory+'/*.fits')
     
+    for ff in files:
+        hdr = fits.getheader(ff)
+
+        dir, filename = os.path.split(ff)
+        fileroot, fileext = os.path.splitext(filename)
+        
+        if hdr['OBJECT'] == obj:
+            file_lis.append(fileroot)
+
+        return file_lis
+        
+
+        
 def mk_log(directory, output='gsaoi_log.txt'):
     """
     Read in all the fits files in the specified directory and print
