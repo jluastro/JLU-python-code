@@ -379,14 +379,12 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     
     #find minimum of date
     epoch_dates = []
-    #obs_bool = np.ones(len(mjd), dtype=bool)
-    obs_bool = sci_bool[:]
     epoch_bool_ars = []
     num_done = 0
     
     
-    limits = [np.min(mjd)]
-    obs_bool = np.ones(len(mjd), dtype=bool)
+    limits = [np.min(mjd[sci_bool])]
+    obs_bool = sci_bool[:]
     index = 1
     while np.any(obs_bool):
         
