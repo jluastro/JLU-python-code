@@ -390,8 +390,8 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
         
         epoch_dates.append(date[np.argmin(mjd[obs_bool])+num_done])
         limits.append(np.min(mjd[obs_bool])+day_diff)
-        obs_bool = obs_bool - (mjd < limits[index]+.1)*(mjd > limits[index-1]-.1)
-        epoch_bool_ars.append((mjd < limits[index]+.1)*(mjd > limits[index-1]-.1))
+        obs_bool = obs_bool - (mjd[sci_bool] < limits[index]+.1)*(mjd[sci_bool] > limits[index-1]-.1)
+        epoch_bool_ars.append((mjd[sci_bool] < limits[index]+.1)*(mjd[sci_bool] > limits[index-1]-.1))
         num_done += np.sum(epoch_bool_ars[-1])
         index += 1  
         
