@@ -367,7 +367,7 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     
     '''
     does boolean split up for given frame_file
-    used by both re.py  and struc.py
+    used by both red.py  and struc.py
     '''
 
     sky_bool = obj == sky_key
@@ -379,7 +379,8 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     
     #find minimum of date
     epoch_dates = []
-    obs_bool = np.ones(len(mjd), dtype=bool)
+    #obs_bool = np.ones(len(mjd), dtype=bool)
+    obs_bool = sci_bool[:]
     epoch_bool_ars = []
     num_done = 0
     
