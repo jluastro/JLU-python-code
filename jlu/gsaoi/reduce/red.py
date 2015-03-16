@@ -67,8 +67,8 @@ def doit(frame_file, epoch_start_in=0, mix_flats=True, sky_key='sky', flat_key='
                     #only give in list of frames that 
                     #print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
                     if mix_flats:
-                        #red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
-                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/',sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
+                        red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
+                        #red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/',sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
                     else:
                         red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)],ex_skies)) )
                 np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)
