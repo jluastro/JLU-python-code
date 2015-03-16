@@ -171,7 +171,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             
             iraf.imcopy('rg'+i+'['+str(k+1)+'][inherit+]' , 'rg'+i.replace('.fits',str(k+1)+'.fits'))
             #add in line to reflect the x-axis --- note I do not correct the WCS at all!!!!
-            iraf.imcopy('rg'+i.replace('.fits',str(k+1)+'.fits[-*,*]', 'rg'+i.replace('.fits',str(k+1)+'.fits')
+            iraf.imcopy('rg'+i.replace('.fits',str(k+1)+'.fits[-*,*]'), 'rg'+i.replace('.fits',str(k+1)+'.fits'))
             shutil.move('rg'+i.replace('.fits',str(k+1)+'.fits'), clean_dir+'rg'+i.replace('.fits','_'+str(k+1)+'.fits'))
             shutil.copy('rg'+i, directory+'rg'+i)
         os.remove('rg'+i)
