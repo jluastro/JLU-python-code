@@ -122,7 +122,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             dome_list.append(i)
         else:
             for j in sci_keys:
-                if head['OBJECT'] == j:
+                if head['OBJECT'].replace(' ','') == j:
                     print >> sci_f, dir_ap+'g'+i+'.fits'
                     sci_l.append(i+'.fits')
     if len(sci_l)==0:
