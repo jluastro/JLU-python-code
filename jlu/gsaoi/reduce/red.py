@@ -125,6 +125,10 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
                 if head['OBJECT'] == j:
                     print >> sci_f, dir_ap+'g'+i+'.fits'
                     sci_l.append(i+'.fits')
+    if len(sci_l)==0:
+        print 'No science frames found in directory'
+        import pdb; pdb.set_trace()
+            
 
     sky_f.close()
     sci_f.close()
