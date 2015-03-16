@@ -168,7 +168,7 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
 
-    import pdb; pdb.set_trace()
+    
     #util.rmall(['obj.lis','sky.lis','flat.lis', 'all.lis'])
 
     for i in sci_l:
