@@ -532,7 +532,6 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
 
     # Calculate the band-integrated SNR for each magnitude bin and filter.
     mag = avg_tab['mag']
-
     N_SNe = 4500.0 * 10**(0.6*(mag - 18.9))
 
     hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}  {4:8s}'
