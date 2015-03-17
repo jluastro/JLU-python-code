@@ -431,6 +431,22 @@ def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     spec_j_tab = None
     spec_h_tab = None
 
+    # Calculate the number of supernovae.
+    N_SNe = 4500.0 * 0.6 * 10**(mag - 18.9)
+
+    out_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, aper_radius)
+    
+    # Save the output to a table.
+    _out = open(out_file + '.txt', 'w')
+
+    meta1 = '# tint = {0:5d}, R = {1:5d}, apRad = {2:5.3f}"\n'
+    _out.write(meta1.format(tint, spec_res, aper_radius))
+    _out.write('# Sensitivity integrated over broad band.')
+    
+    hdr = '{0:5s}  {1:6s}  {2:5s}  {3:5s}  {4:5s}  {5:5s}  {6:5s}  {7:5s}\n'
+    fmt = '{0:5.1f}  {1:6.1f}  {2:5.1f}  {3:5.1f}  {4:5.1f}  {5:5.1f}  {6:5.1f}  {7:5.1f}\n'
+    _out.write(hdr.format('# Mag', 'N_SNe', 'J_SNR', 'H_SNR', 'J_ms', 'H_ms', 'J_mb', 'H_mb'))
+               
     for mm in range(len(mag)):
         print 'Mag: ', mag[mm]
         blah_y = etc_uh_roboAO(mag[mm], 'Y', tint,
