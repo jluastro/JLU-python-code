@@ -10,7 +10,7 @@ def import_text(filename, separator):
         if line:
             yield line
 
-def make_Input (filename, band, outputname='input',saveto=''):
+def make_Input(filename, band, outputname='input',saveto=''):
     """
     Created on May 08 2013
     filename: usually should be "LOGA.INPUT" 

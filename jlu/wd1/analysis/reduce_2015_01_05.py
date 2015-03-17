@@ -7,7 +7,6 @@ import atpy
 import pylab as py
 import numpy as np
 from jlu.hst import images
-from jlu.hst import astrometry as ast
 from jlu import photometry as photo
 import glob
 from matplotlib import colors
@@ -17,9 +16,11 @@ import pdb
 import os
 import shutil
 import subprocess
+from hst_flystar import astrometry as ast
 from hst_flystar import reduce as flystar
 from hst_flystar import starlists
 import astropy.table
+from astropy import table
 from astropy.table import Table
 from astropy.table import Column
 from jlu.astrometry import align
@@ -1637,7 +1638,7 @@ def combine_mosaic_pos():
             # Identify the stars with detections in this list.
             det = np.where((x > -1e4) & (xe > 0) &
                            (y > -1e4) & (ye > 0) &
-                           (m > 0))[0]
+                           (m > 0) & (me > 0))[0]
 
             # Convert the magnitudes to fluxes
             f_det, fe_det = photo.mag2flux(m[det], me[det])
@@ -1645,12 +1646,14 @@ def combine_mosaic_pos():
             # Calculate the weights
             w_x = 1.0 / xe[det]**2
             w_y = 1.0 / ye[det]**2
-            w_f = 1.0 / fe_det**2
-            
+            # w_f = 1.0 / fe_det**2   - Too big... mags are good enough.
+            w_f = 1.0 / me[det]**2
+
             # Adding to the weighted average calculation
             x_wavg[ee, det] += x[det] * w_x
             y_wavg[ee, det] += y[det] * w_y
             f_wavg[ee, det] += f_det * w_f
+            fe_wavg[ee, det] += fe_det * w_f
 
             wx_wavg[ee, det] += w_x
             wy_wavg[ee, det] += w_y
@@ -1660,12 +1663,14 @@ def combine_mosaic_pos():
 
         # Finished this epoch, finish the weighted average calculation
         x_wavg[ee, :] /= wx_wavg[ee, :]
-        y_wavg[ee, :] /= wy_wavg[ee, :]
-        f_wavg[ee, :] /= wf_wavg[ee, :]
-
         xe_wavg[ee, :] = (1.0 / wx_wavg[ee, :])**0.5
+        
+        y_wavg[ee, :] /= wy_wavg[ee, :]
         ye_wavg[ee, :] = (1.0 / wy_wavg[ee, :])**0.5
-        fe_wavg[ee, :] = (1.0 / wf_wavg[ee, :])**0.5
+        
+        f_wavg[ee, :] /= wf_wavg[ee, :]
+        # fe_wavg[ee, :] = (1.0 / wf_wavg[ee, :])**0.5
+        fe_wavg[ee, :] /= wf_wavg[ee, :]  # Spe
 
         m_wavg[ee, :], me_wavg[ee, :] = photo.flux2mag(f_wavg[ee, :], fe_wavg[ee, :])
 
@@ -1687,6 +1692,29 @@ def combine_mosaic_pos():
         for pp in range(len(pos)):
             suffix = '_' + mosaic_epochs[ee] + '_' + pos[pp]
 
+            # Identify the stars with detections in this list.
+            # Used for checking zeropoint offsets.
+            x = t['x' + suffix]
+            y = t['y' + suffix]
+            m = t['m' + suffix]
+            xe = t['xe' + suffix]
+            ye = t['ye' + suffix]
+            me = t['me' + suffix]
+            n = t['n' + suffix]
+            
+            det = np.where((x > -1e4) & (xe > 0) &
+                           (y > -1e4) & (ye > 0) &
+                           (m > 0) & (me > 0))[0]
+
+            dx = x[det] - t['x_' + mosaic_epochs[ee]][det]
+            dy = y[det] - t['y_' + mosaic_epochs[ee]][det]
+            dm = m[det] - t['m_' + mosaic_epochs[ee]][det]
+
+            print 'Stats for: ' + mosaic_epochs[ee] + ' ' + pos[pp]
+            print '    dx = {0:7.3f} +/- {1:7.3f}'.format(dx.mean(), dx.std())
+            print '    dy = {0:7.3f} +/- {1:7.3f}'.format(dy.mean(), dy.std())
+            print '    dm = {0:7.3f} +/- {1:7.3f}'.format(dm.mean(), dm.std())
+            
             t.remove_column('x' + suffix)
             t.remove_column('y' + suffix)
             t.remove_column('m' + suffix)
@@ -1900,270 +1928,170 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     
     return
 
-def map_of_errors():
-    t = atpy.Table(workDir + '20.KS2_PMA/wd1_catalog.fits')
-
-    xbins = np.arange(0, 4251, 250)
-    ybins = np.arange(0, 4200, 250)
-
-    xb2d, yb2d = np.meshgrid(xbins, ybins)
-
-    xe_mean = np.zeros(xb2d.shape, dtype=float)
-    ye_mean = np.zeros(yb2d.shape, dtype=float)
-    me_mean = np.zeros(yb2d.shape, dtype=float)
-    xe_std = np.zeros(xb2d.shape, dtype=float)
-    ye_std = np.zeros(yb2d.shape, dtype=float)
-    me_std = np.zeros(yb2d.shape, dtype=float)
-
-    for xx in range(len(xbins)-1):
-        for yy in range(len(ybins)-1):
-            idx = np.where((t.x_160 > xbins[xx]) & (t.x_160 <= xbins[xx+1]) &
-                           (t.y_160 > ybins[yy]) & (t.y_160 <= ybins[yy+1]) &
-                           (t.xe_160 < 0.2) & (t.ye_160 < 0.2))[0]
-
-            if len(idx) > 0:
-                xe_mean[yy, xx] = statsIter.mean(t.xe_160[idx], hsigma=3, iter=5)
-                ye_mean[yy, xx] = statsIter.mean(t.ye_160[idx], hsigma=3, iter=5)
-                me_mean[yy, xx] = statsIter.mean(t.me_160[idx], hsigma=3, iter=5)
-                xe_std[yy, xx] = statsIter.std(t.xe_160[idx], hsigma=3, iter=5)
-                ye_std[yy, xx] = statsIter.std(t.ye_160[idx], hsigma=3, iter=5)
-                me_std[yy, xx] = statsIter.std(t.me_160[idx], hsigma=3, iter=5)
-
-
-    py.close('all')
-    py.figure(1, figsize=(12, 6))
-    py.clf()
-    py.subplots_adjust(left=0.05, bottom=0.05)
-    py.subplot(1, 2, 1)
-    py.imshow(xe_mean, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('X Error Mean')
-
-    py.subplot(1, 2, 2)
-    py.imshow(xe_std, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('X Error Std')
-
-
-    py.figure(2, figsize=(12, 6))
-    py.clf()
-    py.subplots_adjust(left=0.05, bottom=0.05)
-    py.subplot(1, 2, 1)
-    py.imshow(ye_mean, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('Y Error Mean')
-
-    py.subplot(1, 2, 2)
-    py.imshow(ye_std, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('Y Error Std')
-
-
-
-
-    py.figure(3, figsize=(12, 6))
-    py.clf()
-    py.subplots_adjust(left=0.05, bottom=0.05)
-    py.subplot(1, 2, 1)
-    py.imshow(me_mean, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('M Error Mean')
-
-    py.subplot(1, 2, 2)
-    py.imshow(me_std, extent=[xbins[0], xbins[-1], ybins[0], ybins[-1]],
-              vmin=0.01, vmax=0.07)
-    py.colorbar(orientation='horizontal')
-    py.title('M Error Std')
-
-def remake_loga_input(loga_file, artstar_file):
-    """
-    This makes an input.xym file from a LOGA.INPUT file and the ARTSTAR_a?.XYM file.
-    """
-    # Load up the input file (ARTSTAR) as a table... we are going to sort 
-    # this at the end to give the same order as in the LOGA.INPUT file.
-    print 'Loading Table: {0}'.format(loga_file)
-    astar = atpy.Table(artstar_file, type='ascii')
-
-    # This will contain the indices for re-sorting the ARTSTAR file
-    # to match the LOGA order.
-    sidx = np.ones(len(astar)) * -1
-
-    # This one is already sorted correctly (same as LOGA)
-    names = np.zeros(len(astar), dtype='S7')
-
-    # Open the LOGA.INPUT file
-    f_loga = open(loga_file, 'r')
-
-    # Loop through each line, get the name of the star, convert
-    # to an index into astar.
-    aa = 0
-    for line in f_loga:
-        if line.startswith('#'):
-            continue
-
-        fields = line.split()
-        names[aa] = fields[16]
-
-        # Parse the name to get the line index in ARTSTAR file.
-        # First star name is 1 (not 0).
-        sidx[aa] = int(names[aa][1:].lstrip("0")) - 1
-
-        aa += 1
-
-    # Get rid of any stars that weren't succesfully planted (e.g. not in LOGA.INPUT)
-    good = np.where(sidx >= 0)
-    sidx = sidx[good]
-    names = names[good]
-    msg = 'Dropped {0} of {1} ARTSTAR entries that are not in LOGA.INPUT'
-    print msg.format(len(astar) - len(sidx), len(astar))
- 
-    # Make a new table that has the contents of ARTSTAR sorted
-    # in the same order as LOGA.INPUT.
-    astar_new = astar.rows(sidx)
-    astar_new.rename_column('col1', 'x')
-    astar_new.rename_column('col2', 'y')
-    for ii in range(2, len(astar.columns)):
-        astar_new.rename_column('col{0}'.format(ii+1), 'm{0}'.format(ii-1))
-
-    astar_new.add_column('name', names)
-    astar_new.table_name = ''
-
-    # Write to an output file.
-    astar_new.write(loga_file + '_mag.fits', overwrite=True)
+def setup_artstar_info():
+    comp_dirs = {'21.KS2_2005_ART': ['01.ks2', '02.ks2', '03.ks2',
+                                     '04.ks2', '05.ks2', '06.ks2'],
+                 '22.KS2_2010_ART': ['01.pos1_a', '01.pos1_b', '01.pos1_c',
+                                     '02.pos2_a', '02.pos2_b',
+                                     '03.pos3_a', '03.pos3_b',
+                                     '04.pos4_a', '04.pos4_b', '04.pos4_c'],
+                 '23.KS2_2013_ART': ['01.pos1_a', '01.pos1_b', '01.pos1_c',
+                                     '02.pos2_a', '02.pos2_b',
+                                     '03.pos3_a', '03.pos3_b',
+                                     '04.pos4_a', '04.pos4_b', '04.pos4_c']}
+    art_lists = {'21.KS2_2005_ART': ['Artstarlist_2005_1.txt',
+                                     'Artstarlist_2005_2.txt',
+                                     'Artstarlist_2005_3.txt',
+                                     'Artstarlist_2005_4.txt',
+                                     'Artstarlist_2005_5.txt',
+                                     'Artstarlist_2005_6.txt'],
+                 '22.KS2_2010_ART': ['Artstarlist_2010_pos1_a.txt',
+                                     'Artstarlist_2010_pos1_b.txt',
+                                     'Artstarlist_2010_pos1_c.txt',
+                                     'Artstarlist_2010_pos2_a.txt',
+                                     'Artstarlist_2010_pos2_b.txt',
+                                     'Artstarlist_2010_pos3_a.txt',
+                                     'Artstarlist_2010_pos3_b.txt',
+                                     'Artstarlist_2010_pos4_a.txt',
+                                     'Artstarlist_2010_pos4_b.txt',
+                                     'Artstarlist_2010_pos4_c.txt'],
+                 '23.KS2_2013_ART': ['Artstarlist_2013_pos1_a.txt',
+                                     'Artstarlist_2013_pos1_b.txt',
+                                     'Artstarlist_2013_pos1_c.txt',
+                                     'Artstarlist_2013_pos2_a.txt',
+                                     'Artstarlist_2013_pos2_b.txt',
+                                     'Artstarlist_2013_pos3_a.txt',
+                                     'Artstarlist_2013_pos3_b.txt',
+                                     'Artstarlist_2013_pos4_a.txt',
+                                     'Artstarlist_2013_pos4_b.txt',
+                                     'Artstarlist_2013_pos4_c.txt']}
         
+    filters = {'21.KS2_2005_ART': ['F1'],
+               '22.KS2_2010_ART': ['F1', 'F2', 'F3'],
+               '23.KS2_2013_ART': ['F1']}
+    filt_cols = {'21.KS2_2005_ART': ['col3'],
+                 '22.KS2_2010_ART': ['col3', 'col4', 'col5'],
+                 '23.KS2_2013_ART': ['col3']}
+
+    return comp_dirs, art_lists, filters, filt_cols
+
+
+def call_process_ks2_artstar():
+    comp_dirs, art_lists, filters, filt_cols = setup_artstar_info()
+
+    # Loop through each year
+    for epoch in comp_dirs.keys():
+        art_dirs = comp_dirs[epoch]
+                
+        # Loop through each position, sublist combo
+        for ii in range(len(art_dirs)):
+            directory = reduce_dir + epoch + '/' + art_dirs[ii]
+            os.chdir(directory)
+
+            filt = filters[epoch]
+            filt_col = filt_cols[epoch]
+
+            # Loop through each filter            
+            for ff in range(len(filt)):
+                print 'Working on {0}, filter {1}'.format(directory, filt[ff])
+                
+                art_star_list = art_lists[epoch][ii]
+                nimfo2bar_file = 'nimfo2bar.xymeee.' + filt[ff]
+                mag_col = filt_cols[epoch][ff]
+                comp.process_ks2_artstar(art_star_list, nimfo2bar_file,
+                                         art_star_mag_col=mag_col)
+
+            
+    return
         
-def make_completeness_table(loga_mag_file, matchup_files, filt_names=None):
+
+def recombine_artstar_subsets():
     """
-    Read in the output of KS2 (post processed with xym2mat and xym2bar)
-    and match it up with the input planted stars.
+    Take the subsets of the artificial star lists and put them
+    back together again. We will only work with the final output
+    catalogs form call_process_ks2_artstar().
 
-    Input
-    ---------
-    loga_mag_file : string
-        The name of the LOGA_MAGS.INPUT.fits file (produced by remake_loga_input()
-
-    matchup_files : list
-        A list of matchup files that corresponds to the filters in the LOGA file.
-        The matchup files are assumed to be in the same order as the LOGA magnitude
-        columns.
+    Last step is top save the catalogs in 51.ALIGN_ART/.
     """
+    comp_dirs, art_lists, filters, filt_cols = setup_artstar_info()
 
-    # Read files
-    loga = atpy.Table(loga_mag_file)
-    mat = [starlists.read_matchup(mat_file) for mat_file in matchup_files]
+    ##################################################
+    #
+    # Process 21.KS2_2005_ART -- combine everything (single filter)
+    #
+    ##################################################
+    epoch = '21.KS2_2005_ART'
+    t_2005_F814W = None
+    subdirs = comp_dirs[epoch]
+    alists = art_lists[epoch]
 
-    # Figure out the number of filters... make sure the match in input/output
-    num_filt = len(matchup_files)
-    num_filt2 = len(loga.columns) - 3
+    N_largest = 0
+    for ii in range(len(subdirs)):
+        table_file = workDir + epoch + '/' + subdirs[ii] + '/'
+        table_file += alists[ii].replace('.txt', '')
+        table_file += '_joined.fits'
 
-    if num_filt != num_filt2:
-        print 'Filter mismatch: {0} in input, {1} in output'.format()
-        return
+        t = Table.read(table_file)
 
-    # First modify the column names in loga to reflect that these are
-    # input values
-    loga.rename_column('x', 'x_in')
-    loga.rename_column('y', 'y_in')
-
-    for ff in range(num_filt):
-        print 'Processing Filter #{0}'.format(ff+1)
-        if filt_names != None:
-            filt = '_{0}'.format(filt_names[ff])
+        if ii == 0:
+            t_2005_F814W = t
         else:
-            filt = '_{0}'.format(ff+1)
+            # Modify the names (which are actually indices).
+            t['name'] += N_largest
+            t_2005_F814W = table.vstack((t_2005_F814W, t), join_type='exact')
+            
+        N_largest = t_2005_F814W['name'][-1]
 
-        # Rename the input magnitude columns
-        old_col_name = 'm{0}'.format(ff+1)
-        new_col_name = 'm_in' + filt
-        loga.rename_column(old_col_name, new_col_name)
+    # Save output to file.
+    outfile = 'artstar_2005_F814W.fits'
+    outfile = workDir + '51.ALIGN_ART/' + outfile
+    t_2005_F814W.write(outfile, overwrite=True)
 
-        # Add the new columns to the table for all of the output data.
-        loga.add_column('x_out' + filt, mat[ff].x)
-        loga.add_column('y_out' + filt, mat[ff].y)
-        loga.add_column('m_out' + filt, mat[ff].m)
-        loga.add_column('xe_out' + filt, mat[ff].xe)
-        loga.add_column('ye_out' + filt, mat[ff].ye)
-        loga.add_column('me_out' + filt, mat[ff].me)
+
+
+    ##################################################
+    #
+    # Process 22.KS2_2010_ART -- combine each position (three filters)
+    #
+    ##################################################
+    epoch = '22.KS2_2010_ART'
+    positions = ['pos1', 'pos2', 'pos3', 'pos4']
+    subsets = {'pos1': ['a', 'b', 'c'], 'pos2': ['a', 'b'],
+               'pos3': ['a', 'b'], 'pos4': ['a', 'b', 'c']}
+
+    t_2010_F160W_pos1 = None
+    subdirs = comp_dirs[epoch]
+    alists = art_lists[epoch]
+
+    N_largest = 0
+    for ii in range(len(subdirs)):
+        table_file = workDir + epoch + '/' + subdirs[ii] + '/'
+        table_file += alists[ii].replace('.txt', '')
+        table_file += '_joined.fits'
+
+        t = Table.read(table_file)
+
+        if ii == 0:
+            t_2005_F814W = t
+        else:
+            # Modify the names (which are actually indices).
+            t['name'] += N_largest
+            t_2005_F814W = table.vstack((t_2005_F814W, t), join_type='exact')
+            
+        N_largest = t_2005_F814W['name'][-1]
+
+    # Save output to file.
+    outfile = 'artstar_2005_F814W.fits'
+    outfile = workDir + '51.ALIGN_ART/' + outfile
+    t_2005_F814W.write(outfile, overwrite=True)
+
+        
+    
+    return
+    
+    
     
 
-    loga.table_name = ''
-    outfile_name = os.path.dirname(loga_mag_file) + 'completeness_matched.fits'
-    loga.write(outfile_name)
-
-    return loga
-
-
-def ir_completeness_all():
-    root_dir = workDir + '22.KS2_ART_2010/'
-
-    # This will be the final output table with EVERYTHING
-    comp_all = None
-
-    # Collect info from the 5 subdirs
-    for ss in range(5):
-        directory = '{0}ks2_a{1}/'.format(root_dir, ss+1)
-
-        artstar_file = directory + 'ARTSTAR_a{0}.XYMMM'.format(ss+1)
-        loga_file = directory + 'LOGA.INPUT'
-        remake_loga_input(loga_file, artstar_file)
-        
-        input_file = loga_file + '_mag.fits'
-        output_files = [directory + 'F160W/MATCHUP.XYMEEE.F160W.ks2',
-                        directory + 'F139M/MATCHUP.XYMEEE.F139M.ks2',
-                        directory + 'F125W/MATCHUP.XYMEEE.F125W.ks2']
-        filter_names = ['F160W', 'F139M', 'F125W']
-
-        # Make and load completeness table
-        comp = make_completeness_table(input_file, output_files,
-                                       filt_names=filter_names)
-
-        if comp_all == None:
-            comp_all = comp
-            comp_all.table_name = ''
-        else:
-            comp_all.append(comp)
-
-    comp_all.write('{0}completeness_matched_all.fits'.format(root_dir))
-
-
-def opt_completeness_all():
-    root_dir = workDir + '23.KS2_ART_2005/'
-
-    # This will be the final output table with EVERYTHING
-    comp_all = None
-
-    # Collect info from the 5 subdirs
-    for ss in range(5):
-        directory = '{0}ks2_a{1}/'.format(root_dir, ss+1)
-
-        artstar_file = directory + 'ARTSTAR_a{0}.XYM'.format(ss+1)
-        loga_file = directory + 'LOGA.INPUT'
-        remake_loga_input(loga_file, artstar_file)
-        
-        input_file = loga_file + '_mag.fits'
-        output_files = [directory + 'F814W/MATCHUP.XYMEEE.F814W.ks2']
-        filter_names = ['F814W']
-
-        # Make and load completeness table
-        comp = make_completeness_table(input_file, output_files,
-                                       filt_names=filter_names)
-
-        if comp_all == None:
-            comp_all = comp
-            comp_all.table_name = ''
-        else:
-            comp_all.append(comp)
-
-    comp_all.write('{0}completeness_matched_all.fits'.format(root_dir))
-
-
-##############################
-#  Test WFC3 Distortion with Overlap Region
-#  in both the 2010 and 2013 F160W data.
-##############################
     
+                
+
