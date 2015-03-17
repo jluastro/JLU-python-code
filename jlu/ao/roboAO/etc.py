@@ -516,20 +516,23 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
 
     # Calculate the band-integrated SNR for each magnitude bin and filter.
     mag = avg_tab['mag']
+    N_SNe = 4500.0 * 10**(0.6*(mag - 18.9))
 
-    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}'
-    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}'
-    print hdr1.format('Mag', '  Y-band SNR', '  J-band SNR', '  H-band SNR')
-    print hdr2.format('', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed')
-    print hdr2.format('---', '-------', '-------', '-------', '-------', '-------', '-------')
+    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}  {4:8s}'
+    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}  {7:8s}'
+    print hdr1.format('Mag', '  Y-band SNR', '  J-band SNR', '  H-band SNR', 'Number')
+    print hdr2.format('', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'of SN Ia')
+    print hdr2.format('---', '-------', '-------', '-------', '-------', '-------', '-------', '--------')
 
     for mm in range(len(mag)):
-        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}'
+        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}  {7:8.0f}'
         print fmt.format(mag[mm], 
                          avg_tab['snr_y'][mm], avg_tab['snr_sum_y'][mm],
                          avg_tab['snr_j'][mm], avg_tab['snr_sum_j'][mm],
-                         avg_tab['snr_h'][mm], avg_tab['snr_sum_h'][mm])
-        
+                         avg_tab['snr_h'][mm], avg_tab['snr_sum_h'][mm],
+                         N_SNe[mm])
+
+    py.figure(1)
     py.clf()
     py.semilogy(avg_tab['mag'], avg_tab['snr_y'], label='Y')
     py.plot(avg_tab['mag'], avg_tab['snr_j'], label='J')
@@ -551,6 +554,37 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     py.legend()
     py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
     py.savefig(in_file + '_snr_sum.png')
+
+    # Two-panel - in the presentation
+    py.close(2)
+    py.figure(2, figsize=(7,8))
+    py.clf()
+    py.subplots_adjust(hspace=0.07, bottom=0.1)
+    ax1 = py.subplot(211)
+    py.ylim(1e1, 1e5)
+    ax1.semilogy(avg_tab['mag'], N_SNe)
+    ax1.set_ylabel('Number of SN Ia')
+    py.setp(ax1.get_xticklabels(), visible=False)
+    py.axvline(19, color='black', linestyle='--')
+    py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
+
+    ax2 = py.subplot(212, sharex=ax1)
+    py.semilogy(avg_tab['mag'], avg_tab['snr_sum_y'], label='Y')
+    py.plot(avg_tab['mag'], avg_tab['snr_sum_j'], label='J')
+    py.plot(avg_tab['mag'], avg_tab['snr_sum_h'], label='H')
+    py.xlabel('Magnitude')
+    py.ylabel('Signal-to-Noise')
+    py.ylim(1e1, 1e3)
+    py.xlim(15, 21)
+    #py.plot([19.3, 20.4], [30, 30], 'k-', linewidth=3)
+    # ax2.arrow(19, 30, -0.5, 0, head_width=5, head_length=0.2, fc='k')
+    # ax2.arrow(19, 30, 0, 30, head_width=0.2, head_length=5, fc='k')
+    py.axvline(19, color='black', linestyle='--')
+    py.legend()
+    
+    py.savefig(in_file + '_snr_Nsne.png')
+
+    
 
 
 def plot_sensitivity_curves_noOH(tint=1200, spec_res=3000, aper_radius=0.15):
@@ -622,6 +656,8 @@ def plot_seeing_vs_ao(tint=1200, spec_res=100):
                          avg_tab_rao['snr_sum_y'][mm], avg_tab_see['snr_sum_y'][mm],
                          avg_tab_rao['snr_sum_j'][mm], avg_tab_see['snr_sum_j'][mm],
                          avg_tab_rao['snr_sum_h'][mm], avg_tab_see['snr_sum_h'][mm])
+        
+    N_SNe = 4500.0 * 0.6 * 10**(avg_tab_rao['mag'] - 18.9)
         
     py.clf()
     py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_y'], label='UH Robo-AO')
