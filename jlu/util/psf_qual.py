@@ -43,7 +43,7 @@ def read_coo(coo_file):
     '''
     coo_x,coo_y,coo_n = np.loadtxt(coo_file)
 
-    returne coo_n, coo_x, coo_y
+    return  coo_n, coo_x, coo_y
     pass
 
 def fwhm(x,y,im,box_size=20):
@@ -70,7 +70,7 @@ def read_image(imagefile)
 
     fitsfile = fits.open(imagefile)
     
-    image_array = fitsfile[1].data
+    image_array = fitsfile[0].data
 
     fitsfile.close()
 
