@@ -31,18 +31,18 @@ def match_named(label, starl_name):
 
     f = open(starl_name.replace('.lis', '_rorg.lis'), 'w')
 
-    f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' %
-            (starlist['col1'][ml[0]], starlist['col2'][ml[0]], starlist['col3'][ml[0]],starlist['col4'][ml[0]], starlist['col5'][ml[0]]))
+    f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  %3.2f  %3.2f  %2d  %10.3f ' %
+            (starlist['col1'][ml[0]], starlist['col2'][ml[0]], starlist['col3'][ml[0]],starlist['col4'][ml[0]], starlist['col5'][ml[0]],starlist['col6'][ml[0]],starlist['col7'][ml[0]],starlist['col8'][ml[0]],starlist['col9'][ml[0]]))
     f.write('\n')
 
-    f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' %
-            (starlist['col1'][ml[1]], starlist['col2'][ml[1]], starlist['col3'][ml[1]],starlist['col4'][ml[1]], starlist['col5'][ml[1]]))
+    f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  %3.2f  %3.2f  %2d  %10.3f ' %
+            (starlist['col1'][ml[1]], starlist['col2'][ml[1]], starlist['col3'][ml[1]],starlist['col4'][ml[1]], starlist['col5'][ml[1]],starlist['col6'][ml[1]],starlist['col7'][ml[1]],starlist['col8'][ml[1]],starlist['col9'][ml[1]]))
     f.write('\n')
     
     for i in range(len(nameL)):
         if not i in  ml:
-            f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' %
-                    (starlist['col1'][i], starlist['col2'][i], starlist['col3'][i],starlist['col4'][i], starlist['col5'][i]))
+            f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  %3.2f  %3.2f  %2d  %10.3f ' %
+                    (starlist['col1'][i], starlist['col2'][i], starlist['col3'][i],starlist['col4'][i], starlist['col5'][i],starlist['col6'][i],starlist['col7'][i],starlist['col8'][i],starlist['col9'][i]))
             f.write('\n')
 
     f.close()
