@@ -51,7 +51,7 @@ def match_named(label, starl_name):
 def mat_all(starlist_list, label):
 
     for i in starlist_list:
-        match_named(i,label)
+        match_named(label, i)
 
     
         
