@@ -40,7 +40,7 @@ def match_named(label, starl_name):
             (starlist['col1'][ml[1]], starlist['col2'][ml[1]], starlist['col3'][ml[1]],starlist['col4'][ml[1]], starlist['col5'][ml[1]],starlist['col6'][ml[1]],starlist['col7'][ml[1]],starlist['col8'][ml[1]],starlist['col9'][ml[1]]))
     f.write('\n')
     
-    for i in range(len(nameL)):
+    for i in range(len(nameS)):
         if not i in  ml:
             f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  %3.2f  %3.2f  %2d  %10.3f ' %
                     (starlist['col1'][i], starlist['col2'][i], starlist['col3'][i],starlist['col4'][i], starlist['col5'][i],starlist['col6'][i],starlist['col7'][i],starlist['col8'][i],starlist['col9'][i]))
