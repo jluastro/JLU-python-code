@@ -91,6 +91,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     temp = 10**logT
 
     # Output magnitudes for each temperature and extinction value.
+    mag814w = np.zeros(len(temp), dtype=float)
     mag127m = np.zeros(len(temp), dtype=float)
     mag139m = np.zeros(len(temp), dtype=float)
     mag153m = np.zeros(len(temp), dtype=float)
@@ -100,6 +101,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     magKp = np.zeros(len(temp), dtype=float)
     magLp = np.zeros(len(temp), dtype=float)
 
+    filt814w = get_filter_info('wfc3,uvis1,f814w')
     filt127m = get_filter_info('wfc3,ir,f127m')
     filt139m = get_filter_info('wfc3,ir,f139m')
     filt153m = get_filter_info('wfc3,ir,f153m')
@@ -110,6 +112,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     filtLp = get_filter_info('nirc2,Lp')
 
     # Make reddening
+    red814w = redlaw.reddening(AKs).resample(filt814w.wave)
     red127m = redlaw.reddening(AKs).resample(filt127m.wave)
     red139m = redlaw.reddening(AKs).resample(filt139m.wave)
     red153m = redlaw.reddening(AKs).resample(filt153m.wave)
@@ -146,6 +149,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
         # ----------
         # Now to the filter integrations
         # ----------
+        mag814w[ii] = mag_in_filter(star, filt814w, red814w)
         mag127m[ii] = mag_in_filter(star, filt127m, red127m)
         mag139m[ii] = mag_in_filter(star, filt139m, red139m)
         mag153m[ii] = mag_in_filter(star, filt153m, red153m)
@@ -174,6 +178,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     iso.magKp = magKp
     iso.magLp = magLp
     iso.isWR = isWR
+    iso.mag814w = mag814w
     
     _out = open(outFile, 'wb')
     pickle.dump(mass, _out)
@@ -189,6 +194,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     pickle.dump(magKp, _out)
     pickle.dump(magLp, _out)
     pickle.dump(isWR, _out)
+    pickle.dump(mag814w, _out)
     _out.close()
 
     endTime = time.time()
@@ -217,9 +223,9 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     iso.magKp = pickle.load(_in)
     iso.magLp = pickle.load(_in)
     iso.isWR = pickle.load(_in)
+    iso.mag814w = pickle.load(_in)
     _in.close()
 
-    pdb.set_trace()
     return iso
 
 # Little helper utility to get all the bandpass/zeropoint info.
