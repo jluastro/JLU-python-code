@@ -8,10 +8,10 @@ def match_named(label, starlist):
     then rewrite starlist file with those two stars as the first stars 
     '''
 
-    lab = Table.read(label, format='ascii.noheader')
+    lab = Table.read(label, format='ascii.no_header')
     nameL = lab['col1']
 
-    starlist = Table.read(starlist, format='ascii.header')
+    starlist = Table.read(starlist, format='ascii.no_header')
     nameS = starlist['col1']
 
    
