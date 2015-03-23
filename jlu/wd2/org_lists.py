@@ -29,7 +29,7 @@ def match_named(label, starl_name):
 
         i+=1
 
-    import pdb; pdb.set_trace()
+    
     f = open(starl_name.replace('.lis', '_rorg.lis'), 'w')
 
     f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  %3.2f  %3.2f  %2d  %10.3f ' %
