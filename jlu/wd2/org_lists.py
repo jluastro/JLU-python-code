@@ -29,7 +29,7 @@ def match_named(label, starl_name):
 
         i+=1
 
-    f = open(starl_name.replace('.lis', 'rorg.lis'))
+    f = open(starl_name.replace('.lis', '_rorg.lis'), 'w')
 
     f.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' %
             (starlist['col1'][ml[0]], starlist['col2'][ml[0]], starlist['col3'][ml[0]],starlist['col4'][ml[0]], starlist['col5'][ml[0]]))
