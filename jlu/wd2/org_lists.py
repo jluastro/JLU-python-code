@@ -11,7 +11,7 @@ def match_named(label, starlist):
     lab = Table.read(label, format='ascii.noheader')
     nameL = lab['col1']
 
-    starlist = Table.read(starlist, format'ascii.header')
+    starlist = Table.read(starlist, format='ascii.header')
     nameS = starlist['col1']
 
    
