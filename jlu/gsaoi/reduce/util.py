@@ -117,7 +117,28 @@ def read_log(filename):
         mjd.append(float(dum[8]))
         
     return np.array(frames), np.array(obj), np.array(filt1), np.array(ra), np.array(dec), np.array(date), np.array(exptime), np.array(coadds), np.array(mjd)
+
+def mk_lis(directory='.', obj='Domeflat'):
+    '''
+    returns list of fit files that have obj keywoed = obj
+    '''
+
+    files = glob.glob(directory+'/*.fits')
+    file_lis = []
     
+    for ff in files:
+        hdr = fits.getheader(ff)
+
+        dir, filename = os.path.split(ff)
+        fileroot, fileext = os.path.splitext(filename)
+       
+        if hdr['OBJECT'] == obj:
+            file_lis.append(fileroot)
+
+    return file_lis
+        
+
+        
 def mk_log(directory, output='gsaoi_log.txt'):
     """
     Read in all the fits files in the specified directory and print
@@ -346,7 +367,7 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     
     '''
     does boolean split up for given frame_file
-    used by both re.py  and struc.py
+    used by both red.py  and struc.py
     '''
 
     sky_bool = obj == sky_key
@@ -358,20 +379,22 @@ def mk_bool(frames, obj, filt1, ra, dec, date, exptime, coadds, mjd, day_diff=14
     
     #find minimum of date
     epoch_dates = []
-    obs_bool = np.ones(len(mjd), dtype=bool)
     epoch_bool_ars = []
     num_done = 0
     
     
-    limits = [np.min(mjd)]
-    obs_bool = np.ones(len(mjd), dtype=bool)
+    limits = [np.min(mjd[sci_bool])]
     index = 1
+    obs_dates = date[sci_bool]
+    obs_mjd = mjd[sci_bool]
+    obs_bool = np.ones(len(obs_mjd),dtype=bool)
+    limits = [np.min(obs_mjd)]
     while np.any(obs_bool):
         
-        epoch_dates.append(date[np.argmin(mjd[obs_bool])+num_done])
-        limits.append(np.min(mjd[obs_bool])+day_diff)
-        obs_bool = obs_bool - (mjd < limits[index]+.1)*(mjd > limits[index-1]-.1)
-        epoch_bool_ars.append((mjd < limits[index]+.1)*(mjd > limits[index-1]-.1))
+        epoch_dates.append(date[np.argmin(obs_mjd)+num_done])
+        limits.append(np.min(obs_mjd[obs_bool])+day_diff)
+        obs_bool = obs_bool - (obs_mjd < limits[index]+.1)*(obs_mjd > limits[index-1]-.1)
+        epoch_bool_ars.append((mjd < limits[index]+.1)*(mjd > limits[index-1]-.1)*sci_bool)
         num_done += np.sum(epoch_bool_ars[-1])
         index += 1  
         

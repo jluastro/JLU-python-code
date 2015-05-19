@@ -11,6 +11,7 @@ from jlu.hst import astrometry as ast
 import glob
 from matplotlib import colors
 from jlu.util import statsIter
+from jlu.util import fileUtil
 import pdb
 import os
 from hst_flystar import reduce as flystar
@@ -467,13 +468,25 @@ def prep_plot_quiver_align(align_root, orig=True):
     me_2013_160 = s.getArrayFromEpoch(4, 'snr')
     me_2013_160s = s.getArrayFromEpoch(5, 'snr')
 
+    t0 = s.getArray('fitpXalign.t0')
+    x0 = s.getArray('fitpXalign.p')
+    y0 = s.getArray('fitpYalign.p')
+    vx = s.getArray('fitpXalign.v')
+    vy = s.getArray('fitpYalign.v')
+    x0e = s.getArray('fitpXalign.perr')
+    y0e = s.getArray('fitpYalign.perr')
+    vxe = s.getArray('fitpXalign.verr')
+    vye = s.getArray('fitpYalign.verr')
+
     colnames = ['name',
                'x_2005_814', 'x_2010_125', 'x_2010_139', 'x_2010_160', 'x_2013_160', 'x_2013_160s',
                'y_2005_814', 'y_2010_125', 'y_2010_139', 'y_2010_160', 'y_2013_160', 'y_2013_160s',
                'm_2005_814', 'm_2010_125', 'm_2010_139', 'm_2010_160', 'm_2013_160', 'm_2013_160s',
                'xe_2005_814', 'xe_2010_125', 'xe_2010_139', 'xe_2010_160', 'xe_2013_160', 'xe_2013_160s',
                'ye_2005_814', 'ye_2010_125', 'ye_2010_139', 'ye_2010_160', 'ye_2013_160', 'ye_2013_160s',
-               'me_2005_814', 'me_2010_125', 'me_2010_139', 'me_2010_160', 'me_2013_160', 'me_2013_160s']
+               'me_2005_814', 'me_2010_125', 'me_2010_139', 'me_2010_160', 'me_2013_160', 'me_2013_160s',
+               'fit_x0', 'fit_x0e', 'fit_y0', 'fit_y0e',
+               'fit_vx', 'fit_vxe', 'fit_vy', 'fit_vye', 'fit_t0']
     
     t = Table([name,
                x_2005_814, x_2010_125, x_2010_139, x_2010_160, x_2013_160, x_2013_160s,
@@ -481,26 +494,28 @@ def prep_plot_quiver_align(align_root, orig=True):
                m_2005_814, m_2010_125, m_2010_139, m_2010_160, m_2013_160, m_2013_160s,
                xe_2005_814, xe_2010_125, xe_2010_139, xe_2010_160, xe_2013_160, xe_2013_160s,
                ye_2005_814, ye_2010_125, ye_2010_139, ye_2010_160, ye_2013_160, ye_2013_160s,
-               me_2005_814, me_2010_125, me_2010_139, me_2010_160, me_2013_160, me_2013_160s],
+               me_2005_814, me_2010_125, me_2010_139, me_2010_160, me_2013_160, me_2013_160s,
+               x0, x0e, y0, y0e, vx, vxe, vy, vye, t0],
                names=colnames)
 
     t['name'] = 'align_starlist'
 
-    out_name = align_root + '_pos'
-    if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-
-    t.write(out_name, overwrite=True)
+    cat_name = plot_quiver_get_catalog_name(align_root, orig=orig)
+    t.write(cat_name, overwrite=True)
                
     return
 
-def plot_quiver_align(align_root, orig=True):
-    out_name = align_root + '_pos'
+def plot_quiver_get_catalog_name(align_root, orig=True):
+    cat_name = 'plot_quiver_' + align_root
     if orig:
-        out_name += '_orig'
-    out_name += '.fits'
-    t = Table.read(out_name)
+        cat_name += '_orig'
+    cat_name += '.fits'
+
+    return cat_name
+
+def plot_quiver_align(align_root, orig=True):
+    cat_name = plot_quiver_get_catalog_name(align_root, orig=orig)
+    t = Table.read(cat_name)
 
     good = np.where((t['m_2005_814'] < 17.5) & (t['m_2010_160'] < 16.7) & (t['m_2013_160'] < 16.7) &
                     (t['x_2005_814'] > -1) & (t['x_2010_160'] > -1) & (t['x_2013_160'] > -1) &
@@ -532,14 +547,17 @@ def plot_quiver_align(align_root, orig=True):
     dy_05_13 = dy_05_13[small]
     dy_10_13 = dy_10_13[small]
 
-    qscale = 2e2
+    qscale = 1.5e2
 
-    plot_dir = workDir + '21.ALIGN_KS2/plots'
+    plot_dir = workDir + '21.ALIGN_KS2/plot_quiver'
     if orig:
         plot_dir += '_ks2/'
     else:
         plot_dir += '_' + align_root + '/'
-            
+
+    fileUtil.mkdir(plot_dir)
+
+    # Quiver plots showing positional offsets.
     py.clf()
     q = py.quiver(g['x_2005_814'], g['y_2005_814'], dx_05_10, dy_05_10, scale=qscale)
     py.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
@@ -559,29 +577,51 @@ def plot_quiver_align(align_root, orig=True):
     py.savefig(plot_dir + 'vec_diff_ref5_10_13.png')
 
     py.clf()
+    qvscale = 3e1
+    q = py.quiver(g['fit_x0'], g['fit_y0'],
+                  g['fit_vx'] * ast.scale['WFC'] * 1e3,
+                  g['fit_vy'] * ast.scale['WFC'] * 1e3,
+                  scale=qvscale)
+    py.quiverkey(q, 0.95, 0.95, 1.0, '1.0 mas/yr', color='red', labelcolor='red')
+    py.title('Velocities')
+    py.savefig(plot_dir + 'velocity_field.png')
+
+    # VPD showing positional offsets
+    py.clf()
     py.plot(dx_05_10, dy_05_10, 'k.', ms=2)
     lim = 10
     py.axis([-lim, lim, -lim, lim])
-    py.xlabel('X Proper Motion (mas)')
-    py.ylabel('Y Proper Motion (mas)')
+    py.xlabel('X Positional Diff (mas)')
+    py.ylabel('Y Positional Diff (mas)')
     py.title('2010 - 2005')
     py.savefig(plot_dir + 'pm_diff_ref5_05_10.png')
     
     py.clf()
     py.plot(dx_05_13, dy_05_13, 'k.', ms=2)
     py.axis([-lim, lim, -lim, lim])
-    py.xlabel('X Proper Motion (mas)')
-    py.ylabel('Y Proper Motion (mas)')
+    py.xlabel('X Positional Diff (mas)')
+    py.ylabel('Y Positional Diff (mas)')
     py.title('2013 - 2005')
     py.savefig(plot_dir + 'pm_diff_ref5_05_13.png')
 
     py.clf()
     py.plot(dx_10_13, dy_10_13, 'k.', ms=2)
     py.axis([-lim, lim, -lim, lim])
-    py.xlabel('X Proper Motion (mas)')
-    py.ylabel('Y Proper Motion (mas)')
+    py.xlabel('X Positional Diff (mas)')
+    py.ylabel('Y Positional Diff (mas)')
     py.title('2013 - 2010')
     py.savefig(plot_dir + 'pm_diff_ref5_10_13.png')
+
+    py.clf()
+    py.plot(g['fit_vx'] * ast.scale['WFC'] * 1e3,
+            g['fit_vy'] * ast.scale['WFC'] * 1e3,
+            'k.', ms=2, alpha=0.4)
+    lim = 2.0
+    py.axis([-lim, lim, -lim, lim])
+    py.xlabel('X Proper Motion (mas/yr)')
+    py.ylabel('Y Proper Motion (mas/yr)')
+    py.title('Velocity VPD')
+    py.savefig(plot_dir + 'velocity_vpd.png')
 
     print '2010 - 2005'
     print '   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std())

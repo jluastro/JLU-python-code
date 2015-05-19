@@ -68,6 +68,7 @@ def doit(frame_file, epoch_start_in=0, mix_flats=True, sky_key='sky', flat_key='
                     #print np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)
                     if mix_flats:
                         red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or((np.logical_or(sci_bool,sky_bool) * (date==j) ),dome_bool) * (filt1==k)],ex_skies)),sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
+                        #red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/',sky_key=sky_key, flat_key=flat_key, sci_keys= sci_keys )
                     else:
                         red_dir(cwd+i+'/reduce/'+j+'/'+k+'/',cwd+i+'/clean/'+k+'/', frame_list=np.concatenate((frames[np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)],ex_skies)) )
                 np.logical_or(np.logical_or(sci_bool, sky_bool),dome_bool)*(date==j)*(filt1==k)
@@ -121,9 +122,13 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
             dome_list.append(i)
         else:
             for j in sci_keys:
-                if head['OBJECT'] == j:
+                if head['OBJECT'].replace(' ','') == j:
                     print >> sci_f, dir_ap+'g'+i+'.fits'
                     sci_l.append(i+'.fits')
+    if len(sci_l)==0:
+        print 'No science frames found in directory'
+        import pdb; pdb.set_trace()
+            
 
     sky_f.close()
     sci_f.close()
@@ -163,12 +168,15 @@ def red_dir(directory,clean_dir, sky_key='sky', flat_key='Domeflat', sci_keys= [
     
     gsaoi.gareduce('@obj.lis',fl_vardq='yes', fl_dqprop='yes', fl_dark='no',calpath=directory, fl_sky='yes',skyimg=directory+'sky.fits',  fl_flat='yes',flatimg=flat_name)
 
-    util.rmall(['obj.lis','sky.lis','flat.lis'])
+    
+    #util.rmall(['obj.lis','sky.lis','flat.lis', 'all.lis'])
 
     for i in sci_l:
         for k in range(4):
             
             iraf.imcopy('rg'+i+'['+str(k+1)+'][inherit+]' , 'rg'+i.replace('.fits',str(k+1)+'.fits'))
+            #add in line to reflect the x-axis --- note I do not correct the WCS at all!!!!
+            iraf.imcopy('rg'+i.replace('.fits',str(k+1)+'.fits[-*,*]'), 'rg'+i.replace('.fits',str(k+1)+'.fits'))
             shutil.move('rg'+i.replace('.fits',str(k+1)+'.fits'), clean_dir+'rg'+i.replace('.fits','_'+str(k+1)+'.fits'))
             shutil.copy('rg'+i, directory+'rg'+i)
         os.remove('rg'+i)
