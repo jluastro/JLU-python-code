@@ -11,18 +11,18 @@ from jlu.util import CatalogFinder
 def read_matchup(filename):
     tab = atpy.Table(filename, type='ascii')
 
-    tab.rename_column('col1', 'x')
-    tab.rename_column('col2', 'y')
-    tab.rename_column('col3', 'm')
-    tab.rename_column('col4', 'xe')
-    tab.rename_column('col5', 'ye')
-    tab.rename_column('col6', 'me')
-    tab.rename_column('col7', 'aux')
-    tab.rename_column('col8', 'N_fnd')
-    tab.rename_column('col9', 'N_xywell')
-    tab.rename_column('col10', 'N_mwell')
-    tab.rename_column('col11', 'N_min')
-    tab.rename_column('col12', 'name')
+    tab.rename_column('Xpos', 'x')
+    tab.rename_column('Ypos', 'y')
+    tab.rename_column('Mag', 'm')
+    tab.rename_column('Xerr', 'xe')
+    tab.rename_column('Yerr', 'ye')
+    tab.rename_column('Merr', 'me')
+    tab.rename_column('Name', 'std')
+    tab.rename_column('Junk2', 'N_fnd')
+    tab.rename_column('Junk3', 'N_xywell')
+    tab.rename_column('Junk4', 'N_mwell')
+    tab.rename_column('Junk5', 'N_min')
+    tab.rename_column('Junk6', 'name')
 
     return tab
 
