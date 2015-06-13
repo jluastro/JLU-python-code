@@ -13,7 +13,7 @@ import time
 from gcreduce import gcutil
 from astropy.table import Table
 
-models_dir = '/u/jlu/work/models/'
+models_dir = '/g/lu/models/'
     
 def get_geneva_isochrone(metallicity=0.02, logAge=8.0):
     """
