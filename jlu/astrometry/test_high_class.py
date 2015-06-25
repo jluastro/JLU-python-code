@@ -1,56 +1,117 @@
 from jlu.astrometry import high_order_class as high_order
 import numpy as np
+from astropy.table import Table
 from jlu.gc.gcwork import starset
 import pytest
 import matplotlib.pyplot as plt
 
 
 
-@pytest.fixture
-def star_set():
-    alkey = 'Test_trim'
-    return starset.StarSet(alkey)
 
-def test_align(star_set):
+
+def test_a2():
     '''
     takes starset that is assumed to be linear transfomration
-    uses high_order to perform the transforamtion, then compares restulting coordinates
-    Note, that the align here was done using only a four parameter fit, so it is unsurprising that other tests were failing.
-    Still fail, but error is almost all in the translation terms!!!
-
+    align a2 uses a four parameter tranform, so for fair comparrison, we use the four parmeter tranform that is implemented as an intitial guess
+    then we can compare both output coordiantes of aligna and of high_order
     '''
 
     
+    dat = Table.read('test/data.txt', format='ascii.fixed_width')
+    trans = Table.read('test/a2.trans', format='ascii')
+    x = dat['xorig']
+    y = dat['yorig']
+    xref = dat['xref']
+    yref = dat['yref']
+    xa2 = dat['xa2']
+    ya2 = dat['ya2']
     
-    xorig = star_set.getArrayFromAllEpochs('xorig')
-    yorig = star_set.getArrayFromAllEpochs('yorig')
-
-    ref_bool = np.ones(xorig.shape, dtype='bool')
-    ref_bool[0] = xorig[0] > -10000
-
-    xalign = star_set.getArrayFromAllEpochs('xpix')
-    yalign = star_set.getArrayFromAllEpochs('ypix')
-
-    dumx = np.zeros(xorig.shape)
-    dumy = np.zeros(yorig.shape)
-    dumx[0] = xorig[0].copy()
-    dumy[0] = yorig[0].copy()
+    c_x, c_y = high_order.four_param(x,y,xref,yref)
+    xev = c_x[0] + c_x[1] * x + c_x[2] * y
+    yev = c_y[0] + c_y[1] * x + c_y[2] * y
     
     
+    #test that the coefficients agree to within 1% for the large linear term, and 2% for the smaller linear term (the linear y term for the s fit)
+    assert (c_x[0] - trans['a0']) /c_x[0] < .01
+    assert (c_x[1] - trans['a1']) /c_x[0] < .01
+    assert (c_x[2] - trans['a2']) /c_x[0] < .01
+
+    assert (c_y[0] - trans['b0']) /c_x[0] < .01
+    assert (c_y[1] - trans['b2']) /c_x[0] < .01
+    assert (c_y[2] - trans['b1']) /c_x[0] < .01
     
-    for i in range(1,xorig.shape[0]):
-        ref_bool[i] = ref_bool[0]*(xorig[i] > -10000)
-        c_xn, c_yn = high_order.four_param(xorig[i][ref_bool[i]],yorig[i][ref_bool[i]],xorig[0][ref_bool[i]],yorig[0][ref_bool[i]])
-        import pdb;pdb.set_trace()
-        dumx[i] = c_xn[0] + xorig[i] *c_xn[1] + yorig[i] * c_xn[2]
-        dumy[i] = c_yn[0] + yorig[i] * c_yn[1] + yorig[i] * c_yn[2]
-        
-    #print np.sum(xtrans - xalign), np.sum(ytrans - yalign)
-    for i in range(xorig.shape[0]):
-        assert np.mean(np.abs(dumx[i][ref_bool[i]] - xalign[i][ref_bool[i]])) < .2, np.mean(np.abs(dumx[i][ref_bool[i]] - xalign[i][ref_bool[i]]))
-        assert np.mean(np.abs(dumy[i][ref_bool[i]] - yalign[i][ref_bool[i]])) < .2, np.mean(np.abs(dumy[i][ref_bool[i]] - yalign[i][ref_bool[i]]))
 
+    #demand that the output coordinates agree to within .2 pixels
+    assert np.mean(np.abs(xev-xa2)) < .2, np.mean(np.abs(xev-xa2))
+    assert np.mean(np.abs(yev-ya2)) < .2,  np.mean(np.abs(yev-ya2)) 
 
+def test_a3():
+    '''
+    align a3 uses independent linear fits, equivalent to align
+    then we can compare both output coordiantes and tranformation coefficients
+    '''
+
+    
+    dat = Table.read('test/data.txt', format='ascii.fixed_width')
+    trans = Table.read('test/a3.trans', format='ascii')
+    x = dat['xorig']
+    y = dat['yorig']
+    xref = dat['xref']
+    yref = dat['yref']
+    xa3 = dat['xa3']
+    ya3 = dat['ya3']
+
+    #independent linear fit, with no initial guess
+    t = high_order.PolyTransform(x,y,xref,yref,1)
+    xev, yev = t.evaluate(x,y)
+   
+    
+    
+    #test that the coefficients agree to within 1% for the large linear term, and 2% for the smaller linear term (the linear y term for the s fit)
+    assert (t.px.c0_0 - trans['a0']) /t.px.c0_0 < .01
+    assert (t.px.c1_0 - trans['a1']) /t.px.c1_0 < .01
+    assert (t.px.c0_1 - trans['a2']) /t.px.c0_1 < .02
+
+    assert (t.py.c0_0 - trans['b0']) /t.py.c0_0 < .01
+    assert (t.py.c1_0 - trans['b2']) /t.py.c1_0 < .02
+    assert (t.py.c0_1 - trans['b1']) /t.py.c0_1 < .01
+    
+
+    #demand that the output coordinates agree to within .1 pixels
+    assert np.mean(np.abs(xev-xa3)) < .1, np.mean(np.abs(xev-xa3))
+    assert np.mean(np.abs(yev-ya3)) < .1,  np.mean(np.abs(yev-ya3)) 
+
+def test_a4():
+    '''
+    compares align results to my code, using equivalent tranformations
+    test data is from alignment of one frame of gsaoi to HST
+    align a4 uses a 2nd order independent polynomial tranformation
+    '''
+
+    dat = Table.read('test/data.txt', format='ascii.fixed_width')
+    trans = Table.read('test/a4.trans', format='ascii')
+    x = dat['xorig']
+    y = dat['yorig']
+    xref = dat['xref']
+    yref = dat['yref']
+    xa3 = dat['xa4']
+    ya3 = dat['ya4']
+
+    t = high_order.PolyTransform(x, y, xref, yref, 2)
+    xev, yev = t.evaluate(x, y)
+
+    #only comparing low orderterms because I am unsure as to which terms the align coefficient refer to
+    
+    assert (t.px.c0_0 - trans['a0']) /t.px.c0_0 < .01
+    assert (t.px.c1_0 - trans['a1']) /t.px.c1_0 < .01
+    assert (t.px.c0_1 - trans['a2']) /t.px.c0_1 < .02
+
+    assert (t.py.c0_0 - trans['b0']) /t.py.c0_0 < .01
+    assert (t.py.c1_0 - trans['b2']) /t.py.c1_0 < .02
+    assert (t.py.c0_1 - trans['b1']) /t.py.c0_1 < .01
+
+    assert np.mean(np.abs(xev-xa3)) < .1, np.mean(np.abs(xev-xa3))
+    assert np.mean(np.abs(yev-ya3)) < .1, np.mean(np.abs(yev-ya3))
     
 
 

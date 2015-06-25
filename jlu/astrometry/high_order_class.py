@@ -137,7 +137,7 @@ class ClipTransform:
 
         self.t = t
 
-    def evaluate(self,x,y)
+    def evaluate(self,x,y):
         return self.t.evaluate(x,y)
             
         
@@ -151,7 +151,7 @@ class PolySplineTransform:
         xev, yev = self.poly.evaluate(x, y)
         self.spline = SplineTransform(xev, yev, xref, yref,weights)
 
-    def evaluate(self, x, y)
+    def evaluate(self, x, y):
         xev, yev = self.poly.evaluate(x, y)
         return self.spline.evaluate(xev, yev)
         
@@ -234,7 +234,7 @@ def four_param(x,y,x_ref,y_ref):
     #b0 = y' +a2 * x - a1 *y
     a0 = np.mean(x_ref - trans[0] * x - trans[1]*y)
     b0 = np.mean(y_ref + trans[1] *x - trans[0] *y)
-    import pdb;pdb.set_trace()
+    
     #returning the reaulting coeficient to match fitting
     #[x0,a1,a2], [y0,-a2,a1], should be applied ot x,y vector
     
