@@ -109,18 +109,18 @@ class ClipTransform:
     def __init__(self,x , y , xref, yref, degree, niter=3, sig_clip =3 , weights=None):
         self.s_bool = np.ones(x.shape, dtype='bool')
 
-        c_x, y_x = four_param(x, y, xref, yref)
+        c_x, c_y = four_param(x, y, xref, yref)
         for i in range(niter+1):
             t = PolyTransform(x, y, xref, yref, degree, init_gx=c_x, init_gy=c_y, weights=weights)
             #reset the initial guesses based on the previous tranforamtion
             #it is not clear to me that using these values is better than recalculating an intial guess from a 4 parameter tranform
-            c_x[0] = t.px.c0_0
-            c_x[1] = t.px.c1_0
-            c_x[2] = t.px.c0_1
+            c_x[0] = t.px.c0_0.value
+            c_x[1] = t.px.c1_0.value
+            c_x[2] = t.px.c0_1.value
 
-            c_y[0] = t.py.c0_0
-            c_y[1] = t.py.c1_0
-            c_y[2] = t.py.c0_1
+            c_y[0] = t.py.c0_0.value
+            c_y[1] = t.py.c1_0.value
+            c_y[2] = t.py.c0_1.value
 
             xev, yev = t.evaluate(x, y)
             dx = xref - xev
@@ -130,10 +130,10 @@ class ClipTransform:
             
             sigx = np.std(dx[self.s_bool])
             sigy = np.std(dy[self.s_bool])
-
+            
             if i != niter :
                 #do not update the star boolean if we have performed the final tranformation
-                self.s_bool = self.s_bool - (dx > mx + sig_clip * sigx) - (dx < mx - sig_clip * sigx) - (dy > my + sig_clip * sigy) - (dy < my - sig_clip * sigy)
+                self.s_bool = self.s_bool - ((dx > mx + sig_clip * sigx) + (dx < mx - sig_clip * sigx) + (dy > my + sig_clip * sigy) + (dy < my - sig_clip * sigy))
 
         self.t = t
 
