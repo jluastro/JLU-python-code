@@ -50,8 +50,6 @@ def test_a3():
     align a3 uses independent linear fits, equivalent to align
     then we can compare both output coordiantes and tranformation coefficients
     '''
-
-    
     dat = Table.read('test/data.txt', format='ascii.fixed_width')
     trans = Table.read('test/a3.trans', format='ascii')
     x = dat['xorig']

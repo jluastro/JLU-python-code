@@ -24,12 +24,13 @@ class PolyTransform:
     y' = d0_0 + d_0_1 *x + d1_0*y + ....
     currently only supports initial guess of the linear terms
     '''
-    def __init__(self,x, y, xref, yref, degree, init_gx=None,init_gy=None, weights=None ):
+    def __init__(self, x, y, xref, yref, degree,
+                 init_gx=None, init_gy=None, weights=None):
 
 
         p0 = models.Polynomial2D(degree)
-        #now, if the initial guesses are not nonw, fill in terms until 
         
+        # now, if the initial guesses are not none, fill in terms until 
         init_gx = check_initial_guess(init_gx)
         init_gy = check_initial_guess(init_gy)
         
@@ -42,7 +43,7 @@ class PolyTransform:
         
 
         self.px = fit_p(p_init_x, x, y, xref, weights=weights)
-        self.py = fit_p(p_init_y,x,y,yref, weights=weights)
+        self.py = fit_p(p_init_y, x, y, yref, weights=weights)
         
 
     def evaluate(self, x,y):
@@ -50,7 +51,8 @@ class PolyTransform:
     
 class LegTransform:
 
-    def __init__(self, x, y, xref, yref, degree, init_gx=None,init_gy=None, weights=None ):
+    def __init__(self, x, y, xref, yref, degree,
+                 init_gx=None,init_gy=None, weights=None):
         '''
         defines a 2d polnyomial tranformation fomr x,y -> xref,yref using Legnedre polynomials as the basis
         transforms are independent for x and y, of the form
@@ -78,8 +80,10 @@ class LegTransform:
         self.py = fit_p(p_init_y, x_norm, y_norm, y_norm_ref, weights=weights)
 
     def evaluate(self, x, y):
-        xnew = self.rnorm(self.px(self.norm(x, self.x_nc), self.norm(y, self.y_nc)),self.x_ncr )
-        ynew = self.rnorm(self.py(self.norm(x,self.x_nc), self.norm(y,self.y_nc)),self.y_ncr)
+        xnew = self.rnorm(self.px(self.norm(x, self.x_nc), self.norm(y, self.y_nc)),
+                          self.x_ncr)
+        ynew = self.rnorm(self.py(self.norm(x, self.x_nc), self.norm(y, self.y_nc)),
+                          self.y_ncr)
         return xnew, ynew
 
         
@@ -107,9 +111,10 @@ class LegTransform:
         
         return (x+1.0)   * n_param[1] + n_param[0]
 
-class ClipTransform:
+class PolyClipTransform:
 
-    def __init__(self,x , y , xref, yref, degree, niter=3, sig_clip =3 , weights=None):
+    def __init__(self,x , y , xref, yref, degree,
+                 niter=3, sig_clip =3 , weights=None):
         self.s_bool = np.ones(x.shape, dtype='bool')
 
         c_x, c_y = four_param(x, y, xref, yref)
@@ -151,20 +156,24 @@ class ClipTransform:
             
         
 class PolySplineTransform:
-
-    def __init__(self, x, y, xref, yref, degree,weights ):
+    """
+    NEED SOME DOCS
+    """
+    
+    def __init__(self, x, y, xref, yref, degree, weights):
 
         '''
         '''
-        self.poly = PolyTransform(x, y, xref, yref, degree,weights)
+        self.poly = PolyTransform(x, y, xref, yref, degree, weights)
         xev, yev = self.poly.evaluate(x, y)
-        self.spline = SplineTransform(xev, yev, xref, yref,weights)
+
+        # FIX THIS
+        self.spline = SplineTransform(xev, yev, xref, yref, weights)
 
     def evaluate(self, x, y):
         xev, yev = self.poly.evaluate(x, y)
         return self.spline.evaluate(xev, yev)
         
-
         
 
 class SplineTransform:
@@ -192,9 +201,9 @@ def check_initial_guess(initial_param):
     '''
     Checks initial guesses for polynomial (and LEgendre) tranformations
     '''
-    ord_dict = {3:1,6:2,10:3,15:4,21:5,28:6,36:7}
-    if initial_param==None:
-        return  {'c0_0':0,'c1_0':0,'c0_1':0}
+    ord_dict = {3:1, 6:2, 10:3, 15:4, 21:5, 28:6, 36:7}
+    if initial_param == None:
+        return  {'c0_0':0, 'c1_0':0, 'c0_1':0}
     assert len(initial_param) in ord_dict.keys()
     var_name = models.Polynomial2D(ord_dict[len(initial_param)]).param_names
     i_d = {}
