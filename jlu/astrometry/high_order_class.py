@@ -34,10 +34,9 @@ class PolyTransform:
         self.degree = degree
         p_init_x = models.Polynomial2D(degree=degree, c0_0 =init_gx[0], c1_0=init_gx[1], c0_1=init_gx[2] )
         p_init_y = models.Polynomial2D(degree=degree, c0_0 =init_gy[0], c1_0=init_gy[1], c0_1=init_gy[2] )
-        if self.degree == 1:
-            fit_p  = fitting.LinearLSQFitter()
-        else:
-            fit_p = fitting.LevMarLSQFitter()
+        
+        fit_p  = fitting.LinearLSQFitter()
+        
 
         self.px = fit_p(p_init_x, x, y, xref, weights=weights)
         self.py = fit_p(p_init_y,x,y,yref, weights=weights)
@@ -69,7 +68,8 @@ class LegTransform:
         
         p_init_x = models.Legendre2D(degree, degree, c0_0 =init_gx[0], c1_0=init_gx[1], c0_1=init_gx[2])
         p_init_y = models.Legendre2D(degree, degree, c0_0 =init_gy[0], c1_0=init_gy[1], c0_1=init_gy[2])
-        fit_p = fitting.LevMarLSQFitter()
+       
+        fit_p  = fitting.LinearLSQFitter()
 
         self.px = fit_p(p_init_x, x_norm, y_norm, x_norm_ref, weights=weights)
         self.py = fit_p(p_init_y, x_norm, y_norm, y_norm_ref, weights=weights)
@@ -110,8 +110,9 @@ class ClipTransform:
         self.s_bool = np.ones(x.shape, dtype='bool')
 
         c_x, c_y = four_param(x, y, xref, yref)
+        
         for i in range(niter+1):
-            t = PolyTransform(x, y, xref, yref, degree, init_gx=c_x, init_gy=c_y, weights=weights)
+            t = PolyTransform(xp[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights)
             #reset the initial guesses based on the previous tranforamtion
             #it is not clear to me that using these values is better than recalculating an intial guess from a 4 parameter tranform
             c_x[0] = t.px.c0_0.value
@@ -178,7 +179,7 @@ class SplineTransform:
 
 
 
-        
+
 def check_initial_guess(initial_param):
     '''
     Checks initial guesses for polynomial (and LEgendre) tranformations
