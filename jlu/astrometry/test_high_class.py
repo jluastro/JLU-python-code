@@ -32,13 +32,13 @@ def test_a2():
     
     
     #test that the coefficients agree to within 1% for the large linear term, and 2% for the smaller linear term (the linear y term for the s fit)
-    assert (c_x[0] - trans['a0']) /c_x[0] < .01
-    assert (c_x[1] - trans['a1']) /c_x[0] < .01
-    assert (c_x[2] - trans['a2']) /c_x[0] < .01
+    assert (c_x[0] - trans['a0']) /c_x[0] < .0001
+    assert (c_x[1] - trans['a1']) /c_x[0] < .0001
+    assert (c_x[2] - trans['a2']) /c_x[0] < .0001
 
-    assert (c_y[0] - trans['b0']) /c_x[0] < .01
-    assert (c_y[1] - trans['b2']) /c_x[0] < .01
-    assert (c_y[2] - trans['b1']) /c_x[0] < .01
+    assert (c_y[0] - trans['b0']) /c_x[0] < .0001
+    assert (c_y[1] - trans['b2']) /c_x[0] < .0001
+    assert (c_y[2] - trans['b1']) /c_x[0] < .0001
     
 
     #demand that the output coordinates agree to within .2 pixels
