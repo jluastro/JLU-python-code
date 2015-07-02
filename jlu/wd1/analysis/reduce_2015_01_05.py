@@ -3,7 +3,6 @@ Research Note: Proper Motion Test (2014-06)
 Working Directory: /u/jlu/data/Wd1/hst/reduce_2014_06_17/
 """
 import math
-import atpy
 import pylab as py
 import numpy as np
 from jlu.hst import images
@@ -17,14 +16,18 @@ import os
 import shutil
 import subprocess
 from hst_flystar import astrometry as ast
+from hst_flystar import photometry
 from hst_flystar import reduce as flystar
 from hst_flystar import starlists
+from hst_flystar import completeness as comp
 import astropy.table
 from astropy import table
 from astropy.table import Table
 from astropy.table import Column
 from jlu.astrometry import align
-from jlu.gc.gcwork import starset 
+from jlu.gc.gcwork import starset
+from scipy.stats import binned_statistic
+from matplotlib import colors as mcolors
 
 workDir = '/u/jlu/data/wd1/hst/reduce_2015_01_05/'
 codeDir = '/u/jlu/code/fortran/hst/'
@@ -1573,7 +1576,7 @@ def align_to_fits(align_root):
         columns.append(s.getArrayFromEpoch(ii, 'mag'))
         col_names.append('m_' + align_idx[ii])
 
-        columns.append(s.getArrayFromEpoch(ii, 'ypixerr_p'))
+        columns.append(s.getArrayFromEpoch(ii, 'xpixerr_p'))
         col_names.append('xe_' + align_idx[ii])
 
         columns.append(s.getArrayFromEpoch(ii, 'ypixerr_p'))
@@ -1594,7 +1597,7 @@ def align_to_fits(align_root):
     t = Table(columns, names=col_names)
 
     t.table_name = align_root
-    t.write(workDir + '50.ALIGN_KS2/' + align_root + '.fits')
+    t.write(workDir + '50.ALIGN_KS2/' + align_root + '.fits', overwrite=True)
 
     return
 
@@ -1868,6 +1871,375 @@ def make_catalog(use_RMSE=True, vel_weight=None):
             catalog_name += '_wvelVar'
     catalog_name += '.fits'
 
+    d.write(workDir + '50.ALIGN_KS2/' + catalog_name, format='fits', overwrite=True)
+    
+    return
+
+def art_set_detected():
+    """
+    Create the "detected" columsn in the artificial star list.
+    
+    Apply a set of criteria to call a star detected based on on how
+    closely the input and output position/flux match.
+    """
+    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos.fits')
+
+    # Make a "detected" column for each epoch/filter.
+    # Set detected = True for all sources that are detected and whose
+    # positions/fluxes match within certain criteria. These are loose criteria.
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
+    dr_cuts = [0.6, 0.5, 0.5, 0.5, 0.5] # pixels
+    dm_cuts = [0.5, 0.5, 0.5, 0.5, 0.5] # magnitudes
+    n_cut   = 1
+
+    for ee in range(len(epochs)):
+        epoch = epochs[ee]
+        det = np.zeros(len(d), dtype=bool)
+
+        n = d['n_' + epoch]
+        dx = d['x_' + epoch] - d['xin_' + epoch]
+        dy = d['y_' + epoch] - d['yin_' + epoch]
+        dm = d['m_' + epoch] - d['min_' + epoch]
+        dr = np.hypot(dx, dy)
+
+        idx = np.where((n > n_cut) & (dr < dr_cuts[ee]) & (dm < dm_cuts[ee]))
+        det[idx] = True
+
+        # Add this column to the table.
+        d.add_column(Column(det, name='det_' + epoch))
+    
+    catalog_name = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
+    d.write(catalog_name, format='fits')
+
+    return
+    
+def fix_artstar_errors():
+    """
+    Little snippet of code to compare the artificial star errors with the
+    observed star errors to determine if a constant offset exists between
+    the two. Reports the value of that offset.
+
+    Specialized to work with Wd1 data (filter sets, etc)
+
+    art_obs mags assumed to be instrumental
+    """
+    real_obs = workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits'
+    art_obs = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
+    binsize = 0.5
+    
+    # Read the catalogs, create new artificial star lists for
+    # each filter/epoch only containing the recovered stars
+    print 'Reading input'
+    obs = Table.read(real_obs, format='fits')
+    art = Table.read(art_obs, format='fits')
+    print 'Done'
+
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
+
+    def mean_clip(vals):
+        val_mean, val_std, n = statsIter.mean_std_clip(vals,
+                                                       clipsig=3.0,
+                                                       maxiter=10,
+                                                       converge_num=0.01,
+                                                       verbose=False,
+                                                       return_nclip=True)
+        return val_mean
+
+    def plot_pos_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_pos_err_mean, art_pos_err_mean, suffix=''):
+        
+        py.figure(1, figsize = (10,10))
+        py.clf()
+        py.semilogy(art_mag, art_err, 'k.', ms=4, label='Artificial', alpha=0.2)
+        py.semilogy(obs_mag, obs_err, 'r.', ms=4, label='Observed', alpha=0.5)
+        py.plot(mag_cent, obs_pos_err_mean, 'b-', linewidth=2,
+                label='Observed Median')
+        py.plot(mag_cent, art_pos_err_mean, 'g-', linewidth=2,
+                label='Artificial Median')
+        py.xlabel('Observed Mag')
+        py.ylabel('Positional Error (pix)')
+        py.title('Positional Errors,' + epoch)
+        py.legend(loc=2, numpoints=1)
+        py.xlim(11, max(art_mag))
+        py.ylim(1e-4, 1)
+        py.savefig(workDir + 'plots/Pos_errcomp' + suffix + '_' + epoch + '.png')
+
+        return
+
+    def plot_mag_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_mag_err_mean, art_mag_err_mean, suffix=''):
+        
+        py.figure(2, figsize=(10,10))
+        py.clf()
+        py.semilogy(art_mag, art_merr, 'k.', ms=4, label='Artificial', alpha=0.2)
+        py.semilogy(obs_mag, obs_merr, 'r.', ms=4, label='Observed', alpha=0.5)
+        py.plot(mag_cent, obs_mag_err_mean, 'b-', linewidth=2,
+                label='Observed Median')
+        py.plot(mag_cent, art_mag_err_mean, 'g-', linewidth=2,
+                label='Artificial Median')
+        py.xlabel('Observed Mag')
+        py.ylabel('Photometric Error (mag)')
+        py.title('Photometric Errors,' + epoch)
+        py.legend(loc=2, numpoints=1)
+        py.xlim(11, max(art_mag))
+        py.ylim(1e-4, 1)
+        py.savefig(workDir + 'plots/Mag_errcomp' + suffix + '_' + epoch + '.png')        
+
+        return
+        
+    for epoch in epochs:
+        # Convert art star mags from instrumental to apparent
+        filt = epoch.split('_')[-1]
+        art['m_' + epoch] += photometry.ZP[filt]
+
+        det = np.where(art['det_' + epoch] == True)
+        
+        # Extract observed/artificial errors for each filter.
+        # X and Y errors are added in quadrature.
+        obs_err = np.hypot(obs['xe_' + epoch], obs['ye_' + epoch])
+        obs_mag = obs['m_' + epoch]
+        obs_merr = obs['me_' + epoch]
+
+        art_err = np.hypot(art['xe_' + epoch], art['ye_' + epoch])
+        art_mag = art['m_' + epoch]
+        art_merr = art['me_' + epoch]
+
+        art_err = art_err[det]
+        art_mag = art_mag[det]
+        art_merr = art_merr[det]
+
+        # For each epoch/filter, calculate the median position and
+        # magnitude error in each magbin for both observed and artificial.
+        mag_bins = np.arange(min(art_mag), max(art_mag) + binsize, binsize)
+        mag_cent = mag_bins[:-1] + (np.diff(mag_bins) / 2.0)
+
+        obs_pos_err_mean, f1, f2 = binned_statistic(obs_mag, obs_err,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+        obs_mag_err_mean, f1, f2 = binned_statistic(obs_mag, obs_merr,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+        art_pos_err_mean, f1, f2 = binned_statistic(art_mag, art_err,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+        art_mag_err_mean, f1, f2 = binned_statistic(art_mag, art_merr,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+
+        plot_pos_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_pos_err_mean, art_pos_err_mean, suffix='_orig')
+        plot_mag_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_mag_err_mean, art_mag_err_mean, suffix='_orig')
+
+        
+        # Now, calculate error floor of observations, add in quadrature to artificial errors
+        # For WFC3IR, we are in the error floor for everything brighter than 16th mag
+        # For ACS, we are in error floor for evertything brighter than 14th mag
+
+        if epoch == '2005_F814W':
+            brite_obs = np.where(obs_mag < 14)
+            brite_art = np.where(art_mag < 14)
+        else:
+            brite_obs = np.where(obs_mag < 16)
+            brite_art = np.where(art_mag < 16)
+            
+        # Take the median error for all the bright bins.
+        perr_obs = np.median(obs_err[brite_obs])
+        merr_obs = np.median(obs_merr[brite_obs])
+        perr_art = np.median(art_err[brite_art])
+        merr_art = np.median(art_merr[brite_art])
+
+        # Calculate the final "floor" errors that will get
+        # added in quadrature.
+        pos_err = 0.0
+        mag_err = 0.0
+        pos_err_1d = 0.0
+        if perr_obs > perr_art:
+            pos_err = np.sqrt(perr_obs**2 - perr_art**2)
+            pos_err_1d = pos_err / np.sqrt(2.0)
+        if merr_obs > merr_art:
+            mag_err = np.sqrt(merr_obs**2 - merr_art**2)
+
+        print '**********************************'
+        fmt = 'The {0:s} error floor of {1:s} is {2:5.4f} {3:s}'
+        print fmt.format('1D positional', epoch, pos_err_1d, '(pix)')
+        print fmt.format('  photometric', epoch, mag_err, '(mag)')
+        print '**********************************'
+
+        # Adding error floors in quadrature to artificial errors
+        art_err = np.hypot(art_err, pos_err)
+        art_merr = np.hypot(art_merr, mag_err)
+        
+        # Recalculate median pos and mag errors for the artificial stars
+        art_pos_err_mean, f1, f2 = binned_statistic(art_mag, art_err,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+        art_mag_err_mean, f1, f2 = binned_statistic(art_mag, art_merr,
+                                                    bins=mag_bins,
+                                                    statistic=mean_clip)
+        
+        plot_pos_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_pos_err_mean, art_pos_err_mean, suffix='_corr')
+        plot_mag_errors(epoch, obs_mag, obs_err, art_mag, art_err, mag_cent,
+                        obs_mag_err_mean, art_mag_err_mean, suffix='_corr')
+
+        # Update the original artificial star table with the error floors,
+        # write new table. Only update errors for stars detected in that
+        # particular filter.
+        art['me_' + epoch][det] = art_merr
+
+        # Will split pos error floor evenly among X,Y
+        art['xe_' + epoch][det] = np.hypot(art['xe_' + epoch][det], pos_err_1d)
+        art['ye_' + epoch][det] = np.hypot(art['ye_' + epoch][det], pos_err_1d)
+
+    art.write(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits',
+              format='fits', overwrite=True)
+
+    # WEIRD DEBUG issue here?
+    # foo = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits')
+    # print foo['det_2005_F814W']
+    
+    return
+
+
+def make_artificial_catalog(use_RMSE=True, vel_weight=None):
+    """
+    Read the align FITS table from the artificial star catalog and fit a
+    velocity to the positions.
+
+    use_RMSE - If True, use RMS error (standard deviation) for the positional error.
+               If False, convert the positional errors in "error on the mean" and
+               save to a different catalog name.
+    vel_weight - None, 'error', 'variance'
+            None = no weighting by errors in the velocity fit.
+            'error' = Weight by 1.0 / positional error in the velocity fit.
+            'variance' = Weight by 1.0 / (positional error)^2 in the velocity fit. 
+    """
+    
+    final = None
+    good = None
+
+    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits')
+    
+    # Fetch all stars that are in all 3 epochs.
+    #    2005_814
+    #    2010_160
+    #    2013_160
+    idx = np.where((d['det_2005_F814W'] == True) &
+                   (d['det_2010_F160W'] == True) &
+                   (d['det_2013_F160W'] == True))[0]
+    
+    print 'Found {0:d} of {1:d} stars in all 3 epochs.'.format(len(idx), len(d))
+    
+    # Changing rms errors into standard errors for the f153m data
+    xeom_2005_814 = d['xe_2005_F814W'][idx] / np.sqrt(d['n_2005_F814W'][idx])
+    yeom_2005_814 = d['ye_2005_F814W'][idx] / np.sqrt(d['n_2005_F814W'][idx])
+    xeom_2010_160 = d['xe_2010_F160W'][idx] / np.sqrt(d['n_2010_F160W'][idx])
+    yeom_2010_160 = d['ye_2010_F160W'][idx] / np.sqrt(d['n_2010_F160W'][idx])
+    xeom_2013_160 = d['xe_2013_F160W'][idx] / np.sqrt(d['n_2013_F160W'][idx])
+    yeom_2013_160 = d['ye_2013_F160W'][idx] / np.sqrt(d['n_2013_F160W'][idx])
+    
+    # Fit velocities. Will use an error-weighted t0, specified to each object
+    t = np.array([years['2005_F814W'], years['2010_F160W'], years['2013_F160W']])
+
+    if use_RMSE:
+        # Shape = (nepochs, nstars)
+        xerr = np.array([d['xe_2005_F814W'][idx],
+                         d['xe_2010_F160W'][idx],
+                         d['xe_2013_F160W'][idx]])
+        yerr = np.array([d['ye_2005_F814W'][idx],
+                         d['ye_2010_F160W'][idx],
+                         d['ye_2013_F160W'][idx]])
+    else:
+        xerr = np.array([xeom_2005_814**2, xeom_2010_160**2, xeom_2013_160**2])
+        yerr = np.array([yeom_2005_814**2, yeom_2010_160**2, yeom_2013_160**2])
+
+    w = 1.0 / (xerr**2 + yerr**2)
+    w = np.transpose(w) #Getting the dimensions of w right
+    numerator = np.sum(t * w, axis = 1)
+    denominator = np.sum(w, axis = 1)
+
+    nstars = len(d)
+    nepochs = len(t)
+    
+    t0_arr = np.zeros(nstars, dtype=float)
+    t0_arr[idx] = numerator / denominator
+    
+    # 2D arrays Shape = (nepochs, nstars)
+    t = np.tile(t, (nstars, 1)).T
+    t0 = np.tile(t0_arr, (nepochs, 1))
+
+    #Calculating dt for each object
+    dt = t - t0
+    
+    d.add_column(Column(data=t[0], name='t_2005_F814W'))
+    d.add_column(Column(data=t[1], name='t_2010_F160W'))
+    d.add_column(Column(data=t[2], name='t_2013_F160W'))
+    d.add_column(Column(data=t0[0], name='fit_t0'))
+
+    d.add_column(Column(data=np.ones(nstars), name='fit_x0'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_vx'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_y0'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_vy'))
+
+    d.add_column(Column(data=np.ones(nstars), name='fit_x0e'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_vxe'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_y0e'))
+    d.add_column(Column(data=np.ones(nstars), name='fit_vye'))
+
+    for i_idx in range(len(idx)):
+        # Note i_idx is the index into the "idx" array.
+        # Note ii    is the index into the original table arrays.
+        ii = idx[i_idx]
+
+        if (ii % 1e4) == 0:
+            print 'Working on ', i_idx, ii
+        x = np.array([d['x_2005_F814W'][ii], d['x_2010_F160W'][ii], d['x_2013_F160W'][ii]])
+        y = np.array([d['y_2005_F814W'][ii], d['y_2010_F160W'][ii], d['y_2013_F160W'][ii]])
+        xe = xerr[:, i_idx]
+        ye = yerr[:, i_idx]
+
+        if (vel_weight != 'error') and (vel_weight != 'variance'):
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, cov=True)
+        if vel_weight == 'error':
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye, cov=True)
+        if vel_weight == 'variance':
+            vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe**2, cov=True)
+            vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye**2, cov=True)
+
+        if (ii == 35391):
+            pdb.set_trace()
+        
+        vxErr = np.sqrt(-1.0 * vxCov.diagonal())
+        vyErr = np.sqrt(-1.0 * vyCov.diagonal())
+
+        d['fit_x0'][ii] = vxOpt[1]
+        d['fit_vx'][ii] = vxOpt[0]
+        d['fit_x0e'][ii] = vxErr[1]
+        d['fit_vxe'][ii] = vxErr[0]
+
+        d['fit_y0'][ii] = vyOpt[1]
+        d['fit_vy'][ii] = vyOpt[0]
+        d['fit_y0e'][ii] = vyErr[1]
+        d['fit_vye'][ii] = vyErr[0]
+
+    catalog_name = workDir + '51.ALIGN_ART/wd1_art_catalog'
+    if use_RMSE:
+        catalog_name += '_RMSE'
+    else:
+        catalog_name += '_EOM'
+
+    if vel_weight == None:
+        catalog_name += '_wvelNone'
+    else:
+        if vel_weight == 'error':
+            catalog_name += '_wvelErr'
+        if vel_weight == 'variance':
+            catalog_name += '_wvelVar'
+    catalog_name += '.fits'
+
     d.write(catalog_name, format='fits')
     
     return
@@ -1894,22 +2266,34 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     catalog_name += catalog_suffix + '.fits'
     
     catFile = workDir + '50.ALIGN_KS2/' + catalog_name
-    tab = atpy.Table(catFile)
+    tab = Table.read(catFile)
 
     good = (tab['fit_vxe'] < 0.01) & (tab['fit_vye'] < 0.01) & \
         (tab['me_2005_F814W'] < 0.1) & (tab['me_2010_F160W'] < 0.1)
 
-    tab2 = tab.where(good)
+    tab2 = tab[good]
 
     vx = tab2['fit_vx'] * ast.scale['WFC'] * 1e3
     vy = tab2['fit_vy'] * ast.scale['WFC'] * 1e3
 
     py.figure(1)
     py.clf()
-    q = py.quiver(tab2['x_2005_F814W'], tab2['y_2005_F814W'], vx, vy, scale=5e2)
+    q = py.quiver(tab2['x_2005_F814W'], tab2['y_2005_F814W'], vx, vy, scale=1e2)
     py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='red', labelcolor='red')
-    py.savefig(workDir + '50.ALIGN_KS2/vec_diffs_' + catalog_suffix + '.png')
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
 
+    py.figure(3, figsize=(8,10))
+    py.clf()
+    nz = mcolors.Normalize()
+    nz.autoscale(tab2['m_2005_F814W'])
+    q = py.quiver(tab2['x_2005_F814W'], tab2['y_2005_F814W'], vx, vy, scale=1e2,
+                  color=py.cm.gist_stern(nz(tab2['m_2005_F814W'])))
+    py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='black', labelcolor='black')
+    py.axis('equal')
+    py.colorbar(orientation='vertical', label='F814W', fraction=0.2, pad=0.04)
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
+
+        
     py.figure(2)
     py.clf()
     py.plot(vx, vy, 'k.', ms=2)
@@ -1917,7 +2301,20 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     py.axis([-lim, lim, -lim, lim])
     py.xlabel('X Proper Motion (mas/yr)')
     py.ylabel('Y Proper Motion (mas/yr)')
-    py.savefig(workDir + '50.ALIGN_KS2/vpd_' + catalog_suffix + '.png')
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd' + catalog_suffix + '.png')
+
+    py.figure(3, figsize=(8,10))
+    py.clf()
+    py.scatter(vx, vy, c=tab2['m_2005_F814W'], s=5, edgecolor='',
+               cmap=py.cm.gist_stern)
+    py.xlabel('X Proper Motion (mas/yr)')
+    py.ylabel('Y Proper Motion (mas/yr)')
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd_color' + catalog_suffix + '.png')
+    py.colorbar(orientation='vertical', label='F814W', fraction=0.2, pad=0.04)
+    py.axis('equal')
+    lim = 3.5
+    py.axis([-lim, lim, -lim, lim])
+    
 
     idx = np.where((np.abs(vx) < 3) & (np.abs(vy) < 3))[0]
     print('Cluster Members (within vx < 10 mas/yr and vy < 10 mas/yr)')
@@ -1966,18 +2363,15 @@ def setup_artstar_info():
                                      'Artstarlist_2013_pos4_b.txt',
                                      'Artstarlist_2013_pos4_c.txt']}
         
-    filters = {'21.KS2_2005_ART': ['F1'],
-               '22.KS2_2010_ART': ['F1', 'F2', 'F3'],
-               '23.KS2_2013_ART': ['F1']}
-    filt_cols = {'21.KS2_2005_ART': ['col3'],
-                 '22.KS2_2010_ART': ['col3', 'col4', 'col5'],
-                 '23.KS2_2013_ART': ['col3']}
+    filters = {'21.KS2_2005_ART': [1],
+               '22.KS2_2010_ART': [1, 2, 3],
+               '23.KS2_2013_ART': [1]}
 
-    return comp_dirs, art_lists, filters, filt_cols
+    return comp_dirs, art_lists, filters
 
 
 def call_process_ks2_artstar():
-    comp_dirs, art_lists, filters, filt_cols = setup_artstar_info()
+    comp_dirs, art_lists, filters = setup_artstar_info()
 
     # Loop through each year
     for epoch in comp_dirs.keys():
@@ -1985,25 +2379,23 @@ def call_process_ks2_artstar():
                 
         # Loop through each position, sublist combo
         for ii in range(len(art_dirs)):
-            directory = reduce_dir + epoch + '/' + art_dirs[ii]
+            directory = workDir + epoch + '/' + art_dirs[ii]
             os.chdir(directory)
 
             filt = filters[epoch]
-            filt_col = filt_cols[epoch]
 
             # Loop through each filter            
             for ff in range(len(filt)):
-                print 'Working on {0}, filter {1}'.format(directory, filt[ff])
+                filt_string = 'F{0:d}'.format(filt[ff])
+                print 'Working on {0}, filter F{1}'.format(directory, filt_string)
                 
                 art_star_list = art_lists[epoch][ii]
-                nimfo2bar_file = 'nimfo2bar.xymeee.' + filt[ff]
-                mag_col = filt_cols[epoch][ff]
+                nimfo2bar_file = 'nimfo2bar.xymeee.' + filt_string
                 comp.process_ks2_artstar(art_star_list, nimfo2bar_file,
-                                         art_star_mag_col=mag_col)
+                                         filter_num=filt[ff])
 
             
     return
-        
 
 def recombine_artstar_subsets():
     """
@@ -2013,7 +2405,7 @@ def recombine_artstar_subsets():
 
     Last step is top save the catalogs in 51.ALIGN_ART/.
     """
-    comp_dirs, art_lists, filters, filt_cols = setup_artstar_info()
+    comp_dirs, art_lists, filters = setup_artstar_info()
 
     ##################################################
     #
@@ -2029,7 +2421,7 @@ def recombine_artstar_subsets():
     for ii in range(len(subdirs)):
         table_file = workDir + epoch + '/' + subdirs[ii] + '/'
         table_file += alists[ii].replace('.txt', '')
-        table_file += '_joined.fits'
+        table_file += '_F1_joined.fits'
 
         t = Table.read(table_file)
 
@@ -2058,40 +2450,287 @@ def recombine_artstar_subsets():
     positions = ['pos1', 'pos2', 'pos3', 'pos4']
     subsets = {'pos1': ['a', 'b', 'c'], 'pos2': ['a', 'b'],
                'pos3': ['a', 'b'], 'pos4': ['a', 'b', 'c']}
+    filter_names = {1: 'F160W', 2: 'F139M', 3: 'F125W'}
 
-    t_2010_F160W_pos1 = None
-    subdirs = comp_dirs[epoch]
-    alists = art_lists[epoch]
-
-    N_largest = 0
-    for ii in range(len(subdirs)):
-        table_file = workDir + epoch + '/' + subdirs[ii] + '/'
-        table_file += alists[ii].replace('.txt', '')
-        table_file += '_joined.fits'
-
-        t = Table.read(table_file)
-
-        if ii == 0:
-            t_2005_F814W = t
-        else:
-            # Modify the names (which are actually indices).
-            t['name'] += N_largest
-            t_2005_F814W = table.vstack((t_2005_F814W, t), join_type='exact')
-            
-        N_largest = t_2005_F814W['name'][-1]
-
-    # Save output to file.
-    outfile = 'artstar_2005_F814W.fits'
-    outfile = workDir + '51.ALIGN_ART/' + outfile
-    t_2005_F814W.write(outfile, overwrite=True)
-
+    for pp in range(len(positions)):
+        # The name of this mosaic position.
+        pos = positions[pp]
         
-    
+        # List of subset directory suffixes for this mosaic position.
+        subs = subsets[pos]
+
+        for filt in filters[epoch]:
+            t_2010 = None
+            N_largest = 0
+
+            for ii in range(len(subs)):
+                table_file = workDir + epoch
+                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
+                table_file += 'Artstarlist_2010_{0:s}_{1:s}'.format(pos, subs[ii])
+                table_file += '_F{0:d}'.format(filt)
+                table_file += '_joined.fits'
+            
+                t = Table.read(table_file)
+
+                if ii == 0:
+                    t_2010 = t
+                else:
+                    # Modify the names (which are actually indices).
+                    t['name'] += N_largest
+                    t_2010 = table.vstack((t_2010, t), join_type='exact')
+            
+                N_largest = t_2010['name'][-1]
+
+            # Save output to file.
+            outfile = 'artstar_2010_{0}_{1}.fits'.format(filter_names[filt], pos)
+            outfile = workDir + '51.ALIGN_ART/' + outfile
+            t_2010.write(outfile, overwrite=True)
+
+    ##################################################
+    #
+    # Process 23.KS2_2013_ART -- combine each position (three filters)
+    #
+    ##################################################
+    epoch = '23.KS2_2013_ART'
+    positions = ['pos1', 'pos2', 'pos3', 'pos4']
+    subsets = {'pos1': ['a', 'b', 'c'], 'pos2': ['a', 'b'],
+               'pos3': ['a', 'b'], 'pos4': ['a', 'b', 'c']}
+    filter_names = {1: 'F160W'}
+
+    for pp in range(len(positions)):
+        # The name of this mosaic position.
+        pos = positions[pp]
+        
+        # List of subset directory suffixes.
+        subs = subsets[pos]
+
+        for filt in filters[epoch]:
+            t_2013 = None
+            N_largest = 0
+
+            for ii in range(len(subs)):
+                table_file = workDir + epoch
+                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
+                table_file += 'Artstarlist_2013_{0:s}_{1:s}'.format(pos, subs[ii])
+                table_file += '_F{0:d}'.format(filt)
+                table_file += '_joined.fits'
+            
+                t = Table.read(table_file)
+
+                if ii == 0:
+                    t_2013 = t
+                else:
+                    # Modify the names (which are actually indices).
+                    t['name'] += N_largest
+                    t_2013 = table.vstack((t_2013, t), join_type='exact')
+            
+                N_largest = t_2013['name'][-1]
+
+            # Save output to file.
+            outfile = 'artstar_2013_{0}_{1}.fits'.format(filter_names[filt], pos)
+            outfile = workDir + '51.ALIGN_ART/' + outfile
+            t_2013.write(outfile, overwrite=True)
+
     return
+
+def align_artstars():
+    """
+    Read in the artificial star catalogs, transform them using the
+    alignments derived from the observed data, cross-match the stars across
+    epochs, and apply trim_align cuts in a similar manner to the observed data.
+
+    Deliver a FITS catalog that parallels the one delivered from
+        align_to_fits()
+        combine_mosaic_pos()
+    This will have the mosaic positions combined together. 
+    """
+    starlists = ['artstar_2005_F814W.fits',
+                 'artstar_2010_F125W_pos1.fits',
+                 'artstar_2010_F125W_pos2.fits',
+                 'artstar_2010_F125W_pos3.fits',
+                 'artstar_2010_F125W_pos4.fits',
+                 'artstar_2010_F139M_pos1.fits',
+                 'artstar_2010_F139M_pos2.fits',
+                 'artstar_2010_F139M_pos3.fits',
+                 'artstar_2010_F139M_pos4.fits',
+                 'artstar_2010_F160W_pos1.fits',
+                 'artstar_2010_F160W_pos2.fits',
+                 'artstar_2010_F160W_pos3.fits',
+                 'artstar_2010_F160W_pos4.fits',
+                 'artstar_2013_F160W_pos1.fits',
+                 'artstar_2013_F160W_pos2.fits',
+                 'artstar_2013_F160W_pos3.fits',
+                 'artstar_2013_F160W_pos4.fits']
+    mosaic_epochs = ['2005_F814W', '2010_F125W', '2010_F139M',
+                  '2010_F160W', '2013_F160W']
+    pos_for_epoch = {'2005_F814W': [''],
+                     '2010_F125W': ['pos1', 'pos2', 'pos3', 'pos4'],
+                     '2010_F139M': ['pos1', 'pos2', 'pos3', 'pos4'],
+                     '2010_F160W': ['pos1', 'pos2', 'pos3', 'pos4'],
+                     '2013_F160W': ['pos1', 'pos2', 'pos3', 'pos4']}
+        
+    align_root = 'align_a4_t'
+
+    # This table contains the transformations that will be applied.
+    trans = Table.read(workDir + '50.ALIGN_KS2/' + align_root + '.trans',
+                       format='ascii')
+
+    # This will be used to validate that we are working on the right list. 
+    align_list_file = open(workDir + '50.ALIGN_KS2/align.list', 'r')
+    align_list = align_list_file.readlines()
+
+    def transform(xin, yin, tr):
+        """
+        xin - array
+        yin - array
+        tr - row from an align.trans file
+        """
+        xout = tr['a0']
+        xout += (tr['a1'] * xin) + (tr['a2'] * yin)
+        xout += (tr['a3'] * xin**2) + (tr['a4'] * xin * yin) + (tr['a5'] * yin**2)
+        
+        yout = tr['b0']
+        yout += (tr['b1'] * yin) + (tr['b2'] * yin)
+        yout += (tr['b3'] * yin**2) + (tr['b4'] * yin * xin) + (tr['b5'] * xin**2)
+
+        return (xout, yout)
+
+    def transform_error(xin, yin, xin_e, yin_e, tr):
+        """
+        xin - array
+        yin - array
+        tr - row from an align.trans file
+        """
+        xe_term1 = (tr['a1'] * xin_e)
+        xe_term1 += (tr['a3'] * 2 * xin * xin_e) + (tr['a4'] * yin * xin_e)
+
+        xe_term2 = (tr['a2'] * yin_e)
+        xe_term2 += (tr['a5'] * 2 * yin * yin_e) + (tr['a4'] * xin * yin_e)
+        
+        xout_e = np.hypot(xe_term1, xe_term2)
+
+        ye_term1 = (tr['b1'] * yin_e)
+        ye_term1 += (tr['b3'] * 2 * yin * yin_e) + (tr['b4'] * xin * yin_e)
+
+        ye_term2 = (tr['b2'] * xin_e)
+        ye_term2 += (tr['b5'] * 2 * xin * xin_e) + (tr['b4'] * yin * xin_e)
+        
+        yout_e = np.hypot(ye_term1, ye_term2)
+        
+        return (xout_e, yout_e)
     
-    
-    
+    # WARNING Hard-coding the order -- arrays above need to be matched to
+    # the align.list file from the observed data. No checks!!
+    align_idx = 0
+
+    # This will be the final table
+    t_out = Table()
+    t_out.table_name = 'art_' + align_root
+
+    # Loop through each epoch (2005, 2010, 2013)
+    for ee in range(len(mosaic_epochs)):
+        epoch = mosaic_epochs[ee]
+        positions = pos_for_epoch[epoch]
+        print ''
+        print 'Combining all positions from epoch = ', epoch
+        
+
+        # Define the final output arrays 
+        x = np.array([], dtype=float)
+        y = np.array([], dtype=float)
+        m = np.array([], dtype=float)
+        xe = np.array([], dtype=float)
+        ye = np.array([], dtype=float)
+        me = np.array([], dtype=float)
+        n = np.array([], dtype=int)
+        x_in = np.array([], dtype=float)
+        y_in = np.array([], dtype=float)
+        m_in = np.array([], dtype=float)
+        name = np.array([], dtype='S10')
+
+        # Loop through the mosaic positions (pos1, pos2, pos3, pos4)
+        for pp in range(len(positions)):
+            # Get the current position
+            pos = positions[pp]
+
+            # Get the transformation for this epoch
+            tr = trans[align_idx]
+
+            print '  ks2 pos = ', pos, '  align list = ', align_list[align_idx]
+            
+            # Make a suffix string from the current position
+            if pos != '':
+                pos_suffix = '_' + pos
+            else:
+                pos_suffix = pos
+
+            # Read in the table
+            artstar_list = 'artstar_{0}{1}.fits'.format(epoch, pos_suffix)
+
+            t = Table.read(workDir + '51.ALIGN_ART/' + artstar_list)
+
+            # Transfrom the stars' input positions.
+            x_in_t, y_in_t = transform(t['x_in'], t['y_in'], tr)
+
+            # Identify the detected stars and only transform them.
+            det = np.where(t['n_out'] > 0)[0]
+            x_out_t = t['x_out']
+            y_out_t = t['y_out']
+            xe_out_t = t['xe_out']
+            ye_out_t = t['ye_out']
+            
+            x_out_t[det], y_out_t[det] = transform(t['x_out'][det], t['y_out'][det],
+                                                   tr)
+            xe_out_t[det], ye_out_t[det] = transform_error(t['x_out'][det],
+                                                           t['y_out'][det],
+                                                           t['xe_out'][det],
+                                                           t['ye_out'][det],
+                                                           tr)
+
+            # Append input values to the final arrays
+            x_in = np.append(x_in, x_in_t)
+            y_in = np.append(y_in, y_in_t)
+            m_in = np.append(m_in, t['m_in'])
+
+            # Append detected values to the final arrays
+            x = np.append(x, x_out_t)
+            y = np.append(y, y_out_t)
+            m = np.append(m, t['m_out'])
+            n = np.append(n, t['n_out'])
+
+            xe = np.append(xe, xe_out_t)
+            ye = np.append(ye, ye_out_t)
+            me = np.append(me, t['me_out'])
+
+            new_name = [str(nn) + pos_suffix for nn in t['name']]
+
+            name = np.append(name, new_name)
+
+            print '   position = {0}, added {1} star'.format(pos, len(x_out_t))
+            
+            align_idx += 1
+
+
+        # Add new columns to the table
+        t_out.add_column(Column(x, name='x_' + epoch))
+        t_out.add_column(Column(y, name='y_' + epoch))
+        t_out.add_column(Column(m, name='m_' + epoch))
+
+        t_out.add_column(Column(xe, name='xe_' + epoch))
+        t_out.add_column(Column(ye, name='ye_' + epoch))
+        t_out.add_column(Column(me, name='me_' + epoch))
+        
+        t_out.add_column(Column(n, name='n_' + epoch))
+
+        t_out.add_column(Column(x_in, name='xin_' + epoch))
+        t_out.add_column(Column(y_in, name='yin_' + epoch))
+        t_out.add_column(Column(m_in, name='min_' + epoch))
+
+        t_out.add_column(Column(name, name='name_' + epoch))
+            
+
+    t_out.write(workDir + '51.ALIGN_ART/art_' + align_root + '_combo_pos.fits',
+                overwrite=True)
+
 
     
-                
-

@@ -204,7 +204,8 @@ class SubmissionPreparer(object):
 
     # the possible extensions for graphics files, in order of
     # preference (in principle, should match LaTeX's preferencing)
-    _graphics_exts = ('ps', 'eps', 'pdf')
+    _graphics_exts
+     = ('ps', 'eps', 'pdf')
 
     def get_submission_dir(self, fileroot):
         "convention for submission directory"

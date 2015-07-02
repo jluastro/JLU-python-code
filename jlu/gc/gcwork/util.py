@@ -163,13 +163,13 @@ def verrPix2Arc(xpix, ypix, xpixErr, ypixErr, trans, absolute=0, relErr=1):
     xerr2 = (xerr1 * trans.scale)**2
     yerr2 = (yerr1 * trans.scale)**2
     if relErr != 1:
-	xerr2 += (x1 * trans.scaleErr)**2
-	yerr2 += (y1 * trans.scaleErr)**2
+        xerr2 += (x1 * trans.scaleErr)**2
+        yerr2 += (y1 * trans.scaleErr)**2
     
     # Handle angles but only if requested by absolute=1 keyword
     if absolute == 1:
-	cosa = math.cos(trans.angle)
-	sina = math.sin(trans.angle)
+        cosa = math.cos(trans.angle)
+        sina = math.sin(trans.angle)
 
 	x3 = (x2 * cosa) + (y2 * sina)
 	y3 = -(x2 * sina) + (y2 * cosa)
