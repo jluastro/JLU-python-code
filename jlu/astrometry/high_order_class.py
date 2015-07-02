@@ -26,14 +26,17 @@ class PolyTransform:
     '''
     def __init__(self,x, y, xref, yref, degree, init_gx=None,init_gy=None, weights=None ):
 
-       
+
+        p0 = models.Polynomial2D(degree)
+        #now, if the initial guesses are not nonw, fill in terms until 
+        
         init_gx = check_initial_guess(init_gx)
         init_gy = check_initial_guess(init_gy)
         
         
         self.degree = degree
-        p_init_x = models.Polynomial2D(degree=degree, c0_0 =init_gx[0], c1_0=init_gx[1], c0_1=init_gx[2] )
-        p_init_y = models.Polynomial2D(degree=degree, c0_0 =init_gy[0], c1_0=init_gy[1], c0_1=init_gy[2] )
+        p_init_x = models.Polynomial2D(degree, **init_gx )
+        p_init_y = models.Polynomial2D(degree, **init_gy )
         
         fit_p  = fitting.LinearLSQFitter()
         
@@ -66,8 +69,8 @@ class LegTransform:
         self.y_ncr , y_norm_ref = self.norm0(yref)
         self.degree = degree
         
-        p_init_x = models.Legendre2D(degree, degree, c0_0 =init_gx[0], c1_0=init_gx[1], c0_1=init_gx[2])
-        p_init_y = models.Legendre2D(degree, degree, c0_0 =init_gy[0], c1_0=init_gy[1], c0_1=init_gy[2])
+        p_init_x = models.Legendre2D(degree, degree,**init_gx)
+        p_init_y = models.Legendre2D(degree, degree, **init_gy)
        
         fit_p  = fitting.LinearLSQFitter()
 
@@ -112,7 +115,7 @@ class ClipTransform:
         c_x, c_y = four_param(x, y, xref, yref)
         
         for i in range(niter+1):
-            t = PolyTransform(xp[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights)
+            t = PolyTransform(x[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights)
             #reset the initial guesses based on the previous tranforamtion
             #it is not clear to me that using these values is better than recalculating an intial guess from a 4 parameter tranform
             c_x[0] = t.px.c0_0.value
@@ -131,10 +134,15 @@ class ClipTransform:
             
             sigx = np.std(dx[self.s_bool])
             sigy = np.std(dy[self.s_bool])
+            sigr = np.sqrt(sigx**2 + sigy**2)
+            mr = np.sqrt(mx**2+my**2)
+            dr = np.sqrt(dx**2 + dy**2)
+                   
             
             if i != niter :
                 #do not update the star boolean if we have performed the final tranformation
-                self.s_bool = self.s_bool - ((dx > mx + sig_clip * sigx) + (dx < mx - sig_clip * sigx) + (dy > my + sig_clip * sigy) + (dy < my - sig_clip * sigy))
+                #self.s_bool = self.s_bool - ((dx > mx + sig_clip * sigx) + (dx < mx - sig_clip * sigx) + (dy > my + sig_clip * sigy) + (dy < my - sig_clip * sigy))
+                self.s_bool = self.s_bool - ((dr > mr + sig_clip * sigr) + (dr < mr - sig_clip * sigr))
 
         self.t = t
 
@@ -184,10 +192,16 @@ def check_initial_guess(initial_param):
     '''
     Checks initial guesses for polynomial (and LEgendre) tranformations
     '''
+    ord_dict = {3:1,6:2,10:3,15:4,21:5,28:6,36:7}
     if initial_param==None:
-            return  np.zeros(3)
-    assert len(initial_param) == 3
-    return  initial_param
+        return  {'c0_0':0,'c1_0':0,'c0_1':0}
+    assert len(initial_param) in ord_dict.keys()
+    var_name = models.Polynomial2D(ord_dict[len(initial_param)]).param_names
+    i_d = {}
+    for i in range(len(initial_param)):
+        i_d[var_name[i]] = initial_param[i]
+
+    return i_d
       
 def four_param(x,y,x_ref,y_ref):
     '''
