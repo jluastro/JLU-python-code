@@ -28,6 +28,7 @@ from jlu.astrometry import align
 from jlu.gc.gcwork import starset
 from scipy.stats import binned_statistic
 from matplotlib import colors as mcolors
+from matplotlib import colorbar
 
 workDir = '/u/jlu/data/wd1/hst/reduce_2015_01_05/'
 codeDir = '/u/jlu/code/fortran/hst/'
@@ -1793,8 +1794,8 @@ def make_catalog(use_RMSE=True, vel_weight=None):
         xerr = np.array([d['xe_2005_F814W'], d['xe_2010_F160W'], d['xe_2013_F160W']])
         yerr = np.array([d['ye_2005_F814W'], d['ye_2010_F160W'], d['ye_2013_F160W']])
     else:
-        xerr = np.array([xeom_2005_814**2, xeom_2010_160**2, xeom_2013_160**2])
-        yerr = np.array([yeom_2005_814**2, yeom_2010_160**2, yeom_2013_160**2])
+        xerr = np.array([xeom_2005_814, xeom_2010_160, xeom_2013_160])
+        yerr = np.array([yeom_2005_814, yeom_2010_160, yeom_2013_160])
 
     w = 1.0 / (xerr**2 + yerr**2)
     w = np.transpose(w) #Getting the dimensions of w right
@@ -2282,7 +2283,8 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='red', labelcolor='red')
     py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
 
-    py.figure(3, figsize=(8,10))
+    py.close(3)
+    py.figure(3, figsize=(8,6))
     py.clf()
     nz = mcolors.Normalize()
     nz.autoscale(tab2['m_2005_F814W'])
@@ -2290,8 +2292,11 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
                   color=py.cm.gist_stern(nz(tab2['m_2005_F814W'])))
     py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='black', labelcolor='black')
     py.axis('equal')
-    py.colorbar(orientation='vertical', label='F814W', fraction=0.2, pad=0.04)
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
+    cax, foo = colorbar.make_axes(py.gca(), orientation='vertical', fraction=0.2, pad=0.04)
+    cb = colorbar.ColorbarBase(cax, cmap=py.cm.gist_stern, norm=nz,
+                               orientation='vertical')
+    cb.set_label('F814W')
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs_color' + catalog_suffix + '.png')
 
         
     py.figure(2)
@@ -2303,17 +2308,23 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     py.ylabel('Y Proper Motion (mas/yr)')
     py.savefig(workDir + '50.ALIGN_KS2/plots/vpd' + catalog_suffix + '.png')
 
-    py.figure(3, figsize=(8,10))
+    py.figure(3)
     py.clf()
-    py.scatter(vx, vy, c=tab2['m_2005_F814W'], s=5, edgecolor='',
+    nz = mcolors.Normalize()
+    nz.autoscale(tab2['m_2005_F814W'])
+    py.scatter(vx, vy, c=nz(tab2['m_2005_F814W']), s=5, edgecolor='',
                cmap=py.cm.gist_stern)
     py.xlabel('X Proper Motion (mas/yr)')
     py.ylabel('Y Proper Motion (mas/yr)')
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd_color' + catalog_suffix + '.png')
-    py.colorbar(orientation='vertical', label='F814W', fraction=0.2, pad=0.04)
     py.axis('equal')
     lim = 3.5
     py.axis([-lim, lim, -lim, lim])
+    
+    cax, foo = colorbar.make_axes(py.gca(), orientation='vertical', fraction=0.2, pad=0.04)
+    cb = colorbar.ColorbarBase(cax, cmap=py.cm.gist_stern, norm=nz,
+                               orientation='vertical')
+    cb.set_label('F814W')
+    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd_color' + catalog_suffix + '.png')
     
 
     idx = np.where((np.abs(vx) < 3) & (np.abs(vy) < 3))[0]
