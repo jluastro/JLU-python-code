@@ -223,7 +223,7 @@ def load_isochrone(logAge=6.78, AKs=defaultAKs, distance=defaultDist):
     iso.magKp = pickle.load(_in)
     iso.magLp = pickle.load(_in)
     iso.isWR = pickle.load(_in)
-    #iso.mag814w = pickle.load(_in)
+    iso.mag814w = pickle.load(_in)
     _in.close()
 
     return iso
