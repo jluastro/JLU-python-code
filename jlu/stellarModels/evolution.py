@@ -740,6 +740,38 @@ def get_merged_isochrone(logAge, metallicity=0.02):
     iso.logT_WR = data[cols[4]]
 
     return iso
+
+def get_merged_isochrone_PEP(logAge, metallicity=0.015):
+    """
+    Get merged isochrones from Pisa, Ekstrom, and Parsec models.
+    logAge must be between 6.0 - 8.0 in increments of 0.01
+    """
+    if metallicity != 0.015:
+        print 'Non-solar metallicities not supported yet!'
+        print 'Quitting'
+        return
+
+    # Pre-calculated merged isochrones
+    metSuffix = 'z' + str(metallicity).split('.')[-1]
+    isoFile = models_dir + 'merged/pisa_ekstrom_parsec/%s/' % (metSuffix)
+    isoFile += 'iso_%.2f.dat' % logAge
+
+    if not os.path.exists(isoFile):
+        print 'Merged isochrone at logAge {0:3.2f} not created yet'.format(logAge)
+        print 'ERROR!!!!!'
+        return
+
+    data = Table.read(isoFile, format='ascii')
+    cols = data.keys()
+    
+    iso = objects.DataHolder()
+    iso.mass = data[cols[0]]
+    iso.logT = data[cols[1]]
+    iso.logL = data[cols[2]]
+    iso.logg = data[cols[3]]
+    iso.logT_WR = data[cols[4]]
+
+    return iso
                      
 class StarTrack(object):
     def __init__(self, mass_init):
@@ -1441,6 +1473,7 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     mass = data[cols[2]] #Note: this is initial mass, in M_sun
     logT = data[cols[7]] # K
     logL = data[cols[6]] # L_sun
+    logT_WR = data[cols[8]] # K; if this doesn't equal logT, we have a WR star
 
     # Need to calculate log g from mass and R
     R_sun = 7.*10**10 #cm
@@ -1456,7 +1489,8 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     obj.logT = logT
     obj.logg = logg
     obj.logL = logL
-    
+    obj.logT_WR = logT_WR
+
     return obj
 
 def get_parsec_isochrone(logAge, metallicity='solar'):
@@ -1571,7 +1605,8 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
     isoEkstrom.logT = isoEkstrom.logT[good]
     isoEkstrom.logg = isoEkstrom.logg[good]
     isoEkstrom.logL = isoEkstrom.logL[good]
-
+    isoEkstrom.logT_WR = isoEkstrom.logT_WR[good]
+    
     # Make arrays containing the source of each point
     isoPisa.source = np.array(['Pisa']*len(isoPisa.mass))
     isoEkstrom.source = np.array(['Ekstrom']*len(isoEkstrom.mass))
@@ -1581,6 +1616,7 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
     logT = np.append(isoPisa.logT, isoEkstrom.logT)
     logg = np.append(isoPisa.logg, isoEkstrom.logg)
     logL = np.append(isoPisa.logL, isoEkstrom.logL)
+    logT_WR = np.append(isoPisa.logT, isoEkstrom.logT_WR)
     source = np.append(isoPisa.source, isoEkstrom.source)
 
     iso = objects.DataHolder()
@@ -1588,6 +1624,7 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
     iso.logL = logL
     iso.logg = logg
     iso.logT = logT
+    iso.logT_WR = logT_WR
     iso.source = source
 
     return iso
@@ -1623,6 +1660,7 @@ def merge_isochrone_pisa_parsec(logAge, metallicity='solar'):
     logT = np.append(isoPisa.logT, isoParsec.logT)
     logg = np.append(isoPisa.logg, isoParsec.logg)
     logL = np.append(isoPisa.logL, isoParsec.logL)
+    logT_WR = np.append(isoPisa.logT, isoParsec.logT)
     source = np.append(isoPisa.source, isoParsec.source)
 
     iso = objects.DataHolder()
@@ -1630,6 +1668,7 @@ def merge_isochrone_pisa_parsec(logAge, metallicity='solar'):
     iso.logL = logL
     iso.logg = logg
     iso.logT = logT
+    iso.logT_WR = logT_WR
     iso.source = source
 
     return iso
@@ -1747,15 +1786,15 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
             
         _out = open(outDir + isoFilePi, 'w')
 
-        _out.write('%12s  %10s  %10s  %10s %-10s\n' % 
-                   ('# M_init', 'log T', 'log L', 'log g', 'Source'))
-        _out.write('%12s  %10s  %10s  %10s  %-10s\n' % 
-                   ('# (Msun)', '(Kelvin)', '(Lsun)', '()', '()'))
+        _out.write('%12s  %10s  %10s  %10s %10s %-10s\n' % 
+                   ('# M_init', 'log T', 'log L', 'log g', 'logT_WR', 'Source'))
+        _out.write('%12s  %10s  %10s  %10s  %10s %-10s\n' % 
+                   ('# (Msun)', '(Kelvin)', '(Lsun)', '(cgs)', '(Kelvin)', '()'))
 
         for kk in range(len(iso.mass)):
-            _out.write('%12.6f  %10.4f  %10.4f  %10.4f  %-10s\n' %
+            _out.write('%12.6f  %10.4f  %10.4f  %10.4f  %10.4f %-10s\n' %
                        (iso.mass[kk], iso.logT[kk], iso.logL[kk],
-                        iso.logg[kk], iso.source[kk]))
+                        iso.logg[kk], iso.logT_WR[kk], iso.source[kk]))
 
         _out.close()
     return
