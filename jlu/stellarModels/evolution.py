@@ -1441,7 +1441,7 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     Load mass, effective temperature, log gravity, and log luminosity
     for the Ekstrom isochrones at given logAge. Code will quit if that
     logAge value doesn't exist (can make some sort of interpolation thing
-    later).
+    later). Also interpolate model to finer mass grid
 
     Note: mass is currently initial mass, not instantaneous mass
     
@@ -1484,12 +1484,35 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     logg = np.log10( (G_const * np.array(mass).astype(np.float) * M_sun) /
                      (np.array(radius).astype(np.float) * R_sun)**2 )
     
+    # Interpolate isochrone to finer mass grid on main-ish sequence
+    # (1-60 M_sun, or the highest mass in the model); don't want to
+    # completely redo all sampling, just this region
+    if max(mass) > 60:
+        new_masses = np.arange(1, 60+0.1, 0.5)
+    else:
+        new_masses = np.arange(1, max(mass), 0.5)
+    mass_grid = np.append(new_masses, mass)
+    mass_grid.sort() # Make sure grid is in proper order
+
+    # Build interpolators in linear space
+    f_logT = interpolate.interp1d(mass, 10**logT, kind='linear')
+    f_logL = interpolate.interp1d(mass, 10**logL, kind='linear')
+    f_logT_WR = interpolate.interp1d(mass, 10**logT_WR, kind='linear')
+    f_logg = interpolate.interp1d(mass, 10**logg, kind='linear')
+
+    # Do interpolation, convert back to logspace
+    logT_interp = np.log10(f_logT(mass_grid))
+    logL_interp = np.log10(f_logL(mass_grid))
+    logT_WR_interp = np.log10(f_logT_WR(mass_grid))
+    logg_interp = np.log10(f_logg(mass_grid))
+    
+    # Make isochrone
     obj = objects.DataHolder()
-    obj.mass = mass
-    obj.logT = logT
-    obj.logg = logg
-    obj.logL = logL
-    obj.logT_WR = logT_WR
+    obj.mass = mass_grid
+    obj.logT = logT_interp
+    obj.logg = logg_interp
+    obj.logL = logL_interp
+    obj.logT_WR = logT_WR_interp
 
     return obj
 
