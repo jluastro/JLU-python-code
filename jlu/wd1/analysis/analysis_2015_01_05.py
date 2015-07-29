@@ -10,6 +10,7 @@ from jlu.wd1.analysis import membership
 from scipy.stats import chi2
 from scipy import interpolate
 import matplotlib
+from arches import synthetic_iso as syn_iso
 
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
@@ -22,6 +23,7 @@ catalog = 'wd1_catalog_RMSE_wvelErr.fits'
 
 # Catalogs after membership calculations
 cat_pclust = work_dir + 'membership/gauss_3/catalog_membership_3_rot.fits'
+cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
 
 def plot_err_vs_mag(epoch):
@@ -540,7 +542,7 @@ def make_cluster_catalog():
     return
     
 
-def make_cmd(cl_prob=0.3):
+def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     """
     Plot the total CMD and then the CMD of only cluster members.
 
@@ -548,7 +550,10 @@ def make_cmd(cl_prob=0.3):
     
     """
     # Read in data table
-    d = Table.read(cat_pclust)
+    d = Table.read(catalog)
+
+    if usePcolor:
+        d['Membership'] *= d['Membership_color']
 
     # Determine which we will call "cluster members"
     clust = np.where(d['Membership'] > cl_prob)[0]
@@ -566,7 +571,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F160W (mag)')
     py.gca().invert_yaxis()
     py.xlim(2, 10)
-    py.savefig(plot_dir + 'cmd_all.png')
+    py.savefig(plot_dir + 'cmd_all' + suffix + '.png')
     
     # Plot CMD with everything in black
     # and cluster members in red. 
@@ -577,7 +582,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F160W (mag)')
     py.gca().invert_yaxis()
     py.xlim(2, 10)
-    py.savefig(plot_dir + 'cmd_all_clust.png')
+    py.savefig(plot_dir + 'cmd_all_clust' + suffix + '.png')
 
     # Plot CMD with cluster members in black.
     py.clf()
@@ -586,7 +591,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F160W (mag)')
     py.gca().invert_yaxis()
     py.xlim(2, 10)
-    py.savefig(plot_dir + 'cmd_clust.png')
+    py.savefig(plot_dir + 'cmd_clust' + suffix + '.png')
 
 
 
@@ -604,7 +609,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
     py.ylim(23, 14)
-    py.savefig(plot_dir + 'cmd_ir_clust.png')
+    py.savefig(plot_dir + 'cmd_ir_clust' + suffix + '.png')
 
     # IR Plot CMD with everything in black.
     py.clf()
@@ -613,7 +618,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
     py.ylim(23, 14)
-    py.savefig(plot_dir + 'cmd_ir_all.png')
+    py.savefig(plot_dir + 'cmd_ir_all' + suffix + '.png')
     
     # IR Plot CMD with everything in black
     # and cluster members in red. 
@@ -624,7 +629,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
     py.ylim(23, 14)
-    py.savefig(plot_dir + 'cmd_ir_all_clust.png')
+    py.savefig(plot_dir + 'cmd_ir_all_clust' + suffix + '.png')
 
 
 
@@ -641,7 +646,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
     py.ylim(26, 18)
-    py.savefig(plot_dir + 'cmd_2_clust.png')
+    py.savefig(plot_dir + 'cmd_2_clust' + suffix + '.png')
 
     # F814W - F125W Plot CMD with everything in black.
     py.clf()
@@ -650,7 +655,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
     py.ylim(26, 18)
-    py.savefig(plot_dir + 'cmd_2_all.png')
+    py.savefig(plot_dir + 'cmd_2_all' + suffix + '.png')
     
     # F814W - F125W Plot CMD with everything in black
     # and cluster members in red. 
@@ -661,7 +666,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
     py.ylim(26, 18)
-    py.savefig(plot_dir + 'cmd_2_all_clust.png')
+    py.savefig(plot_dir + 'cmd_2_all_clust' + suffix + '.png')
 
 
 
@@ -682,7 +687,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F160W (mag)')
     py.gca().invert_yaxis()
     py.xlim(2, 10)
-    py.savefig(plot_dir + 'cmd_hess_all.png')
+    py.savefig(plot_dir + 'cmd_hess_all' + suffix + '.png')
 
     # Plot CMD Hess diagram of cluster members
     py.clf()
@@ -692,7 +697,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F814W - F160W (mag)')
     py.gca().invert_yaxis()
     py.xlim(2, 10)
-    py.savefig(plot_dir + 'cmd_hess_clust.png')
+    py.savefig(plot_dir + 'cmd_hess_clust' + suffix + '.png')
 
             
             
@@ -711,7 +716,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
     py.ylim(23, 14)
-    py.savefig(plot_dir + 'cmd_ir_hess_all.png')
+    py.savefig(plot_dir + 'cmd_ir_hess_all' + suffix + '.png')
 
     # IR: Plot CMD Hess diagram of cluster members.
     py.clf()
@@ -721,7 +726,7 @@ def make_cmd(cl_prob=0.3):
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
     py.ylim(23, 14)
-    py.savefig(plot_dir + 'cmd_ir_hess_clust.png')
+    py.savefig(plot_dir + 'cmd_ir_hess_clust' + suffix + '.png')
 
     return
         
@@ -832,21 +837,45 @@ def calc_color_members():
     # Calculate p(color) based on F814W vs. F814W - F160W only.
     ##########
     pcolor = np.zeros(len(m814), dtype=int)
+    
+    points = np.vstack((color1, m814)).T
+    idx = np.where(optical_path.contains_points(points) == True)[0]
+    fmt = 'Setting P(color) = 0 for {0} of {1} stars based on color cut.'
+    print fmt.format(len(m814) - len(idx), len(m814))
 
-    points = np.vstack((color1_cl, m814_cl)).T
-    idx = optical_patch.contains_points(points)
-
-    pcolor[clust][idx] = 1
+    pcolor[idx] = 1
 
     d['Membership_color'] = pcolor
+    print 'Sum[ P(color) ] = ', d['Membership_color'].sum()
+    print 'Sum[ P(color) * P(VPD) ] = ', (d['Membership_color'] * d['Membership']).sum()
 
     # Finally, make a new catalog with only cluster members
-    outfile = cat_pclust.replace('.fits', '_Pcolor.fits')
+    path_info = os.path.split(cat_pclust)
+    outfile = work_dir + path_info[1].replace('.fits', '_Pcolor.fits')
     print 'Writing: ', outfile
     d.write(outfile, format='fits', overwrite=True)
 
+    clust = np.where((d['Membership'] * d['Membership_color']) > 0.6)[0]
+    py.clf()
+    py.plot(color1[good], m814[good], 'r.', ms=2)
+    py.plot(color1[clust], m814[clust], 'k.', ms=2)
+    py.gca().add_patch(optical_patch)
+    py.ylim(26, 18)
+    py.xlim(1, 10)
+    py.xlabel('F814W - F160W')
+    py.ylabel('F814W')
+
     return
 
+
+def plot_cmd_cluster_with_isochrones():
+    d = Table.read(cat_pclust_pcolor)
+
+    pmem = d['Membership'] * d['Membership_color']
+
+    clust = np.where(pmem > 0.6)[0]
+
+    syn_iso.load_isochrone(logAge=6.78, AKs)
 
     
 
