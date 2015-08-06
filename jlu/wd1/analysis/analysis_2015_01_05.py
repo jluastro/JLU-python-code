@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-from astropy.table import Table
+from astropy.table import Table, Column
 from jlu.util import statsIter
 from hst_flystar import astrometry
 from hst_flystar import completeness as comp
@@ -10,7 +10,8 @@ from jlu.wd1.analysis import membership
 from scipy.stats import chi2
 from scipy import interpolate
 import matplotlib
-from arches import synthetic_iso as syn_iso
+from popstar import synthetic
+from jlu.stellarModels import extinction
 
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
@@ -25,6 +26,13 @@ catalog = 'wd1_catalog_RMSE_wvelErr.fits'
 cat_pclust = work_dir + 'membership/gauss_3/catalog_membership_3_rot.fits'
 cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
+# Artificial catalog
+art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
+
+# Best fit (by eye) cluster parameters
+wd1_logAge = 6.91
+wd1_AKs = 0.75
+wd1_distance = 4000
 
 def plot_err_vs_mag(epoch):
     t = Table.read(cat_dir + catalog)
@@ -752,8 +760,6 @@ def plot_color_color(cl_prob=0.6):
     return
     
 
-    
-
 def calc_color_members():
     """
     Using a proper motion cleaned sample, calculate a
@@ -868,19 +874,536 @@ def calc_color_members():
     return
 
 
-def plot_cmd_cluster_with_isochrones():
+def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
+                                     distance=wd1_distance):
     d = Table.read(cat_pclust_pcolor)
 
     pmem = d['Membership'] * d['Membership_color']
+    m160 = d['m_2013_F160W']
+    m125 = d['m_2010_F125W']
+    m814 = d['m_2005_F814W']
+    color1 = m814 - m160
+    color2 = m125 - m160
 
-    clust = np.where(pmem > 0.6)[0]
+    clust = np.where(pmem > 0.8)[0]
 
-    syn_iso.load_isochrone(logAge=6.78, AKs)
+    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=distance,
+                                   iso_dir='/u/jlu/work/wd1/models/iso_2015/')
+
+    # F814W vs. F160W CMD
+    py.figure(1)
+    py.clf()
+    py.plot(color1[clust], m814[clust], 'k.', ms=2)
+    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=10)
+    py.ylim(26, 18)
+    py.xlim(3.2, 7)
+    py.xlabel('F814W - F160W')
+    py.ylabel('F814W')
+
+    py.figure(2)
+    py.clf()
+    py.plot(color2[clust], m125[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=10)
+    py.ylim(21.5, 15)
+    py.xlim(0.6, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F125W')
+
+    py.figure(3)
+    py.clf()
+    py.plot(color2[clust], color1[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag814w'] - iso['mag160w'],
+            'r.', ms=10)
+    py.ylim(3.2, 7)
+    py.xlim(0.6, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F125W')
+        
+    return
+
+def compare_art_vs_obs_vel():
+    """
+    Compare the distribution of velocities in the artificial
+    vs. the observed stars. These need to match if we are going
+    to make a cut on the velocitiy error. 
+    """
+    obs = Table.read(cat_pclust_pcolor)
+    art = Table.read(art_cat)
+
+    # Trim out un-detected in artificial star lists.    
+    adx_det = np.where((art['fit_vxe'] != 1) & (art['fit_vye'] != 1))[0]
+    art = art[adx_det]
+
+    # Convert artificial star velocities into mas / yr.
+    scale = astrometry.scale['WFC'] * 1e3
+    art['fit_vx'] *= scale
+    art['fit_vy'] *= scale
+    art['fit_vxe'] *= scale
+    art['fit_vye'] *= scale
+
+    py.clf()
+    py.semilogy(art['m_2013_F160W'], art['fit_vxe'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2013_F160W'], obs['fit_vxe'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 5)
+    py.xlim(13, 22)
+    py.xlabel('F160W 2013 (mag)')
+    py.ylabel('X Velocity Error (mas/yr)')
+    py.savefig(plot_dir + 'compare_art_vs_obs_vel_x.png')
+
+    py.clf()
+    py.semilogy(art['m_2013_F160W'], art['fit_vye'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2013_F160W'], obs['fit_vye'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 5)
+    py.xlim(13, 22)
+    py.xlabel('F160W 2013 (mag)')
+    py.ylabel('Y Velocity Error (mas/yr)')
+    py.savefig(plot_dir + 'compare_art_vs_obs_vel_y.png')
+    
+    mdx_art = np.where(art['m_2013_F160W'] < 17)[0]
+    mdx_obs = np.where(obs['m_2013_F160W'] < 17)[0]
+    
+    med_art_x = np.median(art[mdx_art]['fit_vxe'])
+    med_obs_x = np.median(obs[mdx_obs]['fit_vxe'])
+    med_art_y = np.median(art[mdx_art]['fit_vye'])
+    med_obs_y = np.median(obs[mdx_obs]['fit_vye'])
+
+    print 'Median Velocity (mas/yr)'
+    print '   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)
+    print '   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)
+
+def make_completeness_table():
+    art = Table.read(art_cat)
+    
+
+    # Make a completeness curve for each filter independently.
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
+    
+    mag_bins = np.arange(12, 27.01, 0.25)
+    mag_bins_left = mag_bins[:-1]
+    mag_bins_right = mag_bins[1:]
+    mag_bins_mid = (mag_bins_left + mag_bins_right) / 2.0
+
+    comp = Table([mag_bins_left, mag_bins_right, mag_bins_mid],
+                 names=['mag_left', 'mag_right', 'mag'],
+                  meta={'name': 'Completeness Table'})
+
+    for ee in range(len(epochs)):
+        ep = epochs[ee]
+        idx = np.where(art['det_' + ep] == True)[0]
+        det = art[idx]
+        
+        n_all, b_all = np.histogram(art['min_' + ep], bins=mag_bins)
+        n_det, b_det = np.histogram(det['min_' + ep], bins=mag_bins)
+
+        c = (1.0 * n_det) / n_all
+        ce = c * np.sqrt(1.0 * n_det) / n_det
+        
+        # Fix some issues at the bright end (where number of sources is small).
+        # For later good behavior in interpolation, set it to
+        # the first "good" value. But set errors to np.nan to notify.
+        #     m=20 is arbitrary but catches both F814W and IR
+        idx = np.where((mag_bins_mid < 20) & ((ce > 0.1) | (n_all < 10)))[0]  
+        c[idx] = c[idx[-1] + 1]
+        ce[idx] = np.nan
+
+        # Do the same for the faint end; but set to 0.
+        idx = np.where((mag_bins_mid >= 20) & ((ce > 0.1) | (n_all < 10)))[0]  
+        c[idx] = 0.0
+        ce[idx] = np.nan
+        
+        
+        col_c = Column(c, name='c_'+ep)
+        col_ce = Column(ce, name='cerr_'+ep)
+        col_N = Column(n_all, name='Nplant_'+ep)
+
+        comp.add_columns([col_c, col_ce, col_N], copy=False)
+        
+        
+    # Plot
+    py.clf()
+    for ee in range(len(epochs)):
+        ep = epochs[ee]
+        py.errorbar(comp['mag'], comp['c_' + ep], yerr=comp['cerr_' + ep],
+                    label=ep, drawstyle='steps-mid')
+        # py.plot(mag_bins_mid, comp[ep], 
+        #             label=ep, drawstyle='steps-mid')
+        
+    py.ylim(0, 1)
+    py.legend(loc='lower left')
+    py.xlabel('Magnitude (mag)')
+    py.ylabel('Completeness')
+    py.savefig(plot_dir + 'completeness_vs_mag.png')
+
+    comp.write(work_dir + 'completeness_vs_mag.fits', overwrite=True)
+                
+    return
+        
+def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
+    # Read in data table
+    print 'Reading data table'
+    d = Table.read(cat_pclust_pcolor)
+
+    # Trim down to cluster stars.
+    pmem = d['Membership'] * d['Membership_color']
+    m125 = d['m_2010_F125W']
+    good = np.where((pmem > 0.8) & (m125 > 0))[0]
+    d = d[good]
+
+    # Get variables for just cluster members.
+    pmem = d['Membership'] * d['Membership_color']
+    m125 = d['m_2010_F125W']
+    m160 = d['m_2013_F160W']
+    m814 = d['m_2005_F814W']
+    color1 = m814 - m160
+    color2 = m125 - m160
 
     
+    # Read in isochrone
+    print 'Loading Isochrone'
+    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=distance,
+                                   iso_dir='/u/jlu/work/wd1/models/iso_2015/')
+
+    # Get the completeness (relevant for diff. de-reddened magnitudes).
+    print 'Loading completeness table'
+    comp = Table.read(work_dir + 'completeness_vs_mag.fits')
+
+    # Make a finely sampled mass-luminosity relationship by
+    # interpolating on the isochrone.
+    print 'Setting up mass-luminosity interpolater'
+    iso_mag1 = iso['mag814w']
+    iso_mag2 = iso['mag125w']
+    iso_col1 = iso['mag814w'] - iso['mag160w']
+    iso_col2 = iso['mag125w'] - iso['mag160w']
+    iso_mass = iso['mass']
+    iso_WR = iso['isWR']
+    iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
+    iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
+
+    # Find the maximum mass that is NOT a WR star
+    mass_max = iso_mass[iso_WR == False].max()
+
+    u_fine = np.linspace(0, 1, 1e4)
+    iso_mass_f1, iso_mag_f1, iso_col_f1 = interpolate.splev(u_fine, iso_tck1)
+    iso_mass_f2, iso_mag_f2, iso_col_f2 = interpolate.splev(u_fine, iso_tck2)
+
+    # Define WR stars. 
+    iso_WR_f1 = np.zeros(len(iso_mass_f1), dtype=bool)
+    iso_WR_f2 = np.zeros(len(iso_mass_f2), dtype=bool)
+    iso_WR_f1[iso_mass_f1 > mass_max] = True
+    iso_WR_f2[iso_mass_f2 > mass_max] = True
+
+    print 'Setting up completeness interpolater for CMD space.'
+    comp1_int = comp_interp_for_cmd(comp['mag'], comp['c_2005_F814W'],
+                                    comp['c_2010_F160W'])
+    comp2_int = comp_interp_for_cmd(comp['mag'], comp['c_2010_F125W'],
+                                    comp['c_2010_F160W'])
+
+
+    # Plot completeness image in CMD space: F814W vx. F160W
+    mm1_tmp = np.arange(17, 27, 0.1)
+    cc1_tmp = np.arange(2.0, 8.0, 0.1)
+    comp1_tmp = comp1_int(mm1_tmp, cc1_tmp)
+    py.clf()
+    py.imshow(comp1_tmp, extent=(cc1_tmp.min(), cc1_tmp.max(),
+                                 mm1_tmp.min(), mm1_tmp.max()), vmin=0, vmax=1)
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.xlabel('F814W - F160W (mag)')
+    py.ylabel('F814W (mag)')
+    py.gca().invert_yaxis()
+    py.savefig(plot_dir + 'completeness_cmd_F814W_F160W.png')
+
+    # Plot completeness image in CMD space: F125W vx. F160W
+    mm2_tmp = np.arange(11, 25, 0.1)
+    cc2_tmp = np.arange(0.0, 2.0, 0.1)
+    comp2_tmp = comp2_int(mm2_tmp, cc2_tmp)
+    py.clf()
+    py.imshow(comp2_tmp, extent=(cc2_tmp.min(), cc2_tmp.max(),
+                                 mm2_tmp.min(), mm2_tmp.max()), vmin=0, vmax=1)
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F125W')
+    py.gca().invert_yaxis()
+    py.savefig(plot_dir + 'completeness_cmd_F125W_F160W.png')
+
+    
+    mass1, isWR1, comp1 = calc_mass_isWR_comp(m814, color1,
+                                              iso_mag_f1, iso_col_f1,
+                                              iso_mass_f1, iso_WR_f1,
+                                              comp1_int, mass_max)
+    mass2, isWR2, comp2 = calc_mass_isWR_comp(m125, color2,
+                                              iso_mag_f2, iso_col_f2,
+                                              iso_mass_f2, iso_WR_f2,
+                                              comp2_int, mass_max)
+
+    # Find the maximum mass where we don't have WR stars anymore
+    print mass_max, mass1.max(), mass2.max()
+    mass_max1 = mass1[isWR1 == False].max()
+    mass_max2 = mass2[isWR2 == False].max()
+    print mass_max1, mass_max2
+
+    # Trim down to just the stars that aren't WR stars.
+    idx1_noWR = np.where(mass1 <= mass_max1)[0]
+    mag1_noWR = m814[idx1_noWR]
+    color1_noWR = color1[idx1_noWR]
+    mass1_noWR = mass1[idx1_noWR]
+    isWR1_noWR = isWR1[idx1_noWR]
+    comp1_noWR = comp1[idx1_noWR]
+    pmem1_noWR = pmem[idx1_noWR]
+
+    # Trim down to just the stars that aren't WR stars.
+    idx2_noWR = np.where(mass2 <= mass_max2)[0]
+    mag2_noWR = m125[idx2_noWR]
+    color2_noWR = color2[idx2_noWR]
+    mass2_noWR = mass2[idx2_noWR]
+    isWR2_noWR = isWR2[idx2_noWR]
+    comp2_noWR = comp2[idx2_noWR]
+    pmem2_noWR = pmem[idx2_noWR]
+    
+    # Define our mag and mass bins.  We will need both for completeness
+    # estimation and calculating the mass function. 
+    bins_log_mass = np.arange(0, 1.9, 0.15)
+    bins_m814 = get_mag_for_mass(bins_log_mass, iso_mass_f1, iso_mag_f1)
+    bins_m125 = get_mag_for_mass(bins_log_mass, iso_mass_f2, iso_mag_f2)
+
+    plot_fit_mass_function(mass1_noWR, pmem1_noWR, comp1_noWR, bins_log_mass,
+                           iso_mass, iso_mag1, iso_col1, 'F814W', 'F814W - F160W')
+    plot_fit_mass_function(mass2_noWR, pmem2_noWR, comp2_noWR, bins_log_mass,
+                           iso_mass, iso_mag2, iso_col2, 'F125W', 'F125W - F160W')
+
+    return
+
+def plot_fit_mass_function(mass_noWR, pmem_noWR, comp_noWR, bins_log_mass,
+                           iso_mass, iso_mag, iso_color, filter_name, color_label):
+    # compute a preliminary mass function with the propoer weights
+    weights = pmem_noWR / comp_noWR
+
+    idx = np.where(comp_noWR == 0)[0]
+    print 'Bad completeness for N stars = ', len(idx)
+    print mass_noWR[idx][0:10]
+    weights[idx] = 0
+
+    py.figure(1)
+    py.clf()
+    py.subplots_adjust(top=0.88)
+    
+    n_raw, be, p = py.hist(np.log10(mass_noWR), bins=bins_log_mass,
+                           log=True, histtype='step',
+                           label='Unweighted')
+    py.clf()
+    n_mem, be, p = py.hist(np.log10(mass_noWR), bins=bins_log_mass,
+                            log=True, histtype='step', color='green',
+                            weights=pmem_noWR,
+                            label='Observed')
+    
+    n_fin, be, p = py.hist(np.log10(mass_noWR), bins=bins_log_mass,
+                            log=True, histtype='step', color='black',
+                            weights=weights,
+                            label='Completeness Corr.')
+
+    mean_weight = n_fin / n_mem
+    
+    n_err = (n_fin**0.5) * mean_weight
+    n_err[0] = 1000.0  # dumb fix for empty bin
+    bc = bins_log_mass[0:-1] + (np.diff(bins_log_mass) / 2.0)
+
+    py.errorbar(bc[1:], n_fin[1:], yerr=n_err[1:], linestyle='none', color='black')
+
+    # Fit a powerlaw.
+    powerlaw = lambda x, amp, index: amp * (x**index)
+    fitfunc = lambda p, x: p[0] + p[1] * x
+    errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
+
+    log_m = bc[5:]
+    log_n = np.log10(n_fin)[5:]
+    log_n_err = n_err[5:] / n_fin[5:]
+
+    print 'log_m = ', log_m
+    print 'log_n = ', log_n
+    print 'log_n_err = ', log_n_err
+
+    pinit = [1.0, -1.0]
+    out = optimize.leastsq(errfunc, pinit, args=(log_m, log_n, log_n_err),
+                           full_output=1)
+
+    pfinal = out[0]
+    covar = out[1]
+    print 'pfinal = ', pfinal
+    print 'covar = ', covar
+
+    index = pfinal[1]
+    amp = 10.0**pfinal[0]
+
+    indexErr = math.sqrt( covar[0][0] )
+    ampErr = math.sqrt( covar[1][1] ) * amp
+
+    py.plot(log_m, 10**fitfunc(pfinal, log_m), 'k--')
+    py.text(1.3, 100, r'$\frac{dN}{dm}\propto m^{-2.2}$')
+
+    py.axvline(np.log10(mass_max), linestyle='--')
+    py.ylim(5, 9e2)
+    py.xlim(0, 1.8)
+    py.xlabel('log( Mass [Msun])')
+    py.ylabel('Number of Stars')
+    py.legend()
+
+    
+    ax1 = py.gca()
+    ax2 = ax1.twiny()
+    
+    top_tick_mag = np.array([14.0, 17, 20, 21.6])
+    top_tick_mass = np.zeros(len(top_tick_mag), dtype=float)
+    top_tick_label = np.zeros(len(top_tick_mag), dtype='S13')
+
+    for nn in range(len(top_tick_mag)):
+        dm = np.abs(iso_mag - top_tick_mag[nn])
+        dm_idx = dm.argmin()
+
+        top_tick_mass[nn] = iso_mass[dm_idx]
+        top_tick_label[nn] = '{0:3.1f}'.format(top_tick_mag[nn])
+
+    print 'top_tick_mag = ', top_tick_mag
+    print 'top_tick_msas = ', top_tick_mass
+    print 'top_tick_label = ', top_tick_label
+
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(np.log10(top_tick_mass))
+    ax2.set_xticklabels(top_tick_label)
+
+    ax2.set_xlabel(filter_name + ' (mags)', labelpad=10)
+    py.savefig(plot_dir + 'wd1_imf_' + filter_name + '.png')
+
+    py.figure(2)
+    py.clf()
+    py.plot(np.log10(iso_mass), iso_mag)
+    py.xlim(0, 1.9)
+    py.xlabel('Log( Mass [Msun] )')
+    py.ylabel(filter_name + ' (mag)')
+    py.savefig(plot_dir + 'wd1_mass_luminosity_' + filter_name +  '.png')
+    
+    py.figure(3)
+    py.clf()
+    py.plot(color, mag, 'k.')
+    py.plot(iso_color, iso_mag, 'r-')
+    py.axvline(2)
+    # py.ylim(22, 12)
+    # py.xlim(1, 3.5)
+    py.xlabel(color_label + ' (mag)')
+    py.ylabel(filter_name + ' (mag)')
+    py.savefig(prop_dir + 'arches_cmd_iso_test_' + filter_name + '.png')
+
+    return clust
 
     
     
     
+def comp_interp_for_cmd(mag, comp_blue, comp_red):
     
+    # Make a completeness curve interpolater. First we have to make a
+    # color-mag grid and figure out the lowest (worst) completeness at
+    # each point in the grid. Then we can interpolate on that grid.
+    n_bins = len(mag)
+    c_comp_arr = np.zeros((n_bins, n_bins), dtype=float)
+    c_mag_arr = np.zeros((n_bins, n_bins), dtype=float)
+    c_col_arr = np.zeros((n_bins, n_bins), dtype=float)
+
+    # Loop through an array of BLUE mag and BLUE-RED color and
+    # determine the lowest completness.
+    for ii in range(n_bins):
+        for jj in range(n_bins):
+            c_mag_arr[ii, jj] = mag[ii]
+            c_col_arr[ii, jj] = mag[jj] - mag[ii]
+
+            # I chose 2010_F160W because it has shallower completeness.
+            c_comp_arr[ii, jj] = comp_red[ii] * comp_blue[jj]
+                    
+            if c_comp_arr[ii, jj] < 0:
+                c_comp_arr[ii, jj] = 0
+                
+            if c_comp_arr[ii, jj] > 1:
+                c_comp_arr[ii, jj] = 1
+
+            if np.isnan(c_comp_arr[ii, jj]):
+                c_comp_arr[ii, jj] = 0
+
+    comp_int = interpolate.SmoothBivariateSpline(c_mag_arr.flatten(),
+                                                  c_col_arr.flatten(),
+                                                  c_comp_arr.flatten(), s=200)
+
+    return comp_int
+    
+    
+    
+def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
+                         comp_int, mass_max):
+    # F814W vs. F814W - F160W    
+    # Loop through data and assign masses and completeness to each star.
+    mass = np.zeros(len(mag), dtype=float)
+    isWR = np.zeros(len(mag), dtype=float)
+    comp = np.zeros(len(mag), dtype=float)
+    
+    for ii in range(len(mass)):
+        dmag = mag[ii] - iso_mag_f
+        dcol = color[ii] - iso_col_f
+
+        delta = np.hypot(dmag, dcol)
+
+
+        # Some funny business - sort and get the closest masses reasonable.
+        sdx = delta.argsort()
+
+        # If the color + mag difference is less than 0.15, then take
+        # the lowest mass. This helps account for the missing IMF bias.
+        idx = np.where(delta[sdx] < 0.01)[0]
+
+        if len(idx) == 0:
+            min_idx = delta.argmin()
+            print 'Potential problem', mag[ii], color[ii], dmag[sdx[0]], dcol[sdx[0]]
+        else:
+            min_mass_idx = iso_mass_f[sdx[idx]].argmin()
+            min_idx = sdx[idx][min_mass_idx]
+            
+        print '{0:4d} {1:4d} {2:4d} {3:5.1f} {4:5.1f}'.format(ii,
+                                                              min_idx,
+                                                              delta.argmin(),
+                                                              iso_mass_f[min_idx],
+                                                              iso_mass_f[delta.argmin()])
+
+        mass[ii] = iso_mass_f[min_idx]
+        isWR[ii] = iso_WR_f[min_idx]
+        
+        comp[ii] = comp_int(mag[ii], color[ii])
+
+        if comp[ii] > 1:
+            comp[ii] = 1
+        if comp[ii] < 0:
+            comp[ii] = 0
+
+    print mag.min(), mag.max(), color.min(), color.max()
+    print comp.shape, mag.shape, color.shape
+
+    return mass, isWR, comp
+    
+    
+def get_mag_for_mass(log_mass, iso_mass, iso_mag):
+    mag = np.zeros(len(log_mass), dtype=float)
+
+    for ii in range(len(mag)):
+        dmass = np.abs((10**log_mass[ii]) - iso_mass)
+        dmass_min_idx = dmass.argmin()
+
+        mag[ii] = iso_mag[dmass_min_idx]
+
+    print 'log_mass = ', log_mass
+    print 'mass = ', 10**log_mass
+    print 'mag = ', mag
+
+    return mag
+    
+
     

@@ -21,17 +21,18 @@ class OrionWideMosaic(Analysis):
                                   'orion_msc_h_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
                                   'orion_msc_i_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
                                   'orion_msc_j_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
-                                  'BN_Mosaic_A_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486'],
-                                  'BN_Mosaic_B_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374'],
-                                  'BN_Mosaic_C_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486'],
-                                  'BN_Mosaic_D_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486'],
-                                  'BN_Mosaic_E_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
+                                  'BN_Mosaic_A_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486', 'ir1519', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'toller_10', 'CXOONC'],
+                                  'BN_Mosaic_B_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486', 'ir1519', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'toller_10', 'CXOONC'],
+                                  'BN_Mosaic_C_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'CXOONC', 'toller_10', 'toller_5', 'ir1519'],
+                                  'BN_Mosaic_D_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1486', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'CXOONC', 'toller_10', 'toller_3'],
+                                  'BN_Mosaic_E_kp': ['Pare1839', 'ir1491', 'ir1486', 'toller_8', 'toller_9', 'toller_3', 'toller_2', 'toller_4', 'toller_11'],
+                                  'BN_Mosaic_F_kp': ['toller_4', 'toller_2', 'toller_3', 'toller_11'],
                                   'BN_Mosaic_F_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
-                                  'BN_Mosaic_G_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486'],
-                                  'BN_Mosaic_H_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1486'],
-                                  'BN_Mosaic_I_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
-                                  'BN_Mosaic_J_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
-                                  'BN_Mosaic_K_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1366'],
+                                  'BN_Mosaic_G_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1486', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'toller_2', 'toller_3', 'CXOONC'],
+                                  'BN_Mosaic_H_kp': ['IRn', 'Pare1839', 'ir1374', 'ir1352', 'ir1486', 'toller_8', 'CXOONC', 'toller_10'],
+                                  'BN_Mosaic_I_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'CXOONC', 'toller_5', 'toller_6', 'toller_7', 'toller_9'],
+                                  'BN_Mosaic_J_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1519', 'ir1486', 'CXOONC', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'toller_10'],
+                                  'BN_Mosaic_K_kp': ['IRn', 'Pare1839', 'ir1491', 'ir1374', 'ir1352', 'ir1519', 'ir1486', 'CXOONC', 'toller_5', 'toller_6', 'toller_7', 'toller_8', 'toller_9', 'toller_10'],
                                   }
 
         self.mapFilter2Coo = {'orion_msc_a_kp': 'IRn',
@@ -48,15 +49,17 @@ class OrionWideMosaic(Analysis):
                                   'BN_Mosaic_B_kp': 'Pare1839',
                                   'BN_Mosaic_C_kp': 'Pare1839',
                                   'BN_Mosaic_D_kp': 'Pare1839',
+                                  'BN_Mosaic_E_kp': 'ir1491',
+                                  'BN_Mosaic_F_kp': 'toller_4',
                                   'BN_Mosaic_G_kp': 'Pare1839',
                                   'BN_Mosaic_H_kp': 'Pare1839',
-                                  'BN_Mosaic_I_kp': 'Pare1839',
+                                  'BN_Mosaic_I_kp': 'ir1374',
                                   'BN_Mosaic_J_kp': 'Pare1839',
                                   'BN_Mosaic_K_kp': 'Pare1839',
                                   }
         self.mapFilter2CalCoo = {'orion_msc_a_kp': 'IRn',
                                   'orion_msc_b_kp': 'IRn',
-                                  'orion_msc_c_kp': 'IRn',
+                                  'orion_msc_c_kp': 'ir1374',
                                   'orion_msc_d_kp': 'IRn',
                                   'orion_msc_e_kp': 'IRn',
                                   'orion_msc_f_kp': 'IRn',
@@ -68,9 +71,11 @@ class OrionWideMosaic(Analysis):
                                   'BN_Mosaic_B_kp': 'Pare1839',
                                   'BN_Mosaic_C_kp': 'Pare1839',
                                   'BN_Mosaic_D_kp': 'Pare1839',
+                                  'BN_Mosaic_E_kp': 'ir1491',
+                                  'BN_Mosaic_F_kp': 'toller_4',
                                   'BN_Mosaic_G_kp': 'Pare1839',
                                   'BN_Mosaic_H_kp': 'Pare1839',
-                                  'BN_Mosaic_I_kp': 'Pare1839',
+                                  'BN_Mosaic_I_kp': 'ir1374',
                                   'BN_Mosaic_J_kp': 'Pare1839',
                                   'BN_Mosaic_K_kp': 'Pare1839',
                                   }
@@ -106,7 +111,7 @@ class OrionWideMosaic(Analysis):
 
         #Set some default parameters
         self.type = 'ao'
-        self.corrMain = 0.85
+        self.corrMain = 0.7
         self.corrSub = 0.6
         self.corrClean = 0.7
         

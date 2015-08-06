@@ -1857,6 +1857,10 @@ def make_catalog(use_RMSE=True, vel_weight=None):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
+
+    # Fix the F814W magnitudes (adjust for integration time)
+    fix_magnitudes(d)
+        
     catalog_name = 'wd1_catalog'
     if use_RMSE:
         catalog_name += '_RMSE'
@@ -1908,9 +1912,9 @@ def art_set_detected():
 
         # Add this column to the table.
         d.add_column(Column(det, name='det_' + epoch))
-    
+
     catalog_name = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
-    d.write(catalog_name, format='fits')
+    d.write(catalog_name, format='fits', overwrite=True)
 
     return
     
@@ -1928,6 +1932,7 @@ def fix_artstar_errors():
     art_obs = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
     binsize = 0.5
     
+
     # Read the catalogs, create new artificial star lists for
     # each filter/epoch only containing the recovered stars
     print 'Reading input'
@@ -1935,6 +1940,9 @@ def fix_artstar_errors():
     art = Table.read(art_obs, format='fits')
     print 'Done'
 
+    # Fix F814W mag in observed data temporariliy
+    fix_magnitudes(obs)
+    
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
 
     def mean_clip(vals):
@@ -1961,7 +1969,7 @@ def fix_artstar_errors():
         py.ylabel('Positional Error (pix)')
         py.title('Positional Errors,' + epoch)
         py.legend(loc=2, numpoints=1)
-        py.xlim(11, max(art_mag))
+        py.xlim(13, max(art_mag))
         py.ylim(1e-4, 1)
         py.savefig(workDir + 'plots/Pos_errcomp' + suffix + '_' + epoch + '.png')
 
@@ -1982,7 +1990,7 @@ def fix_artstar_errors():
         py.ylabel('Photometric Error (mag)')
         py.title('Photometric Errors,' + epoch)
         py.legend(loc=2, numpoints=1)
-        py.xlim(11, max(art_mag))
+        py.xlim(13, max(art_mag))
         py.ylim(1e-4, 1)
         py.savefig(workDir + 'plots/Mag_errcomp' + suffix + '_' + epoch + '.png')        
 
@@ -1992,9 +2000,10 @@ def fix_artstar_errors():
         # Convert art star mags from instrumental to apparent
         filt = epoch.split('_')[-1]
         art['m_' + epoch] += photometry.ZP[filt]
+        art['min_' + epoch] += photometry.ZP[filt]
 
         det = np.where(art['det_' + epoch] == True)
-        
+                
         # Extract observed/artificial errors for each filter.
         # X and Y errors are added in quadrature.
         obs_err = np.hypot(obs['xe_' + epoch], obs['ye_' + epoch])
@@ -2038,11 +2047,11 @@ def fix_artstar_errors():
         # For ACS, we are in error floor for evertything brighter than 14th mag
 
         if epoch == '2005_F814W':
-            brite_obs = np.where(obs_mag < 14)
-            brite_art = np.where(art_mag < 14)
+            brite_obs = np.where((obs_mag > 10) & (obs_mag < 21))[0]
+            brite_art = np.where((art_mag > 10) & (art_mag < 21))[0]
         else:
-            brite_obs = np.where(obs_mag < 16)
-            brite_art = np.where(art_mag < 16)
+            brite_obs = np.where((obs_mag > 0) & (obs_mag < 16))[0]
+            brite_art = np.where((art_mag > 0) & (art_mag < 16))[0]
             
         # Take the median error for all the bright bins.
         perr_obs = np.median(obs_err[brite_obs])
@@ -2062,9 +2071,9 @@ def fix_artstar_errors():
             mag_err = np.sqrt(merr_obs**2 - merr_art**2)
 
         print '**********************************'
-        fmt = 'The {0:s} error floor of {1:s} is {2:5.4f} {3:s}'
-        print fmt.format('1D positional', epoch, pos_err_1d, '(pix)')
-        print fmt.format('  photometric', epoch, mag_err, '(mag)')
+        fmt = 'The {0:s} error floor of {1:s} is {2:5.4f} {3:s} vs. obs of {4:5.4f} {3:s}'
+        print fmt.format('1D positional', epoch, pos_err_1d, '(pix)', perr_obs)
+        print fmt.format('  photometric', epoch, mag_err, '(mag)', merr_obs)
         print '**********************************'
 
         # Adding error floors in quadrature to artificial errors
@@ -2093,13 +2102,17 @@ def fix_artstar_errors():
         art['xe_' + epoch][det] = np.hypot(art['xe_' + epoch][det], pos_err_1d)
         art['ye_' + epoch][det] = np.hypot(art['ye_' + epoch][det], pos_err_1d)
 
+        # Find any detected stars with zero errors. Set them to 0.1 * obs floor.
+        det_zero_merr = np.where(art['me_' + epoch][det] == 0)[0]
+        det_zero_xerr = np.where(art['xe_' + epoch][det] == 0)[0]
+        det_zero_yerr = np.where(art['ye_' + epoch][det] == 0)[0]
+        art['me_' + epoch][det][det_zero_merr] = 0.1 * merr_obs
+        art['xe_' + epoch][det][det_zero_xerr] = 0.1 * perr_obs
+        art['ye_' + epoch][det][det_zero_yerr] = 0.1 * perr_obs
+
     art.write(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits',
               format='fits', overwrite=True)
 
-    # WEIRD DEBUG issue here?
-    # foo = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits')
-    # print foo['det_2005_F814W']
-    
     return
 
 
@@ -2120,7 +2133,7 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
     final = None
     good = None
 
-    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits')
+    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits')
     
     # Fetch all stars that are in all 3 epochs.
     #    2005_814
@@ -2210,8 +2223,8 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
             vxOpt, vxCov = np.polyfit(dt[:, ii], x, 1, w=1/xe**2, cov=True)
             vyOpt, vyCov = np.polyfit(dt[:, ii], y, 1, w=1/ye**2, cov=True)
 
-        if (ii == 35391):
-            pdb.set_trace()
+        # if (ii == 35391):
+        #     pdb.set_trace()
         
         vxErr = np.sqrt(-1.0 * vxCov.diagonal())
         vyErr = np.sqrt(-1.0 * vyCov.diagonal())
@@ -2241,7 +2254,7 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
             catalog_name += '_wvelVar'
     catalog_name += '.fits'
 
-    d.write(catalog_name, format='fits')
+    d.write(catalog_name, format='fits', overwrite=True)
     
     return
 
@@ -2721,7 +2734,6 @@ def align_artstars():
             
             align_idx += 1
 
-
         # Add new columns to the table
         t_out.add_column(Column(x, name='x_' + epoch))
         t_out.add_column(Column(y, name='y_' + epoch))
@@ -2739,9 +2751,19 @@ def align_artstars():
 
         t_out.add_column(Column(name, name='name_' + epoch))
             
-
+    fix_art_magnitudes(t_out)
     t_out.write(workDir + '51.ALIGN_ART/art_' + align_root + '_combo_pos.fits',
                 overwrite=True)
 
 
+def fix_art_magnitudes(t):
+    t['m_2005_F814W'] -= -2.5 * np.log10(2407. / 3.)
+    t['min_2005_F814W'] -= -2.5 * np.log10(2407. / 3.)
+
+    return
     
+def fix_magnitudes(t):
+    t['m_2005_F814W'] -= -2.5 * np.log10(2407. / 3.)
+
+    return
+

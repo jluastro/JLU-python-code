@@ -1000,7 +1000,6 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
     # Add column for membership probability in original cluster table
     d['Membership'] = p_cluster
 
-    fix_magnitudes(d)
 
     # Finally, make a new catalog with only cluster members
     outfile = '{0}/catalog_membership_{1}_rot.fits'.format(outdir, N_gauss)
@@ -1075,9 +1074,4 @@ def prob_ellipse(star_vx, star_vy, star_sigx, star_sigy,
     prob_gauss /= 2.0 * np.pi * np.sqrt(det_cov)
 
     return prob_gauss
-
-def fix_magnitudes(t):
-    t['m_2005_F814W'] -= -2.5 * np.log10(2407. / 3.)
-
-    return
 
