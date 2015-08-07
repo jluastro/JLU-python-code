@@ -6,18 +6,26 @@ from hst_flystar import astrometry
 from hst_flystar import completeness as comp
 import os
 import pdb
-from jlu.wd1.analysis import membership
+# from jlu.wd1.analysis import membership
 from scipy.stats import chi2
-from scipy import interpolate
+from scipy import interpolate, optimize
 import matplotlib
-from popstar import synthetic
+from popstar import synthetic, reddening
 from jlu.stellarModels import extinction
+import math
 
-reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
+# On LHCC
+# reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
+# work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
+# iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
+
+# On Laptop
+iso_dir = '/Users/jlu/work/wd1/iso_2015_cardelli/'
+reduce_dir = '/Users/jlu/work/wd1/'
+work_dir = '/Users/jlu/work/wd1/'
+
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
 art_dir = reduce_dir + '51.ALIGN_ART/'
-
-work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
 plot_dir = work_dir + 'plots/'
 
 catalog = 'wd1_catalog_RMSE_wvelErr.fits'
@@ -29,13 +37,14 @@ cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 # Artificial catalog
 art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
 
+
 # Best fit (by eye) cluster parameters
 wd1_logAge = 6.91
 wd1_AKs = 0.75
 wd1_distance = 4000
 
 def plot_err_vs_mag(epoch):
-    t = Table.read(cat_dir + catalog)
+    t = Table.read(plat_dir + catalog)
 
     x = t['x_' + epoch]
     y = t['y_' + epoch]
@@ -887,8 +896,7 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
 
     clust = np.where(pmem > 0.8)[0]
 
-    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=distance,
-                                   iso_dir='/u/jlu/work/wd1/models/iso_2015/')
+    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
 
     # F814W vs. F160W CMD
     py.figure(1)
@@ -917,7 +925,7 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
     py.ylim(3.2, 7)
     py.xlim(0.6, 1.7)
     py.xlabel('F125W - F160W')
-    py.ylabel('F125W')
+    py.ylabel('F814W - F160W')
         
     return
 
@@ -982,7 +990,7 @@ def make_completeness_table():
     # Make a completeness curve for each filter independently.
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
     
-    mag_bins = np.arange(12, 27.01, 0.25)
+    mag_bins = np.arange(10, 27.01, 0.25)
     mag_bins_left = mag_bins[:-1]
     mag_bins_right = mag_bins[1:]
     mag_bins_mid = (mag_bins_left + mag_bins_right) / 2.0
@@ -1042,7 +1050,7 @@ def make_completeness_table():
                 
     return
         
-def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
+def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     # Read in data table
     print 'Reading data table'
     d = Table.read(cat_pclust_pcolor)
@@ -1064,8 +1072,8 @@ def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     
     # Read in isochrone
     print 'Loading Isochrone'
-    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=distance,
-                                   iso_dir='/u/jlu/work/wd1/models/iso_2015/')
+    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+          
 
     # Get the completeness (relevant for diff. de-reddened magnitudes).
     print 'Loading completeness table'
@@ -1098,39 +1106,12 @@ def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     print 'Setting up completeness interpolater for CMD space.'
     comp1_int = comp_interp_for_cmd(comp['mag'], comp['c_2005_F814W'],
-                                    comp['c_2010_F160W'])
+                                    comp['c_2010_F160W'], 'F814W', 'F160W')
+
     comp2_int = comp_interp_for_cmd(comp['mag'], comp['c_2010_F125W'],
-                                    comp['c_2010_F160W'])
+                                    comp['c_2010_F160W'], 'F125W', 'F160W')
 
-
-    # Plot completeness image in CMD space: F814W vx. F160W
-    mm1_tmp = np.arange(17, 27, 0.1)
-    cc1_tmp = np.arange(2.0, 8.0, 0.1)
-    comp1_tmp = comp1_int(mm1_tmp, cc1_tmp)
-    py.clf()
-    py.imshow(comp1_tmp, extent=(cc1_tmp.min(), cc1_tmp.max(),
-                                 mm1_tmp.min(), mm1_tmp.max()), vmin=0, vmax=1)
-    py.axis('tight')
-    py.colorbar(label='Completeness')
-    py.xlabel('F814W - F160W (mag)')
-    py.ylabel('F814W (mag)')
-    py.gca().invert_yaxis()
-    py.savefig(plot_dir + 'completeness_cmd_F814W_F160W.png')
-
-    # Plot completeness image in CMD space: F125W vx. F160W
-    mm2_tmp = np.arange(11, 25, 0.1)
-    cc2_tmp = np.arange(0.0, 2.0, 0.1)
-    comp2_tmp = comp2_int(mm2_tmp, cc2_tmp)
-    py.clf()
-    py.imshow(comp2_tmp, extent=(cc2_tmp.min(), cc2_tmp.max(),
-                                 mm2_tmp.min(), mm2_tmp.max()), vmin=0, vmax=1)
-    py.axis('tight')
-    py.colorbar(label='Completeness')
-    py.xlabel('F125W - F160W (mag)')
-    py.ylabel('F125W')
-    py.gca().invert_yaxis()
-    py.savefig(plot_dir + 'completeness_cmd_F125W_F160W.png')
-
+    pdb.set_trace()
     
     mass1, isWR1, comp1 = calc_mass_isWR_comp(m814, color1,
                                               iso_mag_f1, iso_col_f1,
@@ -1164,22 +1145,79 @@ def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     isWR2_noWR = isWR2[idx2_noWR]
     comp2_noWR = comp2[idx2_noWR]
     pmem2_noWR = pmem[idx2_noWR]
-    
-    # Define our mag and mass bins.  We will need both for completeness
-    # estimation and calculating the mass function. 
-    bins_log_mass = np.arange(0, 1.9, 0.15)
-    bins_m814 = get_mag_for_mass(bins_log_mass, iso_mass_f1, iso_mag_f1)
-    bins_m125 = get_mag_for_mass(bins_log_mass, iso_mass_f2, iso_mag_f2)
 
-    plot_fit_mass_function(mass1_noWR, pmem1_noWR, comp1_noWR, bins_log_mass,
-                           iso_mass, iso_mag1, iso_col1, 'F814W', 'F814W - F160W')
-    plot_fit_mass_function(mass2_noWR, pmem2_noWR, comp2_noWR, bins_log_mass,
-                           iso_mass, iso_mag2, iso_col2, 'F125W', 'F125W - F160W')
+    # Save everything to an output file for later plotting.
+    imf1 = Table([mag1_noWR, color1_noWR, mass1_noWR, isWR1_noWR, comp1_noWR, pmem1_noWR],
+                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem'],
+                 meta={'name': 'IMF Table for F814W vs. F814W - F160W',
+                       'logAge': logAge,
+                       'AKs': AKs,
+                       'distance': distance,
+                       'magLabel': 'F814W',
+                       'colLabel': 'F814W - F160W'})
+
+    imf2 = Table([mag2_noWR, color2_noWR, mass2_noWR, isWR2_noWR, comp2_noWR, pmem2_noWR],
+                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem'],
+                 meta={'name': 'IMF Table for F125W vs. F125W - F160W',
+                       'logAge': logAge,
+                       'AKs': AKs,
+                       'distance': distance,
+                       'magLabel': 'F125W',
+                       'colLabel': 'F125W - F160W'})
+
+    imf1.write(work_dir + 'imf_table_from_optical.fits', overwrite=True)
+    imf2.write(work_dir + 'imf_table_from_infrared.fits', overwrite=True)
 
     return
 
-def plot_fit_mass_function(mass_noWR, pmem_noWR, comp_noWR, bins_log_mass,
-                           iso_mass, iso_mag, iso_color, filter_name, color_label):
+def plot_mass_function():
+    imf1 = Table.read(work_dir + 'imf_table_from_optical.fits')
+    imf2 = Table.read(work_dir + 'imf_table_from_infrared.fits')
+
+    # Read in isochrone
+    print 'Loading Isochrone'
+    iso = load_isochrone(logAge=imf1.meta['LOGAGE'], 
+                         AKs=imf1.meta['AKS'], 
+                         distance=imf1.meta['DISTANCE'])
+    
+    # Make a finely sampled mass-luminosity relationship by
+    # interpolating on the isochrone.
+    print 'Setting up mass-luminosity interpolater'
+    iso_mag1 = iso['mag814w']
+    iso_mag2 = iso['mag125w']
+    iso_col1 = iso['mag814w'] - iso['mag160w']
+    iso_col2 = iso['mag125w'] - iso['mag160w']
+    iso_mass = iso['mass']
+    iso_WR = iso['isWR']
+    iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
+    iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
+
+    # Find the maximum mass that is NOT a WR star
+    mass_max = iso_mass[iso_WR == False].max()
+
+    u_fine = np.linspace(0, 1, 1e4)
+    iso_mass_f1, iso_mag_f1, iso_col_f1 = interpolate.splev(u_fine, iso_tck1)
+    iso_mass_f2, iso_mag_f2, iso_col_f2 = interpolate.splev(u_fine, iso_tck2)
+    
+    # Define our mag and mass bins.  We will need both for completeness
+    # estimation and calculating the mass function. 
+    bins_log_mass = np.arange(-1, 1.9, 0.15)
+    bins_m814 = get_mag_for_mass(bins_log_mass, iso_mass_f1, iso_mag_f1)
+    bins_m125 = get_mag_for_mass(bins_log_mass, iso_mass_f2, iso_mag_f2)
+
+    # plot_fit_mass_function(imf1, bins_log_mass, iso_mass, iso_mag1, iso_col1)
+    plot_fit_mass_function(imf2, bins_log_mass, iso_mass, iso_mag2, iso_col2)
+
+    return
+
+def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
+    mass_noWR = imf['mass']
+    pmem_noWR = imf['pmem']
+    comp_noWR = imf['comp']
+
+    filter_name = imf.meta['MAGLABEL']
+    color_label = imf.meta['COLLABEL']
+
     # compute a preliminary mass function with the propoer weights
     weights = pmem_noWR / comp_noWR
 
@@ -1302,7 +1340,7 @@ def plot_fit_mass_function(mass_noWR, pmem_noWR, comp_noWR, bins_log_mass,
     
     
     
-def comp_interp_for_cmd(mag, comp_blue, comp_red):
+def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     
     # Make a completeness curve interpolater. First we have to make a
     # color-mag grid and figure out the lowest (worst) completeness at
@@ -1314,14 +1352,28 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red):
 
     # Loop through an array of BLUE mag and BLUE-RED color and
     # determine the lowest completness.
+    # ii = mag
+    # jj = color
     for ii in range(n_bins):
         for jj in range(n_bins):
             c_mag_arr[ii, jj] = mag[ii]
-            c_col_arr[ii, jj] = mag[jj] - mag[ii]
+            c_col_arr[ii, jj] = mag[ii] - mag[jj]
+            print(ii, jj, 
+                  '{0:s} = {1:4.2f}'.format(blue_name, mag[ii]), 
+                  '{0:s} = {1:4.2f}'.format(red_name, mag[jj]), 
+                  '{0:s} - {1:s} = {2:4.2f}'.format(blue_name, red_name, mag[ii] - mag[jj]),
+                  'c_{0:s} = {1:4.2f}'.format(blue_name, comp_blue[ii]),
+                  'c_{0:s} = {1:4.2f}'.format(red_name, comp_red[jj]))
 
-            # I chose 2010_F160W because it has shallower completeness.
-            c_comp_arr[ii, jj] = comp_red[ii] * comp_blue[jj]
-                    
+
+            # Take whichever is lower, don't multiply because they aren't 
+            # really independent.
+            if comp_red[jj] < comp_blue[ii]:
+                c_comp_arr[ii, jj] = comp_red[jj]
+            else:
+                c_comp_arr[ii, jj] = comp_blue[ii]
+            # c_comp_arr[ii, jj] = comp_blue[ii] * comp_red[jj]
+
             if c_comp_arr[ii, jj] < 0:
                 c_comp_arr[ii, jj] = 0
                 
@@ -1330,11 +1382,61 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red):
 
             if np.isnan(c_comp_arr[ii, jj]):
                 c_comp_arr[ii, jj] = 0
+                
+    # Flatten the arrays and clean out invalid regions.
 
-    comp_int = interpolate.SmoothBivariateSpline(c_mag_arr.flatten(),
-                                                  c_col_arr.flatten(),
-                                                  c_comp_arr.flatten(), s=200)
+    # comp_int = interpolate.SmoothBivariateSpline(c_mag_arr.flatten(),
+    #                                               c_col_arr.flatten(),
+    #                                               c_comp_arr.flatten(), s=2)
+    comp_int = interpolate.LinearNDInterpolator((c_mag_arr.flatten(),
+                                                 c_col_arr.flatten()),
+                                                 c_comp_arr.flatten())
+    # comp_int = interpolate.interp2d(c_mag_arr.flatten(),
+    #                                 c_col_arr.flatten(),
+    #                                 c_comp_arr.flatten(), kind='linear')
 
+    # Plot the raw completeness array
+    py.clf()
+    py.imshow(c_comp_arr, extent=(c_mag_arr[0,0] + c_col_arr[0,0], 
+                                  c_mag_arr[-1,-1] + c_col_arr[-1, -1],
+                                  c_mag_arr[0,0], c_mag_arr[-1,-1]), 
+              vmin=0, vmax=1, origin='lower')
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.gca().invert_yaxis()
+    py.xlabel(red_name + ' (mag)')
+    py.ylabel(blue_name + ' (mag)')
+    py.savefig(plot_dir + 'completeness_cmd_raw_' + blue_name + '_' + red_name + '.png')
+    
+
+    # Plot interpolated completeness image in CMD space: F814W vx. F160W
+    if blue_name == 'F814W':
+        mm_tmp = np.arange(18.5, 27, 0.1)
+        cc_tmp = np.arange(2.0, 8.0, 0.1)
+    else:
+        mm_tmp = np.arange(14, 25, 0.1)
+        cc_tmp = np.arange(0.0, 2.0, 0.1)
+
+    # comp_tmp = comp_int(mm_tmp, cc_tmp)
+    mm_tmp_2d, cc_tmp_2d = np.meshgrid(mm_tmp, cc_tmp)
+    points = np.array([mm_tmp_2d, cc_tmp_2d]).T
+    print points.shape
+    comp_tmp = comp_int(points)
+    print comp_tmp.shape
+    py.clf()
+    py.imshow(comp_tmp, extent=(cc_tmp[0], cc_tmp[-1],
+                                mm_tmp[0], mm_tmp[-1]), 
+              vmin=0, vmax=1, origin='lower')
+    
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.xlabel(blue_name + ' - ' + red_name + ' (mag)')
+    py.ylabel(blue_name + ' (mag)')
+    py.gca().invert_yaxis()
+    py.savefig(plot_dir + 'completeness_cmd_' + blue_name + '_' + red_name + '.png')
+
+    pdb.set_trace()
+    
     return comp_int
     
     
@@ -1406,4 +1508,68 @@ def get_mag_for_mass(log_mass, iso_mass, iso_mag):
     return mag
     
 
+def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
+    tmp_dist = 4000
+
+    synthetic.redlaw = reddening.RedLawCardelli()
+    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
+                                   iso_dir=iso_dir)
+
+    col_names = iso.colnames
+
+    for cc in range(len(col_names)):
+        if col_names[cc].startswith('mag'):
+            delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
+            print 'Changing distance: delta_DM = ', delta_DM
+            
+            iso[col_names[cc]] += delta_DM
+
+    return iso
+        
+def check_atmospheres():
+    cdbs_dir = os.environ['PYSYN_CDBS']
+
+    castelli_file = cdbs_dir + 'grid/ck04models/catalog.fits'
+    phoenix_file = cdbs_dir + 'grid/phoenix_v16_rebin/catalog.fits'
+
+    castelli = Table.read(castelli_file)
+    phoenix = Table.read(phoenix_file)
+
+    c_teff = np.array([int(castelli[ii]['INDEX'].split(',')[0]) for ii in range(len(castelli))])
+    c_metal = np.array([float(castelli[ii]['INDEX'].split(',')[1]) for ii in range(len(castelli))])
+    c_logg = np.array([float(castelli[ii]['INDEX'].split(',')[2]) for ii in range(len(castelli))])
+
+    p_teff = np.array([int(phoenix[ii]['INDEX'].split(',')[0]) for ii in range(len(phoenix))])
+    p_metal = np.array([float(phoenix[ii]['INDEX'].split(',')[1]) for ii in range(len(phoenix))])
+    p_logg = np.array([float(phoenix[ii]['INDEX'].split(',')[2]) for ii in range(len(phoenix))])
+    
+    # Get the unique log-g and loop through to find Teff range for each.
+    c_logg_uni = np.unique(c_logg)
+
+    print 'Castelli: solar metallicity'
+    for ii in range(len(c_logg_uni)):
+        idx = np.where((c_logg == c_logg_uni[ii]) & (c_metal == 0))[0]
+
+        teff_good = c_teff[idx] 
+        min_teff = teff_good.min()
+        max_teff = teff_good.max()
+
+        fmt = 'logg = {0:4.2f}   Teff = [{1:5.0f} - {2:5.0f}]'
+        print fmt.format(c_logg_uni[ii], min_teff, max_teff)
+
+
+    # Get the unique log-g and loop through to find Teff range for each.
+    p_logg_uni = np.unique(p_logg)
+    print ''
+    print 'Phoenix: solar metallicity'
+    for ii in range(len(p_logg_uni)):
+        idx = np.where((p_logg == p_logg_uni[ii]) & (p_metal == 0))[0]
+
+        teff_good = p_teff[idx] 
+        min_teff = teff_good.min()
+        max_teff = teff_good.max()
+
+        fmt = 'logg = {0:4.2f}   Teff = [{1:5.0f} - {2:5.0f}]'
+        print fmt.format(p_logg_uni[ii], min_teff, max_teff)
+        
     
