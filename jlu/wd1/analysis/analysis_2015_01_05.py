@@ -10,7 +10,7 @@ import pdb
 from scipy.stats import chi2
 from scipy import interpolate, optimize
 import matplotlib
-from popstar import synthetic, reddening
+from popstar import synthetic, reddening, evolution
 from jlu.stellarModels import extinction
 import math
 
@@ -23,6 +23,7 @@ import math
 iso_dir = '/Users/jlu/work/wd1/iso_2015_cardelli/'
 reduce_dir = '/Users/jlu/work/wd1/'
 work_dir = '/Users/jlu/work/wd1/'
+evolution.models_dir = '/Users/jlu/work/models/evolution/'
 
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
 art_dir = reduce_dir + '51.ALIGN_ART/'
