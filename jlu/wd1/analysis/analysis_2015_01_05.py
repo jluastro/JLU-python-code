@@ -20,7 +20,9 @@ import math
 # iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
 
 # On Laptop
-iso_dir = '/Users/jlu/work/wd1/iso_2015_cardelli/'
+# synthetic.redlaw = reddening.RedLawCardelli()
+# iso_dir = '/Users/jlu/work/wd1/iso_2015_cardelli/'
+iso_dir = '/Users/jlu/work/wd1/iso_2015/'
 reduce_dir = '/Users/jlu/work/wd1/'
 work_dir = '/Users/jlu/work/wd1/'
 evolution.models_dir = '/Users/jlu/work/models/evolution/'
@@ -928,6 +930,16 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
     py.xlabel('F125W - F160W')
     py.ylabel('F814W - F160W')
         
+    # F814W vs. F125W CMD
+    py.figure(4)
+    py.clf()
+    py.plot(m814[clust] - m125[clust], m814[clust], 'k.', ms=2)
+    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r.', ms=10)
+    py.ylim(26, 18)
+    py.xlim(2.0, 5)
+    py.xlabel('F814W - F125W')
+    py.ylabel('F814W')
+    
     return
 
 def compare_art_vs_obs_vel():
@@ -1512,7 +1524,7 @@ def get_mag_for_mass(log_mass, iso_mass, iso_mag):
 def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     tmp_dist = 4000
 
-    synthetic.redlaw = reddening.RedLawCardelli()
+    print 'Using Red Law = ', synthetic.redlaw.name
     iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
                                    iso_dir=iso_dir)
 
