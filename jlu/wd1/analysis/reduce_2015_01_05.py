@@ -1314,6 +1314,41 @@ def make_brite_list_2010():
 
     stars = stars[keep]
 
+    # Save the matchup stars to a file (with errors). Later on,
+    # these will be appended to the ks2 output if ks2 doesn't find
+    # the bright source. In other wordes, trust the one pass output
+    # at the brightest stars.
+    brite_obs_125 = open('BRITE_F125W.XYMEEE', 'w')
+    brite_obs_139 = open('BRITE_F139M.XYMEEE', 'w')
+    brite_obs_160 = open('BRITE_F160W.XYMEEE', 'w')
+    
+    for ii in range(len(stars)):
+        fmt = '{x:10.4f}  {y:10.4f}  {m:10.4f}  {me:10.4f}  {ye:10.4f}  {ye:10.4f}\n'
+
+        brite_obs_160.write(fmt.format(x=stars['x_1'][ii],
+                                       y=stars['y_1'][ii],
+                                       m=stars['m_1'][ii],
+                                       xe=stars['xe_1'][ii],
+                                       ye=stars['ye_1'][ii],
+                                       me=stars['me_1'][ii]))
+        brite_obs_139.write(fmt.format(x=stars['x_2'][ii],
+                                       y=stars['y_2'][ii],
+                                       m=stars['m_2'][ii],
+                                       xe=stars['xe_2'][ii],
+                                       ye=stars['ye_2'][ii],
+                                       me=stars['me_2'][ii]))
+        brite_obs_125.write(fmt.format(x=stars['x_3'][ii],
+                                       y=stars['y_3'][ii],
+                                       m=stars['m_3'][ii],
+                                       xe=stars['xe_3'][ii],
+                                       ye=stars['ye_3'][ii],
+                                       me=stars['me_3'][ii]))
+    
+    brite_obs_125.close()
+    brite_obs_139.close()
+    brite_obs_160.close()
+    
+
     # Now we need to fix the magnitudes for the non detections amongst the
     # bright sources. I know the rough relationships between brightnesses
     # between these 3 filters, so I will just use those:
@@ -1525,6 +1560,142 @@ def find_top_stars(reread=False):
 
     _out.close()
 
+    return
+
+def combine_nimfo2bar_brite():
+    """
+    For all the data, we need to add back in the missing bright stars
+    from the one-pass analysis.
+    """
+    epochs = ['2005_F814W', 
+              '2010_F125W_pos1', '2010_F125W_pos2', '2010_F125W_pos3', '2010_F125W_pos4',
+              '2010_F139M_pos1', '2010_F139M_pos2', '2010_F139M_pos3', '2010_F139M_pos4',
+              '2010_F160W_pos1', '2010_F160W_pos2', '2010_F160W_pos3', '2010_F160W_pos4',
+              '2013_F160W_pos1', '2013_F160W_pos2', '2013_F160W_pos3', '2013_F160W_pos4',
+              '2013_F160Ws']
+    magCuts = [-13.5, 
+               -10, -10, -10, -10,
+                -9,  -9,  -9,  -9,
+               -10, -10, -10, -10,
+               -10, -10, -10, -10,
+               -10, -10, -10, -10]
+               
+    
+    for ee in range(len(epochs)):
+        ep = epochs[ee]
+        year = ep.split('_')[0]
+        filt = ep.split('_')[1]
+
+        mat_dir = workDir + '03.MAT_POS/' + ep + '/01.XYM/'
+        mat_file = 'MATCHUP.XYMEEE'
+        ks2_dir = workDir
+        ks2_file = 'nimfo2bar.xymeee.F1'
+        N_filter = 1
+        if year == '2005':
+            ks2_dir += '11.KS2_2005/'
+            ks2_file = ks2_file.replace('.F1', '.ks2.F1')
+
+        if year == '2010':
+            ks2_dir += '12.KS2_2010/0{pos}.pos{pos}/'.format(pos=ep[-1])
+            N_filter = 3
+            if filt == 'F139M':
+                ks2_file = ks2_file.replace('.F1', '.F2')
+            if filt == 'F125W':
+                ks2_file = ks2_file.replace('.F1', '.F3')
+
+        if year == '2013':
+            ks2_dir += '13.KS2_2013/'
+            if ep.endswith('s'):
+                ks2_dir += '05.F160Ws/'
+            else:
+                ks2_dir += '0{pos}.pos{pos}/'.format(pos=ep[-1])
+        
+        one = starlists.read_matchup(mat_dir + mat_file)
+        ks2 = starlists.read_nimfo2bar(ks2_dir + ks2_file)
+
+        if 'F160Ws' in ks2_dir:
+            # In the short-exposure data, most sources only detected
+            # in a single frame and has no errors. We still want them.
+            idx = np.where(one['m'] <= magCuts[ee])[0]
+        else:
+            print 'magCut = ', magCuts[ee], ' for ', ep
+            idx = np.where((one['m'] <= magCuts[ee]) & (one['me'] < 1))[0]
+
+        # Trim down to just the brite sources in the MATCHUP
+        one_brite = one[idx]
+
+        # Get the last ks2 star name. 
+        last_name = int(ks2[-1]['name'])
+
+        # Loop through each brite star and see if it 
+        # was detected in ks2.
+        cnt_add = 0
+        cnt_replace = 0
+
+        for ii in range(len(one_brite)):
+            dx = one_brite[ii]['x'] - ks2['x']
+            dy = one_brite[ii]['y'] - ks2['y']
+            dm = one_brite[ii]['m'] - ks2['m']
+            dr = np.hypot(dx, dy)
+
+            rdx = dr.argmin()
+
+            dr_min = dr[rdx]
+            dm_min = dm[rdx]
+
+            # Decide whether to add or replace this star in KS2
+            add = False
+            replace = False
+
+            # Star doesn't exist in KS2 - add it.
+            if (dr_min > 1):
+                add = True
+            else:
+                # There is a star, but it has a wildly different
+                # magnitude. Replace it.
+                if (dm_min > 1):
+                    replace = True
+
+                # There is a star in KS2; but it doesn't have errors
+                # and the one-pass analysis does. Replace it.
+                if ((ks2[rdx]['xe'] == 1) and (one_brite[ii]['xe'] != 1)):
+                    replace = True
+            
+
+
+            if add:
+                new_name = last_name + 1
+
+                ks2.add_row([one_brite[ii]['x'], one_brite[ii]['y'],
+                             one_brite[ii]['m'], one_brite[ii]['xe'],
+                             one_brite[ii]['ye'], one_brite[ii]['me'],
+                             one_brite[ii]['N_fnd'], one_brite[ii]['N_xywell'],
+                             str(new_name).zfill(6)])
+                last_name += 1
+
+                cnt_add += 1
+
+            if replace:
+                ks2[rdx]['x'] = one_brite[ii]['x']
+                ks2[rdx]['y'] = one_brite[ii]['y']
+                ks2[rdx]['m'] = one_brite[ii]['m']
+                ks2[rdx]['xe'] = one_brite[ii]['xe']
+                ks2[rdx]['ye'] = one_brite[ii]['ye']
+                ks2[rdx]['me'] = one_brite[ii]['me']
+                ks2[rdx]['N_fnd'] = one_brite[ii]['N_fnd']
+                ks2[rdx]['N_xywell'] = one_brite[ii]['N_xywell']
+
+                cnt_replace += 1
+                
+        fmt =  '{0:s}: Added {1:d}, replace {2:d} out of {3:d} brite stars'
+        print fmt.format(ks2_dir + ks2_file, cnt_add, cnt_replace, len(one_brite))
+        ks2.write(ks2_dir + ks2_file.replace('2bar', '2bar_brite'), 
+                  format='ascii.fixed_width_no_header', delimiter=' ',
+                  formats={'x': '%10.4f', 'y': '%10.4f', 'm': '%10.3f', 
+                           'xe': '%10.4f', 'ye': '%10.4f', 'me': '%10.3f',
+                           'N_find': '%3d', 'N_xywell': '%3d', 'name': lambda n: n.zfill(6)})
+
+            
     return
     
 def align_to_fits(align_root):

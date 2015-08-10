@@ -628,7 +628,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F125W (mag)')
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
-    py.ylim(23, 14)
+    py.ylim(23, 12)
     py.savefig(plot_dir + 'cmd_ir_clust' + suffix + '.png')
 
     # IR Plot CMD with everything in black.
@@ -637,7 +637,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F125W (mag)')
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
-    py.ylim(23, 14)
+    py.ylim(23, 12)
     py.savefig(plot_dir + 'cmd_ir_all' + suffix + '.png')
     
     # IR Plot CMD with everything in black
@@ -648,7 +648,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F125W (mag)')
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
-    py.ylim(23, 14)
+    py.ylim(23, 12)
     py.savefig(plot_dir + 'cmd_ir_all_clust' + suffix + '.png')
 
 
@@ -665,7 +665,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F814W (mag)')
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
-    py.ylim(26, 18)
+    py.ylim(26, 12)
     py.savefig(plot_dir + 'cmd_2_clust' + suffix + '.png')
 
     # F814W - F125W Plot CMD with everything in black.
@@ -674,7 +674,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F814W (mag)')
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
-    py.ylim(26, 18)
+    py.ylim(26, 12)
     py.savefig(plot_dir + 'cmd_2_all' + suffix + '.png')
     
     # F814W - F125W Plot CMD with everything in black
@@ -685,7 +685,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F814W (mag)')
     py.xlabel('F814W - F125W (mag)')
     py.xlim(1, 7)
-    py.ylim(26, 18)
+    py.ylim(26, 12)
     py.savefig(plot_dir + 'cmd_2_all_clust' + suffix + '.png')
 
 
@@ -696,7 +696,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     # Plot CMD Hess diagram of all
     ##########
     bins_col = np.arange(2, 10, 0.2)
-    bins_mag = np.arange(18, 26, 0.2)
+    bins_mag = np.arange(14, 26, 0.2)
     mag1 = d['m_2013_F160W']
     mag2 = d['m_2005_F814W']
     color = mag2 - mag1
@@ -725,7 +725,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     # IR: Plot CMD Hess diagram of all.
     ##########
     bins_col = np.arange(0, 2, 0.05)
-    bins_mag = np.arange(14, 23, 0.2)
+    bins_mag = np.arange(12, 23, 0.2)
     mag1 = d['m_2013_F160W']
     mag2 = d['m_2010_F125W']
     color = mag2 - mag1
@@ -735,7 +735,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F125W (mag)')
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
-    py.ylim(23, 14)
+    py.ylim(23, 12)
     py.savefig(plot_dir + 'cmd_ir_hess_all' + suffix + '.png')
 
     # IR: Plot CMD Hess diagram of cluster members.
@@ -745,7 +745,7 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     py.ylabel('F125W (mag)')
     py.xlabel('F125W - F160W (mag)')
     py.xlim(0, 2)
-    py.ylim(23, 14)
+    py.ylim(23, 12)
     py.savefig(plot_dir + 'cmd_ir_hess_clust' + suffix + '.png')
 
     return
@@ -906,7 +906,7 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
     py.clf()
     py.plot(color1[clust], m814[clust], 'k.', ms=2)
     py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=10)
-    py.ylim(26, 18)
+    py.ylim(26, 14)
     py.xlim(3.2, 7)
     py.xlabel('F814W - F160W')
     py.ylabel('F814W')
@@ -915,7 +915,7 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
     py.clf()
     py.plot(color2[clust], m125[clust], 'k.', ms=2)
     py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=10)
-    py.ylim(21.5, 15)
+    py.ylim(21.5, 13)
     py.xlim(0.6, 1.7)
     py.xlabel('F125W - F160W')
     py.ylabel('F125W')

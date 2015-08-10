@@ -745,7 +745,8 @@ def show_distributions(catalogfile, velcut, magcut, outdir, N_gauss, rotate=True
         vy_fit[kk] = params['Mu'][vy_idx]
         sigA_fit[kk] = params['Mu'][sigA_idx]
         sigB_fit[kk] = params['Mu'][sigB_idx]
-        theta_fit[kk] = -1.0 * np.degrees(params['Mu'][theta_idx])
+        theta_fit[kk] = np.degrees(params['Mu'][theta_idx]) - 90.0
+        print theta_fit[kk]
 
     #---------------------------#
     # Plotting just VPD
@@ -1000,6 +1001,11 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
     # Add column for membership probability in original cluster table
     d['Membership'] = p_cluster
 
+    # HACK for BRITE cluster members.
+    mag = d['m_2005_F814W']
+    color = d['m_2005_F814W'] - d['m_2013_F160W']
+    idx = np.where((mag < 18.8) & ((color > 3.1) & (color < 4.8)))[0]
+    d['Membership'][idx] = 1.0
 
     # Finally, make a new catalog with only cluster members
     outfile = '{0}/catalog_membership_{1}_rot.fits'.format(outdir, N_gauss)
