@@ -1250,6 +1250,8 @@ def compare_art_vs_obs_vel():
 def make_completeness_table():
     art = Table.read(art_cat)
     
+    mag_err_cut = 1.0 # (basically no cut)
+    vel_err_cut = 0.5 # mas/yr
 
     # Make a completeness curve for each filter independently.
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
@@ -1266,7 +1268,14 @@ def make_completeness_table():
     for ee in range(len(epochs)):
         ep = epochs[ee]
         idx = np.where(art['det_' + ep] == True)[0]
-        det = art[idx]
+
+        # Make some cuts based on the vxe (only X ... something is still wrong in Y).
+        tmp = art[idx]
+        vdx = np.where((tmp['fit_vxe'] < vel_err_cut) & (tmp['me_' + ep] < mag_err_cut))[0]
+
+        print 'Cut {0:d} based on velocity error cuts'.format(len(idx) - len(vdx))
+        
+        det = tmp[vdx]
         
         n_all, b_all = np.histogram(art['min_' + ep], bins=mag_bins)
         n_det, b_det = np.histogram(det['min_' + ep], bins=mag_bins)
