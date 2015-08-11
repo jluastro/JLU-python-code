@@ -2064,7 +2064,7 @@ def art_set_detected():
     # Set detected = True for all sources that are detected and whose
     # positions/fluxes match within certain criteria. These are loose criteria.
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
-    dr_cuts = [0.6, 0.5, 0.5, 0.5, 0.5] # pixels
+    dr_cuts = [1.0, 0.5, 0.5, 0.5, 0.5] # pixels
     dm_cuts = [0.5, 0.5, 0.5, 0.5, 0.5] # magnitudes
     n_cut   = 1
 
