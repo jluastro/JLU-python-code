@@ -2585,7 +2585,11 @@ def call_process_ks2_artstar():
                 print 'Working on {0}, filter F{1}'.format(directory, filt_string)
                 
                 art_star_list = art_lists[epoch][ii]
-                nimfo2bar_file = 'nimfo2bar.xymeee.' + filt_string
+
+                if '2005' in epoch:
+                    nimfo2bar_file = 'nimfo2bar.xymeee.ks2.' + filt_string
+                else:
+                    nimfo2bar_file = 'nimfo2bar.xymeee.' + filt_string
                 comp.process_ks2_artstar(art_star_list, nimfo2bar_file,
                                          filter_num=filt[ff])
 
