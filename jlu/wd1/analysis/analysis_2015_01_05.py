@@ -1124,7 +1124,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
 
     red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
-    py.arrow(3.8, 19.5, red_vec_dx, red_vec_dy, head_width=0.2)
+    py.arrow(3.8, 21, red_vec_dx, red_vec_dy, head_width=0.2)
 
     # F814W vs. F125W CMD
     py.subplot(2, 2, 2)
@@ -1137,7 +1137,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     
     red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F125W_AKs_1 - m_F125W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
-    py.arrow(3.2, 19.5, red_vec_dx, red_vec_dy, head_width=0.18)
+    py.arrow(3.0, 21, red_vec_dx, red_vec_dy, head_width=0.18)
     py.show()
 
     # # F125W vs. F139M CMD
@@ -1166,7 +1166,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     
     red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
-    py.arrow(0.72, 16.3, red_vec_dx, red_vec_dy, head_width=0.1)
+    py.arrow(0.72, 18, red_vec_dx, red_vec_dy, head_width=0.1)
 
     
     # Color-color
@@ -1332,13 +1332,13 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     m814 = d['m_2005_F814W']
     color1 = m814 - m160
     color2 = m125 - m160
-
     
     # Read in isochrone
     print 'Loading Isochrone'
+    red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+    iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
           
-
     # Get the completeness (relevant for diff. de-reddened magnitudes).
     print 'Loading completeness table'
     comp = Table.read(work_dir + 'completeness_vs_mag.fits')
@@ -1355,12 +1355,30 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
     iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
 
+    # Same for the reddening vector isochrone
+    iso_red_mag1 = iso_red['mag814w']
+    iso_red_mag2 = iso_red['mag125w']
+    iso_red_col1 = iso_red['mag814w'] - iso_red['mag160w']
+    iso_red_col2 = iso_red['mag125w'] - iso_red['mag160w']
+    iso_red_mass = iso_red['mass']
+    iso_red_WR = iso_red['isWR']
+    iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=2)
+    iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=2)
+
     # Find the maximum mass that is NOT a WR star
     mass_max = iso_mass[iso_WR == False].max()
 
     u_fine = np.linspace(0, 1, 1e4)
     iso_mass_f1, iso_mag_f1, iso_col_f1 = interpolate.splev(u_fine, iso_tck1)
     iso_mass_f2, iso_mag_f2, iso_col_f2 = interpolate.splev(u_fine, iso_tck2)
+
+    iso_red_mass_f1, iso_red_mag_f1, iso_red_col_f1 = interpolate.splev(u_fine, iso_red_tck1)
+    iso_red_mass_f2, iso_red_mag_f2, iso_red_col_f2 = interpolate.splev(u_fine, iso_red_tck2)    
+
+    red_vec_dx_f1 = iso_red_col_f1 - iso_col_f1
+    red_vec_dy_f1 = iso_red_mag_f1 - iso_mag_f1
+    red_vec_dx_f2 = iso_red_col_f2 - iso_col_f2
+    red_vec_dy_f2 = iso_red_mag_f2 - iso_mag_f2
 
     # Define WR stars. 
     iso_WR_f1 = np.zeros(len(iso_mass_f1), dtype=bool)
@@ -1375,19 +1393,17 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     comp2_int = comp_interp_for_cmd(comp['mag'], comp['c_2010_F125W'],
                                     comp['c_2010_F160W'], 'F125W', 'F160W')
 
-    pdb.set_trace()
     
     mass1, isWR1, comp1, AKs1 = calc_mass_isWR_comp(m814, color1,
                                                     iso_mag_f1, iso_col_f1,
                                                     iso_mass_f1, iso_WR_f1,
                                                     comp1_int, mass_max,
-                                                    'F814W', 'F160W', AKs)
+                                                    red_vec_dx_f1, red_vec_dy_f1, red_dAKs)
     mass2, isWR2, comp2, AKs2 = calc_mass_isWR_comp(m125, color2,
                                                     iso_mag_f2, iso_col_f2,
                                                     iso_mass_f2, iso_WR_f2,
                                                     comp2_int, mass_max,
-                                                    'F125W', 'F160W', AKs)
-    pdb.set_trace()
+                                                    red_vec_dx_f2, red_vec_dy_f2, red_dAKs)
 
     # Find the maximum mass where we don't have WR stars anymore
     print mass_max, mass1.max(), mass2.max()
@@ -1403,6 +1419,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     isWR1_noWR = isWR1[idx1_noWR]
     comp1_noWR = comp1[idx1_noWR]
     pmem1_noWR = pmem[idx1_noWR]
+    AKs1_noWR = AKs1[idx1_noWR]
 
     # Trim down to just the stars that aren't WR stars.
     idx2_noWR = np.where(mass2 <= mass_max2)[0]
@@ -1412,10 +1429,12 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     isWR2_noWR = isWR2[idx2_noWR]
     comp2_noWR = comp2[idx2_noWR]
     pmem2_noWR = pmem[idx2_noWR]
+    AKs2_noWR = AKs2[idx2_noWR]
 
     # Save everything to an output file for later plotting.
-    imf1 = Table([mag1_noWR, color1_noWR, mass1_noWR, isWR1_noWR, comp1_noWR, pmem1_noWR],
-                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem'],
+    imf1 = Table([mag1_noWR, color1_noWR, mass1_noWR, isWR1_noWR, comp1_noWR, pmem1_noWR, AKs1_noWR,
+                  d['x_2013_F160W'], d['y_2013_F160W']],
+                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F814W vs. F814W - F160W',
                        'logAge': logAge,
                        'AKs': AKs,
@@ -1423,8 +1442,9 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'magLabel': 'F814W',
                        'colLabel': 'F814W - F160W'})
 
-    imf2 = Table([mag2_noWR, color2_noWR, mass2_noWR, isWR2_noWR, comp2_noWR, pmem2_noWR],
-                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem'],
+    imf2 = Table([mag2_noWR, color2_noWR, mass2_noWR, isWR2_noWR, comp2_noWR, pmem2_noWR, AKs2_noWR,
+                  d['x_2013_F160W'], d['y_2013_F160W']],
+                 names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F125W vs. F125W - F160W',
                        'logAge': logAge,
                        'AKs': AKs,
@@ -1472,12 +1492,12 @@ def plot_mass_function():
     bins_m814 = get_mag_for_mass(bins_log_mass, iso_mass_f1, iso_mag_f1)
     bins_m125 = get_mag_for_mass(bins_log_mass, iso_mass_f2, iso_mag_f2)
 
-    # plot_fit_mass_function(imf1, bins_log_mass, iso_mass, iso_mag1, iso_col1)
-    plot_fit_mass_function(imf2, bins_log_mass, iso_mass, iso_mag2, iso_col2)
+    plot_fit_mass_function(imf1, bins_log_mass, iso_mass, iso_mag1, iso_col1, mass_max)
+    # plot_fit_mass_function(imf2, bins_log_mass, iso_mass, iso_mag2, iso_col2, mass_max)
 
     return
 
-def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
+def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mass_max):
     mass_noWR = imf['mass']
     pmem_noWR = imf['pmem']
     comp_noWR = imf['comp']
@@ -1524,10 +1544,17 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
     fitfunc = lambda p, x: p[0] + p[1] * x
     errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
 
-    log_m = bc[5:]
-    log_n = np.log10(n_fin)[5:]
-    log_n_err = n_err[5:] / n_fin[5:]
+    idx = np.where((bc > 0.2) & (n_fin > 0) & 
+                   (np.isnan(n_fin) == False) & (np.isinf(n_fin) == False))[0]
+    print bc
+    print n_fin
+    print n_err
+    print idx
 
+    log_m = bc[idx]
+    log_n = np.log10(n_fin)[idx]
+    log_n_err = n_err[idx] / n_fin[idx]
+    
     print 'log_m = ', log_m
     print 'log_n = ', log_n
     print 'log_n_err = ', log_n_err
@@ -1548,11 +1575,12 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
     ampErr = math.sqrt( covar[1][1] ) * amp
 
     py.plot(log_m, 10**fitfunc(pfinal, log_m), 'k--')
-    py.text(1.3, 100, r'$\frac{dN}{dm}\propto m^{-2.2}$')
+    fmt = r'$\frac{{dN}}{{dm}}\propto m^{{{0:4.2f}}}$'.format(index)
+    py.text(0.90, 200, fmt)
 
     py.axvline(np.log10(mass_max), linestyle='--')
     py.ylim(5, 9e2)
-    py.xlim(0, 1.8)
+    py.xlim(-0.5, 1.8)
     py.xlabel('log( Mass [Msun])')
     py.ylabel('Number of Stars')
     py.legend()
@@ -1561,7 +1589,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
     ax1 = py.gca()
     ax2 = ax1.twiny()
     
-    top_tick_mag = np.array([14.0, 17, 20, 21.6])
+    top_tick_mag = np.array([14.0, 17, 19, 22, 25])
     top_tick_mass = np.zeros(len(top_tick_mag), dtype=float)
     top_tick_label = np.zeros(len(top_tick_mag), dtype='S13')
 
@@ -1593,16 +1621,18 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color):
     
     py.figure(3)
     py.clf()
-    py.plot(color, mag, 'k.')
+    py.scatter(imf['color'], imf['mag'], c=np.log10(imf['mass']), s=20)
     py.plot(iso_color, iso_mag, 'r-')
-    py.axvline(2)
-    # py.ylim(22, 12)
+    py.ylim(13, 26)
     # py.xlim(1, 3.5)
+    py.gca().invert_yaxis()
     py.xlabel(color_label + ' (mag)')
     py.ylabel(filter_name + ' (mag)')
-    py.savefig(prop_dir + 'arches_cmd_iso_test_' + filter_name + '.png')
+    py.colorbar(orientation='horizontal', fraction=0.05)
+    py.savefig(plot_dir + 'arches_cmd_iso_test_' + filter_name + '.png')
 
-    return clust
+
+    return
 
     
     
@@ -1702,39 +1732,23 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     py.gca().invert_yaxis()
     py.savefig(plot_dir + 'completeness_cmd_' + blue_name + '_' + red_name + '.png')
 
-    pdb.set_trace()
     
     return comp_int
     
     
     
 def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
-                         comp_int, mass_max, filt1, filt2, AKs):
+                         comp_int, mass_max, red_vec_dx_f, red_vec_dy_f, dAKs_0):
     # F814W vs. F814W - F160W    
     # Loop through data and assign masses, extinctions, and completeness to each star.
     mass = np.zeros(len(mag), dtype=float)
     isWR = np.zeros(len(mag), dtype=float)
     comp = np.zeros(len(mag), dtype=float)
+    dAKs = np.zeros(len(mag), dtype=float)
 
-    # Calculate a reddening vector
-    red_AKs1 = AKs
-    red_AKs2 = AKs + 0.1
-    iso1 = load_isochrone(logAge=6.7, AKs=red_AKs1)
-    iso2 = load_isochrone(logAge=6.7, AKs=red_AKs2)
-
-    mag_suff_1 = filt1.lower()[1:]
-    mag_suff_2 = filt2.lower()[1:]
-
-    iso1_m1 = iso1['mag_' + mag_suff_1]
-    iso1_m2 = iso1['mag_' + mag_suff_2]
-    iso2_m1 = iso2['mag_' + mag_suff_1]
-    iso2_m2 = iso2['mag_' + mag_suff_2]
-
-    red_vec_dx = (iso2_m2 - iso2_m1) - (iso1_m2 - iso1_m1)
-    red_vec_dy = (iso1_m2 - iso1_m1)
     red_dAKs = np.arange(-0.1, 0.3, 0.01)
-    red_col = red_vec_dx * red_dAKs / (red_AKs2 - red_AKs1)
-    red_mag = red_vec_dy * red_dAKs / (red_AKs2 - red_AKs1)
+    red_col = red_dAKs / dAKs_0
+    red_mag = red_dAKs / dAKs_0
 
     # Loop through observed stars.
     for ii in range(len(mass)):
@@ -1746,9 +1760,9 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         # each reddening vector. 
         iso_idx_per_rr = np.ones(len(red_dAKs), dtype=int) * -1
         
-        for rr in rnage(len(red_dAKs)):
-            dmag = mag[ii] - (iso_mag_f + red_mag[rr])
-            dcol = color[ii] - (iso_col_f + red_col[rr])
+        for rr in range(len(red_dAKs)):
+            dmag = mag[ii] - (iso_mag_f + (red_mag[rr] * red_vec_dy_f))
+            dcol = color[ii] - (iso_col_f + (red_col[rr] * red_vec_dx_f))
 
             delta = np.hypot(dmag, dcol)
 
@@ -1757,7 +1771,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
 
             # If the color + mag difference is less than 0.02, then take
             # the lowest mass. This helps account for the missing IMF bias.
-            idx = np.where(delta[sdx] < 0.02)[0]
+            idx = np.where(delta[sdx] < 0.01)[0]
 
             if (len(idx) > 1):
                 # More than one in a tight radius... choose the lower mass.
@@ -1768,6 +1782,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
             else:
                 # One or zero within the radius... just take the closest.
                 iso_idx_per_rr[rr] = sdx[0]
+            # iso_idx_per_rr[rr] = sdx[0]
                 
         # From the candidates, choose the closest first, then the lowest
         # mass one (within 0.02).
@@ -1776,7 +1791,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         delta = np.hypot(dmag, dcol)
         
         sdx = delta.argsort()
-        idx = np.where(delta[sdx] < 0.02)[0]
+        idx = np.where(delta[sdx] < 0.01)[0]
         
         if len(idx) > 1:
             # More than one in a tight radius... choose the lower mass.
@@ -1784,9 +1799,11 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
             min_rdx = sdx[idx][min_mass_idx]
         else:
             min_rdx = sdx[0]
+        # min_rdx = sdx[0]
+        
         min_idx = iso_idx_per_rr[min_rdx]
 
-        print '{0:4d} {1:4d} {2:4d} {3:4d} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
+        print '{0:4d} {1:4d} {2:4d} {3:4.2f} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
                                                               delta[min_rdx],
                                                               iso_mass_f[min_idx],
                                                               red_dAKs[min_rdx])
