@@ -20,9 +20,20 @@ import math
 # iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
 
 # On Laptop
+synthetic.redlaw = reddening.RedLawWesterlund1()
+iso_dir = '/Users/jlu/work/wd1/iso_2015_wd1/'
+
+# synthetic.redlaw = reddening.RedLawRiekeLebofsky()
+# iso_dir = '/Users/jlu/work/wd1/iso_2015_rieke/'
+
+# synthetic.redlaw = reddening.RedLawRomanZuniga07()
+# iso_dir = '/Users/jlu/work/wd1/iso_2015_roman/'
+
 # synthetic.redlaw = reddening.RedLawCardelli()
 # iso_dir = '/Users/jlu/work/wd1/iso_2015_cardelli/'
-iso_dir = '/Users/jlu/work/wd1/iso_2015/'
+
+# iso_dir = '/Users/jlu/work/wd1/iso_2015/'
+
 reduce_dir = '/Users/jlu/work/wd1/'
 work_dir = '/Users/jlu/work/wd1/'
 evolution.models_dir = '/Users/jlu/work/models/evolution/'
@@ -42,8 +53,8 @@ art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
 
 
 # Best fit (by eye) cluster parameters
-wd1_logAge = 6.91
-wd1_AKs = 0.75
+wd1_logAge = 6.7
+wd1_AKs = 0.67
 wd1_distance = 4000
 
 def plot_err_vs_mag(epoch):
@@ -562,7 +573,7 @@ def make_cluster_catalog():
     return
     
 
-def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
+def make_cmd(catalog=cat_pclust_pcolor, cl_prob=0.3, usePcolor=False, suffix=''):
     """
     Plot the total CMD and then the CMD of only cluster members.
 
@@ -751,9 +762,12 @@ def make_cmd(catalog=cat_pclust, cl_prob=0.3, usePcolor=False, suffix=''):
     return
         
 
-def plot_color_color(cl_prob=0.6):
+def plot_color_color(catalog=cat_pclust_pcolor, cl_prob=0.6, usePcolor=True, suffix=''):
     # Read in data table
-    d = Table.read(cat_pclust)
+    d = Table.read(catalog)
+
+    if usePcolor:
+        d['Membership'] *= d['Membership_color']
 
     # Determine which we will call "cluster members"
     clust = np.where(d['Membership'] > cl_prob)[0]
@@ -767,7 +781,9 @@ def plot_color_color(cl_prob=0.6):
     py.plot(color2[clust], color1[clust], 'r.', ms=2)
     py.xlim(0, 2.5)
     py.ylim(1, 8)
-    py.savefig(plot_dir + 'colcol_all_clust.png')
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F814W - F125W (mag)')
+    py.savefig(plot_dir + 'colcol_all_clust' + suffix + '.png')
 
     return
     
@@ -886,13 +902,14 @@ def calc_color_members():
     return
 
 
-def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
-                                     distance=wd1_distance):
+def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
+                                        distance=wd1_distance):
     d = Table.read(cat_pclust_pcolor)
 
     pmem = d['Membership'] * d['Membership_color']
     m160 = d['m_2013_F160W']
     m125 = d['m_2010_F125W']
+    m139 = d['m_2010_F139M']
     m814 = d['m_2005_F814W']
     color1 = m814 - m160
     color2 = m125 - m160
@@ -901,44 +918,278 @@ def plot_cmd_cluster_with_isochrones(logAge=wd1_logAge, AKs=wd1_AKs,
 
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
 
+    # Original Reddening Law
+    wave_0 = np.array([0.551, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
+    A_AKs_0 = np.array([16.13, 3.02, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    A_int_0 = interpolate.splrep(wave_0, A_AKs_0, k=3, s=0)
+
+    # New Reddening Law
+    wave_1 = np.array( [0.551, 0.814, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
+    A_AKs_1 = np.array([16.13, 8.92, 2.91, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    A_int_1 = interpolate.splrep(wave_1, A_AKs_1, k=3, s=0)
+
+    wave_obs = [0.814, 1.25, 1.39, 1.60]
+    A_0 = interpolate.splev(wave_obs, A_int_0)
+    A_1 = interpolate.splev(wave_obs, A_int_1)
+    print A_0
+    print A_1
+
+    dA_F814W = A_1[0] - A_0[0]
+    dA_F125W = A_1[1] - A_0[1]
+    dA_F139M = A_1[2] - A_0[2]
+    dA_F160W = A_1[3] - A_0[3]
+    
+    # Calculate a reddening vector
+    filt_F814W = synthetic.get_filter_info('acs,wfc1,f814w')
+    filt_F125W = synthetic.get_filter_info('wfc3,ir,f125w')
+    filt_F139M = synthetic.get_filter_info('wfc3,ir,f139m')
+    filt_F160W = synthetic.get_filter_info('wfc3,ir,f160w')
+
+    AKs_0 = 0
+    AKs_1 = 0.1
+    red_F814W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F814W.wave)
+    red_F125W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F125W.wave)
+    red_F139M_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F139M.wave)
+    red_F160W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F160W.wave)
+
+    red_F814W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F814W.wave)
+    red_F125W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F125W.wave)
+    red_F139M_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F139M.wave)
+    red_F160W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F160W.wave)
+    
+    m_F814W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_0)
+    m_F125W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_0)
+    m_F139M_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_0)
+    m_F160W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_0)
+
+    m_F814W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_1)
+    m_F125W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_1)
+    m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
+    m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
+
+
+    py.close(1)
+    py.figure(1, figsize=(10,10))
+    # py.clf()
+    py.subplots_adjust(left=0.08, bottom=0.08, right=0.95, top=0.93, wspace=0.25, hspace=0.25)
+    
     # F814W vs. F160W CMD
-    py.figure(1)
-    py.clf()
+    py.subplot(2, 2, 1)
     py.plot(color1[clust], m814[clust], 'k.', ms=2)
-    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=10)
+    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=5)
+    py.plot(iso['mag814w'] - iso['mag160w'] + dA_F814W - dA_F160W, 
+            iso['mag814w'] + dA_F814W, 'g.', ms=5)
     py.ylim(26, 14)
-    py.xlim(3.2, 7)
+    py.xlim(3, 7)
     py.xlabel('F814W - F160W')
     py.ylabel('F814W')
 
-    py.figure(2)
-    py.clf()
-    py.plot(color2[clust], m125[clust], 'k.', ms=2)
-    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=10)
-    py.ylim(21.5, 13)
-    py.xlim(0.6, 1.7)
-    py.xlabel('F125W - F160W')
-    py.ylabel('F125W')
+    red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
+    py.arrow(3.5, 22, red_vec_dx, red_vec_dy, head_width=0.2)
 
-    py.figure(3)
-    py.clf()
-    py.plot(color2[clust], color1[clust], 'k.', ms=2)
-    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag814w'] - iso['mag160w'],
-            'r.', ms=10)
-    py.ylim(3.2, 7)
-    py.xlim(0.6, 1.7)
-    py.xlabel('F125W - F160W')
-    py.ylabel('F814W - F160W')
-        
     # F814W vs. F125W CMD
-    py.figure(4)
-    py.clf()
+    py.subplot(2, 2, 2)
     py.plot(m814[clust] - m125[clust], m814[clust], 'k.', ms=2)
-    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r.', ms=10)
-    py.ylim(26, 18)
-    py.xlim(2.0, 5)
+    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r.', ms=5)
+    py.plot(iso['mag814w'] - iso['mag125w'] + dA_F814W - dA_F125W, 
+            iso['mag814w'] + dA_F814W, 'g.', ms=5)
+    py.ylim(26, 14)
+    py.xlim(2.5, 5.5)
     py.xlabel('F814W - F125W')
     py.ylabel('F814W')
+    
+    red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F125W_AKs_1 - m_F125W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
+    py.arrow(3, 22, red_vec_dx, red_vec_dy, head_width=0.18)
+    py.show()
+
+    # # F125W vs. F139M CMD
+    # py.subplot(2, 2, 2)
+    # py.plot(m125[clust] - m139[clust], m125[clust], 'k.', ms=2)
+    # py.plot(iso['mag125w'] - iso['mag139m'], iso['mag125w'], 'r.', ms=5)
+    # py.plot(iso['mag125w'] - iso['mag139m'] + dA_F125W - dA_F139M, 
+    #         iso['mag125w'] + dA_F125W, 'g.', ms=5)
+    # py.ylim(22, 11)
+    # py.xlim(0.0, 1.0)
+    # py.xlabel('F125W - F139M')
+    # py.ylabel('F125W')
+    
+    # red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F139M_AKs_1 - m_F139M_AKs_0)
+    # red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
+    # py.arrow(3, 22, red_vec_dx, red_vec_dy, head_width=0.18)
+    
+    # F125W vs. F160W CMD
+    py.subplot(2, 2, 3)
+    py.plot(color2[clust], m125[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=5)
+    py.plot(iso['mag125w'] - iso['mag160w'] + dA_F125W - dA_F160W, 
+            iso['mag125w'] + dA_F125W, 'g.', ms=5)
+    py.ylim(21.5, 12)
+    py.xlim(0.5, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F125W')
+    
+    red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
+    py.arrow(0.6, 18, red_vec_dx, red_vec_dy, head_width=0.1)
+
+    
+    # Color-color
+    py.subplot(2, 2, 4)
+    py.plot(color2[clust], color1[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag814w'] - iso['mag160w'],
+            'r.', ms=5)
+    py.plot(iso['mag125w'] - iso['mag160w'] + dA_F125W - dA_F160W, 
+            iso['mag814w'] - iso['mag160w'] + dA_F814W - dA_F160W,
+            'g.', ms=5)
+    py.ylim(3.0, 7)
+    py.xlim(0.5, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F814W - F160W')
+
+    red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    py.arrow(0.6, 5.5, red_vec_dx, red_vec_dy, head_width=0.05)
+    
+
+    py.suptitle('log(t)={0:4.2f}, AKs={1:4.2f}, d={2:4.0f}'.format(logAge, AKs, distance),
+                verticalalignment='top')
+
+
+    outfile = 'cmd_play_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}.png'.format(logAge, AKs, distance)
+    py.savefig(plot_dir + outfile)
+    
+    return
+
+def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
+                                     distance=wd1_distance):
+    d = Table.read(cat_pclust_pcolor)
+
+    pmem = d['Membership'] * d['Membership_color']
+    m160 = d['m_2013_F160W']
+    m125 = d['m_2010_F125W']
+    m139 = d['m_2010_F139M']
+    m814 = d['m_2005_F814W']
+    color1 = m814 - m160
+    color2 = m125 - m160
+
+    clust = np.where(pmem > 0.8)[0]
+
+    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+    iso = iso[::3]
+    
+    # Calculate a reddening vector
+    filt_F814W = synthetic.get_filter_info('acs,wfc1,f814w')
+    filt_F125W = synthetic.get_filter_info('wfc3,ir,f125w')
+    filt_F139M = synthetic.get_filter_info('wfc3,ir,f139m')
+    filt_F160W = synthetic.get_filter_info('wfc3,ir,f160w')
+
+    AKs_0 = 0
+    AKs_1 = 0.1
+    red_F814W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F814W.wave)
+    red_F125W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F125W.wave)
+    red_F139M_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F139M.wave)
+    red_F160W_0 = synthetic.redlaw.reddening(AKs_0).resample(filt_F160W.wave)
+
+    red_F814W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F814W.wave)
+    red_F125W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F125W.wave)
+    red_F139M_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F139M.wave)
+    red_F160W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F160W.wave)
+    
+    m_F814W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_0)
+    m_F125W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_0)
+    m_F139M_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_0)
+    m_F160W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_0)
+
+    m_F814W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_1)
+    m_F125W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_1)
+    m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
+    m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
+
+
+    py.close(1)
+    py.figure(1, figsize=(10,10))
+    # py.clf()
+    py.subplots_adjust(left=0.08, bottom=0.08, right=0.95, top=0.93, wspace=0.25, hspace=0.25)
+    
+    # F814W vs. F160W CMD
+    py.subplot(2, 2, 1)
+    py.plot(color1[clust], m814[clust], 'k.', ms=2)
+    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=5)
+    py.ylim(26, 14)
+    py.xlim(3, 7)
+    py.xlabel('F814W - F160W')
+    py.ylabel('F814W')
+
+    red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
+    py.arrow(3.8, 19.5, red_vec_dx, red_vec_dy, head_width=0.2)
+
+    # F814W vs. F125W CMD
+    py.subplot(2, 2, 2)
+    py.plot(m814[clust] - m125[clust], m814[clust], 'k.', ms=2)
+    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r.', ms=5)
+    py.ylim(26, 14)
+    py.xlim(2.5, 5.5)
+    py.xlabel('F814W - F125W')
+    py.ylabel('F814W')
+    
+    red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F125W_AKs_1 - m_F125W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
+    py.arrow(3.2, 19.5, red_vec_dx, red_vec_dy, head_width=0.18)
+    py.show()
+
+    # # F125W vs. F139M CMD
+    # py.subplot(2, 2, 2)
+    # py.plot(m125[clust] - m139[clust], m125[clust], 'k.', ms=2)
+    # py.plot(iso['mag125w'] - iso['mag139m'], iso['mag125w'], 'r.', ms=5)
+    # py.plot(iso['mag125w'] - iso['mag139m'] + dA_F125W - dA_F139M, 
+    #         iso['mag125w'] + dA_F125W, 'g.', ms=5)
+    # py.ylim(22, 11)
+    # py.xlim(0.0, 1.0)
+    # py.xlabel('F125W - F139M')
+    # py.ylabel('F125W')
+    
+    # red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F139M_AKs_1 - m_F139M_AKs_0)
+    # red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
+    # py.arrow(3, 22, red_vec_dx, red_vec_dy, head_width=0.18)
+    
+    # F125W vs. F160W CMD
+    py.subplot(2, 2, 3)
+    py.plot(color2[clust], m125[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=5)
+    py.ylim(21.5, 12)
+    py.xlim(0.5, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F125W')
+    
+    red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
+    py.arrow(0.72, 16.3, red_vec_dx, red_vec_dy, head_width=0.1)
+
+    
+    # Color-color
+    py.subplot(2, 2, 4)
+    py.plot(color2[clust], color1[clust], 'k.', ms=2)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag814w'] - iso['mag160w'],
+            'r.', ms=5)
+    py.ylim(3.0, 7)
+    py.xlim(0.5, 1.7)
+    py.xlabel('F125W - F160W')
+    py.ylabel('F814W - F160W')
+
+    red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
+    py.arrow(0.65, 4.0, red_vec_dx, red_vec_dy, head_width=0.05)
+    
+
+    py.suptitle('log(t)={0:4.2f}, AKs={1:4.2f}, d={2:4.0f}'.format(logAge, AKs, distance),
+                verticalalignment='top')
+
+
+    outfile = 'cmd_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}.png'.format(logAge, AKs, distance)
+    py.savefig(plot_dir + outfile)
     
     return
 
@@ -1126,14 +1377,17 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     pdb.set_trace()
     
-    mass1, isWR1, comp1 = calc_mass_isWR_comp(m814, color1,
-                                              iso_mag_f1, iso_col_f1,
-                                              iso_mass_f1, iso_WR_f1,
-                                              comp1_int, mass_max)
-    mass2, isWR2, comp2 = calc_mass_isWR_comp(m125, color2,
-                                              iso_mag_f2, iso_col_f2,
-                                              iso_mass_f2, iso_WR_f2,
-                                              comp2_int, mass_max)
+    mass1, isWR1, comp1, AKs1 = calc_mass_isWR_comp(m814, color1,
+                                                    iso_mag_f1, iso_col_f1,
+                                                    iso_mass_f1, iso_WR_f1,
+                                                    comp1_int, mass_max,
+                                                    'F814W', 'F160W', AKs)
+    mass2, isWR2, comp2, AKs2 = calc_mass_isWR_comp(m125, color2,
+                                                    iso_mag_f2, iso_col_f2,
+                                                    iso_mass_f2, iso_WR_f2,
+                                                    comp2_int, mass_max,
+                                                    'F125W', 'F160W', AKs)
+    pdb.set_trace()
 
     # Find the maximum mass where we don't have WR stars anymore
     print mass_max, mass1.max(), mass2.max()
@@ -1455,42 +1709,92 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     
     
 def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
-                         comp_int, mass_max):
+                         comp_int, mass_max, filt1, filt2, AKs):
     # F814W vs. F814W - F160W    
-    # Loop through data and assign masses and completeness to each star.
+    # Loop through data and assign masses, extinctions, and completeness to each star.
     mass = np.zeros(len(mag), dtype=float)
     isWR = np.zeros(len(mag), dtype=float)
     comp = np.zeros(len(mag), dtype=float)
-    
+
+    # Calculate a reddening vector
+    red_AKs1 = AKs
+    red_AKs2 = AKs + 0.1
+    iso1 = load_isochrone(logAge=6.7, AKs=red_AKs1)
+    iso2 = load_isochrone(logAge=6.7, AKs=red_AKs2)
+
+    mag_suff_1 = filt1.lower()[1:]
+    mag_suff_2 = filt2.lower()[1:]
+
+    iso1_m1 = iso1['mag_' + mag_suff_1]
+    iso1_m2 = iso1['mag_' + mag_suff_2]
+    iso2_m1 = iso2['mag_' + mag_suff_1]
+    iso2_m2 = iso2['mag_' + mag_suff_2]
+
+    red_vec_dx = (iso2_m2 - iso2_m1) - (iso1_m2 - iso1_m1)
+    red_vec_dy = (iso1_m2 - iso1_m1)
+    red_dAKs = np.arange(-0.1, 0.3, 0.01)
+    red_col = red_vec_dx * red_dAKs / (red_AKs2 - red_AKs1)
+    red_mag = red_vec_dy * red_dAKs / (red_AKs2 - red_AKs1)
+
+    # Loop through observed stars.
     for ii in range(len(mass)):
-        dmag = mag[ii] - iso_mag_f
-        dcol = color[ii] - iso_col_f
+        delta_min = 100  # junk
+        rr_min = -1      # junk
+        mass_min = 1000  # junk
 
+        # Get the list of closest iso match points at
+        # each reddening vector. 
+        iso_idx_per_rr = np.ones(len(red_dAKs), dtype=int) * -1
+        
+        for rr in rnage(len(red_dAKs)):
+            dmag = mag[ii] - (iso_mag_f + red_mag[rr])
+            dcol = color[ii] - (iso_col_f + red_col[rr])
+
+            delta = np.hypot(dmag, dcol)
+
+            # Find the closest iso point (at this reddening). 
+            sdx = delta.argsort()
+
+            # If the color + mag difference is less than 0.02, then take
+            # the lowest mass. This helps account for the missing IMF bias.
+            idx = np.where(delta[sdx] < 0.02)[0]
+
+            if (len(idx) > 1):
+                # More than one in a tight radius... choose the lower mass.
+                min_mass_idx = iso_mass_f[sdx[idx]].argmin()
+                min_idx = sdx[idx][min_mass_idx]
+
+                iso_idx_per_rr[rr] = min_idx
+            else:
+                # One or zero within the radius... just take the closest.
+                iso_idx_per_rr[rr] = sdx[0]
+                
+        # From the candidates, choose the closest first, then the lowest
+        # mass one (within 0.02).
+        dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + red_mag)
+        dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + red_col)
         delta = np.hypot(dmag, dcol)
-
-
-        # Some funny business - sort and get the closest masses reasonable.
+        
         sdx = delta.argsort()
-
-        # If the color + mag difference is less than 0.15, then take
-        # the lowest mass. This helps account for the missing IMF bias.
-        idx = np.where(delta[sdx] < 0.01)[0]
-
-        if len(idx) == 0:
-            min_idx = delta.argmin()
-            print 'Potential problem', mag[ii], color[ii], dmag[sdx[0]], dcol[sdx[0]]
+        idx = np.where(delta[sdx] < 0.02)[0]
+        
+        if len(idx) > 1:
+            # More than one in a tight radius... choose the lower mass.
+            min_mass_idx = iso_mass_f[iso_idx_per_rr[sdx[idx]]].argmin()
+            min_rdx = sdx[idx][min_mass_idx]
         else:
-            min_mass_idx = iso_mass_f[sdx[idx]].argmin()
-            min_idx = sdx[idx][min_mass_idx]
-            
-        print '{0:4d} {1:4d} {2:4d} {3:5.1f} {4:5.1f}'.format(ii,
-                                                              min_idx,
-                                                              delta.argmin(),
+            min_rdx = sdx[0]
+        min_idx = iso_idx_per_rr[min_rdx]
+
+        print '{0:4d} {1:4d} {2:4d} {3:4d} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
+                                                              delta[min_rdx],
                                                               iso_mass_f[min_idx],
-                                                              iso_mass_f[delta.argmin()])
+                                                              red_dAKs[min_rdx])
+        
 
         mass[ii] = iso_mass_f[min_idx]
         isWR[ii] = iso_WR_f[min_idx]
+        dAKs[ii] = red_dAKs[min_rdx]
         
         comp[ii] = comp_int(mag[ii], color[ii])
 
@@ -1502,7 +1806,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
     print mag.min(), mag.max(), color.min(), color.max()
     print comp.shape, mag.shape, color.shape
 
-    return mass, isWR, comp
+    return mass, isWR, comp, dAKs
     
     
 def get_mag_for_mass(log_mass, iso_mass, iso_mag):
@@ -1524,9 +1828,15 @@ def get_mag_for_mass(log_mass, iso_mass, iso_mag):
 def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     tmp_dist = 4000
 
+    filters={'814w': 'acs,wfc1,f814w',
+             '139m': 'wfc3,ir,f127m',
+             '125w': 'wfc3,ir,f125w',
+             '160w': 'wfc3,ir,f160w'}
+
     print 'Using Red Law = ', synthetic.redlaw.name
     iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
-                                   iso_dir=iso_dir)
+                                   iso_dir=iso_dir, massSampling=2,
+                                   filters=filters)
 
     col_names = iso.colnames
 
