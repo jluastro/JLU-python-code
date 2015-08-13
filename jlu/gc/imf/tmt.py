@@ -37,14 +37,14 @@ def klf_simulation():
 
     py.plot([15, 15], [rng[2], rng[3]], 'k--', linewidth=2)
     py.text(15.1, 4e4, r'13 M$_\odot$', horizontalalignment='left')
-    ar1 = FancyArrow(15, 10**3, -1, 0, width=1e2, color='black', head_length=0.3)
+    ar1 = FancyArrow(15, 10**3, -1, 0, width=10, color='black', head_length=0.3)
     py.gca().add_patch(ar1)
     py.text(14.8, 7e2, 'Keck\nSpectra', horizontalalignment='right', verticalalignment='top')
 
 
     py.plot([20, 20], [rng[2], rng[3]], 'k-', linewidth=2)
     py.text(20.1, 4e4, r'0.5 M$_\odot$', horizontalalignment='left')
-    ar1 = FancyArrow(20, 3e4, -1, 0, width=3e3, color='black', head_length=0.3)
+    ar1 = FancyArrow(20, 3e4, -1, 0, width=300, color='black', head_length=0.3)
     py.gca().add_patch(ar1)
     py.text(19.8, 2.2e4, 'TMT\nSpectra', horizontalalignment='right', verticalalignment='top')
 

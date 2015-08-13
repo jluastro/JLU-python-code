@@ -15,13 +15,13 @@ from jlu.stellarModels import extinction
 import math
 
 # On LHCC
-# reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
-# work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
-# iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
+reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
+work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
+iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
 
 # On Laptop
-synthetic.redlaw = reddening.RedLawWesterlund1()
-iso_dir = '/Users/jlu/work/wd1/iso_2015_wd1/'
+# synthetic.redlaw = reddening.RedLawWesterlund1()
+# iso_dir = '/Users/jlu/work/wd1/iso_2015_wd1/'
 
 # synthetic.redlaw = reddening.RedLawRiekeLebofsky()
 # iso_dir = '/Users/jlu/work/wd1/iso_2015_rieke/'
@@ -34,8 +34,8 @@ iso_dir = '/Users/jlu/work/wd1/iso_2015_wd1/'
 
 # iso_dir = '/Users/jlu/work/wd1/iso_2015/'
 
-reduce_dir = '/Users/jlu/work/wd1/'
-work_dir = '/Users/jlu/work/wd1/'
+# reduce_dir = '/Users/jlu/work/wd1/'
+# work_dir = '/Users/jlu/work/wd1/'
 evolution.models_dir = '/Users/jlu/work/models/evolution/'
 
 cat_dir = reduce_dir + '50.ALIGN_KS2/'

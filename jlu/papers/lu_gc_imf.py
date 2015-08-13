@@ -28,7 +28,7 @@ from jlu.starfinder import starPlant
 from jlu.stellarModels import extinction
 from jlu.stellarModels import atmospheres
 from jlu.stellarModels import evolution
-from matplotlib import nxutils
+from matplotlib import path
 from scipy.optimize import leastsq
 from jlu.util import constants
 from pysynphot import spectrum
@@ -39,6 +39,7 @@ import pymultinest
 import subprocess
 from matplotlib.patches import FancyArrow
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from astropy.table import Table
 
 workDir = '/u/jlu/work/gc/imf/klf/2012_05_01/'
 theAKs = 2.7
@@ -328,7 +329,9 @@ def gcimf_completeness():
         # Now trim down to just those pixels that are within this
         # OSIRIS field of view
         xypoints = np.column_stack((cData.x_in, cData.y_in))
-        inside = nxutils.points_inside_poly(xypoints, fields.xyverts[rr])
+        fov_path = path.Path(xypoints, closed=True)
+        inside = fov_path.contains_points(xypoints)
+        # inside = nxutils.points_inside_poly(xypoints, fields.xyverts[rr])
         inside = np.where(inside == True)[0]
 
         # Measure the completeness for this OSIRIS field. Also print it 
@@ -8743,7 +8746,10 @@ def plot_klf_with_tmt():
     py.savefig('{0}_color.eps'.format(outRoot))
     convert = 'convert {0}.png -colorspace Gray {0}.eps'.format(outRoot)
     os.system(convert)
+
+    # Save to output to a file.
     
+    return    
     
 def plot_imf_vs_salpeter():
     """
