@@ -54,7 +54,7 @@ art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
 
 # Best fit (by eye) cluster parameters
 wd1_logAge = 6.7
-wd1_AKs = 0.67
+wd1_AKs = 0.69
 wd1_distance = 4000
 
 def plot_err_vs_mag(epoch):
@@ -1107,6 +1107,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
     m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
 
+    # Get a couple of key masses for overplotting
+    iso_mass = np.array([0.5, 1.0, 2.0, 5.0, 10.0])
+    iso_idx = np.zeros(len(iso_mass), dtype=int)
+    for ii in range(len(iso_mass)):
+        dmass = np.abs(iso_mass[ii] - iso['mass'])
+        iso_idx[ii] = dmass.argmin()
 
     py.close(1)
     py.figure(1, figsize=(10,10))
@@ -1126,6 +1132,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
     py.arrow(3.8, 21, red_vec_dx, red_vec_dy, head_width=0.2)
 
+    x_mass = iso['mag814w'][iso_idx] - iso['mag160w'][iso_idx]
+    y_mass = iso['mag814w'][iso_idx]
+    py.plot(x_mass, y_mass, 'rs', ms=10)
+    for ii in range(len(iso_mass)):
+        py.text(x_mass[ii] + 0.8, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]), color='black')
+
     # F814W vs. F125W CMD
     py.subplot(2, 2, 2)
     py.plot(m814[clust] - m125[clust], m814[clust], 'k.', ms=2)
@@ -1138,7 +1150,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F125W_AKs_1 - m_F125W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
     py.arrow(3.0, 21, red_vec_dx, red_vec_dy, head_width=0.18)
-    py.show()
+
+    x_mass = iso['mag814w'][iso_idx] - iso['mag125w'][iso_idx]
+    y_mass = iso['mag814w'][iso_idx]
+    py.plot(x_mass, y_mass, 'rs', ms=10)
+    for ii in range(len(iso_mass)):
+        py.text(x_mass[ii] + 0.6, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
 
     # # F125W vs. F139M CMD
     # py.subplot(2, 2, 2)
@@ -1168,6 +1185,11 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
     py.arrow(0.72, 18, red_vec_dx, red_vec_dy, head_width=0.1)
 
+    x_mass = iso['mag125w'][iso_idx] - iso['mag160w'][iso_idx]
+    y_mass = iso['mag125w'][iso_idx]
+    py.plot(x_mass, y_mass, 'rs', ms=10)
+    for ii in range(len(iso_mass)):
+        py.text(x_mass[ii] + 0.2, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
     
     # Color-color
     py.subplot(2, 2, 4)
@@ -1183,6 +1205,11 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     py.arrow(0.65, 4.0, red_vec_dx, red_vec_dy, head_width=0.05)
     
+    x_mass = iso['mag125w'][iso_idx] - iso['mag160w'][iso_idx]
+    y_mass = iso['mag814w'][iso_idx] - iso['mag160w'][iso_idx]
+    py.plot(x_mass, y_mass, 'rs', ms=10)
+    for ii in range(len(iso_mass)):
+        py.text(x_mass[ii], y_mass[ii]-0.5, r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
 
     py.suptitle('log(t)={0:4.2f}, AKs={1:4.2f}, d={2:4.0f}'.format(logAge, AKs, distance),
                 verticalalignment='top')
@@ -1190,6 +1217,8 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
 
     outfile = 'cmd_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}.png'.format(logAge, AKs, distance)
     py.savefig(plot_dir + outfile)
+
+    py.close('all')
     
     return
 
@@ -1461,14 +1490,16 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'magLabel': 'F125W',
                        'colLabel': 'F125W - F160W'})
 
-    imf1.write(work_dir + 'imf_table_from_optical.fits', overwrite=True)
-    imf2.write(work_dir + 'imf_table_from_infrared.fits', overwrite=True)
+    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}'.format(logAge, AKs, distance)
+    imf1.write(work_dir + 'imf_table_from_optical' + suffix + '.fits', overwrite=True)
+    imf2.write(work_dir + 'imf_table_from_infrared' + suffix + '.fits', overwrite=True)
 
     return
 
-def plot_mass_function():
-    imf1 = Table.read(work_dir + 'imf_table_from_optical.fits')
-    imf2 = Table.read(work_dir + 'imf_table_from_infrared.fits')
+def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
+    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}'.format(logAge, AKs, distance)
+    imf1 = Table.read(work_dir + 'imf_table_from_optical' + suffix + '.fits')
+    imf2 = Table.read(work_dir + 'imf_table_from_infrared' + suffix + '.fits')
 
     # Read in isochrone
     print 'Loading Isochrone'
@@ -1501,12 +1532,15 @@ def plot_mass_function():
     bins_m814 = get_mag_for_mass(bins_log_mass, iso_mass_f1, iso_mag_f1)
     bins_m125 = get_mag_for_mass(bins_log_mass, iso_mass_f2, iso_mag_f2)
 
-    plot_fit_mass_function(imf1, bins_log_mass, iso_mass, iso_mag1, iso_col1, mass_max)
-    # plot_fit_mass_function(imf2, bins_log_mass, iso_mass, iso_mag2, iso_col2, mass_max)
+    plot_fit_mass_function(imf1, bins_log_mass, iso_mass, iso_mag1, iso_col1, mass_max, 
+                           suffix)
+    plot_fit_mass_function(imf2, bins_log_mass, iso_mass, iso_mag2, iso_col2, mass_max, 
+                           suffix)
 
     return
 
-def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mass_max):
+def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mass_max,
+                           suffix):
     mass_noWR = imf['mass']
     pmem_noWR = imf['pmem']
     comp_noWR = imf['comp']
@@ -1538,11 +1572,12 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     n_fin, be, p = py.hist(np.log10(mass_noWR), bins=bins_log_mass,
                             log=True, histtype='step', color='black',
                             weights=weights,
-                            label='Completeness Corr.')
+                            label='Complete')
 
     mean_weight = n_fin / n_mem
+    print 'mean_weight = ', mean_weight
     
-    n_err = (n_fin**0.5) * mean_weight
+    n_err = (n_raw**0.5) * mean_weight
     n_err[0] = 1000.0  # dumb fix for empty bin
     bc = bins_log_mass[0:-1] + (np.diff(bins_log_mass) / 2.0)
 
@@ -1589,7 +1624,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
 
     py.axvline(np.log10(mass_max), linestyle='--')
     py.ylim(5, 9e2)
-    py.xlim(-0.5, 1.8)
+    py.xlim(-0.5, 1.3)
     py.xlabel('log( Mass [Msun])')
     py.ylabel('Number of Stars')
     py.legend()
@@ -1618,7 +1653,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     ax2.set_xticklabels(top_tick_label)
 
     ax2.set_xlabel(filter_name + ' (mags)', labelpad=10)
-    py.savefig(plot_dir + 'wd1_imf_' + filter_name + '.png')
+    py.savefig(plot_dir + 'wd1_imf_' + filter_name + suffix + '.png')
 
     py.figure(2)
     py.clf()
@@ -1626,20 +1661,36 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     py.xlim(0, 1.9)
     py.xlabel('Log( Mass [Msun] )')
     py.ylabel(filter_name + ' (mag)')
-    py.savefig(plot_dir + 'wd1_mass_luminosity_' + filter_name +  '.png')
+    py.savefig(plot_dir + 'wd1_mass_luminosity_' + filter_name + suffix + '.png')
     
     py.figure(3)
     py.clf()
-    py.scatter(imf['color'], imf['mag'], c=np.log10(imf['mass']), s=20)
-    py.plot(iso_color, iso_mag, 'r-')
-    py.ylim(13, 26)
-    # py.xlim(1, 3.5)
+    py.scatter(imf['color'], imf['mag'], c=np.log10(imf['mass']), s=10, vmin=-0.8, vmax=1.3)
+    py.plot(iso_color, iso_mag, 'r-', linewidth=2)
+    if filter_name == 'F814W':
+        py.ylim(13, 26)
+    else:
+        py.ylim(12, 22)
     py.gca().invert_yaxis()
     py.xlabel(color_label + ' (mag)')
     py.ylabel(filter_name + ' (mag)')
-    py.colorbar(orientation='horizontal', fraction=0.05)
-    py.savefig(plot_dir + 'arches_cmd_iso_test_' + filter_name + '.png')
+    py.colorbar(orientation='horizontal', fraction=0.05, label=r'log(mass [M$_\odot$])')
+    py.savefig(plot_dir + 'wd1_cmd_iso_mass_' + filter_name + suffix + '.png')
 
+    py.figure(4)
+    py.clf()
+    py.scatter(imf['color'], imf['mag'], c=imf.meta['AKS']+imf['dAKs'], s=10)
+    py.plot(iso_color, iso_mag, 'r-', linewidth=2)
+    if filter_name == 'F814W':
+        py.ylim(13, 26)
+    else:
+        py.ylim(12, 22)
+    py.gca().invert_yaxis()
+    py.xlabel(color_label + ' (mag)')
+    py.ylabel(filter_name + ' (mag)')
+    py.colorbar(orientation='horizontal', fraction=0.05, label='AKs (mag)')
+    py.savefig(plot_dir + 'wd1_cmd_iso_AKs_' + filter_name + suffix + '.png')
+    
 
     return
 
@@ -1861,7 +1912,7 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     print 'Using Red Law = ', synthetic.redlaw.name
     iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
-                                   iso_dir=iso_dir, massSampling=2,
+                                   iso_dir=iso_dir, massSampling=1,
                                    filters=filters)
 
     col_names = iso.colnames
@@ -1921,4 +1972,13 @@ def check_atmospheres():
         fmt = 'logg = {0:4.2f}   Teff = [{1:5.0f} - {2:5.0f}]'
         print fmt.format(p_logg_uni[ii], min_teff, max_teff)
         
-    
+def do_a_bunch():
+    AKs = np.arange(0.67, 0.75, 0.01)
+    # AKs = np.array([0.67, 0.73])
+
+    for ii in range(len(AKs)):
+        plot_cmd_isochrone(AKs=AKs[ii])
+        calc_mass_function(AKs=AKs[ii])
+        plot_mass_function(AKs=AKs[ii])    
+
+    return
