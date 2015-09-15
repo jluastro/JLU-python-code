@@ -4,13 +4,17 @@ from astropy.table import Table
 from astropy.io import fits
 import glob
 import math
-from hst_flystar import astrometry
+from hst_flystar import astrometry, photometry
 from scipy import stats
 from jlu.wd1.analysis import analysis_2015_01_05 as ana
+import pdb
 
 data_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
+work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
 cat_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/50.ALIGN_KS2/'
-catalog = 'wd1_catalog_RMSE_wvelErr.fits'
+
+catalog = cat_dir + 'wd1_catalog_RMSE_wvelErr.fits'
+cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
 out_dir = '/Users/jlu/doc/papers/wd1_imf/'
 
@@ -21,6 +25,10 @@ def make_plots():
     plot_astrometric_error()
     plot_velocity_error()
     plot_vel_chi2()
+    plot_cmd_vpd_all()
+    plot_completeness_vs_mag()
+
+    return
 
 def plot_astrometric_error():
     """
@@ -28,7 +36,7 @@ def plot_astrometric_error():
     """
     cat = Table.read(catalog)
 
-    mag_bins_F814W = np.append(np.arange(12, 16, 0.5), np.arange(16, 19, 0.25))
+    mag_bins_F814W = np.append(np.arange(18, 20, 0.5), np.arange(20, 26, 0.25))
     mag_bins_nearIR = np.append(np.arange(14, 16, 1.0), np.arange(16, 24, 0.25))
 
     epochs = ['2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W', '2005_F814W']
@@ -130,7 +138,6 @@ def plot_astrometric_error():
         # Aggregate pos err plot
         f1_sub[-1].semilogy(m_run_mean, xye_run_mean, label=label)
 
-        
         # Plot photometric errors.
         f2_sub[ee].semilogy(m_all, me_all, 'k.', ms=2, alpha=0.5)
         f2_sub[ee].semilogy(m_run_mean, me_run_mean, 'r--', linewidth=3)
@@ -140,13 +147,12 @@ def plot_astrometric_error():
         # Aggregate phot err plot
         f2_sub[-1].semilogy(m_run_mean, me_run_mean, label=label)
 
-        
         if epochs[ee] == '2005_F814W':
-            f1_sub[ee].set_xlim(11.5, 18.5)
-            f2_sub[ee].set_xlim(11.5, 18.5)
+            f1_sub[ee].set_xlim(17.5, 26)
+            f2_sub[ee].set_xlim(17.5, 26)
         else:
-            f1_sub[ee].set_xlim(13.5, 22.5)
-            f2_sub[ee].set_xlim(13.5, 22.5)
+            f1_sub[ee].set_xlim(13, 22.5)
+            f2_sub[ee].set_xlim(13, 22.5)
 
     # Add axis titles. Remove tick labels.
     f1_sub[0].legend(numpoints=1, loc='upper left', fontsize=12, markerscale=3)
@@ -165,13 +171,13 @@ def plot_astrometric_error():
     f2_sub[5].set_yticklabels([])
     
     # Fix up aggregate plot
-    f1_sub[-1].set_ylim(1e-1, 10)
-    f1_sub[-1].set_xlim(11.5, 22.5)
+    # f1_sub[-1].set_ylim(1e-1, 10)
+    # f1_sub[-1].set_xlim(14, 26)
     f1_sub[-1].set_xlabel('All Filters (mag)')
     f1_sub[-1].legend(loc='lower right', fontsize=11)
     
     f2_sub[-1].set_ylim(1e-3, 0.3)
-    f2_sub[-1].set_xlim(11.5, 22.5)
+    f2_sub[-1].set_xlim(14, 26)
     f2_sub[-1].set_xlabel('All Filters (mag)')
     f2_sub[-1].legend(loc='lower right', fontsize=11)
 
@@ -252,9 +258,132 @@ def get_position_angle():
         fmt = 'Epoch: {0:10s} mean PA = {1:6.2f} +/- {2:6.2f}'
         print fmt.format(ep, pa_array.mean(), pa_array.std())
     
+def print_number_stars():
+    t = Table.read(catalog)
+
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W',
+              '2013_F160Ws']
+
+    for ee in range(len(epochs)):
+        idx = np.where(t['n_' + epochs[ee]] > 0)[0]
+
+        # Faintest star detected.
+        minMag = t['m_' + epochs[ee]].max()
+
+        # Saturation level.
+        satPoint = -11
+        if 'F814W' in epochs[ee]:
+            satPoint = -13.5 + 7.261
+        satPoint += photometry.ZP[epochs[ee].split('_')[-1]]
+            
+        fmt = '{0:s}  {1:d}  faintest = {2:5.2f}, saturated = {3:5.2f}'
+        print fmt.format(epochs[ee], len(idx), minMag, satPoint)
+
+    return
+    
+def print_mean_residuals():
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W',
+              '2013_F160Ws']
+
+    for ee in range(len(epochs)):
+        trans_files = data_dir + '03.MAT_POS/' + epochs[ee]
+
+        if ('F814W' in epochs[ee]) or ('F160Ws' in epochs[ee]):
+            trans_files += '/01.XYM/TRANS.xym2mat.*refClust'
+        else:
+            trans_files += '_*/01.XYM/TRANS.xym2mat.*.refClust'
+
+        t_files = glob.glob(trans_files)
+
+        t_err_all = np.zeros(len(t_files), dtype=float)
+    
+        for tt in range(len(t_files)):
+            trans = Table.read(t_files[tt], format='ascii')
+
+            t_err_all[tt] = trans['col13'].mean()
+
+        fmt = '{0:12s}  {1:6.3f} pix   {2:5.2f} mas'
+        print fmt.format(epochs[ee], t_err_all.mean(),
+                         t_err_all.mean() * astrometry.scale['WFC'] * 1e3)
+        
+    return
+    
+        
 def plot_vel_chi2():
     ana.check_velocity_fits(magCut=mag_cut, outDir=out_dir)
     
     return
 
+    
+def plot_cmd_vpd_all():
+    """
+    Plot a three-panel CMD, CMD, VPD.
+    """
+    # Note that in this catalog, proper motions are already in
+    # R.A. and Dec (mas/yr) units. But the positions need to
+    # be rotated.
+    d = Table.read(cat_pclust_pcolor)
+
+    m160 = d['m_2013_F160W']
+    m125 = d['m_2010_F125W']
+    m139 = d['m_2010_F139M']
+    m814 = d['m_2005_F814W']
+    color1 = m814 - m160
+    color2 = m125 - m160
+    
+    py.close(1)
+    py.figure(1, figsize=(18,6))
+    py.subplots_adjust(left=0.05, bottom=0.14, right=0.97, top=0.93,
+                       wspace=0.25, hspace=0.3)
+    
+    # F814W vs. F160W CMD
+    py.subplot(1, 3, 1)
+    py.plot(d['m_2005_F814W'] - d['m_2013_F160W'], d['m_2005_F814W'], 'k.', ms=3)
+    py.ylim(26, 14)
+    py.xlim(0, 10)
+    py.xlabel(r'm$_\mathrm{F814W}$ - m$_\mathrm{F160W}$')
+    py.ylabel(r'm$_\mathrm{F814W}$')
+    
+    
+    # F125W vs. F160W CMD
+    py.subplot(1, 3, 2)
+    py.plot(d['m_2010_F125W'] - d['m_2013_F160W'], d['m_2010_F125W'], 'k.', ms=3)
+    py.ylim(22.5, 12)
+    py.xlim(0, 2.5)
+    py.xlabel(r'm$_\mathrm{F125W}$ - m$_\mathrm{F160W}$')
+    py.ylabel(r'm$_\mathrm{F125W}$')
+
+    # VPD
+    vx = d['fit_vx']
+    vy = d['fit_vy']
+    py.subplot(1, 3, 3)
+    py.plot(d['fit_vx'], d['fit_vy'], 'k.', ms=3)
+    py.axis([6, -6, -6, 6])
+    py.xlabel(r'$\mu_\alpha \cos \delta$ (mas yr$^{-1}$)')
+    py.ylabel(r'$\mu_\delta$ mas yr$^{-1}$)')
+    
+    py.savefig(out_dir + 'wd1_cmd_vpd_all.png')
+
+def plot_completeness_vs_mag():
+    # Make a completeness curve for each filter independently.
+    epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
+    
+    comp = Table.read(work_dir + 'completeness_vs_mag.fits')
+    
+    # Plot
+    py.clf()
+    for ee in range(len(epochs)):
+        ep = epochs[ee]
+        py.errorbar(comp['mag'], comp['c_' + ep], yerr=comp['cerr_' + ep],
+                    label=ep, drawstyle='steps-mid', linewidth=2)
+        # py.plot(mag_bins_mid, comp[ep], 
+        #             label=ep, drawstyle='steps-mid')
+        
+    py.ylim(0, 1)
+    py.legend(loc='lower left')
+    py.xlabel('Magnitude (mag)')
+    py.ylabel('Completeness')
+    py.savefig(out_dir + 'completeness_vs_mag.png')
+
+    return
     

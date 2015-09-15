@@ -18,8 +18,6 @@ from scipy import optimize
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
-
-
 angle = 46.43
 
 

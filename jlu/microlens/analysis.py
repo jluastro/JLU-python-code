@@ -1,6 +1,6 @@
-from gcreduce import gcanalysis
+from nirc2.reduce import analysis
 
-class OB110061(gcanalysis.Analysis):
+class OB110061(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/', 
                  epochDirSuffix=None, cleanList='c.lis'):
         """
@@ -15,14 +15,13 @@ class OB110061(gcanalysis.Analysis):
         filt_field = 'ob110061_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
 
         # Use the field to set the psf starlist
-        self.starlist = '/u/jlu/code/idl/'
-        self.starlist += 'microlens/psfstars/ob110061_psf.list'
+        self.starlist = rootDir + 'source_list/ob110061_psf.list'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -49,7 +48,7 @@ class OB110061(gcanalysis.Analysis):
         self.alignFlags += ' -m 18 '
         
 
-class OB110022(gcanalysis.Analysis):
+class OB110022(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/', 
                  epochDirSuffix=None, cleanList='c.lis'):
         """
@@ -64,14 +63,13 @@ class OB110022(gcanalysis.Analysis):
         filt_field = 'ob110022_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
 
         # Use the field to set the psf starlist
-        self.starlist = '/u/jlu/code/idl/'
-        self.starlist += 'microlens/psfstars/ob110022_psf.list'
+        self.starlist = rootDir + 'source_list/ob110022_psf.list'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -98,7 +96,7 @@ class OB110022(gcanalysis.Analysis):
         self.alignFlags += ' -m 18 '
                 
 
-class OB110125(gcanalysis.Analysis):
+class OB110125(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/', 
                  epochDirSuffix=None, cleanList='c.lis'):
         # self.epoch='13jul'
@@ -115,14 +113,13 @@ class OB110125(gcanalysis.Analysis):
         filt_field = 'ob110125_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
         
         # Use the field to set the psf starlist
-        self.starlist = '/u/jlu/code/idl/'
-        self.starlist += 'microlens/psfstars/ob110125_psf.list'
+        self.starlist = rootDir + 'source_list/ob110125_psf.list'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -148,7 +145,7 @@ class OB110125(gcanalysis.Analysis):
         # Otherwise, align is using too many faint stars.
         self.alignFlags += ' -m 18 '
         
-class OB120169(gcanalysis.Analysis):
+class OB120169(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/', 
                  epochDirSuffix=None, cleanList='c.lis'):
         # self.epoch='13jul'
@@ -165,14 +162,13 @@ class OB120169(gcanalysis.Analysis):
         filt_field = 'ob120169_' + filt
 
         # Initialize the Analysis object
-        gcanalysis.Analysis.__init__(self, epoch, filt=filt_field,
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
                                      rootDir=rootDir, 
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
         
         # Use the field to set the psf starlist
-        self.starlist = '/u/jlu/code/idl/'
-        self.starlist += 'microlens/psfstars/ob120169_psf.list'
+        self.starlist = rootDir + 'source_list/ob120169_psf.list'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -196,6 +192,6 @@ class OB120169(gcanalysis.Analysis):
 
         # Fix align flags for all the W51 fields.
         # Otherwise, align is using too many faint stars.
-        self.alignFlags += ' -m 20 '
+        self.alignFlags += ' -m 18 '
         
                 

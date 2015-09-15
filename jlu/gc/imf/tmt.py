@@ -2,6 +2,9 @@ import pylab as py
 import numpy as np
 import atpy
 from matplotlib.patches import FancyArrow
+import math
+import bayesian as b
+from astropy.table import Table
 
 def klf_simulation():
     """
@@ -57,4 +60,35 @@ def klf_simulation():
     py.savefig('/u/jlu/work/tmt/gc_klf_spectral_sensitivity.png')
     
     
+    
+def make_tmt_klf():
+    # Use our best fit IMF for 0.5 - 150 Msun
+    # Use Weidner_Kroupa_2004 IMF between 0.1 - 0.5 Msun
+    #     Stop at 0.1 Msun as we don't have evolution models below that mass.
+    fitAlpha = 1.7
+    fitAge = 3.9e6
+    fitMcl = 9.2e3
+    fitDist = 7900
+    fitLogAge = math.log10(fitAge)
+    theAKs = 2.7
+    distance = 8000.0
+    
+    massLimits = np.array([0.1, 0.5, 150])
+    powers = np.array([-1.3, -fitAlpha])
+
+    Mcl = 1e6
+
+    cluster = b.model_young_cluster_new(fitLogAge, massLimits=massLimits,
+                                        imfSlopes=powers,
+                                        clusterMass=Mcl, makeMultiples=True,
+                                        AKs=theAKs, distance=distance)
+
+    t = Table([cluster.mass, cluster.mag, cluster.Teff, cluster.isWR],
+              names=['mass', 'Kp', 'Teff', 'isWR'],
+              meta={'MCL': Mcl, 'LOGAGE': fitAge, 'DISTANCE': distance,
+                    'AKS': theAKs, 'IMFSLOPE': fitAlpha, 'MULTI': True})
+
+    t.write('/u/jlu/work/tmt/gc_sim_cluster.fits')
+
+    return
     

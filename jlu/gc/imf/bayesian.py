@@ -17,7 +17,7 @@ import os, glob
 import tempfile
 import scipy
 import matplotlib
-import pymc
+# import pymc
 import pdb
 from jlu.imf import imf
 
@@ -36,6 +36,8 @@ def pymc_run():
     This should really be run from the command line. Use this as a cut and
     paste template.
     """
+    import pymc
+    
     mc_vars = pymc_model()
 
     dbname = 'mcmc_chain1'
@@ -47,6 +49,8 @@ def pymc_run():
     return mc_vars, mc
 
 def pymc_model(yng=None, rmin=0, rmax=30):
+    import pymc
+    
     # Set up variables (with priors)
     AKs = 2.7   # mag
     m_min = 1.0 # Msun
@@ -203,6 +207,8 @@ def pymc_model(yng=None, rmin=0, rmax=30):
 
 
 def pymc_model2(yng=None, rmin=0, rmax=30):
+    import pymc
+    
     # Set up variables (with priors)
     AKs = 2.7   # mag
     m_min = 1.0 # Msun
@@ -399,6 +405,8 @@ def pymc_model2(yng=None, rmin=0, rmax=30):
     return vars()
         
 def pymc_model3(yng=None, rmin=0, rmax=30):
+    import pymc
+    
     # Set up variables (with priors)
     AKs = 2.7   # mag
     m_min = 1.0 # Msun
@@ -519,6 +527,8 @@ def pymc_model3(yng=None, rmin=0, rmax=30):
     return vars()
 
 def pymc_model4(yng=None, rmin=0, rmax=30):
+    import pymc
+    
     # Set up variables (with priors)
     AKs = 2.7   # mag
     m_min = 1.0 # Msun

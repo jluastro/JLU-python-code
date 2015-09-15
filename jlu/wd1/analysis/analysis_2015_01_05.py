@@ -6,7 +6,7 @@ from hst_flystar import astrometry
 from hst_flystar import completeness as comp
 import os
 import pdb
-# from jlu.wd1.analysis import membership
+from jlu.wd1.analysis import membership
 from scipy.stats import chi2
 from scipy import interpolate, optimize
 import matplotlib
@@ -18,6 +18,8 @@ import math
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
 work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
 iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
+
+synthetic.redlaw = reddening.RedLawWesterlund1()
 
 # On Laptop
 # synthetic.redlaw = reddening.RedLawWesterlund1()
@@ -36,7 +38,7 @@ iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
 
 # reduce_dir = '/Users/jlu/work/wd1/'
 # work_dir = '/Users/jlu/work/wd1/'
-evolution.models_dir = '/Users/jlu/work/models/evolution/'
+# evolution.models_dir = '/Users/jlu/work/models/evolution/'
 
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
 art_dir = reduce_dir + '51.ALIGN_ART/'
@@ -319,6 +321,7 @@ def plot_artstar_in_vs_out():
         if ee > 0:
             mag_lim = [-13, -5]
 
+        py.close(2)
         py.figure(2)
         py.clf()
         py.plot(dx, dy, 'k.', ms=2, alpha=0.2)
@@ -328,6 +331,7 @@ def plot_artstar_in_vs_out():
         py.title(suffix)
         py.savefig(plot_dir + 'art_in_out_dxy_vpd_' + suffix + '.png')
 
+        py.close(1)
         py.figure(1)
         py.clf()
         py.plot(t_det['min_' + suffix], dx, 'r.', ms=2, alpha=0.05, label='X')
@@ -419,6 +423,8 @@ def plot_velerr_vs_mag():
     vxe = t['fit_vxe'] * astrometry.scale['WFC'] * 1e3
     vye = t['fit_vye'] * astrometry.scale['WFC'] * 1e3
 
+    py.close('all')
+    py.figure()
     py.clf()
     py.plot(m, vxe, 'r.', ms=3, label='X', alpha=0.5)
     py.plot(m, vye, 'b.', ms=3, label='Y', alpha=0.5)
@@ -495,6 +501,7 @@ def check_velocity_fits(magCut=18, outDir=plot_dir):
 
         
     bins = np.arange(-3, 3, 0.1)
+    py.close(1)
     py.figure(1)
     py.clf()
     py.subplots_adjust(top=0.95, hspace=0.35)
@@ -521,7 +528,8 @@ def check_velocity_fits(magCut=18, outDir=plot_dir):
     dof = 1
     chi2_fit = chi2.pdf(bin_cent, dof)
     chi2_fit *= len(x_chi2) / chi2_fit.sum()
-    
+
+    py.close(2)    
     py.figure(2)
     py.clf()
     py.subplots_adjust(top=0.95, hspace=0.35)
@@ -560,7 +568,8 @@ def run_membership(N_gauss=3):
 
 def make_cluster_catalog():
     mag_err_cut = 1.0 # (basically no cut)
-    vel_err_cut = 0.5 # mas/yr
+    # vel_err_cut = 0.5 # mas/yr
+    vel_err_cut = 10 # mas/yr (basically no cut)
     prob = 0.3
     N_gauss = 3
     out_dir = '{0}membership/gauss_{1:d}/'.format(work_dir, N_gauss)
@@ -596,6 +605,9 @@ def make_cmd(catalog=cat_pclust_pcolor, cl_prob=0.3, usePcolor=False, suffix='')
     mag1 = d['m_2013_F160W']
     mag2 = d['m_2005_F814W']
     color = mag2 - mag1
+
+    py.close('all')
+    py.figure()
     py.clf()
     py.plot(color, mag2, 'k.', ms=2)
     py.ylabel('F814W (mag)')
@@ -775,7 +787,9 @@ def plot_color_color(catalog=cat_pclust_pcolor, cl_prob=0.6, usePcolor=True, suf
 
     color1 = d['m_2005_F814W'] - d['m_2010_F125W']
     color2 = d['m_2010_F125W'] - d['m_2013_F160W']
-    
+
+    py.close('all')
+    py.figure()    
     py.clf()
     py.plot(color2, color1, 'k.', ms=2)
     py.plot(color2[clust], color1[clust], 'r.', ms=2)
@@ -834,6 +848,7 @@ def calc_color_members():
     optical_patch = matplotlib.patches.PathPatch(optical_path, alpha=0.5,
                                                  facecolor='blue', edgecolor='blue')
 
+    py.close(1)
     py.figure(1)
     py.clf()
     py.plot(color1, m814, 'k.', ms=2)
@@ -1222,14 +1237,21 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     
     return
 
-def compare_art_vs_obs_vel():
+def compare_art_vs_obs_vel(use_obs_align=True):
     """
     Compare the distribution of velocities in the artificial
     vs. the observed stars. These need to match if we are going
     to make a cut on the velocitiy error. 
     """
-    obs = Table.read(cat_pclust_pcolor)
-    art = Table.read(art_cat)
+    art_catalog = art_dir + 'wd1_art_catalog_RMSE_wvelErr'
+    if use_obs_align:
+        art_catalog += '_aln_obs'
+    else:
+        art_catalog += '_aln_art'
+    art_catalog += '.fits'
+
+    obs = Table.read(cat_dir + catalog)
+    art = Table.read(art_catalog)
 
     # Trim out un-detected in artificial star lists.    
     adx_det = np.where((art['fit_vxe'] != 1) & (art['fit_vye'] != 1))[0]
@@ -1242,28 +1264,81 @@ def compare_art_vs_obs_vel():
     art['fit_vxe'] *= scale
     art['fit_vye'] *= scale
 
+    obs['fit_vx'] *= scale
+    obs['fit_vy'] *= scale
+    obs['fit_vxe'] *= scale
+    obs['fit_vye'] *= scale
+
+    ##########
+    # proper motion error vs. F160W
+    ##########
+    py.close(1)
+    py.figure(1, figsize=(6, 10))
     py.clf()
+    py.subplot(2, 1, 1)
     py.semilogy(art['m_2013_F160W'], art['fit_vxe'], 'k.', ms=2, alpha=0.2,
                 label='Simulated')
     py.semilogy(obs['m_2013_F160W'], obs['fit_vxe'], 'r.', ms=4, alpha=0.5,
                 label='Observed')
-    py.ylim(1e-2, 5)
-    py.xlim(13, 22)
+    py.ylim(1e-2, 10)
+    py.xlim(11, 22)
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('X Velocity Error (mas/yr)')
-    py.savefig(plot_dir + 'compare_art_vs_obs_vel_x.png')
 
-    py.clf()
+
+    py.subplot(2, 1, 2)
     py.semilogy(art['m_2013_F160W'], art['fit_vye'], 'k.', ms=2, alpha=0.2,
                 label='Simulated')
     py.semilogy(obs['m_2013_F160W'], obs['fit_vye'], 'r.', ms=4, alpha=0.5,
                 label='Observed')
-    py.ylim(1e-2, 5)
-    py.xlim(13, 22)
+    py.ylim(1e-2, 10)
+    py.xlim(11, 22)
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('Y Velocity Error (mas/yr)')
-    py.savefig(plot_dir + 'compare_art_vs_obs_vel_y.png')
-    
+
+    plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F160W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+
+
+    ##########
+    # proper motion error vs. F814W
+    ##########
+    py.close(2)
+    py.figure(2, figsize=(6, 10))
+    py.clf()
+    py.subplot(2, 1, 1)
+    py.semilogy(art['m_2005_F814W'], art['fit_vxe'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2005_F814W'], obs['fit_vxe'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 10)
+    py.xlim(13, 26)
+    py.xlabel('F814W 2005 (mag)')
+    py.ylabel('X Velocity Error (mas/yr)')
+
+
+    py.subplot(2, 1, 2)
+    py.semilogy(art['m_2005_F814W'], art['fit_vye'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2005_F814W'], obs['fit_vye'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 10)
+    py.xlim(13, 26)
+    py.xlabel('F814W 2005 (mag)')
+    py.ylabel('Y Velocity Error (mas/yr)')
+    plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F814W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+
     mdx_art = np.where(art['m_2013_F160W'] < 17)[0]
     mdx_obs = np.where(obs['m_2013_F160W'] < 17)[0]
     
@@ -1276,11 +1351,12 @@ def compare_art_vs_obs_vel():
     print '   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)
     print '   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)
 
-def make_completeness_table():
+def make_completeness_table(vel_err_cut=0.5, mag_err_cut=1.0):
+    """
+    vel_err_cut = mas/yr
+    mag_err_cut = magnitudes 
+    """
     art = Table.read(art_cat)
-    
-    mag_err_cut = 1.0 # (basically no cut)
-    vel_err_cut = 0.5 # mas/yr
 
     # Make a completeness curve for each filter independently.
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
@@ -1334,6 +1410,8 @@ def make_completeness_table():
         
         
     # Plot
+    py.close('all')
+    py.figure()
     py.clf()
     for ee in range(len(epochs)):
         ep = epochs[ee]
@@ -1556,6 +1634,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     print mass_noWR[idx][0:10]
     weights[idx] = 0
 
+    py.close(1)
     py.figure(1)
     py.clf()
     py.subplots_adjust(top=0.88)
@@ -1655,6 +1734,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     ax2.set_xlabel(filter_name + ' (mags)', labelpad=10)
     py.savefig(plot_dir + 'wd1_imf_' + filter_name + suffix + '.png')
 
+    py.close(2)
     py.figure(2)
     py.clf()
     py.plot(np.log10(iso_mass), iso_mag)
@@ -1662,7 +1742,8 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     py.xlabel('Log( Mass [Msun] )')
     py.ylabel(filter_name + ' (mag)')
     py.savefig(plot_dir + 'wd1_mass_luminosity_' + filter_name + suffix + '.png')
-    
+
+    py.close(3)    
     py.figure(3)
     py.clf()
     py.scatter(imf['color'], imf['mag'], c=np.log10(imf['mass']), s=10, vmin=-0.8, vmax=1.3)
@@ -1677,6 +1758,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     py.colorbar(orientation='horizontal', fraction=0.05, label=r'log(mass [M$_\odot$])')
     py.savefig(plot_dir + 'wd1_cmd_iso_mass_' + filter_name + suffix + '.png')
 
+    py.close(4)
     py.figure(4)
     py.clf()
     py.scatter(imf['color'], imf['mag'], c=imf.meta['AKS']+imf['dAKs'], s=10)
@@ -1753,6 +1835,8 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     #                                 c_comp_arr.flatten(), kind='linear')
 
     # Plot the raw completeness array
+    py.close('all')
+    py.figure()
     py.clf()
     py.imshow(c_comp_arr, extent=(c_mag_arr[0,0] + c_col_arr[0,0], 
                                   c_mag_arr[-1,-1] + c_col_arr[-1, -1],
