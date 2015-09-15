@@ -1478,6 +1478,15 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_red_col2 = iso_red['mag125w'] - iso_red['mag160w']
     iso_red_mass = iso_red['mass']
     iso_red_WR = iso_red['isWR']
+
+    # Remove duplicate values, if they occur
+    bad = np.where( np.diff(iso_red_mass) == 0)
+    iso_red_mass = np.delete(iso_red_mass, bad)
+    iso_red_mag1 = np.delete(iso_red_mag1, bad)
+    iso_red_col1 = np.delete(iso_red_col1, bad)
+    iso_red_mag2 = np.delete(iso_red_mag2, bad)
+    iso_red_col2 = np.delete(iso_red_col2, bad)
+    
     iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=2)
     iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=2)
 
@@ -1549,7 +1558,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     # Save everything to an output file for later plotting.
     imf1 = Table([mag1_noWR, color1_noWR, mass1_noWR, isWR1_noWR, comp1_noWR, pmem1_noWR, AKs1_noWR,
-                  d['x_2013_F160W'], d['y_2013_F160W']],
+                  d['x_2013_F160W'][idx1_noWR], d['y_2013_F160W'][idx1_noWR]],
                  names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F814W vs. F814W - F160W',
                        'logAge': logAge,
@@ -1559,7 +1568,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'colLabel': 'F814W - F160W'})
 
     imf2 = Table([mag2_noWR, color2_noWR, mass2_noWR, isWR2_noWR, comp2_noWR, pmem2_noWR, AKs2_noWR,
-                  d['x_2013_F160W'], d['y_2013_F160W']],
+                  d['x_2013_F160W'][idx2_noWR], d['y_2013_F160W'][idx2_noWR]],
                  names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F125W vs. F125W - F160W',
                        'logAge': logAge,
