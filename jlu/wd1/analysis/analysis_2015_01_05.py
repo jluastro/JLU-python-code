@@ -832,7 +832,8 @@ def calc_color_members():
     color2_cl = color2[good]
     sdx = np.argsort(m814_cl)
     foo = np.array([m814_cl[sdx], color1_cl[sdx], color2_cl[sdx]])
-    cb, p = interpolate.splprep(foo, s=780, k=3)
+    # cb, p = interpolate.splprep(foo, s=780, k=3)
+    cb, p = interpolate.splprep(foo, s=1150, k=3)
 
     pts = np.linspace(0, 1, 300)
     m814_fit, c1_fit, c2_fit = interpolate.splev(pts, cb)
