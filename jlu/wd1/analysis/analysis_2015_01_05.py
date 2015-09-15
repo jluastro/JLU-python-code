@@ -51,7 +51,7 @@ cat_pclust = work_dir + 'membership/gauss_3/catalog_membership_3_rot.fits'
 cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
 # Artificial catalog
-art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
+art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr_aln_art.fits'
 
 
 # Best fit (by eye) cluster parameters
@@ -1296,6 +1296,7 @@ def compare_art_vs_obs_vel(use_obs_align=True):
     py.xlim(11, 22)
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('Y Velocity Error (mas/yr)')
+
 
     plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F160W'
     if use_obs_align:
