@@ -141,7 +141,7 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
     py.savefig(outfile)
 
 
-def plot_moon(ra, dec, year, months, days, outfile='plot_moon.png'):
+def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     """
     This will plot distance/illumination of moon
     for one specified month
@@ -165,10 +165,9 @@ def plot_moon(ra, dec, year, months, days, outfile='plot_moon.png'):
 
     # Labels and colors for different months.
     labels = []
-    label_fmt = '{0:s} {1:d}, {2:d} (HST)'
+    label_fmt = '{0:s} {1:d} (HST)'
     for ii in range(len(months)):
-        label = label_fmt.format(month_labels[months[ii]-1],
-                                 days[ii], year)
+        label = label_fmt.format(month_labels[months[ii]-1], year)
         labels.append(label)
 
     sym = ['rD', 'bD', 'gD', 'cD', 'mD', 'yD']
@@ -192,7 +191,7 @@ def plot_moon(ra, dec, year, months, days, outfile='plot_moon.png'):
     for mm in range(len(months)):
         for dd in daysInMonth:
             # Set the date and time to midnight
-            keck.date = '%d/%d/%d %d' % (year, months[mm], days[0]+dd,
+            keck.date = '%d/%d/%d %d' % (year, months[mm], dd,
                                          obs.timezone)
 
             moon.compute(keck)
@@ -215,7 +214,7 @@ def plot_moon(ra, dec, year, months, days, outfile='plot_moon.png'):
     py.plot([0,31], [30,30], 'k')
     py.legend(loc=2, numpoints=1)
     py.title('Moon distance and % Illumination')
-    py.xlabel('Date (UTC)', fontsize=14)
+    py.xlabel('Day of Month', fontsize=14)
     py.ylabel('Moon Distance (degrees)', fontsize=14)
     py.axis([0, 31, 0, 180])
 

@@ -109,6 +109,6 @@ def gc_plot_airmass_moon():
     outdir = '/Users/jlu/doc/proposals/ifa/16A/'
 
     skycalc.plot_airmass(ra, dec, 2016, months, days, outfile=outdir + 'gc_airmass.png')
-    skycalc.plot_moon(ra, dec, 2016, months, days, outfile=outdir + 'gc_moon.png')
+    skycalc.plot_moon(ra, dec, 2016, months, outfile=outdir + 'gc_moon.png')
 
     return
