@@ -556,7 +556,7 @@ class Orbit(object):
             eccanom[i]=oldval-fe/fs
 
             loopCount = 0
-            while (abs(oldval-eccanom[i]) <= thresh):
+            while (abs(oldval-eccanom[i]) >= thresh):
                 # E-e sinE-M
                 fe = eccanom[i]-ecc*sin(eccanom[i])-mmm[i]
                 # f' = 1-e*cosE

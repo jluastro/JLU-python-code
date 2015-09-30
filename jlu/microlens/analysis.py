@@ -81,7 +81,7 @@ class OB110022(analysis.Analysis):
         self.calColumn = self.mapFilter2Cal[filt]
 
         # Set the coo star
-        self.cooStar = 'ob110022'
+        self.cooStar = 'OB110022'
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
@@ -131,7 +131,7 @@ class OB110125(analysis.Analysis):
         self.calColumn = self.mapFilter2Cal[filt]
 
         # Set the coo star
-        self.cooStar = 'ob110125'
+        self.cooStar = 'OB110125'
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
@@ -147,9 +147,7 @@ class OB110125(analysis.Analysis):
         
 class OB120169(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/', 
-                 epochDirSuffix=None, cleanList='c.lis'):
-        # self.epoch='13jul'
-#         self.filt='kp'
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
         """
         For OB120169 reduction:
 
@@ -168,7 +166,7 @@ class OB120169(analysis.Analysis):
                                      cleanList=cleanList)
         
         # Use the field to set the psf starlist
-        self.starlist = rootDir + 'source_list/ob120169_psf.list'
+        self.starlist = self.rootDir + 'source_list/ob120169_psf.txt'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -180,18 +178,20 @@ class OB120169(analysis.Analysis):
         self.calColumn = self.mapFilter2Cal[filt]
 
         # Set the coo star
-        self.cooStar = 'psf_000'
+        self.cooStar = 'p000_16_3.6'
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
         self.calFlags = '-f 1 -R -s 1 '
-        self.calFile = '/u/jlu/data/microlens/source_list/ob120169_photo.dat'
+        self.calFile = self.rootDir + 'source_list/ob120169_photo.txt'
         
-        self.labellist = '/u/jlu/data/microlens/source_list/ob120169_label.dat'
+        self.labellist = self.rootDir + 'source_list/ob120169_label.txt'
         self.orbitlist = None
 
-        # Fix align flags for all the W51 fields.
-        # Otherwise, align is using too many faint stars.
-        self.alignFlags += ' -m 18 '
+        # Fix align flags. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 -d 3.0 ' + alignMagCut
+
+        self.plotPosMagCut = 17.0
         
-                
+        return
+                        

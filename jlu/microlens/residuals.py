@@ -24,9 +24,8 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
         Nrows = 3
     else:
         Nrows = (Nstars // (Ncols / 2)) * 3
-            
-    py.clf()
-    py.close(2)
+
+    py.close('all')
     py.figure(2, figsize=figsize)
     names = s.getArray('name')
     mag = s.getArray('mag')
@@ -125,17 +124,17 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             idxY = np.where(abs(sigY) > 4)
             idx = np.where(abs(sig) > 4)
         
-    #         print 'Star:        ', starName
-#             print '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % \
-#                   (fitx.chi2red, fitx.chi2, fitx.chi2/fitx.chi2red)
-#             print '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % \
-#                   (fity.chi2red, fity.chi2, fity.chi2/fity.chi2red)
-#             print 'X  Outliers: ', time[idxX]
-#             print 'Y  Outliers: ', time[idxY]
-#             if (radial):
-#                 print 'R  Outliers: ', time[idxX]
-#                 print 'T  Outliers: ', time[idxY]
-#             print 'XY Outliers: ', time[idx]
+            print 'Star:        ', starName
+            print '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % \
+                  (fitx.chi2red, fitx.chi2, fitx.chi2/fitx.chi2red)
+            print '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % \
+                  (fity.chi2red, fity.chi2, fity.chi2/fity.chi2red)
+            # print 'X  Outliers: ', time[idxX]
+            # print 'Y  Outliers: ', time[idxY]
+            # if (radial):
+            #     print 'R  Outliers: ', time[idxX]
+            #     print 'T  Outliers: ', time[idxY]
+            # print 'XY Outliers: ', time[idx]
         
             # close(2)
 #             figure(2, figsize=(7, 8))
@@ -147,7 +146,7 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     	    DateTicsLabel = dateTics-2000
     	    
             maxErr = np.array([xerr, yerr]).max()
-            resTicRng = [-3*maxErr, 3*maxErr]
+            resTicRng = [-1.1*maxErr, 1.1*maxErr]
         
             from matplotlib.ticker import FormatStrFormatter
             fmtX = FormatStrFormatter('%5i')
@@ -260,7 +259,8 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             paxes = py.subplot(Nrows, Ncols, ind)
             py.errorbar(x,y, xerr=xerr, yerr=yerr, fmt='k.')
             py.yticks(np.arange(np.min(y-yerr-0.1), np.max(y+yerr+0.1), 0.2))
-            py.xticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2), rotation = 270)   
+            py.xticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2), rotation = 270)
+            py.axis('equal')
             paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
             paxes.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
             paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
@@ -420,7 +420,6 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
                 py.ylabel('Number of Epochs')
                 
                 py.subplots_adjust(wspace=0.4, hspace=0.4, right=0.95, top=0.95)
-                py.savefig(rootDir+'plots/plotStarRadial_' + starName + '.eps')
                 py.savefig(rootDir+'plots/plotStarRadial_' + starName + '.png')
     
             # suptitle(starNames, fontsize=12)
@@ -432,14 +431,15 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             print e
            
 #     suptitle(starNames, fontsize=12)
+    title = rootDir.split('/')[-2]
+    py.suptitle(title, x=0.5, y=0.97)
+
     if Nstars == 1:
         py.subplots_adjust(wspace=0.4, hspace=0.4, left = 0.15, bottom = 0.1, right=0.9, top=0.9) 
-        py.savefig(rootDir+'plots/plotStar_' + starName + '.pdf')
         py.savefig(rootDir+'plots/plotStar_' + starName + '.png')
     else:
-        py.subplots_adjust(wspace=0.6, hspace=0.6, left = 0.08, bottom = 0.05, right=0.95, top=0.95)
-        py.savefig(rootDir+'plots/plotStar_' + 'all' + '.pdf')
-        #py.savefig(rootDir+'plots/plotStar_' + 'all' + '.png')
+        py.subplots_adjust(wspace=0.6, hspace=0.6, left = 0.08, bottom = 0.05, right=0.95, top=0.90)
+        py.savefig(rootDir+'plots/plotStar_' + 'all' + '.png')
         
         
         
@@ -482,7 +482,8 @@ def CompareTarget(TargetName, root='./', align='align/align_d_rms_1000_abs_t',
 
 
 def ResVectorPlot(root='./', align='align/align_t',
-                 poly='polyfit_d/fit', points='points_d/', useAccFits=False, numEpochs=5, TargetName='ob120169_R',
+                 poly='polyfit_d/fit', points='points_d/', useAccFits=False,
+                 numEpochs=7, TargetName='OB120169_R',
                  radCut_pix = 10000, magCut = 22):
 	
 	
@@ -490,8 +491,6 @@ def ResVectorPlot(root='./', align='align/align_t',
 
     s = starset.StarSet(root + align)
     s.loadPolyfit(root + poly, accel=0, arcsec=0)             
-#    names = s.getArray('name')
-#    indTarg = names.index(TargetName)
     
     try: 
         pointsFile = root + points + TargetName + '.points'
@@ -507,7 +506,7 @@ def ResVectorPlot(root='./', align='align/align_t',
     py.clf()
     # for ee in range(1):
     py.close(1)
-    py.figure(1, figsize=(10,7))
+    py.figure(1, figsize=(10, 10))
     for ee in range(numEpochs):
         
         # Observed data
@@ -547,28 +546,20 @@ def ResVectorPlot(root='./', align='align/align_t',
             y_fit[i] = fitLineY
             residsX[i] = x[i] - fitLineX
             residsY[i] = y[i] - fitLineY
-            if ((StarName == 'star_151') or (StarName == 'star_160') or (StarName == 'star_164')
-                or (StarName == 'star_166') or (StarName == 'star_168') or (StarName == 'star_181')):
-                idx2.append(i)
-        # idx = np.where((np.abs(residsX) < 0.3) & (np.abs(residsY) < 0.3))[0]
-#         subplot(2,3,ee+1)
-#         print 'hwkjekjwjkweew'
-#         q = quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx])
-#         quiverkey(q, 0.9, 0.9, 0.1, '0.1 pix', color='red')
         
         idx = np.where((np.abs(residsX) < 10.0) & (np.abs(residsY) < 10.0))[0]
-#         print idx2
-        py.subplot(2,3,ee+1)
-        py.ylim(0,1100)
-        py.xlim(0,1100)
+        py.subplot(3, 3, ee+1)
+        py.ylim(0, 1100)
+        py.xlim(0, 1100)
         py.yticks(fontsize=10)
-        py.xticks([200,400,600,800,1000],fontsize=10)
-        q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale =0.5)
-#         q = py.quiver(x_fit[idx2], y_fit[idx2], residsX[idx2], residsY[idx2], scale_units='width', scale =0.5, color ='orange')
-        py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontproperties={'size': 6})
+        py.xticks([200,400,600,800,1000], fontsize=10)
+        q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5)
+        py.quiver([850, 0], [100, 0], [0.05, 0.05], [0, 0], color='red', scale=0.5, scale_units='width')
+        py.text(600, 100, '0.5 mas', color='red', fontsize=8)
+        # py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontsize=6)
+
    
-    
-    fname = 'quiverplot_all.pdf'
+    fname = 'quiverplot_all.png'
     py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     if os.path.exists(root + 'plots/' + fname):
         os.remove(root + 'plots/' + fname)
