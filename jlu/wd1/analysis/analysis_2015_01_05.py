@@ -51,7 +51,7 @@ cat_pclust = work_dir + 'membership/gauss_3/catalog_membership_3_rot.fits'
 cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
 # Artificial catalog
-art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
+art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr_aln_art.fits'
 
 
 # Best fit (by eye) cluster parameters
@@ -1297,6 +1297,7 @@ def compare_art_vs_obs_vel(use_obs_align=True):
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('Y Velocity Error (mas/yr)')
 
+
     plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F160W'
     if use_obs_align:
         plot_file += '_obs'
@@ -1455,7 +1456,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
-          
+    
     # Get the completeness (relevant for diff. de-reddened magnitudes).
     print 'Loading completeness table'
     comp = Table.read(work_dir + 'completeness_vs_mag.fits')
@@ -1469,6 +1470,16 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_col2 = iso['mag125w'] - iso['mag160w']
     iso_mass = iso['mass']
     iso_WR = iso['isWR']
+
+    # Remove duplicate values, if they occur
+    bad = np.where( np.diff(iso_mass) == 0)
+    iso_mass = np.delete(iso_mass, bad)
+    iso_mag1 = np.delete(iso_mag1, bad)
+    iso_col1 = np.delete(iso_col1, bad)
+    iso_mag2 = np.delete(iso_mag2, bad)
+    iso_col2 = np.delete(iso_col2, bad)
+    iso_WR = np.delete(iso_WR, bad)
+    
     iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
     iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
 
@@ -1487,6 +1498,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_red_col1 = np.delete(iso_red_col1, bad)
     iso_red_mag2 = np.delete(iso_red_mag2, bad)
     iso_red_col2 = np.delete(iso_red_col2, bad)
+    iso_red_WR = np.delete(iso_red_WR, bad)
     
     iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=2)
     iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=2)
@@ -1524,12 +1536,14 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                                                     iso_mag_f1, iso_col_f1,
                                                     iso_mass_f1, iso_WR_f1,
                                                     comp1_int, mass_max,
-                                                    red_vec_dx_f1, red_vec_dy_f1, red_dAKs)
+                                                    red_vec_dx_f1, red_vec_dy_f1, red_dAKs,
+                                                    plot=False)
     mass2, isWR2, comp2, AKs2 = calc_mass_isWR_comp(m125, color2,
                                                     iso_mag_f2, iso_col_f2,
                                                     iso_mass_f2, iso_WR_f2,
                                                     comp2_int, mass_max,
-                                                    red_vec_dx_f2, red_vec_dy_f2, red_dAKs)
+                                                    red_vec_dx_f2, red_vec_dy_f2, red_dAKs,
+                                                    plot=False)
 
     # Find the maximum mass where we don't have WR stars anymore
     print mass_max, mass1.max(), mass2.max()
@@ -1892,15 +1906,16 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     
     
 def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
-                         comp_int, mass_max, red_vec_dx_f, red_vec_dy_f, dAKs_0):
+                         comp_int, mass_max, red_vec_dx_f, red_vec_dy_f, dAKs_0, plot=False):
     # F814W vs. F814W - F160W    
     # Loop through data and assign masses, extinctions, and completeness to each star.
     mass = np.zeros(len(mag), dtype=float)
     isWR = np.zeros(len(mag), dtype=float)
     comp = np.zeros(len(mag), dtype=float)
     dAKs = np.zeros(len(mag), dtype=float)
+    delta_arr = np.zeros(len(mag), dtype=float)
 
-    red_dAKs = np.arange(-0.1, 0.3, 0.01)
+    red_dAKs = np.arange(-0.2, 0.3, 0.01)
     red_col = red_dAKs / dAKs_0
     red_mag = red_dAKs / dAKs_0
 
@@ -1940,13 +1955,15 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
                 
         # From the candidates, choose the closest first, then the lowest
         # mass one (within 0.02).
-        dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + red_mag)
-        dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + red_col)
+        #dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + red_mag)
+        #dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + red_col)
+        dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + (red_mag * red_vec_dy_f[iso_idx_per_rr]))
+        dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + (red_col * red_vec_dx_f[iso_idx_per_rr]))
         delta = np.hypot(dmag, dcol)
         
         sdx = delta.argsort()
         idx = np.where(delta[sdx] < 0.01)[0]
-        
+
         if len(idx) > 1:
             # More than one in a tight radius... choose the lower mass.
             min_mass_idx = iso_mass_f[iso_idx_per_rr[sdx[idx]]].argmin()
@@ -1956,6 +1973,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         # min_rdx = sdx[0]
         
         min_idx = iso_idx_per_rr[min_rdx]
+        
 
         print '{0:4d} {1:4d} {2:4d} {3:4.2f} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
                                                               delta[min_rdx],
@@ -1966,14 +1984,26 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         mass[ii] = iso_mass_f[min_idx]
         isWR[ii] = iso_WR_f[min_idx]
         dAKs[ii] = red_dAKs[min_rdx]
-        
         comp[ii] = comp_int(mag[ii], color[ii])
+        delta_arr[ii] = delta[min_rdx]
+
+        # Sanity plot
+        if plot:
+            py.figure(1, figsize=(10,10))
+            py.clf()
+            py.plot(color[ii], mag[ii], 'k*', ms=8)
+            py.plot(iso_col_f, iso_mag_f, 'r-')
+            py.plot(iso_col_f[min_idx], iso_mag_f[min_idx], 'r*', ms=8)
+            py.axis([min(color), max(color), max(mag), min(mag)])
+            py.title('dAKs = {0}'.format(dAKs[ii]))
+            py.savefig('Match.png')
+            pdb.set_trace()
 
         if comp[ii] > 1:
             comp[ii] = 1
         if comp[ii] < 0:
             comp[ii] = 0
-
+    
     print mag.min(), mag.max(), color.min(), color.max()
     print comp.shape, mag.shape, color.shape
 

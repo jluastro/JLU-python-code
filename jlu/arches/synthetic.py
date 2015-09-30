@@ -165,10 +165,10 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
 
 
     iso = objects.DataHolder()
-    iso.M = mass
-    iso.T = temp
-    iso.logg = logg
-    iso.logL = logL
+    iso.M = np.array(mass)
+    iso.T = np.array(temp)
+    iso.logg = np.array(logg)
+    iso.logL = np.array(logL)
     iso.mag127m = mag127m
     iso.mag139m = mag139m
     iso.mag153m = mag153m
@@ -196,7 +196,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs,
     pickle.dump(isWR, _out)
     pickle.dump(mag814w, _out)
     _out.close()
-
+    pdb.set_trace()
     endTime = time.time()
     print '      Time taken: %d seconds' % (endTime - startTime)
 
