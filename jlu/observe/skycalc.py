@@ -70,7 +70,6 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
             twilite1 = float(fields[2]) + float(fields[3]) / 60.0
             twilite1 -= 24.0
             twilite2 = float(fields[6]) + float(fields[7]) / 60.0
-            print twilite1, twilite2
 
         if ((fields[0] == 'The') and (fields[1] == 'sun')):
             darkTime = (twilite2 - twilite1) - 0.5 # 0.5=LGS checkout
@@ -78,11 +77,14 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
             if (splittime > 24.0):
                 splittime -= 24.0
 
-    print 'Sunrise %4.1f   Sunset %4.1f' % (sunrise, sunset)
-    print '12-degr %4.1f  12-degr %4.1f' % (twilite1, twilite2)
+    print 'Sunrise %4.1f   Sunset %4.1f  (hours around midnight HST)' % (sunrise, sunset)
+    print '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2)
     
 
+    py.close(3)
+    py.figure(3, figsize=(10, 10))
     py.clf()
+    py.subplots_adjust(left=0.1)
     for ii in range(len(days)):
         foo = pairmass(ra=ra, dec=dec, observatory=obs, listout="yes",
                        timesys="Standard", Stdout=1, resolution=2,
@@ -125,7 +127,7 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
                 labels[ii], color=colors[ii])
             
 
-    py.title('ORION Source n (RA = %s, DEC = %s)' % (ra, dec), fontsize=12)
+    py.title('RA = %s, DEC = %s' % (ra, dec), fontsize=14)
     py.xlabel('Local Time in Hours (0 = midnight)')
     py.ylabel('Air Mass')
 
@@ -185,8 +187,11 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     moonillum = np.zeros(len(daysInMonth), dtype=float)
 
     moon = ephem.Moon()
- 
+
+    py.close(3)
+    py.figure(3, figsize=(10, 10))
     py.clf()
+    py.subplots_adjust(left=0.1)
 
     for mm in range(len(months)):
         for dd in range(len(daysInMonth)):
@@ -214,9 +219,9 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
 
     py.plot([0,31], [30,30], 'k')
     py.legend(loc=2, numpoints=1)
-    py.title('Moon distance and % Illumination')
-    py.xlabel('Day of Month', fontsize=14)
-    py.ylabel('Moon Distance (degrees)', fontsize=14)
-    py.axis([0, 31, 0, 180])
+    py.title('Moon distance and %% Illumination (RA = %s, DEC = %s)' % (ra, dec), fontsize=14)
+    py.xlabel('Day of Month')
+    py.ylabel('Moon Distance (degrees)')
+    py.axis([0, 31, 0, 200])
 
     py.savefig(outfile)
