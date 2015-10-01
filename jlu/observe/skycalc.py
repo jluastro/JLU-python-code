@@ -173,7 +173,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     sym = ['rD', 'bD', 'gD', 'cD', 'mD', 'yD']
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
 
-    daysInMonth = np.arange(31)
+    daysInMonth = np.arange(1, 31)
 
     # Setup the observatory info
     obs(command="set", obsid="keck")
@@ -189,9 +189,10 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     py.clf()
 
     for mm in range(len(months)):
-        for dd in daysInMonth:
+        for dd in range(len(daysInMonth)):
             # Set the date and time to midnight
-            keck.date = '%d/%d/%d %d' % (year, months[mm], dd,
+            keck.date = '%d/%d/%d %d' % (year, months[mm],
+                                         daysInMonth[dd],
                                          obs.timezone)
 
             moon.compute(keck)
@@ -203,12 +204,12 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
             moonillum[dd] = moon.phase
 
             print 'Day: %2d   Moon Illum: %4.1f   Moon Dist: %4.1f' % \
-                  (dd, moonillum[dd], moondist[dd])
+                  (daysInMonth[dd], moonillum[dd], moondist[dd])
 
         py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
 
-        for dd in daysInMonth:
-            py.text(dd+0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
+        for dd in range(len(daysInMonth)):
+            py.text(daysInMonth[dd] + 0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
                     color=colors[mm])
 
     py.plot([0,31], [30,30], 'k')
