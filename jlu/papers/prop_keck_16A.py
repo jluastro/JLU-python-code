@@ -105,7 +105,7 @@ def gc_plot_airmass_moon():
     ra = "17:45:40.04"
     dec = "-29:00:28.12"
     months = np.array([4, 5, 6, 7])
-    days = np.array([20, 20, 20, 20])
+    days = np.array([10, 10, 10, 30])
     outdir = '/Users/jlu/doc/proposals/ifa/16A/'
 
     skycalc.plot_airmass(ra, dec, 2016, months, days, outfile=outdir + 'gc_airmass.png')

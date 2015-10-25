@@ -194,6 +194,10 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
 def load_mnest_results_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_18/',
                                 mnest_dir='mnest_evan_2015_08/ay/',
                                 mnest_root='ay'):
+    return load_mnest_results(root_dir, mnest_dir, mnest_root)
+
+
+def load_mnest_results(root_dir, mnest_dir, mnest_root):
     
     root = root_dir + mnest_dir + mnest_root + '_'
     tab = Table.read(root + '.txt', format='ascii')
@@ -299,3 +303,26 @@ def mass_posterior_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysi
 
     return
 
+def get_best_fit_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_18/',
+                          mnest_dir='mnest_evan_2015_08/ay/',
+                          mnest_root='ay'):
+    return get_best_fit(root_dir, mnest_dir, mnest_root)
+
+    
+def get_best_fit(root_dir, mnest_dir, mnest_root):
+    # Overplot Best-Fit Model
+    tab = load_mnest_results(root_dir, mnest_dir, mnest_root)
+    params = tab.keys()
+    pcnt = len(params)
+    Masslim = 0.0
+
+    # Clean table and only keep valid results.
+    ind = np.where((tab['Mass'] >= Masslim))[0]
+    tab = tab[ind]
+
+    best = np.argmax(tab['logLike'])
+    maxLike = tab['logLike'][best]
+
+    tab_best = tab[best]
+
+    return tab_best
