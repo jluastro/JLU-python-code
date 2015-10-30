@@ -6,7 +6,7 @@ from hst_flystar import astrometry
 from hst_flystar import completeness as comp
 import os
 import pdb
-# from jlu.wd1.analysis import membership
+from jlu.wd1.analysis import membership
 from scipy.stats import chi2
 from scipy import interpolate, optimize
 import matplotlib
@@ -18,6 +18,8 @@ import math
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
 work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
 iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
+
+synthetic.redlaw = reddening.RedLawWesterlund1()
 
 # On Laptop
 # synthetic.redlaw = reddening.RedLawWesterlund1()
@@ -36,7 +38,7 @@ iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
 
 # reduce_dir = '/Users/jlu/work/wd1/'
 # work_dir = '/Users/jlu/work/wd1/'
-evolution.models_dir = '/Users/jlu/work/models/evolution/'
+# evolution.models_dir = '/Users/jlu/work/models/evolution/'
 
 cat_dir = reduce_dir + '50.ALIGN_KS2/'
 art_dir = reduce_dir + '51.ALIGN_ART/'
@@ -49,7 +51,7 @@ cat_pclust = work_dir + 'membership/gauss_3/catalog_membership_3_rot.fits'
 cat_pclust_pcolor = work_dir + 'catalog_membership_3_rot_Pcolor.fits'
 
 # Artificial catalog
-art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr.fits'
+art_cat = art_dir + 'wd1_art_catalog_RMSE_wvelErr_aln_art.fits'
 
 
 # Best fit (by eye) cluster parameters
@@ -319,6 +321,7 @@ def plot_artstar_in_vs_out():
         if ee > 0:
             mag_lim = [-13, -5]
 
+        py.close(2)
         py.figure(2)
         py.clf()
         py.plot(dx, dy, 'k.', ms=2, alpha=0.2)
@@ -328,6 +331,7 @@ def plot_artstar_in_vs_out():
         py.title(suffix)
         py.savefig(plot_dir + 'art_in_out_dxy_vpd_' + suffix + '.png')
 
+        py.close(1)
         py.figure(1)
         py.clf()
         py.plot(t_det['min_' + suffix], dx, 'r.', ms=2, alpha=0.05, label='X')
@@ -419,6 +423,8 @@ def plot_velerr_vs_mag():
     vxe = t['fit_vxe'] * astrometry.scale['WFC'] * 1e3
     vye = t['fit_vye'] * astrometry.scale['WFC'] * 1e3
 
+    py.close('all')
+    py.figure()
     py.clf()
     py.plot(m, vxe, 'r.', ms=3, label='X', alpha=0.5)
     py.plot(m, vye, 'b.', ms=3, label='Y', alpha=0.5)
@@ -495,6 +501,7 @@ def check_velocity_fits(magCut=18, outDir=plot_dir):
 
         
     bins = np.arange(-3, 3, 0.1)
+    py.close(1)
     py.figure(1)
     py.clf()
     py.subplots_adjust(top=0.95, hspace=0.35)
@@ -521,7 +528,8 @@ def check_velocity_fits(magCut=18, outDir=plot_dir):
     dof = 1
     chi2_fit = chi2.pdf(bin_cent, dof)
     chi2_fit *= len(x_chi2) / chi2_fit.sum()
-    
+
+    py.close(2)    
     py.figure(2)
     py.clf()
     py.subplots_adjust(top=0.95, hspace=0.35)
@@ -560,7 +568,8 @@ def run_membership(N_gauss=3):
 
 def make_cluster_catalog():
     mag_err_cut = 1.0 # (basically no cut)
-    vel_err_cut = 0.5 # mas/yr
+    # vel_err_cut = 0.5 # mas/yr
+    vel_err_cut = 10 # mas/yr (basically no cut)
     prob = 0.3
     N_gauss = 3
     out_dir = '{0}membership/gauss_{1:d}/'.format(work_dir, N_gauss)
@@ -596,6 +605,9 @@ def make_cmd(catalog=cat_pclust_pcolor, cl_prob=0.3, usePcolor=False, suffix='')
     mag1 = d['m_2013_F160W']
     mag2 = d['m_2005_F814W']
     color = mag2 - mag1
+
+    py.close('all')
+    py.figure()
     py.clf()
     py.plot(color, mag2, 'k.', ms=2)
     py.ylabel('F814W (mag)')
@@ -775,7 +787,9 @@ def plot_color_color(catalog=cat_pclust_pcolor, cl_prob=0.6, usePcolor=True, suf
 
     color1 = d['m_2005_F814W'] - d['m_2010_F125W']
     color2 = d['m_2010_F125W'] - d['m_2013_F160W']
-    
+
+    py.close('all')
+    py.figure()    
     py.clf()
     py.plot(color2, color1, 'k.', ms=2)
     py.plot(color2[clust], color1[clust], 'r.', ms=2)
@@ -818,7 +832,8 @@ def calc_color_members():
     color2_cl = color2[good]
     sdx = np.argsort(m814_cl)
     foo = np.array([m814_cl[sdx], color1_cl[sdx], color2_cl[sdx]])
-    cb, p = interpolate.splprep(foo, s=780, k=3)
+    # cb, p = interpolate.splprep(foo, s=780, k=3)
+    cb, p = interpolate.splprep(foo, s=1150, k=3)
 
     pts = np.linspace(0, 1, 300)
     m814_fit, c1_fit, c2_fit = interpolate.splev(pts, cb)
@@ -834,6 +849,7 @@ def calc_color_members():
     optical_patch = matplotlib.patches.PathPatch(optical_path, alpha=0.5,
                                                  facecolor='blue', edgecolor='blue')
 
+    py.close(1)
     py.figure(1)
     py.clf()
     py.plot(color1, m814, 'k.', ms=2)
@@ -1222,14 +1238,21 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     
     return
 
-def compare_art_vs_obs_vel():
+def compare_art_vs_obs_vel(use_obs_align=True):
     """
     Compare the distribution of velocities in the artificial
     vs. the observed stars. These need to match if we are going
     to make a cut on the velocitiy error. 
     """
-    obs = Table.read(cat_pclust_pcolor)
-    art = Table.read(art_cat)
+    art_catalog = art_dir + 'wd1_art_catalog_RMSE_wvelErr'
+    if use_obs_align:
+        art_catalog += '_aln_obs'
+    else:
+        art_catalog += '_aln_art'
+    art_catalog += '.fits'
+
+    obs = Table.read(cat_dir + catalog)
+    art = Table.read(art_catalog)
 
     # Trim out un-detected in artificial star lists.    
     adx_det = np.where((art['fit_vxe'] != 1) & (art['fit_vye'] != 1))[0]
@@ -1242,28 +1265,82 @@ def compare_art_vs_obs_vel():
     art['fit_vxe'] *= scale
     art['fit_vye'] *= scale
 
+    obs['fit_vx'] *= scale
+    obs['fit_vy'] *= scale
+    obs['fit_vxe'] *= scale
+    obs['fit_vye'] *= scale
+
+    ##########
+    # proper motion error vs. F160W
+    ##########
+    py.close(1)
+    py.figure(1, figsize=(6, 10))
     py.clf()
+    py.subplot(2, 1, 1)
     py.semilogy(art['m_2013_F160W'], art['fit_vxe'], 'k.', ms=2, alpha=0.2,
                 label='Simulated')
     py.semilogy(obs['m_2013_F160W'], obs['fit_vxe'], 'r.', ms=4, alpha=0.5,
                 label='Observed')
-    py.ylim(1e-2, 5)
-    py.xlim(13, 22)
+    py.ylim(1e-2, 10)
+    py.xlim(11, 22)
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('X Velocity Error (mas/yr)')
-    py.savefig(plot_dir + 'compare_art_vs_obs_vel_x.png')
 
-    py.clf()
+
+    py.subplot(2, 1, 2)
     py.semilogy(art['m_2013_F160W'], art['fit_vye'], 'k.', ms=2, alpha=0.2,
                 label='Simulated')
     py.semilogy(obs['m_2013_F160W'], obs['fit_vye'], 'r.', ms=4, alpha=0.5,
                 label='Observed')
-    py.ylim(1e-2, 5)
-    py.xlim(13, 22)
+    py.ylim(1e-2, 10)
+    py.xlim(11, 22)
     py.xlabel('F160W 2013 (mag)')
     py.ylabel('Y Velocity Error (mas/yr)')
-    py.savefig(plot_dir + 'compare_art_vs_obs_vel_y.png')
-    
+
+
+    plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F160W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+
+
+    ##########
+    # proper motion error vs. F814W
+    ##########
+    py.close(2)
+    py.figure(2, figsize=(6, 10))
+    py.clf()
+    py.subplot(2, 1, 1)
+    py.semilogy(art['m_2005_F814W'], art['fit_vxe'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2005_F814W'], obs['fit_vxe'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 10)
+    py.xlim(13, 26)
+    py.xlabel('F814W 2005 (mag)')
+    py.ylabel('X Velocity Error (mas/yr)')
+
+
+    py.subplot(2, 1, 2)
+    py.semilogy(art['m_2005_F814W'], art['fit_vye'], 'k.', ms=2, alpha=0.2,
+                label='Simulated')
+    py.semilogy(obs['m_2005_F814W'], obs['fit_vye'], 'r.', ms=4, alpha=0.5,
+                label='Observed')
+    py.ylim(1e-2, 10)
+    py.xlim(13, 26)
+    py.xlabel('F814W 2005 (mag)')
+    py.ylabel('Y Velocity Error (mas/yr)')
+    plot_file = plot_dir + 'compare_art_vs_obs_vel_xy_F814W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+
     mdx_art = np.where(art['m_2013_F160W'] < 17)[0]
     mdx_obs = np.where(obs['m_2013_F160W'] < 17)[0]
     
@@ -1276,11 +1353,12 @@ def compare_art_vs_obs_vel():
     print '   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)
     print '   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)
 
-def make_completeness_table():
+def make_completeness_table(vel_err_cut=0.5, mag_err_cut=1.0):
+    """
+    vel_err_cut = mas/yr
+    mag_err_cut = magnitudes 
+    """
     art = Table.read(art_cat)
-    
-    mag_err_cut = 1.0 # (basically no cut)
-    vel_err_cut = 0.5 # mas/yr
 
     # Make a completeness curve for each filter independently.
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
@@ -1334,6 +1412,8 @@ def make_completeness_table():
         
         
     # Plot
+    py.close('all')
+    py.figure()
     py.clf()
     for ee in range(len(epochs)):
         ep = epochs[ee]
@@ -1376,7 +1456,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
-          
+    
     # Get the completeness (relevant for diff. de-reddened magnitudes).
     print 'Loading completeness table'
     comp = Table.read(work_dir + 'completeness_vs_mag.fits')
@@ -1390,6 +1470,16 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_col2 = iso['mag125w'] - iso['mag160w']
     iso_mass = iso['mass']
     iso_WR = iso['isWR']
+
+    # Remove duplicate values, if they occur
+    bad = np.where( np.diff(iso_mass) == 0)
+    iso_mass = np.delete(iso_mass, bad)
+    iso_mag1 = np.delete(iso_mag1, bad)
+    iso_col1 = np.delete(iso_col1, bad)
+    iso_mag2 = np.delete(iso_mag2, bad)
+    iso_col2 = np.delete(iso_col2, bad)
+    iso_WR = np.delete(iso_WR, bad)
+    
     iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
     iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
 
@@ -1400,6 +1490,16 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_red_col2 = iso_red['mag125w'] - iso_red['mag160w']
     iso_red_mass = iso_red['mass']
     iso_red_WR = iso_red['isWR']
+
+    # Remove duplicate values, if they occur
+    bad = np.where( np.diff(iso_red_mass) == 0)
+    iso_red_mass = np.delete(iso_red_mass, bad)
+    iso_red_mag1 = np.delete(iso_red_mag1, bad)
+    iso_red_col1 = np.delete(iso_red_col1, bad)
+    iso_red_mag2 = np.delete(iso_red_mag2, bad)
+    iso_red_col2 = np.delete(iso_red_col2, bad)
+    iso_red_WR = np.delete(iso_red_WR, bad)
+    
     iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=2)
     iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=2)
 
@@ -1436,12 +1536,14 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                                                     iso_mag_f1, iso_col_f1,
                                                     iso_mass_f1, iso_WR_f1,
                                                     comp1_int, mass_max,
-                                                    red_vec_dx_f1, red_vec_dy_f1, red_dAKs)
+                                                    red_vec_dx_f1, red_vec_dy_f1, red_dAKs,
+                                                    plot=False)
     mass2, isWR2, comp2, AKs2 = calc_mass_isWR_comp(m125, color2,
                                                     iso_mag_f2, iso_col_f2,
                                                     iso_mass_f2, iso_WR_f2,
                                                     comp2_int, mass_max,
-                                                    red_vec_dx_f2, red_vec_dy_f2, red_dAKs)
+                                                    red_vec_dx_f2, red_vec_dy_f2, red_dAKs,
+                                                    plot=False)
 
     # Find the maximum mass where we don't have WR stars anymore
     print mass_max, mass1.max(), mass2.max()
@@ -1471,7 +1573,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     # Save everything to an output file for later plotting.
     imf1 = Table([mag1_noWR, color1_noWR, mass1_noWR, isWR1_noWR, comp1_noWR, pmem1_noWR, AKs1_noWR,
-                  d['x_2013_F160W'], d['y_2013_F160W']],
+                  d['x_2013_F160W'][idx1_noWR], d['y_2013_F160W'][idx1_noWR]],
                  names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F814W vs. F814W - F160W',
                        'logAge': logAge,
@@ -1481,7 +1583,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'colLabel': 'F814W - F160W'})
 
     imf2 = Table([mag2_noWR, color2_noWR, mass2_noWR, isWR2_noWR, comp2_noWR, pmem2_noWR, AKs2_noWR,
-                  d['x_2013_F160W'], d['y_2013_F160W']],
+                  d['x_2013_F160W'][idx2_noWR], d['y_2013_F160W'][idx2_noWR]],
                  names=['mag', 'color', 'mass', 'isWR', 'comp', 'pmem', 'dAKs', 'x', 'y'],
                  meta={'name': 'IMF Table for F125W vs. F125W - F160W',
                        'logAge': logAge,
@@ -1556,6 +1658,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     print mass_noWR[idx][0:10]
     weights[idx] = 0
 
+    py.close(1)
     py.figure(1)
     py.clf()
     py.subplots_adjust(top=0.88)
@@ -1655,6 +1758,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     ax2.set_xlabel(filter_name + ' (mags)', labelpad=10)
     py.savefig(plot_dir + 'wd1_imf_' + filter_name + suffix + '.png')
 
+    py.close(2)
     py.figure(2)
     py.clf()
     py.plot(np.log10(iso_mass), iso_mag)
@@ -1662,7 +1766,8 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     py.xlabel('Log( Mass [Msun] )')
     py.ylabel(filter_name + ' (mag)')
     py.savefig(plot_dir + 'wd1_mass_luminosity_' + filter_name + suffix + '.png')
-    
+
+    py.close(3)    
     py.figure(3)
     py.clf()
     py.scatter(imf['color'], imf['mag'], c=np.log10(imf['mass']), s=10, vmin=-0.8, vmax=1.3)
@@ -1677,6 +1782,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     py.colorbar(orientation='horizontal', fraction=0.05, label=r'log(mass [M$_\odot$])')
     py.savefig(plot_dir + 'wd1_cmd_iso_mass_' + filter_name + suffix + '.png')
 
+    py.close(4)
     py.figure(4)
     py.clf()
     py.scatter(imf['color'], imf['mag'], c=imf.meta['AKS']+imf['dAKs'], s=10)
@@ -1753,6 +1859,8 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     #                                 c_comp_arr.flatten(), kind='linear')
 
     # Plot the raw completeness array
+    py.close('all')
+    py.figure()
     py.clf()
     py.imshow(c_comp_arr, extent=(c_mag_arr[0,0] + c_col_arr[0,0], 
                                   c_mag_arr[-1,-1] + c_col_arr[-1, -1],
@@ -1798,15 +1906,16 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     
     
 def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
-                         comp_int, mass_max, red_vec_dx_f, red_vec_dy_f, dAKs_0):
+                         comp_int, mass_max, red_vec_dx_f, red_vec_dy_f, dAKs_0, plot=False):
     # F814W vs. F814W - F160W    
     # Loop through data and assign masses, extinctions, and completeness to each star.
     mass = np.zeros(len(mag), dtype=float)
     isWR = np.zeros(len(mag), dtype=float)
     comp = np.zeros(len(mag), dtype=float)
     dAKs = np.zeros(len(mag), dtype=float)
+    delta_arr = np.zeros(len(mag), dtype=float)
 
-    red_dAKs = np.arange(-0.1, 0.3, 0.01)
+    red_dAKs = np.arange(-0.2, 0.3, 0.01)
     red_col = red_dAKs / dAKs_0
     red_mag = red_dAKs / dAKs_0
 
@@ -1846,13 +1955,15 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
                 
         # From the candidates, choose the closest first, then the lowest
         # mass one (within 0.02).
-        dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + red_mag)
-        dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + red_col)
+        #dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + red_mag)
+        #dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + red_col)
+        dmag = mag[ii] - (iso_mag_f[iso_idx_per_rr] + (red_mag * red_vec_dy_f[iso_idx_per_rr]))
+        dcol = color[ii] - (iso_col_f[iso_idx_per_rr] + (red_col * red_vec_dx_f[iso_idx_per_rr]))
         delta = np.hypot(dmag, dcol)
         
         sdx = delta.argsort()
         idx = np.where(delta[sdx] < 0.01)[0]
-        
+
         if len(idx) > 1:
             # More than one in a tight radius... choose the lower mass.
             min_mass_idx = iso_mass_f[iso_idx_per_rr[sdx[idx]]].argmin()
@@ -1862,6 +1973,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         # min_rdx = sdx[0]
         
         min_idx = iso_idx_per_rr[min_rdx]
+        
 
         print '{0:4d} {1:4d} {2:4d} {3:4.2f} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
                                                               delta[min_rdx],
@@ -1872,14 +1984,26 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         mass[ii] = iso_mass_f[min_idx]
         isWR[ii] = iso_WR_f[min_idx]
         dAKs[ii] = red_dAKs[min_rdx]
-        
         comp[ii] = comp_int(mag[ii], color[ii])
+        delta_arr[ii] = delta[min_rdx]
+
+        # Sanity plot
+        if plot:
+            py.figure(1, figsize=(10,10))
+            py.clf()
+            py.plot(color[ii], mag[ii], 'k*', ms=8)
+            py.plot(iso_col_f, iso_mag_f, 'r-')
+            py.plot(iso_col_f[min_idx], iso_mag_f[min_idx], 'r*', ms=8)
+            py.axis([min(color), max(color), max(mag), min(mag)])
+            py.title('dAKs = {0}'.format(dAKs[ii]))
+            py.savefig('Match.png')
+            pdb.set_trace()
 
         if comp[ii] > 1:
             comp[ii] = 1
         if comp[ii] < 0:
             comp[ii] = 0
-
+    
     print mag.min(), mag.max(), color.min(), color.max()
     print comp.shape, mag.shape, color.shape
 

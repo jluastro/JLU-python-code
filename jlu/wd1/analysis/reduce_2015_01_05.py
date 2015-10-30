@@ -30,8 +30,8 @@ from scipy.stats import binned_statistic
 from matplotlib import colors as mcolors
 from matplotlib import colorbar
 
-workDir = '/u/jlu/data/wd1/hst/reduce_2015_01_05/'
-codeDir = '/u/jlu/code/fortran/hst/'
+work_dir = '/u/jlu/data/wd1/hst/reduce_2015_01_05/'
+code_dir = '/u/jlu/code/fortran/hst/'
 
 # Load this variable with outputs from calc_years()
 years = {'2005_F814W': 2005.485,
@@ -69,7 +69,7 @@ def run_img2xym_acswfc(directory):
     # pmax - maximum flux allowed (absolute)
     pmax = 99999
     # psf - the library
-    psf = codeDir + 'PSFs/PSFSTD_ACSWFC_F814W_4SM3.fits'
+    psf = code_dir + 'PSFs/PSFSTD_ACSWFC_F814W_4SM3.fits'
 
     ## Files to operate on:
     dataDir = '../00.DATA/*flt.fits'
@@ -191,7 +191,7 @@ def plot_cmd_one_pass(reread=False):
             py.savefig(outfile)
 
     return
-        
+
 
 def plot_quiver_one_pass(reread=False):
     """
@@ -309,11 +309,11 @@ def make_refClust_catalog():
     """
     for ii in range(1, 4+1):
         pos_dir = 'match_refClust_pos{0}'.format(ii)
-        os.chdir(workDir + '03.MAT_POS/')
+        os.chdir(work_dir + '03.MAT_POS/')
         
         fileUtil.mkdir(pos_dir)
         shutil.copy('2005_F814W/01.XYM/MATCHUP.XYMEEE.F814W.2005.refClust', pos_dir)
-        os.chdir(workDir + '03.MAT_POS/' + pos_dir)
+        os.chdir(work_dir + '03.MAT_POS/' + pos_dir)
         
         # Call xym1mat to match against F814W for all combos
         f814w = 'MATCHUP.XYMEEE.F814W.2005.refClust'
@@ -478,7 +478,7 @@ def plot_quiver_align(pos, orig=''):
     Set orig='orig' to plot xorig and yorig (straight from ks2) rather than
     x and y from align output.
     """
-    t = Table.read(workDir + '50.ALIGN_KS2/align_a4_t.fits')
+    t = Table.read(work_dir + '50.ALIGN_KS2/align_a4_t.fits')
     
     good = np.where((t['m_2005_F814W'] < 17.5) &
                     (t['m_2010_F160W_' + pos] < 18) &
@@ -522,7 +522,7 @@ def plot_quiver_align(pos, orig=''):
 
     qscale = 2e2
 
-    plot_dir = workDir + '50.ALIGN_KS2/plots/'
+    plot_dir = work_dir + '50.ALIGN_KS2/plots/'
             
     py.clf()
     q = py.quiver(g['x_2005_F814W'], g['y_2005_F814W'], dx_05_10, dy_05_10, scale=qscale)
@@ -605,8 +605,8 @@ def plot_vpd_across_field(nside=4, interact=False):
     """
     # Read in matched and aligned star lists from the *.ref5 analysis.
     # Recall these data sets are in the F814W reference frame with a 50 mas plate scale.
-    t2005 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F814W.ref5')
-    t2010 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F125W.ref5')
+    t2005 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F814W.ref5')
+    t2010 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F125W.ref5')
 
     scale = 50.0 # mas per pixel
     
@@ -687,7 +687,7 @@ def plot_vpd_across_field(nside=4, interact=False):
     py.xlim(xlo, xhi)
     py.ylim(ylo, yhi)
     out = '{0}/plots/vec_proper_motion_all.png'
-    py.savefig(out.format(workDir))
+    py.savefig(out.format(work_dir))
     
     py.clf()
     for xx in range(nside):
@@ -743,7 +743,7 @@ def plot_vpd_across_field(nside=4, interact=False):
 
     if interact:
         out = '{0}/plots/vpd_grid_nside{1}.png'
-        py.savefig(out.format(workDir, nside))
+        py.savefig(out.format(work_dir, nside))
 
     py.clf()
     q = py.quiver(xcen, ycen, pmx, pmy)
@@ -757,7 +757,7 @@ def plot_vpd_across_field(nside=4, interact=False):
     for yy in range(nside+1):
         py.axhline(ylo + yy * yboxsize, linestyle='--', color='grey')
     out = '{0}/plots/vec_proper_motion_grid_nside{1}.png'
-    py.savefig(out.format(workDir, nside))
+    py.savefig(out.format(work_dir, nside))
 
     py.clf()
     q = py.quiver(xcen, ycen, pmx/pmxe, pmy/pmye)
@@ -771,7 +771,7 @@ def plot_vpd_across_field(nside=4, interact=False):
     for yy in range(nside+1):
         py.axhline(ylo + yy * yboxsize, linestyle='--', color='grey')
     out = '{0}/plots/vec_proper_motion_grid_sig_nside{1}.png'
-    py.savefig(out.format(workDir, nside))
+    py.savefig(out.format(work_dir, nside))
 
 def calc_years():
     """
@@ -781,7 +781,7 @@ def calc_years():
     filts = ['F814W', 'F125W', 'F139M', 'F160W', 'F160W', 'F160Ws']
     
     for ii in range(len(years)):
-        dataDir = '{0}/{1}_{2}/00.DATA/'.format(workDir, years[ii], filts[ii])
+        dataDir = '{0}/{1}_{2}/00.DATA/'.format(work_dir, years[ii], filts[ii])
 
         epoch = images.calc_mean_year(glob.glob(dataDir + '*_flt.fits'))
 
@@ -796,12 +796,12 @@ def make_master_lists():
     # Read in matched and aligned star lists from the *.ref5 analysis.
     # Recall these data sets are in the F814W reference frame with a 50 mas plate scale.
     print 'Loading Data'
-    t2005_814 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F814W.2005.ref5')
-    t2010_125 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F125W.2010.ref5')
-    t2010_139 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F139M.2010.ref5')
-    t2010_160 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F160W.2010.ref5')
-    t2013_160 = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F160W.2013.ref5')
-    t2013_160s = starlists.read_matchup(workDir + '02.MAT/MATCHUP.XYMEEE.F160Ws.2013.ref5')
+    t2005_814 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F814W.2005.ref5')
+    t2010_125 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F125W.2010.ref5')
+    t2010_139 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F139M.2010.ref5')
+    t2010_160 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F160W.2010.ref5')
+    t2013_160 = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F160W.2013.ref5')
+    t2013_160s = starlists.read_matchup(work_dir + '02.MAT/MATCHUP.XYMEEE.F160Ws.2013.ref5')
 
     scale = 50.0 # mas per pixel
 
@@ -939,12 +939,12 @@ def make_master_lists():
     t2013_160 = t2013_160[idx2]
     t2013_160s = t2013_160s[idx2]
 
-    _o814_05 = open(workDir + '02.MAT/MASTER.F814W.2005.ref5', 'w')
-    _o125_10 = open(workDir + '02.MAT/MASTER.F125W.2010.ref5', 'w')
-    _o139_10 = open(workDir + '02.MAT/MASTER.F139M.2010.ref5', 'w')
-    _o160_10 = open(workDir + '02.MAT/MASTER.F160W.2010.ref5', 'w')
-    _o160_13 = open(workDir + '02.MAT/MASTER.F160W.2013.ref5', 'w')
-    _o160s_13 = open(workDir + '02.MAT/MASTER.F160Ws.2013.ref5', 'w')
+    _o814_05 = open(work_dir + '02.MAT/MASTER.F814W.2005.ref5', 'w')
+    _o125_10 = open(work_dir + '02.MAT/MASTER.F125W.2010.ref5', 'w')
+    _o139_10 = open(work_dir + '02.MAT/MASTER.F139M.2010.ref5', 'w')
+    _o160_10 = open(work_dir + '02.MAT/MASTER.F160W.2010.ref5', 'w')
+    _o160_13 = open(work_dir + '02.MAT/MASTER.F160W.2013.ref5', 'w')
+    _o160s_13 = open(work_dir + '02.MAT/MASTER.F160Ws.2013.ref5', 'w')
 
     ofmt = '{0:10.4f} {1:10.4f} {2:8.4f} {3:10.4f} {4:10.4f} {5:8.4f} {6}\n'
     for ii in range(len(t2005_814)):
@@ -983,7 +983,7 @@ def make_pos_directories():
         03.MAT_POS/
 
     """
-    os.chdir(workDir + '/03.MAT_POS')
+    os.chdir(work_dir + '/03.MAT_POS')
 
     years = ['2005', '2010', '2013']
 
@@ -1035,7 +1035,7 @@ def calc_pos_number():
     Just read in the MAT.*** file, take the average of columns 3 and 4 and use
     rough, hard-coded quadrant separations to pick out the position. 
     """
-    mat_files = glob.glob(workDir + '02.MAT/MAT.*')
+    mat_files = glob.glob(work_dir + '02.MAT/MAT.*')
     epoch_filt = np.zeros(len(mat_files), dtype='S12')
     pos = np.zeros(len(mat_files), dtype='S4')
     mat_root = np.zeros(len(mat_files), dtype='S8')
@@ -1100,7 +1100,7 @@ def setup_xym_by_pos():
     """
     Something
     """
-    os.chdir(workDir + '/03.MAT_POS')
+    os.chdir(work_dir + '/03.MAT_POS')
 
     pos4_exceptions = ['2005_F814W', '2013_F160Ws']
     old_mat_dir = '../02.MAT/'
@@ -1194,7 +1194,7 @@ def xym_by_pos(year, filt, pos, Nepochs):
 
     Doesn't work for 2005_F814W or 2013_F160Ws.
     """
-    mat_dir = '{0}/03.MAT_POS/{1}_{2}_{3}/01.XYM/'.format(workDir, year, filt, pos)
+    mat_dir = '{0}/03.MAT_POS/{1}_{2}_{3}/01.XYM/'.format(work_dir, year, filt, pos)
 
     master_file = 'MASTER.{0}.{1}.ref5'.format(filt, year)
 
@@ -1257,10 +1257,10 @@ def make_brite_list_2010():
                     'MATCHUP.XYMEEE.F125W.2010.ref5']
     trimMags = [-8, -7, -8]
 
-    os.chdir(workDir + '12.KS2_2010')
-    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[0]), './')
-    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[1]), './')
-    shutil.copy('{0}02.MAT/{1}'.format(workDir, matchup_file[2]), './')
+    os.chdir(work_dir + '12.KS2_2010')
+    shutil.copy('{0}02.MAT/{1}'.format(work_dir, matchup_file[0]), './')
+    shutil.copy('{0}02.MAT/{1}'.format(work_dir, matchup_file[1]), './')
+    shutil.copy('{0}02.MAT/{1}'.format(work_dir, matchup_file[2]), './')
 
     # Read in the matchup files.
     list_160 = starlists.read_matchup(matchup_file[0])
@@ -1423,12 +1423,12 @@ def find_top_stars(reread=False):
     Verify that they are detected in all of the
     epochs and all of the filters.
     """
-    root_2005_814 = workDir + '11.KS2_2005/nimfo2bar.xymeee.ks2.F1'
-    root_2010_160 = workDir + '12.KS2_2010/nimfo2bar.xymeee.F1'
-    root_2010_139 = workDir + '12.KS2_2010/nimfo2bar.xymeee.F2'
-    root_2010_125 = workDir + '12.KS2_2010/nimfo2bar.xymeee.F3'
-    root_2013_160 = workDir + '13.KS2_2013/nimfo2bar.xymeee.F1'
-    root_2013_160s = workDir + '13.KS2_2013/nimfo2bar.xymeee.F2'
+    root_2005_814 = work_dir + '11.KS2_2005/nimfo2bar.xymeee.ks2.F1'
+    root_2010_160 = work_dir + '12.KS2_2010/nimfo2bar.xymeee.F1'
+    root_2010_139 = work_dir + '12.KS2_2010/nimfo2bar.xymeee.F2'
+    root_2010_125 = work_dir + '12.KS2_2010/nimfo2bar.xymeee.F3'
+    root_2013_160 = work_dir + '13.KS2_2013/nimfo2bar.xymeee.F1'
+    root_2013_160s = work_dir + '13.KS2_2013/nimfo2bar.xymeee.F2'
 
     print 'Reading data'
     if reread == True:
@@ -1586,9 +1586,9 @@ def combine_nimfo2bar_brite():
         year = ep.split('_')[0]
         filt = ep.split('_')[1]
 
-        mat_dir = workDir + '03.MAT_POS/' + ep + '/01.XYM/'
+        mat_dir = work_dir + '03.MAT_POS/' + ep + '/01.XYM/'
         mat_file = 'MATCHUP.XYMEEE'
-        ks2_dir = workDir
+        ks2_dir = work_dir
         ks2_file = 'nimfo2bar.xymeee.F1'
         N_filter = 1
         if year == '2005':
@@ -1707,7 +1707,7 @@ def align_to_fits(align_root):
     2005_F814W, 2010_F125W, 2010_F139M, 2010_F160W, 2013_F160W, 2013_f160Ws
 
     """
-    s = starset.StarSet(workDir + '50.ALIGN_KS2/' + align_root)
+    s = starset.StarSet(work_dir + '50.ALIGN_KS2/' + align_root)
 
     name = s.getArray('name')
 
@@ -1769,12 +1769,12 @@ def align_to_fits(align_root):
     t = Table(columns, names=col_names)
 
     t.table_name = align_root
-    t.write(workDir + '50.ALIGN_KS2/' + align_root + '.fits', overwrite=True)
+    t.write(work_dir + '50.ALIGN_KS2/' + align_root + '.fits', overwrite=True)
 
     return
 
 def combine_mosaic_pos():
-    t = Table.read(workDir + '50.ALIGN_KS2/align_a4_t.fits')
+    t = Table.read(work_dir + '50.ALIGN_KS2/align_a4_t.fits')
     
     # First we need to combine all the positions of the mosaic together.
     mosaic_epochs = ['2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
@@ -1906,7 +1906,7 @@ def combine_mosaic_pos():
     t.remove_column('xorig_2013_F160Ws')
     t.remove_column('yorig_2013_F160Ws')
 
-    t.write(workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits',
+    t.write(work_dir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits',
             format='fits', overwrite=True)
 
                     
@@ -1927,7 +1927,7 @@ def make_catalog(use_RMSE=True, vel_weight=None):
     final = None
     good = None
 
-    d_all = Table.read(workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits')
+    d_all = Table.read(work_dir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits')
 
     # TRIM out all stars that aren't detected in all 3 epochs:
     #    2005_814
@@ -1945,8 +1945,25 @@ def make_catalog(use_RMSE=True, vel_weight=None):
                    (d_all['ye_2005_F814W'] > 0) &
                    (d_all['ye_2010_F160W'] > 0) &
                    (d_all['ye_2013_F160W'] > 0))[0]
-    
+
+    tmp_2005 = np.where((d_all['x_2005_F814W'] > -999) &
+                        (d_all['n_2005_F814W'] > 1) &
+                        (d_all['xe_2005_F814W'] > 0) &
+                        (d_all['ye_2005_F814W'] > 0))[0]
+    tmp_2010 = np.where((d_all['x_2010_F160W'] > -999) &
+                        (d_all['n_2010_F160W'] > 1) &
+                        (d_all['xe_2010_F160W'] > 0) &
+                        (d_all['ye_2010_F160W'] > 0))[0]
+    tmp_2013 = np.where((d_all['x_2013_F160W'] > -999) &
+                        (d_all['n_2013_F160W'] > 1) &
+                        (d_all['xe_2013_F160W'] > 0) &
+                        (d_all['ye_2013_F160W'] > 0))[0]
+    print 'Found {0:3} in 2005 F814W'.format(len(tmp_2005))
+    print 'Found {0:3} in 2010 F160W'.format(len(tmp_2010))
+    print 'Found {0:3} in 2013 F160W'.format(len(tmp_2013))
+    print ''
     print 'Kept {0:d} of {1:d} stars in all 3 epochs.'.format(len(idx), len(d_all))
+    
     d = d_all[idx]
     
     #Changing rms errors into standard errors for the f153m data
@@ -2047,18 +2064,25 @@ def make_catalog(use_RMSE=True, vel_weight=None):
             catalog_name += '_wvelVar'
     catalog_name += '.fits'
 
-    d.write(workDir + '50.ALIGN_KS2/' + catalog_name, format='fits', overwrite=True)
+    d.write(work_dir + '50.ALIGN_KS2/' + catalog_name, format='fits', overwrite=True)
     
     return
 
-def art_set_detected():
+def art_set_detected(use_obs_align=True):
     """
     Create the "detected" columsn in the artificial star list.
     
     Apply a set of criteria to call a star detected based on on how
     closely the input and output position/flux match.
     """
-    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos.fits')
+    in_file = work_dir + '51.ALIGN_ART/art_align'
+    if use_obs_align:
+        in_file += '_obs'
+    else:
+        in_file += '_art'
+    in_file += '_combo_pos.fits'
+    
+    d = Table.read(in_file)
 
     # Make a "detected" column for each epoch/filter.
     # Set detected = True for all sources that are detected and whose
@@ -2084,12 +2108,17 @@ def art_set_detected():
         # Add this column to the table.
         d.add_column(Column(det, name='det_' + epoch))
 
-    catalog_name = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
+    catalog_name = work_dir + '51.ALIGN_ART/art_align' 
+    if use_obs_align:
+        catalog_name += '_obs'
+    else:
+        catalog_name += '_art'
+    catalog_name += '_combo_pos_det.fits'
     d.write(catalog_name, format='fits', overwrite=True)
 
     return
     
-def fix_artstar_errors():
+def fix_artstar_errors(use_obs_align=True):
     """
     Little snippet of code to compare the artificial star errors with the
     observed star errors to determine if a constant offset exists between
@@ -2099,8 +2128,13 @@ def fix_artstar_errors():
 
     art_obs mags assumed to be instrumental
     """
-    real_obs = workDir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits'
-    art_obs = workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det.fits'
+    real_obs = work_dir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits'
+    art_obs = work_dir + '51.ALIGN_ART/art_align'
+    if use_obs_align:
+        art_obs += '_obs'
+    else:
+        art_obs += '_art'
+    art_obs += '_combo_pos_det.fits'
     binsize = 0.5
     
 
@@ -2142,7 +2176,13 @@ def fix_artstar_errors():
         py.legend(loc=2, numpoints=1)
         py.xlim(13, max(art_mag))
         py.ylim(1e-4, 1)
-        py.savefig(workDir + 'plots/Pos_errcomp' + suffix + '_' + epoch + '.png')
+        plot_file = work_dir + 'plots/Pos_errcomp' + suffix + '_' + epoch
+        if use_obs_align:
+            plot_file += '_obs'
+        else:
+            plot_file += '_art'
+        plot_file += '.png'
+        py.savefig(plot_file)
 
         return
 
@@ -2163,7 +2203,13 @@ def fix_artstar_errors():
         py.legend(loc=2, numpoints=1)
         py.xlim(13, max(art_mag))
         py.ylim(1e-4, 1)
-        py.savefig(workDir + 'plots/Mag_errcomp' + suffix + '_' + epoch + '.png')        
+        plot_file = work_dir + 'plots/Mag_errcomp' + suffix + '_' + epoch
+        if use_obs_align:
+            plot_file += '_obs'
+        else:
+            plot_file += '_art'
+        plot_file += '.png'
+        py.savefig(plot_file)
 
         return
         
@@ -2281,13 +2327,19 @@ def fix_artstar_errors():
         art['xe_' + epoch][det][det_zero_xerr] = 0.1 * perr_obs
         art['ye_' + epoch][det][det_zero_yerr] = 0.1 * perr_obs
 
-    art.write(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits',
-              format='fits', overwrite=True)
+        
+    out_file = work_dir + '51.ALIGN_ART/art_align'
+    if use_obs_align:
+        out_file += '_obs'
+    else:
+        out_file += '_art'
+    out_file += '_combo_pos_det_newerr.fits'
+    art.write(out_file, format='fits', overwrite=True)
 
     return
 
 
-def make_artificial_catalog(use_RMSE=True, vel_weight=None):
+def make_artificial_catalog(use_RMSE=True, vel_weight=None, use_obs_align=True):
     """
     Read the align FITS table from the artificial star catalog and fit a
     velocity to the positions.
@@ -2304,7 +2356,14 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
     final = None
     good = None
 
-    d = Table.read(workDir + '51.ALIGN_ART/art_align_a4_t_combo_pos_det_newerr.fits')
+    in_file = work_dir + '51.ALIGN_ART/art_align'
+    if use_obs_align:
+        in_file += '_obs'
+    else:
+        in_file += '_art'
+    in_file += '_combo_pos_det_newerr.fits'
+    
+    d = Table.read(in_file)
     
     # Fetch all stars that are in all 3 epochs.
     #    2005_814
@@ -2410,7 +2469,7 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
         d['fit_y0e'][ii] = vyErr[1]
         d['fit_vye'][ii] = vyErr[0]
 
-    catalog_name = workDir + '51.ALIGN_ART/wd1_art_catalog'
+    catalog_name = work_dir + '51.ALIGN_ART/wd1_art_catalog'
     if use_RMSE:
         catalog_name += '_RMSE'
     else:
@@ -2423,6 +2482,12 @@ def make_artificial_catalog(use_RMSE=True, vel_weight=None):
             catalog_name += '_wvelErr'
         if vel_weight == 'variance':
             catalog_name += '_wvelVar'
+            
+    if use_obs_align:
+        catalog_name += '_aln_obs'
+    else:
+        catalog_name += '_aln_art'
+        
     catalog_name += '.fits'
 
     d.write(catalog_name, format='fits', overwrite=True)
@@ -2450,7 +2515,7 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
             catalog_suffix += '_wvelVar'
     catalog_name += catalog_suffix + '.fits'
     
-    catFile = workDir + '50.ALIGN_KS2/' + catalog_name
+    catFile = work_dir + '50.ALIGN_KS2/' + catalog_name
     tab = Table.read(catFile)
 
     good = (tab['fit_vxe'] < 0.01) & (tab['fit_vye'] < 0.01) & \
@@ -2465,7 +2530,7 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     py.clf()
     q = py.quiver(tab2['x_2005_F814W'], tab2['y_2005_F814W'], vx, vy, scale=1e2)
     py.quiverkey(q, 0.95, 0.85, 5, '5 mas/yr', color='red', labelcolor='red')
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/vec_diffs' + catalog_suffix + '.png')
 
     py.close(3)
     py.figure(3, figsize=(8,6))
@@ -2480,7 +2545,7 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     cb = colorbar.ColorbarBase(cax, cmap=py.cm.gist_stern, norm=nz,
                                orientation='vertical')
     cb.set_label('F814W')
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vec_diffs_color' + catalog_suffix + '.png')
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/vec_diffs_color' + catalog_suffix + '.png')
 
         
     py.figure(2)
@@ -2490,7 +2555,7 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     py.axis([-lim, lim, -lim, lim])
     py.xlabel('X Proper Motion (mas/yr)')
     py.ylabel('Y Proper Motion (mas/yr)')
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd' + catalog_suffix + '.png')
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/vpd' + catalog_suffix + '.png')
 
     py.figure(3)
     py.clf()
@@ -2508,7 +2573,7 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     cb = colorbar.ColorbarBase(cax, cmap=py.cm.gist_stern, norm=nz,
                                orientation='vertical')
     cb.set_label('F814W')
-    py.savefig(workDir + '50.ALIGN_KS2/plots/vpd_color' + catalog_suffix + '.png')
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/vpd_color' + catalog_suffix + '.png')
     
 
     idx = np.where((np.abs(vx) < 3) & (np.abs(vy) < 3))[0]
@@ -2574,7 +2639,7 @@ def call_process_ks2_artstar():
                 
         # Loop through each position, sublist combo
         for ii in range(len(art_dirs)):
-            directory = workDir + epoch + '/' + art_dirs[ii]
+            directory = work_dir + epoch + '/' + art_dirs[ii]
             os.chdir(directory)
 
             filt = filters[epoch]
@@ -2618,7 +2683,7 @@ def recombine_artstar_subsets():
 
     N_largest = 0
     for ii in range(len(subdirs)):
-        table_file = workDir + epoch + '/' + subdirs[ii] + '/'
+        table_file = work_dir + epoch + '/' + subdirs[ii] + '/'
         table_file += alists[ii].replace('.txt', '')
         table_file += '_F1_joined.fits'
 
@@ -2635,7 +2700,7 @@ def recombine_artstar_subsets():
 
     # Save output to file.
     outfile = 'artstar_2005_F814W.fits'
-    outfile = workDir + '51.ALIGN_ART/' + outfile
+    outfile = work_dir + '51.ALIGN_ART/' + outfile
     t_2005_F814W.write(outfile, overwrite=True)
 
 
@@ -2663,7 +2728,7 @@ def recombine_artstar_subsets():
             N_largest = 0
 
             for ii in range(len(subs)):
-                table_file = workDir + epoch
+                table_file = work_dir + epoch
                 table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
                 table_file += 'Artstarlist_2010_{0:s}_{1:s}'.format(pos, subs[ii])
                 table_file += '_F{0:d}'.format(filt)
@@ -2682,7 +2747,7 @@ def recombine_artstar_subsets():
 
             # Save output to file.
             outfile = 'artstar_2010_{0}_{1}.fits'.format(filter_names[filt], pos)
-            outfile = workDir + '51.ALIGN_ART/' + outfile
+            outfile = work_dir + '51.ALIGN_ART/' + outfile
             t_2010.write(outfile, overwrite=True)
 
     ##################################################
@@ -2708,7 +2773,7 @@ def recombine_artstar_subsets():
             N_largest = 0
 
             for ii in range(len(subs)):
-                table_file = workDir + epoch
+                table_file = work_dir + epoch
                 table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
                 table_file += 'Artstarlist_2013_{0:s}_{1:s}'.format(pos, subs[ii])
                 table_file += '_F{0:d}'.format(filt)
@@ -2727,12 +2792,12 @@ def recombine_artstar_subsets():
 
             # Save output to file.
             outfile = 'artstar_2013_{0}_{1}.fits'.format(filter_names[filt], pos)
-            outfile = workDir + '51.ALIGN_ART/' + outfile
+            outfile = work_dir + '51.ALIGN_ART/' + outfile
             t_2013.write(outfile, overwrite=True)
 
     return
 
-def align_artstars():
+def align_artstars(use_obs_align=True):
     """
     Read in the artificial star catalogs, transform them using the
     alignments derived from the observed data, cross-match the stars across
@@ -2767,15 +2832,20 @@ def align_artstars():
                      '2010_F139M': ['pos1', 'pos2', 'pos3', 'pos4'],
                      '2010_F160W': ['pos1', 'pos2', 'pos3', 'pos4'],
                      '2013_F160W': ['pos1', 'pos2', 'pos3', 'pos4']}
-        
-    align_root = 'align_a4_t'
+
+    if use_obs_align:
+        align_root = 'align_a4_t'
+        align_dir = work_dir + '50.ALIGN_KS2/'
+    else:
+        align_root = 'align_a4_t'
+        align_dir = work_dir + '51.ALIGN_ART/align_a4_t/'
 
     # This table contains the transformations that will be applied.
-    trans = Table.read(workDir + '50.ALIGN_KS2/' + align_root + '.trans',
+    trans = Table.read(align_dir + align_root + '.trans',
                        format='ascii')
 
     # This will be used to validate that we are working on the right list. 
-    align_list_file = open(workDir + '50.ALIGN_KS2/align.list', 'r')
+    align_list_file = open(align_dir + align_root + '.list', 'r')
     align_list = align_list_file.readlines()
 
     def transform(xin, yin, tr):
@@ -2824,7 +2894,12 @@ def align_artstars():
 
     # This will be the final table
     t_out = Table()
-    t_out.table_name = 'art_' + align_root
+    t_out.table_name = 'art_align'
+
+    if use_obs_align:
+        t_out.table_name = t_out.table_name + '_obs'
+    else:
+        t_out.table_name = t_out.table_name + '_art'
 
     # Loop through each epoch (2005, 2010, 2013)
     for ee in range(len(mosaic_epochs)):
@@ -2866,7 +2941,7 @@ def align_artstars():
             # Read in the table
             artstar_list = 'artstar_{0}{1}.fits'.format(epoch, pos_suffix)
 
-            t = Table.read(workDir + '51.ALIGN_ART/' + artstar_list)
+            t = Table.read(work_dir + '51.ALIGN_ART/' + artstar_list)
 
             # Transfrom the stars' input positions.
             x_in_t, y_in_t = transform(t['x_in'], t['y_in'], tr)
@@ -2927,8 +3002,19 @@ def align_artstars():
         t_out.add_column(Column(name, name='name_' + epoch))
             
     fix_art_magnitudes(t_out)
-    t_out.write(workDir + '51.ALIGN_ART/art_' + align_root + '_combo_pos.fits',
-                overwrite=True)
+
+    file_name = work_dir + '51.ALIGN_ART/art_align'
+    if use_obs_align:
+        file_name += '_obs'
+    else:
+        file_name += '_art'
+    file_name += '_combo_pos.fits'
+
+    print file_name
+    
+    t_out.write(file_name, overwrite=True)
+
+    return
 
 
 def fix_art_magnitudes(t):

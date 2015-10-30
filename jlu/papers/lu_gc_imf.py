@@ -5379,11 +5379,14 @@ def plot_klf_vs_old_models(rmin=0, rmax=30):
     binsKp = klf_mag_bins
     binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
     py.clf()
-    (n, b, p) = py.hist(modelStarsSP, bins=binEdges, histtype='step', weights=weightsSP,
-                        color='green', label='Salpeter Model', align='mid', linewidth=1.5)
-    (n, b, p) = py.hist(modelStarsTH, bins=binEdges, histtype='step', weights=weightsTH,
-                        color='blue', label='Top Heavy Model', align='mid', linewidth=1.5,
-                        linestyle='dashed')
+    (n1, b1, p1) = py.hist(modelStarsSP, bins=binEdges, histtype='step',
+                           weights=weightsSP,
+                           color='green', label='Salpeter Model', align='mid',
+                           linewidth=1.5)
+    (n1, b1, p1) = py.hist(modelStarsTH, bins=binEdges, histtype='step',
+                           weights=weightsTH,
+                           color='blue', label='Top Heavy Model', align='mid',
+                           linewidth=1.5, linestyle='dashed')
 
     # Plot the observations
     py.errorbar(d.Kp[idx], d.KLF_ext_cmp_sp_im_noWR[idx], fmt='ro-', 
@@ -5404,6 +5407,26 @@ def plot_klf_vs_old_models(rmin=0, rmax=30):
     py.savefig('{0}_color.eps'.format(outRoot))
     convert = 'convert {0}.png -colorspace gray {0}.eps'.format(outRoot)
     os.system(convert)
+
+    # Save the models and data to a text file for later re-use.
+    tSP = Table([modelStarsSP, weightsSP], names=['Kp', 'weight'],
+                meta={'IMFSLOPE': imfSlopeSP,
+                      'MCLUST': clusterMassSP,
+                      'AREA': area,
+                      'LOGAGE': logAge,
+                      'MULTI': makeMultiples})
+    tTH = Table([modelStarsTH, weightsTH], names=['Kp', 'weight'],
+                meta={'IMFSLOPE': imfSlopeTH,
+                      'MCLUST': clusterMassTH,
+                      'AREA': area,
+                      'LOGAGE': logAge,
+                      'MULTI': makeMultiples})
+
+    tSP.write(outRoot + '_SP_model.fits', overwrite=True)
+    tTH.write(outRoot + '_TH_model.fits', overwrite=True)
+
+    return
+
 
 
 def test_wr_transformed_radius():
@@ -8673,16 +8696,22 @@ def plot_klf_with_tmt():
     Mcl2 = 3.0e4
 
     cluster1 = b.model_young_cluster_new(fitLogAge, massLimits=massLimits, imfSlopes=powers,
-                                         clusterMass=Mcl1, makeMultiples=True,
+                                         clusterMass=1e6, makeMultiples=True,
                                          AKs=theAKs, distance=distance)
     cluster2 = b.model_young_cluster_new(fitLogAge, massLimits=massLimits, imfSlopes=powers,
-                                         clusterMass=Mcl2, makeMultiples=False,
+                                         clusterMass=1e6, makeMultiples=False,
                                          AKs=theAKs, distance=distance)
 
-    Mcl1_1_150 = cluster1.systemMasses[cluster1.mass >= 1].sum()
-    Mcl2_1_150 = cluster2.systemMasses[cluster2.mass >= 1].sum()
-    Mcl1_01_1 = cluster1.systemMasses[cluster1.mass < 1].sum()
-    Mcl2_01_1 = cluster2.systemMasses[cluster2.mass < 1].sum()
+    weights1 = np.ones(len(cluster1.mass))
+    weights2 = np.ones(len(cluster1.mass))
+
+    weights1 *= Mcl1 / 1.0e6
+    weights2 *= Mcl2 / 1.0e6
+
+    Mcl1_1_150 = (cluster1.systemMasses[cluster1.mass >= 1] * weights1).sum()
+    Mcl2_1_150 = (cluster2.systemMasses[cluster2.mass >= 1] * weights2).sum()
+    Mcl1_01_1 = (cluster1.systemMasses[cluster1.mass < 1] * weights1).sum()
+    Mcl2_01_1 = (cluster2.systemMasses[cluster2.mass < 1] * weights2).sum()
 
     print 'Cluster with multiples:'
     print '     Total Cluster Mass = %d' % Mcl1
@@ -8711,8 +8740,10 @@ def plot_klf_with_tmt():
 
     # Plot the KLF
     py.clf()
-    py.hist(cluster1.mag, bins=kbins, histtype='step', linewidth=2, label='Multiples')
-    # py.hist(cluster2.mag, bins=kbins, histtype='step', linewidth=2, label='Singles')
+    py.hist(cluster1.mag, bins=kbins, histtype='step', linewidth=2,
+            weights=weights1, label='Multiples')
+    # py.hist(cluster2.mag, bins=kbins, histtype='step', linewidth=2,
+    #         weights=weights2, label='Singles')
     py.gca().set_yscale('log')
     py.xlabel('Kp Magnitude')
     py.ylabel('Number of Stars')
