@@ -1,18 +1,20 @@
-
 from astropy.modeling import models, fitting
 import numpy as np
 from scipy.interpolate import LSQBivariateSpline as spline
 
-class Transform:
+class four_paramNW:
+    '''
+    defines parameter tranformation between x,y and xref, yref
+    does not weight the points
+    '''
 
-
-    def __init__():
-        '''
-        Thought I would want a genreal Tranform class, but it wasn't clear there was enough general cgharacteristics to be useful
-        I leave it here now as a reminder to keep the idea in mind
-        '''
-        pass
-
+    def __init__(self, x, y,xref, yref, order=None, weights=None):
+        self.cx, self.cy =  four_param(x, y, xref,yref)
+    def evaluate(self, x, y):
+        xn =self.cx[0] + self.cx[1]*x + self.cx[2]*y
+        yn = self.cy[0] + self.cy[1]*x + self.cy[2] *y
+        return xn, yn 
+        
 
 class PolyTransform:
 
@@ -115,12 +117,61 @@ class PolyClipTransform:
 
     def __init__(self,x , y , xref, yref, degree,
                  niter=3, sig_clip =3 , weights=None):
+        
         self.s_bool = np.ones(x.shape, dtype='bool')
 
+        if weights == None:
+            weights = np.ones(x.shape)
         c_x, c_y = four_param(x, y, xref, yref)
         
         for i in range(niter+1):
-            t = PolyTransform(x[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights)
+            t = PolyTransform(x[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights[self.s_bool])
+            #reset the initial guesses based on the previous tranforamtion
+            #it is not clear to me that using these values is better than recalculating an intial guess from a 4 parameter tranform
+            c_x[0] = t.px.c0_0.value
+            c_x[1] = t.px.c1_0.value
+            c_x[2] = t.px.c0_1.value
+
+            c_y[0] = t.py.c0_0.value
+            c_y[1] = t.py.c1_0.value
+            c_y[2] = t.py.c0_1.value
+
+            xev, yev = t.evaluate(x, y)
+            dx = xref - xev
+            dy = yref - yev
+            mx = np.mean(dx[self.s_bool])
+            my = np.mean(dy[self.s_bool])
+            
+            sigx = np.std(dx[self.s_bool])
+            sigy = np.std(dy[self.s_bool])
+            sigr = np.sqrt(sigx**2 + sigy**2)
+            mr = np.sqrt(mx**2+my**2)
+            dr = np.sqrt(dx**2 + dy**2)
+                   
+            
+            if i != niter :
+                #do not update the star boolean if we have performed the final tranformation
+                #self.s_bool = self.s_bool - ((dx > mx + sig_clip * sigx) + (dx < mx - sig_clip * sigx) + (dy > my + sig_clip * sigy) + (dy < my - sig_clip * sigy))
+                self.s_bool = self.s_bool - ((dr > mr + sig_clip * sigr) + (dr < mr - sig_clip * sigr))
+
+        self.t = t
+
+    def evaluate(self,x,y):
+        return self.t.evaluate(x,y)
+            
+class LegClipTransform:
+
+    def __init__(self,x , y , xref, yref, degree,
+                 niter=3, sig_clip =3 , weights=None):
+        
+        self.s_bool = np.ones(x.shape, dtype='bool')
+
+        if weights == None:
+            weights = np.ones(x.shape)
+        c_x, c_y = four_param(x, y, xref, yref)
+        
+        for i in range(niter+1):
+            t = LegTransform(x[self.s_bool], y[self.s_bool], xref[self.s_bool], yref[self.s_bool], degree, init_gx=c_x, init_gy=c_y, weights=weights[self.s_bool])
             #reset the initial guesses based on the previous tranforamtion
             #it is not clear to me that using these values is better than recalculating an intial guess from a 4 parameter tranform
             c_x[0] = t.px.c0_0.value
@@ -155,26 +206,51 @@ class PolyClipTransform:
         return self.t.evaluate(x,y)
             
         
-class PolySplineTransform:
+class PolyClipSplineTransform:
     """
-    NEED SOME DOCS
+    Performs polynomail fit, then a spline fit on the residual
+    optionally performs signma clipping, if niter > 0 (default is zero)
     """
     
-    def __init__(self, x, y, xref, yref, degree, weights):
+    def __init__(self, x, y, xref, yref, degree,
+                  weights=None,niter=0,sigma=3,
+                  kx=None, ky=None):
 
         '''
         '''
-        self.poly = PolyTransform(x, y, xref, yref, degree, weights)
+        self.poly = PolyTransform(x, y, xref, yref, degree, weights=weights)
         xev, yev = self.poly.evaluate(x, y)
 
-        # FIX THIS
-        self.spline = SplineTransform(xev, yev, xref, yref, weights)
+        
+        self.spline = SplineTransform(xev, yev, xref, yref, weights=weights, kx=kx, ky=ky)
 
     def evaluate(self, x, y):
         xev, yev = self.poly.evaluate(x, y)
         return self.spline.evaluate(xev, yev)
         
+class LegClipSplineTransform:
+    """
+    Performas a Legendre fit, then fits the residual with a spline
+    can optinall y perform sigma clipping in the legendre step, by setting niter as > 0 (default to zero)
+    """
+    
+    def __init__(self, x, y, xref, yref, degree,
+                weights=None, kx=None, ky=None,
+                 niter=0, sigma=3):
+
+        '''
+        '''
+        self.leg = LegClipTransform(x, y, xref, yref, degree, weights=weights, niter=niter, sigma=sigma)
+        xev, yev = self.leg.evaluate(x[self.leg.s_bool], y[self.leg.s_bool])
+
         
+        self.spline = SplineTransform(xev, yev, xref, yref, weights=weights, kx=kx, ky=ky)
+
+    def evaluate(self, x, y):
+        xev, yev = self.poly.evaluate(x, y)
+        return self.spline.evaluate(xev, yev)
+        
+              
 
 class SplineTransform:
 
