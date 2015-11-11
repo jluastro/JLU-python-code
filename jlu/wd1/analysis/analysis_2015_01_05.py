@@ -17,9 +17,12 @@ import math
 # On LHCC
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
 work_dir = '/Users/jlu/work/wd1/analysis_2015_01_05/'
-iso_dir = '/Users/jlu/work/wd1/models/iso_2015/'
+# Have two different isochrone directories depending on redlaw used
+iso_dir_nishi09 = '/Users/jlu/work/wd1/models/iso_2015/nishi09/'
+iso_dir_wd1 = '/Users/jlu/work/wd1/models/iso_2015/wd1/'
 
 synthetic.redlaw = reddening.RedLawWesterlund1()
+#synthetic.redlaw = reddening.RedLawNishiyama09()
 
 # On Laptop
 # synthetic.redlaw = reddening.RedLawWesterlund1()
@@ -932,16 +935,16 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
 
     clust = np.where(pmem > 0.8)[0]
 
-    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance, IAU=True)
 
-    # Original Reddening Law
-    wave_0 = np.array([0.551, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
-    A_AKs_0 = np.array([16.13, 3.02, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    # Original Reddening Law (of isochrone we are loading)
+    wave_0 = np.array([0.551, 0.814, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
+    A_AKs_0 = np.array([16.13, 9.4, 2.82, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
     A_int_0 = interpolate.splrep(wave_0, A_AKs_0, k=3, s=0)
 
     # New Reddening Law
     wave_1 = np.array( [0.551, 0.814, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
-    A_AKs_1 = np.array([16.13, 8.92, 2.91, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    A_AKs_1 = np.array([16.13, 9.45, 2.80, 1.70, 1.00, 0.500, 0.390, 0.360, 0.430])
     A_int_1 = interpolate.splrep(wave_1, A_AKs_1, k=3, s=0)
 
     wave_obs = [0.814, 1.25, 1.39, 1.60]
@@ -1049,6 +1052,9 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
     py.arrow(0.6, 18, red_vec_dx, red_vec_dy, head_width=0.1)
+
+    print 'Slope of IR redvector: {0}'.format( red_vec_dy / red_vec_dx )
+    print 'Length of IR redvector: {0}'.format(np.hypot(red_vec_dy, red_vec_dx))
 
     
     # Color-color
@@ -1231,7 +1237,9 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
                 verticalalignment='top')
 
 
-    outfile = 'cmd_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}.png'.format(logAge, AKs, distance)
+    outfile = 'cmd_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
+                                                                              distance,
+                                                                              synthetic.redlaw.name)
     py.savefig(plot_dir + outfile)
 
     py.close('all')
@@ -1480,8 +1488,8 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_col2 = np.delete(iso_col2, bad)
     iso_WR = np.delete(iso_WR, bad)
     
-    iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=2)
-    iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=2)
+    iso_tck1, iso_u1 = interpolate.splprep([iso_mass, iso_mag1, iso_col1], s=0.01)
+    iso_tck2, iso_u2 = interpolate.splprep([iso_mass, iso_mag2, iso_col2], s=0.01)
 
     # Same for the reddening vector isochrone
     iso_red_mag1 = iso_red['mag814w']
@@ -1500,8 +1508,8 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_red_col2 = np.delete(iso_red_col2, bad)
     iso_red_WR = np.delete(iso_red_WR, bad)
     
-    iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=2)
-    iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=2)
+    iso_red_tck1, iso_red_u1 = interpolate.splprep([iso_red_mass, iso_red_mag1, iso_red_col1], s=0.01)
+    iso_red_tck2, iso_red_u2 = interpolate.splprep([iso_red_mass, iso_red_mag2, iso_red_col2], s=0.01)
 
     # Find the maximum mass that is NOT a WR star
     mass_max = iso_mass[iso_WR == False].max()
@@ -1511,18 +1519,114 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_mass_f2, iso_mag_f2, iso_col_f2 = interpolate.splev(u_fine, iso_tck2)
 
     iso_red_mass_f1, iso_red_mag_f1, iso_red_col_f1 = interpolate.splev(u_fine, iso_red_tck1)
-    iso_red_mass_f2, iso_red_mag_f2, iso_red_col_f2 = interpolate.splev(u_fine, iso_red_tck2)    
+    iso_red_mass_f2, iso_red_mag_f2, iso_red_col_f2 = interpolate.splev(u_fine, iso_red_tck2)
+
+    # Test interpolation, if desired
+    testInterp=False
+    if testInterp:
+       py.figure(1, figsize=(10,10))
+       py.clf()
+       py.plot(iso_col1, iso_mag1, 'k.', ms=8)
+       py.plot(iso_col_f1, iso_mag_f1, 'r-', linewidth=2)
+       py.xlabel('F814W - F160W')
+       py.ylabel('F814W')
+       py.title('Optical Interpolation')
+       py.axis([3, 7, 26, 14])
+       py.savefig('interp_test_opt.png')
+
+       py.figure(2, figsize=(10,10))
+       py.clf()
+       py.plot(iso_col2, iso_mag2, 'k.', ms=8)
+       py.plot(iso_col_f2, iso_mag_f2, 'r-', linewidth=2)
+       py.xlabel('F125W - F160W')
+       py.ylabel('F125W')
+       py.title('IR Interpolation')
+       py.axis([0.5, 1.7, 21, 12])       
+       py.savefig('interp_test_ir.png')
+
+       pdb.set_trace()  
 
     red_vec_dx_f1 = iso_red_col_f1 - iso_col_f1
     red_vec_dy_f1 = iso_red_mag_f1 - iso_mag_f1
     red_vec_dx_f2 = iso_red_col_f2 - iso_col_f2
     red_vec_dy_f2 = iso_red_mag_f2 - iso_mag_f2
-
+        
     # Define WR stars. 
     iso_WR_f1 = np.zeros(len(iso_mass_f1), dtype=bool)
     iso_WR_f2 = np.zeros(len(iso_mass_f2), dtype=bool)
     iso_WR_f1[iso_mass_f1 > mass_max] = True
     iso_WR_f2[iso_mass_f2 > mass_max] = True
+
+    # If desired, look at reddening vector slope as a function
+    # of mass
+    test = False
+    if test:
+        # Calculate dx, dy on the same mass scale
+        vec_dx_f1 = iso_red_col1 - iso_col1
+        vec_dy_f1 = iso_red_mag1 - iso_mag1
+        vec_dx_f2 = iso_red_col2 - iso_col2
+        vec_dy_f2 = iso_red_mag2 - iso_mag2
+
+        # Calculate slopes dy / dx
+        opt_slope = vec_dy_f1 / vec_dx_f1
+        ir_slope = vec_dy_f2 / vec_dx_f2
+
+        # Caculate length of the vector
+        opt_length = np.hypot(vec_dy_f1, vec_dx_f1)
+        ir_length = np.hypot(vec_dy_f2, vec_dx_f2)
+        
+        # Rough determination of MS turn on, from color. This
+        # is specific for Age = 6.7, Aks = 0.69, dist = 4000 iso
+        PMS_opt = np.where( iso_col1 > 4.0 )
+        PMS_ir = np.where( iso_col2 > 0.8 )
+        
+        py.close('all')
+        py.figure(1, figsize=(20,10))
+        py.subplot(121)
+        py.subplots_adjust(left=0.1)
+        py.plot(iso_mass, opt_slope, 'k.', ms=5, label='MS')
+        py.plot(iso_mass[PMS_opt], opt_slope[PMS_opt], 'r.', ms=5,
+                label='PMS')
+        py.plot(iso_mass[iso_WR], opt_slope[iso_WR], 'b.', ms=5,
+                label='WR')
+        py.xlabel('Mass (M_sun)')
+        py.ylabel('Reddening vector slope: Optical')
+        py.legend()
+        py.subplot(122)
+        py.plot(iso_mass, ir_slope, 'k.', ms=5, label='MS')
+        py.plot(iso_mass[PMS_ir], ir_slope[PMS_ir], 'r.', ms=5,
+                label='PMS')
+        py.plot(iso_mass[iso_WR], ir_slope[iso_WR], 'b.', ms=5,
+                label='WR')
+        py.xlabel('Mass (M_sun)')
+        py.ylabel('Reddening vector slope: IR')
+        py.legend()
+        py.savefig('Redvector_slope.png')
+
+        # Conparing the lengths of the reddening vectors
+        py.figure(2, figsize=(20,10))
+        py.subplot(121)
+        py.subplots_adjust(left=0.1)
+        py.plot(iso_mass, opt_length, 'k.', ms=5, label='MS')
+        py.plot(iso_mass[PMS_opt], opt_length[PMS_opt], 'r.', ms=5,
+                label='PMS')
+        py.plot(iso_mass[iso_WR], opt_length[iso_WR], 'b.', ms=5,
+                label='WR')
+        py.xlabel('Mass (M_sun)')
+        py.ylabel('Length of Optical Reddening Vector (mag)')
+        py.legend()
+        py.subplot(122)
+        py.plot(iso_mass, ir_length, 'k.', ms=5, label='MS')
+        py.plot(iso_mass[PMS_ir], ir_length[PMS_ir], 'r.', ms=5,
+                label='PMS')
+        py.plot(iso_mass[iso_WR], ir_length[iso_WR], 'b.', ms=5,
+                label='WR')
+        py.xlabel('Mass (M_sun)')
+        py.ylabel('Length of IR Reddening Vector (mag)')
+        py.legend()
+        py.savefig('Redvector_length.png')        
+    
+        pdb.set_trace()
 
     print 'Setting up completeness interpolater for CMD space.'
     comp1_int = comp_interp_for_cmd(comp['mag'], comp['c_2005_F814W'],
@@ -1545,6 +1649,83 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                                                     red_vec_dx_f2, red_vec_dy_f2, red_dAKs,
                                                     plot=False)
 
+    # At this point, the Optical and IR outputs still match up. If desired,
+    # compare the distribution of delta-AKs values
+    testhist = True
+    if testhist == True:
+        # Normalized histogram of all the AKs values for optical and IR
+        py.figure(1, figsize=(10,10))
+        py.clf()
+        n, bins, patches = py.hist(AKs2, bins=25, color='red', alpha = 0.01,
+                                   label = 'IR', normed=True)
+        py.hist(AKs2, bins=bins, color='red', alpha = 0.6, label = 'IR', normed=True)
+        py.hist(AKs1, bins=bins, color='blue', alpha = 0.6, label = 'Optical', normed=True)
+        py.xlabel('Delta AKs (mags)')
+        py.ylabel('N stars, normalized')
+        py.title('Reddening Distribution, {0}'.format(synthetic.redlaw.name))
+        py.axis([-0.5, 0.5, 0, 10])
+        py.legend()
+        outfile ='AKsHist_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
+                                                                              distance,
+                                                                              synthetic.redlaw.name)
+        py.savefig(outfile)
+
+        # Eliminate stars in the PMS bump, which aren't used in the redmap
+        # anyway
+        good_ir = np.where( (m125 < 15.3) | (m125 > 17.4) )
+        good_opt = np.where( (m814 < 19) | (m814 > 21) )
+        
+        # Identify the outliers as those with large reddening vals
+        outlier_ir = np.where( (AKs2[good_ir] < -0.1) | (AKs2[good_ir] > 0.2) )
+        outlier_opt = np.where( (AKs1[good_opt] < -0.1) | (AKs1[good_opt] > 0.2) )
+
+        # Look at the histogram of good AKs vals for optical and IR
+        py.figure(2, figsize=(10,10))
+        py.clf()
+        n, bins, patches = py.hist(AKs2[good_ir], bins=25, color='red', alpha = 0.01,
+                                   label = 'IR', normed=True)
+        py.hist(AKs2[good_ir], bins=bins, color='red', alpha = 0.6, label = 'IR', normed=True)
+        py.hist(AKs1[good_opt], bins=bins, color='blue', alpha = 0.6, label = 'Optical', normed=True)
+        py.xlabel('Delta AKs (mags)')
+        py.ylabel('N stars, normalized')
+        py.title('Trimmed Reddening Distribution, {0}'.format(synthetic.redlaw.name))
+        py.axis([-0.5, 0.5, 0, 10])
+        py.legend()
+        outfile ='AKsHist_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}_trimmed.png'.format(logAge, AKs,
+                                                                              distance,
+                                                                              synthetic.redlaw.name)
+        py.savefig(outfile)       
+
+        # Look at positions of outlier stars in their respective trimmed CMDs
+        py.figure(3, figsize=(10,10))
+        py.clf()
+        py.plot(color1, m814, 'b.', ms=5, alpha = 0.5)
+        py.plot(color1[good_opt], m814[good_opt], 'k.', ms=5, alpha=0.5)
+        py.plot(color1[good_opt][outlier_opt], m814[good_opt][outlier_opt], 'r.', ms=5)
+        py.plot(iso_col_f1, iso_mag_f1, 'g-', linewidth=2)
+        py.xlabel('F814W - F160W')
+        py.ylabel('F814W')
+        py.title('Optical AKs outliers: <-0.1, >0.2')
+        py.axis([3, 7, 26, 14])
+        outfile='AKs_cmd_optical_{0}_trimmed.png'.format(synthetic.redlaw.name)
+        py.savefig(outfile)
+
+        py.figure(4, figsize=(10,10))
+        py.clf()
+        py.plot(color2, m125, 'b.', ms=5, alpha = 0.5)
+        py.plot(color2[good_ir], m125[good_ir], 'k.', ms=5, alpha=0.5)
+        py.plot(color2[good_ir][outlier_ir], m125[good_ir][outlier_ir], 'r.', ms=5)
+        py.plot(iso_col_f2, iso_mag_f2, 'g-', linewidth=2)
+        py.xlabel('F125W - F160W')
+        py.ylabel('F125W')
+        py.title('IR AKs outliers: <-0.1, >0.2')
+        py.axis([0.5, 1.7, 21, 12])
+        outfile='AKs_cmd_ir_{0}_trimmed.png'.format(synthetic.redlaw.name)
+        py.savefig(outfile)        
+
+        
+        pdb.set_trace()
+    
     # Find the maximum mass where we don't have WR stars anymore
     print mass_max, mass1.max(), mass2.max()
     mass_max1 = mass1[isWR1 == False].max()
@@ -1915,7 +2096,7 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
     dAKs = np.zeros(len(mag), dtype=float)
     delta_arr = np.zeros(len(mag), dtype=float)
 
-    red_dAKs = np.arange(-0.2, 0.3, 0.01)
+    red_dAKs = np.arange(-0.5, 0.5, 0.01)
     red_col = red_dAKs / dAKs_0
     red_mag = red_dAKs / dAKs_0
 
@@ -1987,18 +2168,24 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         comp[ii] = comp_int(mag[ii], color[ii])
         delta_arr[ii] = delta[min_rdx]
 
-        # Sanity plot
+        # Sanity plot. Currently tuned to IR
         if plot:
-            py.figure(1, figsize=(10,10))
-            py.clf()
-            py.plot(color[ii], mag[ii], 'k*', ms=8)
-            py.plot(iso_col_f, iso_mag_f, 'r-')
-            py.plot(iso_col_f[min_idx], iso_mag_f[min_idx], 'r*', ms=8)
-            py.axis([min(color), max(color), max(mag), min(mag)])
-            py.title('dAKs = {0}'.format(dAKs[ii]))
-            py.savefig('Match.png')
-            pdb.set_trace()
-
+            if ((mag[ii] > 17.5) & (mag[ii] < 18.5) & (color[ii]>1.3)):
+            #if ((mag[ii] > 17.5) & (color[ii]<1.1)):
+                py.figure(1, figsize=(10,10))
+                py.clf()
+                py.plot(color[ii], mag[ii], 'k*', ms=10)
+                py.plot(iso_col_f, iso_mag_f, 'r-')
+                py.plot(iso_col_f[iso_idx_per_rr], iso_mag_f[iso_idx_per_rr], 'k.', ms = 5)
+                py.plot(iso_col_f[min_idx], iso_mag_f[min_idx], 'r*', ms=10)
+                mag_tmp = (iso_mag_f[iso_idx_per_rr] + (red_mag * red_vec_dy_f[iso_idx_per_rr]))
+                col_tmp =  (iso_col_f[iso_idx_per_rr] + (red_col * red_vec_dx_f[iso_idx_per_rr]))
+                py.plot(col_tmp, mag_tmp, 'g.', ms=5)
+                py.axis([min(color), max(color), max(mag), min(mag)])
+                py.title('dAKs = {0}'.format(dAKs[ii]))
+                py.savefig('Match.png')
+                pdb.set_trace()
+                
         if comp[ii] > 1:
             comp[ii] = 1
         if comp[ii] < 0:
@@ -2026,7 +2213,7 @@ def get_mag_for_mass(log_mass, iso_mass, iso_mag):
     return mag
     
 
-def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
+def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=False):
     tmp_dist = 4000
 
     filters={'814w': 'acs,wfc1,f814w',
@@ -2035,6 +2222,15 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
              '160w': 'wfc3,ir,f160w'}
 
     print 'Using Red Law = ', synthetic.redlaw.name
+
+    # Change iso_dir depending on redlaw used
+    if synthetic.redlaw.name == 'Nishiyama09':
+        iso_dir = iso_dir_nishi09
+    elif synthetic.redlaw.name == 'Westerlund1':
+        iso_dir = iso_dir_wd1
+        if IAU==True:
+            iso_dir = iso_dir_wd1+'IAU_law/'
+
     iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
                                    iso_dir=iso_dir, massSampling=1,
                                    filters=filters)
