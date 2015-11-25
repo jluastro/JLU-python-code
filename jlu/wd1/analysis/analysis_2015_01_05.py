@@ -935,13 +935,14 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
 
     clust = np.where(pmem > 0.8)[0]
 
+    # Load up the original IAU isochrone. We'll compare everything to this
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance, IAU=True)
-
+    
     # Original Reddening Law (of isochrone we are loading)
     wave_0 = np.array([0.551, 0.814, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
-    A_AKs_0 = np.array([16.13, 9.4, 2.82, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430])
+    A_AKs_0 = np.array([16.13, 9.4, 2.82, 1.73, 1.00, 0.500, 0.390, 0.360, 0.430]) #IAU
     A_int_0 = interpolate.splrep(wave_0, A_AKs_0, k=3, s=0)
-
+    
     # New Reddening Law
     wave_1 = np.array( [0.551, 0.814, 1.25, 1.63, 2.14, 3.545, 4.442, 5.675, 7.760])
     A_AKs_1 = np.array([16.13, 9.45, 2.80, 1.70, 1.00, 0.500, 0.390, 0.360, 0.430])
@@ -1081,7 +1082,6 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
 
     outfile = 'cmd_play_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}.png'.format(logAge, AKs, distance)
     py.savefig(plot_dir + outfile)
-    
     return
 
 def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
@@ -1098,6 +1098,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
 
     clust = np.where(pmem > 0.8)[0]
 
+    # Load Wd1 isochrone
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso = iso[::3]
     
@@ -1136,6 +1137,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
         dmass = np.abs(iso_mass[ii] - iso['mass'])
         iso_idx[ii] = dmass.argmin()
 
+    # Also pull a Nishiyama+09 isochrone, for comparison
+    synthetic.redlaw = reddening.RedLawNishiyama09()
+    iso_N09 = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+
+    synthetic.redlaw = reddening.RedLawWesterlund1()
+    
     py.close(1)
     py.figure(1, figsize=(10,10))
     # py.clf()
@@ -1144,11 +1151,15 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     # F814W vs. F160W CMD
     py.subplot(2, 2, 1)
     py.plot(color1[clust], m814[clust], 'k.', ms=2)
-    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r.', ms=5)
+    py.plot(iso['mag814w'] - iso['mag160w'], iso['mag814w'], 'r-', linewidth=3,
+            label='Wd1')
+    py.plot(iso_N09['mag814w'] - iso_N09['mag160w'], iso_N09['mag814w'], 'k-',
+            linewidth=3, label='Nishiyama+09')
     py.ylim(26, 14)
     py.xlim(3, 7)
-    py.xlabel('F814W - F160W')
-    py.ylabel('F814W')
+    py.legend(numpoints=1)
+    py.xlabel('F814W - F160W (mag)')
+    py.ylabel('F814W (mag)')
 
     red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
@@ -1156,28 +1167,32 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
 
     x_mass = iso['mag814w'][iso_idx] - iso['mag160w'][iso_idx]
     y_mass = iso['mag814w'][iso_idx]
-    py.plot(x_mass, y_mass, 'rs', ms=10)
-    for ii in range(len(iso_mass)):
-        py.text(x_mass[ii] + 0.8, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]), color='black')
+    #py.plot(x_mass, y_mass, 'rs', ms=10)
+    #for ii in range(len(iso_mass)):
+    #    py.text(x_mass[ii] + 0.8, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]), color='black')
 
     # F814W vs. F125W CMD
     py.subplot(2, 2, 2)
     py.plot(m814[clust] - m125[clust], m814[clust], 'k.', ms=2)
-    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r.', ms=5)
+    py.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'r-', linewidth=3,
+            label='Wd1')
+    py.plot(iso_N09['mag814w'] - iso_N09['mag125w'], iso_N09['mag814w'],
+            'k-', linewidth=3, label='Nishiyama+09')
     py.ylim(26, 14)
     py.xlim(2.5, 5.5)
-    py.xlabel('F814W - F125W')
-    py.ylabel('F814W')
+    py.legend(numpoints=1)
+    py.xlabel('F814W - F125W (mag)')
+    py.ylabel('F814W (mag)')
     
     red_vec_dx = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F125W_AKs_1 - m_F125W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0)
-    py.arrow(3.0, 21, red_vec_dx, red_vec_dy, head_width=0.18)
+    py.arrow(2.7, 21, red_vec_dx, red_vec_dy, head_width=0.18)
 
     x_mass = iso['mag814w'][iso_idx] - iso['mag125w'][iso_idx]
     y_mass = iso['mag814w'][iso_idx]
-    py.plot(x_mass, y_mass, 'rs', ms=10)
-    for ii in range(len(iso_mass)):
-        py.text(x_mass[ii] + 0.6, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
+    #py.plot(x_mass, y_mass, 'rs', ms=10)
+    #for ii in range(len(iso_mass)):
+    #    py.text(x_mass[ii] + 0.6, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
 
     # # F125W vs. F139M CMD
     # py.subplot(2, 2, 2)
@@ -1197,11 +1212,15 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     # F125W vs. F160W CMD
     py.subplot(2, 2, 3)
     py.plot(color2[clust], m125[clust], 'k.', ms=2)
-    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r.', ms=5)
+    py.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'r-',
+            label='Wd1', linewidth=3)
+    py.plot(iso_N09['mag125w'] - iso_N09['mag160w'], iso_N09['mag125w'], 'k-',
+            label='Nishiyama+09', linewidth=3)
     py.ylim(21.5, 12)
     py.xlim(0.5, 1.7)
-    py.xlabel('F125W - F160W')
-    py.ylabel('F125W')
+    py.legend(numpoints=1)
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F125W (mag)')
     
     red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
@@ -1209,19 +1228,23 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
 
     x_mass = iso['mag125w'][iso_idx] - iso['mag160w'][iso_idx]
     y_mass = iso['mag125w'][iso_idx]
-    py.plot(x_mass, y_mass, 'rs', ms=10)
-    for ii in range(len(iso_mass)):
-        py.text(x_mass[ii] + 0.2, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
+    #py.plot(x_mass, y_mass, 'rs', ms=10)
+    #for ii in range(len(iso_mass)):
+    #    py.text(x_mass[ii] + 0.2, y_mass[ii], r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
     
     # Color-color
     py.subplot(2, 2, 4)
     py.plot(color2[clust], color1[clust], 'k.', ms=2)
     py.plot(iso['mag125w'] - iso['mag160w'], iso['mag814w'] - iso['mag160w'],
-            'r.', ms=5)
+            'r-', linewidth=3, label='Wd1')
+    py.plot(iso_N09['mag125w'] - iso_N09['mag160w'],
+            iso_N09['mag814w'] - iso_N09['mag160w'],
+            'k-', linewidth=3, label='Nishiyama+09')
     py.ylim(3.0, 7)
     py.xlim(0.5, 1.7)
-    py.xlabel('F125W - F160W')
-    py.ylabel('F814W - F160W')
+    py.legend(numpoints=1)
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F814W - F160W (mag)')
 
     red_vec_dx = (m_F125W_AKs_1 - m_F125W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
     red_vec_dy = (m_F814W_AKs_1 - m_F814W_AKs_0) - (m_F160W_AKs_1 - m_F160W_AKs_0)
@@ -1229,12 +1252,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     
     x_mass = iso['mag125w'][iso_idx] - iso['mag160w'][iso_idx]
     y_mass = iso['mag814w'][iso_idx] - iso['mag160w'][iso_idx]
-    py.plot(x_mass, y_mass, 'rs', ms=10)
-    for ii in range(len(iso_mass)):
-        py.text(x_mass[ii], y_mass[ii]-0.5, r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
+    #py.plot(x_mass, y_mass, 'rs', ms=10)
+    #for ii in range(len(iso_mass)):
+    #    py.text(x_mass[ii], y_mass[ii]-0.5, r'{0:.1f} M$_\odot$'.format(iso_mass[ii]))
 
-    py.suptitle('log(t)={0:4.2f}, AKs={1:4.2f}, d={2:4.0f}'.format(logAge, AKs, distance),
-                verticalalignment='top')
+    #py.suptitle('log(t)={0:4.2f}, AKs={1:4.2f}, d={2:4.0f}'.format(logAge, AKs, distance),
+    #            verticalalignment='top')
 
 
     outfile = 'cmd_isochrones_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
@@ -1461,10 +1484,13 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     
     # Read in isochrone
     print 'Loading Isochrone'
+    #----FOR NISHIYAMA+09----#
+    synthetic.redlaw = reddening.RedLawNishiyama09()
+    #------------------------#
     red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
-    
+
     # Get the completeness (relevant for diff. de-reddened magnitudes).
     print 'Loading completeness table'
     comp = Table.read(work_dir + 'completeness_vs_mag.fits')
@@ -1651,19 +1677,19 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
 
     # At this point, the Optical and IR outputs still match up. If desired,
     # compare the distribution of delta-AKs values
-    testhist = True
+    testhist = False
     if testhist == True:
         # Normalized histogram of all the AKs values for optical and IR
         py.figure(1, figsize=(10,10))
         py.clf()
         n, bins, patches = py.hist(AKs2, bins=25, color='red', alpha = 0.01,
-                                   label = 'IR', normed=True)
+                                   normed=True)
         py.hist(AKs2, bins=bins, color='red', alpha = 0.6, label = 'IR', normed=True)
         py.hist(AKs1, bins=bins, color='blue', alpha = 0.6, label = 'Optical', normed=True)
-        py.xlabel('Delta AKs (mags)')
+        py.xlabel(r'$\Delta$A$_{Ks}$ (mags)')
         py.ylabel('N stars, normalized')
-        py.title('Reddening Distribution, {0}'.format(synthetic.redlaw.name))
-        py.axis([-0.5, 0.5, 0, 10])
+        #py.title('Reddening Distribution, {0}'.format(synthetic.redlaw.name))
+        py.axis([-0.5, 0.5, 0, 8])
         py.legend()
         outfile ='AKsHist_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
                                                                               distance,
@@ -1683,13 +1709,13 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
         py.figure(2, figsize=(10,10))
         py.clf()
         n, bins, patches = py.hist(AKs2[good_ir], bins=25, color='red', alpha = 0.01,
-                                   label = 'IR', normed=True)
+                                   normed=True)
         py.hist(AKs2[good_ir], bins=bins, color='red', alpha = 0.6, label = 'IR', normed=True)
         py.hist(AKs1[good_opt], bins=bins, color='blue', alpha = 0.6, label = 'Optical', normed=True)
-        py.xlabel('Delta AKs (mags)')
+        py.xlabel(r'$\Delta$A$_{Ks}$ (mags)')
         py.ylabel('N stars, normalized')
-        py.title('Trimmed Reddening Distribution, {0}'.format(synthetic.redlaw.name))
-        py.axis([-0.5, 0.5, 0, 10])
+        #py.title('Trimmed Reddening Distribution, {0}'.format(synthetic.redlaw.name))
+        py.axis([-0.5, 0.5, 0, 8])
         py.legend()
         outfile ='AKsHist_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}_trimmed.png'.format(logAge, AKs,
                                                                               distance,
@@ -1707,7 +1733,9 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
         py.ylabel('F814W')
         py.title('Optical AKs outliers: <-0.1, >0.2')
         py.axis([3, 7, 26, 14])
-        outfile='AKs_cmd_optical_{0}_trimmed.png'.format(synthetic.redlaw.name)
+        outfile='AKs_cmd_optical_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
+                                                                              distance,
+                                                                              synthetic.redlaw.name)
         py.savefig(outfile)
 
         py.figure(4, figsize=(10,10))
@@ -1720,7 +1748,9 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
         py.ylabel('F125W')
         py.title('IR AKs outliers: <-0.1, >0.2')
         py.axis([0.5, 1.7, 21, 12])
-        outfile='AKs_cmd_ir_{0}_trimmed.png'.format(synthetic.redlaw.name)
+        outfile='AKs_cmd_ir_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}.png'.format(logAge, AKs,
+                                                                              distance,
+                                                                              synthetic.redlaw.name)
         py.savefig(outfile)        
 
         
@@ -2121,13 +2151,13 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
 
             # If the color + mag difference is less than 0.02, then take
             # the lowest mass. This helps account for the missing IMF bias.
-            idx = np.where(delta[sdx] < 0.01)[0]
+            idx = np.where(delta[sdx] < 0.02)[0]
 
             if (len(idx) > 1):
                 # More than one in a tight radius... choose the lower mass.
                 min_mass_idx = iso_mass_f[sdx[idx]].argmin()
                 min_idx = sdx[idx][min_mass_idx]
-
+                
                 iso_idx_per_rr[rr] = min_idx
             else:
                 # One or zero within the radius... just take the closest.
@@ -2143,12 +2173,16 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         delta = np.hypot(dmag, dcol)
         
         sdx = delta.argsort()
-        idx = np.where(delta[sdx] < 0.01)[0]
+        idx = np.where(delta[sdx] < 0.02)[0]
 
         if len(idx) > 1:
+            #---------METHOD 1: Choose lower mass------#
             # More than one in a tight radius... choose the lower mass.
-            min_mass_idx = iso_mass_f[iso_idx_per_rr[sdx[idx]]].argmin()
-            min_rdx = sdx[idx][min_mass_idx]
+            #min_mass_idx = iso_mass_f[iso_idx_per_rr[sdx[idx]]].argmin()
+            #--METHOD 2: Choose lower absolute AKs val--#
+            min_Aks_idx = abs(red_mag[sdx[idx]]).argmin()
+
+            min_rdx = sdx[idx][min_Aks_idx]
         else:
             min_rdx = sdx[0]
         # min_rdx = sdx[0]
