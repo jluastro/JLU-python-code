@@ -2042,13 +2042,14 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     col_names = iso.colnames
 
     for cc in range(len(col_names)):
+        delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
+        print 'Changing distance: delta_DM = ', delta_DM
+        
         if col_names[cc].startswith('mag'):
-            delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
-            print 'Changing distance: delta_DM = ', delta_DM
-            
             iso[col_names[cc]] += delta_DM
 
     return iso
+
         
 def check_atmospheres():
     cdbs_dir = os.environ['PYSYN_CDBS']
