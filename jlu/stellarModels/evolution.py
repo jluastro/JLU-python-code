@@ -564,8 +564,8 @@ def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
 
     # Output of merged isochrones
     outDir = models_dir + 'merged/siess_meynetMaeder_padova/%s/' % (metSuffix)
-    gcutil.mkdir(outDir)
-    
+    if not os.path.exists(outDir):
+        os.mkdir(outDir)
 
     for ii in range(len(isoFilesMM)):
         isoFilesMM[ii] = isoFilesMM[ii].split('/')[-1]
@@ -1456,9 +1456,8 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
         return
     rotSuffix = 'rot/'
     if not rotation:
-        rotSuffix = 'norot'
-        print 'Non-rotating Ekstrom+12 models not supported yet'
-        return
+        rotSuffix = 'norot/'
+        
     rootDir += metSuffix + rotSuffix
 
     # Check to see if isochrone exists
@@ -1558,6 +1557,94 @@ def get_parsec_isochrone(logAge, metallicity='solar'):
     
     return obj
 
+def get_Baraffe15_isochrone(logAge, metallicity='solar'):
+    """
+    Load mass, effective temperature, log gravity, and log luminosity
+    for the Baraffe+15 isochrones at given logAge. Code will quit if that
+    logAge value doesn't exist (can make some sort of interpolation thing
+    later).
+
+    ALSO interpolates isochrone to a finer mass grid.
+
+    Inputs:
+    logAge - Logarithmic Age
+    metallicity - in Z (def = solar of 0.014)
+    """
+    rootDir = models_dir + 'Baraffe15/iso/'
+    if metallicity != 'solar':
+        print 'Non-solar Baraffe+15 metallicities not supported yet'
+        return
+
+    # Check to see if isochrone exists
+    isoFile = rootDir + 'iso_%.2f.fits' % logAge
+    if not os.path.exists(isoFile):
+        print 'Baraffe+15 isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge)
+        print 'Quitting'
+        return
+        
+    data = Table.read(isoFile, format='fits')
+    mass = data['Mass'] #Note: this is initial mass, in M_sun
+    logT = np.log10(data['Teff']) # K
+    logL = data['logL'] # L_sun
+    logg = data['logG']
+
+    # Interpolate isochrone to finer mass grid. Spacing
+    # is one model every 0.02 M_sun down to 0.2 M_sun, then
+    # one model every 0.005 M_sun down to 0.07 M_sun
+    new_masses0 = np.arange(min(mass), 0.1, 0.005)
+    new_masses2 = np.arange(0.1, max(mass), 0.02)
+    
+    #new_masses = np.concatenate((new_masses0, new_masses1, new_masses2))
+    new_masses = np.concatenate((new_masses0, new_masses2))
+    
+    # Build interpolators in linear space
+    f_logT = interpolate.interp1d(mass, 10**logT, kind='linear')
+    f_logL = interpolate.interp1d(mass, 10**logL, kind='linear')
+    f_logg = interpolate.interp1d(mass, 10**logg, kind='linear')
+
+    # Do interpolation, convert back to logspace
+    logT_interp = np.log10(f_logT(new_masses))
+    logL_interp = np.log10(f_logL(new_masses))
+    logg_interp = np.log10(f_logg(new_masses))
+
+    # Test the interpolation, if desired
+    test = False
+    if test:
+        py.figure(1, figsize=(10,10))
+        py.clf()
+        py.plot(mass, logT, 'k.', ms = 10, label='Orig')
+        py.plot(new_masses, logT_interp, 'r.', ms=7, label='Interp')
+        py.xlabel('Mass')
+        py.ylabel('logT')
+        py.legend()
+
+        py.figure(2, figsize=(10,10))
+        py.clf()
+        py.plot(mass, logL, 'k.', ms = 10, label='Orig')
+        py.plot(new_masses, logL_interp, 'r.', ms=7, label='Interp')
+        py.xlabel('Mass')
+        py.ylabel('logL')
+        py.legend()
+
+        py.figure(3, figsize=(10,10))
+        py.clf()
+        py.plot(mass, logg, 'k.', ms = 10, label='Orig')
+        py.plot(new_masses, logg_interp, 'r.', ms=7, label='Interp')
+        py.xlabel('Mass')
+        py.ylabel('logg')
+        py.legend()
+
+        pdb.set_trace()
+    
+    # Make isochrone
+    obj = objects.DataHolder()
+    obj.mass = new_masses
+    obj.logT = logT_interp
+    obj.logg = logg_interp
+    obj.logL = logL_interp
+
+    return obj
+
 def get_pisa_isochrone(logAge, metallicity='solar'):
     """
     Load mass, effective temperature, log gravity, and log luminosity
@@ -1600,12 +1687,11 @@ def get_pisa_isochrone(logAge, metallicity='solar'):
 
     return obj
 
-def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
+def merge_isochrone_baraffe_pisa(logAge, metallicity='solar'):
     """
-    Function to merge Pisa 2011 and Ekstrom 2012 models. Solar metallicity is
-    Z = 0.015 for Pisa 2011 and Z = 0.014 for Ekstrom+12.
-
-    Will take Pisa models to highest available mass, then switch to Ekstrom
+    Function to merge Baraffe+15 and Pisa 2011 models. Will take
+    100% Baraffe+15 between 0.07 - 0.4 M_sun, transition between
+    0.4 - 0.5 M_sun, and take 100% Pisa from 0.5 M_sun and up.
 
     Can only handle ages at which models already exist:
     logAge = 6.0 - 8.0, delta logAge = 0.01
@@ -1613,13 +1699,101 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
     if metallicity != 'solar':
         print 'Non-solar metallicity not supported yet'
         return
+
+    # Get individual Baraffe and Pisa isochrones at desired age. Note
+    # that this will also give the Baraffe models a finer mass sampling
+    isoBaraffe = get_Baraffe15_isochrone(logAge, metallicity=metallicity)
+    isoPisa = get_pisa_isochrone(logAge, metallicity=metallicity)
+
+    # Identify M <= 0.4 M_sun in Baraffe and M >= 0.5 M_sun in Pisa
+    good_b = np.where(isoBaraffe.mass <= 0.4)
+    good_p = np.where(isoPisa.mass >= 0.5)
+
+    # Sample between 0.4 M_sun and 0.5 M_sun in steps of 0.02 M_sun.
+    # Will do linear combo of Baraffe and Pisa over this range
+    mid_mass = np.arange(0.4, 0.5+0.01, 0.02)
+    mid_logT = []
+    mid_logL = []
+    mid_logG = []
+    for mass in mid_mass:
+        # Find the appropriate masses in Baraffe + Pisa to build from.
+        # Baraffe has identical sampling over this range, and Pisa sampling
+        # is very close. As a result, we will just take the closest mass model
+        # to each mid_mass
+        idx_b = np.where( abs(isoBaraffe.mass - mass)  == min(abs(isoBaraffe.mass - mass)) )
+        idx_p = np.where( abs(isoPisa.mass - mass)  == min(abs(isoPisa.mass - mass)) )
+
+        # Quality control check: we won't let the difference between model mass and
+        # chosen mass to be >= 0.01 M_sun
+        if ((isoPisa.mass[idx_p] - mass) >= 0.02) | ((isoBaraffe.mass[idx_b] - mass) >= 0.02):
+            print 'WARNING: Baraffe or Pisa model interpolation between 0.4 - 0.5 M_sun may \
+            be inaccurate. Check this!'
+            pdb.set_trace()
     
+        # Now, do the linear combo of models at this mass, weighted by distance from
+        # 0.4 or 0.5 (whichever is appropriate)
+        diff = 0.5 - 0.4
+        weight_b = (0.5 - mass) / diff
+        weight_p = 1.0 - weight_b
+        print 'Baraffe {0} and Pisa {1} at mass {2}'.format(weight_b, weight_p, mass)
+
+        # Now, do the merge IN LINEAR SPACE!
+        Teff = (10**isoBaraffe.logT[idx_b] * weight_b) + \
+            (10**isoPisa.logT[idx_p] * weight_p)
+        L = (10**isoBaraffe.logL[idx_b] * weight_b) + \
+            (10**isoPisa.logL[idx_p] * weight_p)
+        g = (10**isoBaraffe.logg[idx_b] * weight_b) + \
+            (10**isoPisa.logg[idx_p] * weight_p)
+        
+        mid_logT = np.concatenate((mid_logT, np.log10(Teff)))
+        mid_logL = np.concatenate((mid_logL, np.log10(L)))
+        mid_logG = np.concatenate((mid_logG, np.log10(g)))
+
+    # Now, final isochrone will be combination of Baraffe at M<=0.4,
+    # Pisa at M>=0.5, and the combination inbetween
+    mass = np.concatenate((isoBaraffe.mass[good_b], mid_mass, isoPisa.mass[good_p]))
+    logT = np.concatenate((isoBaraffe.logT[good_b], mid_logT, isoPisa.logT[good_p]))
+    logL = np.concatenate((isoBaraffe.logL[good_b], mid_logL, isoPisa.logL[good_p]))
+    logG = np.concatenate((isoBaraffe.logg[good_b], mid_logG, isoPisa.logg[good_p]))
+
+    # Also add a source flag
+    source = np.concatenate( (['Baraffe']*len(good_b[0]), ['Baraffe+Pisa']*len(mid_mass),
+                              ['Pisa']*len(good_p[0])) )
+
+    iso = objects.DataHolder()
+    iso.mass = mass
+    iso.logL = logL
+    iso.logg = logG
+    iso.logT = logT
+    iso.source = source
+
+    return iso
+
+def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True, iso_in=None):
+    """
+    Function to merge Pisa 2011 and Ekstrom 2012 models. Solar metallicity is
+    Z = 0.015 for Pisa 2011 and Z = 0.014 for Ekstrom+12.
+
+    If iso_in = None, will take Pisa models to highest available mass,
+    then switch to Ekstrom. If iso_in is defined, then will take this
+    isochrone to highest mass and switch to Ekstrom
+
+    Can only handle ages at which models already exist:
+    logAge = 6.0 - 8.0, delta logAge = 0.01
+    """
     # Get individual Ekstrom and Pisa isochrones at desired age
     isoEkstrom = get_Ekstrom_isochrone(logAge, metallicity=metallicity,
                                        rotation=rotation)
-    
-    isoPisa = get_pisa_isochrone(logAge, metallicity=metallicity)
 
+    if iso_in == None:
+        isoPisa = get_pisa_isochrone(logAge, metallicity=metallicity)
+        # Create array specifying source for Pisa isochrone
+        isoPisa.source = np.array(['Pisa']*len(isoPisa.mass))
+    else:
+        # iso_in isn't really a Pisa isochrone (it could be Baraffe-Pisa merge),
+        # but name it isoPisa for simplicity anyway.
+        isoPisa = iso_in
+        
     # Take Pisa isochrone as high up in mass as it goes, then switch to Ekstrom.
     # Will trim Ekstrom isochrone here
     max_Pisa = max(isoPisa.mass)
@@ -1630,8 +1804,7 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
     isoEkstrom.logL = isoEkstrom.logL[good]
     isoEkstrom.logT_WR = isoEkstrom.logT_WR[good]
     
-    # Make arrays containing the source of each point
-    isoPisa.source = np.array(['Pisa']*len(isoPisa.mass))
+    # Make array containing Ekstrom source ID
     isoEkstrom.source = np.array(['Ekstrom']*len(isoEkstrom.mass))
 
     # Combine the arrays
@@ -1652,19 +1825,29 @@ def merge_isochrone_pisa_Ekstrom(logAge, metallicity='solar', rotation=True):
 
     return iso
 
-def merge_isochrone_pisa_parsec(logAge, metallicity='solar'):
+def merge_isochrone_pisa_parsec(logAge, metallicity='solar', iso_in=None):
     """
     Function to merge Pisa 2011 and ParsecV1.2s models. Solar metallicity is
     Z = 0.015.
 
-    Will take Pisa models to highest available mass, then switch to Parsec
+    If iso_in = None, will take Pisa models to highest available mass,
+    then switch to Parsec. If iso_in is defined, then will take this
+    isochrone to highest mass and switch to Parsec
 
     Can only handle ages at which both sets of models already exist:
     logAge = 6.6 - 8.0, delta logAge = 0.01
     """
     isoParsec = get_parsec_isochrone(logAge, metallicity=metallicity)
-    isoPisa = get_pisa_isochrone(logAge, metallicity=metallicity)
-    
+    # Make Parsec source array
+    isoParsec.source = np.array(['Parsec']*len(isoParsec.mass))
+
+    # Define isoPisa based on iso_in input
+    if iso_in != None:
+        isoPisa = iso_in
+    else:
+        isoPisa = get_pisa_isochrone(logAge, metallicity=metallicity)
+        isoPisa.source = np.array(['Pisa']*len(isoPisa.mass))
+        
     # Use Pisa model as high up as it goes, then switch to Parsec
     max_Pisa = max(isoPisa.mass)
     good = np.where(isoParsec.mass > max_Pisa)
@@ -1672,12 +1855,8 @@ def merge_isochrone_pisa_parsec(logAge, metallicity='solar'):
     isoParsec.logT = isoParsec.logT[good]
     isoParsec.logg = isoParsec.logg[good]
     isoParsec.logL = isoParsec.logL[good]
+    isoParsec.source = isoParsec.source[good]
     
-
-    # Make arrays containing the source of each point
-    isoParsec.source = np.array(['Parsec']*len(isoParsec.mass))
-    isoPisa.source = np.array(['Pisa']*len(isoPisa.mass))
-
     # Combine the arrays
     M = np.append(isoPisa.mass, isoParsec.mass)
     logT = np.append(isoPisa.logT, isoParsec.logT)
@@ -1749,7 +1928,8 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
 
     # Output of merged isochrones
     outDir = models_dir + 'merged/pisa_ekstrom_parsec/%s/' % (metSuffix)
-    gcutil.mkdir(outDir)
+    if not os.path.exists(outDir):
+        os.mkdir(outDir)
 
     # Isolate the iso*.dat file names
     for ii in range(len(isoFilesE)):
@@ -1822,3 +2002,165 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
         _out.close()
     return
 
+def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotation=True, plot=False):
+    """
+    Make evolutionary isochrones containing a continuous distribution of 
+    masses from the PMS to the MS. The models used are the following:
+
+    PMS
+    Baraffe+15 from 0.07 - 0.4 M_sun
+    Pisa 2011 from 0.5 - top of grid (~7 M_sun)
+
+    MS (M > Pisa 2011)
+    Ekstrom+12 for logAge < 7.4
+    Parsec V1.2s for logAge > 7.4
+
+    metallicity = 'solar' --> Ekstrom+12 z014, Pisa2011 z015, Parsec z015
+
+    if plot = True, will make plots of merged isochrones in 'plots' directory,
+    which must already exist
+    
+    Code is expected to be run in merged model working directory.
+    """
+    # Root data directory for Ekstrom+12 isochrones
+    rootDirE = models_dir + 'Ekstrom2012/iso/'
+    metalPart = 'z014/'
+    if metallicity != 'solar':
+        print 'Non-solar metallicities not supported yet'
+        return
+    rotPart = 'rot/'
+    if not rotation:
+        rotPart = 'norot/'
+    rootDirE += metalPart+rotPart
+
+    # Root data directory for the Baraffe isochrones
+    rootDirBaraffe = models_dir + 'Baraffe15/iso/'
+
+    # Root data directory for Pisa isochrones
+    rootDirPisa = models_dir + 'Pisa2011/iso/'
+    metSuffix = 'z015/'
+    if metallicity != 'solar':
+        print 'Non-solar metallicities not supported yet'
+        return
+    rootDirPisa += metSuffix
+
+    # Root data directory for Parsec isochrones
+    rootDirParsec = models_dir + 'ParsecV1.2s/iso/'
+    metalSuffix = 'z015/'
+    if metallicity != 'solar':
+        print 'Non-solar metallicities not supported yet'
+        return        
+    rootDirParsec += metalSuffix
+
+    # Search both directories for iso_*.dat files
+    isoFilesE = glob.glob(rootDirE + 'iso_*.dat')
+    isoFilesB = glob.glob(rootDirBaraffe + 'iso_*.fits')
+    isoFilesPi = glob.glob(rootDirPisa + 'iso_*.dat')
+    isoFilesPa = glob.glob(rootDirParsec + 'iso_*')
+
+    # Output of merged isochrones
+    if rotation == True:
+        outDir = models_dir + 'merged/baraffe_pisa_ekstrom_parsec/{0}_rot/'.format(metSuffix[:-1])
+    else:
+        outDir = models_dir + 'merged/baraffe_pisa_ekstrom_parsec/{0}_norot/'.format(metSuffix[:-1])
+    if not os.path.exists(outDir):
+        os.mkdir(outDir)
+
+    # Isolate the iso*.dat file names
+    for ii in range(len(isoFilesE)):
+        isoFilesE[ii] = isoFilesE[ii].split('/')[-1]
+
+    for ii in range(len(isoFilesB)):
+        isoFilesB[ii] = isoFilesB[ii].split('/')[-1]    
+
+    for ii in range(len(isoFilesPi)):
+        isoFilesPi[ii] = isoFilesPi[ii].split('/')[-1]
+
+    for ii in range(len(isoFilesPa)):
+        isoFilesPa[ii] = isoFilesPa[ii].split('/')[-1]
+
+    # Loop through the Pisa isochrones, adding the MS and Baraffe models
+    # as appropriate
+    for ii in range(len(isoFilesPi)):
+        isoFilePi = isoFilesPi[ii]
+
+        logAgeStr = isoFilePi.replace('iso_', '').replace('.dat', '')
+        logAge = float(logAgeStr)
+
+        #-----PRE-MAIN SEQUENCE----#
+        # Merge with the Baraffe+15 models from 0.07 - 0.4 M_sun. Includes
+        # transition region between 0.4 - 0.5 M_sun in which we shift
+        # from 100% Baraffe to 100% Pisa
+
+        print 'Merging isochrones Pisa + Baraffe from ', isoFilePi
+        isoPMS = merge_isochrone_baraffe_pisa(logAge, metallicity=metallicity)
+
+        #--------MAIN SEQUENCE-------#
+        # Case where logAge <= 7.4, we merge with Ekstrom. Otherwise, merge
+        # which parsec
+        if logAge <= 7.4:
+            if isoFilePi not in isoFilesE:
+                print 'Skipping isochrones from ', isoFilePi
+                print 'PROBLEM WITH PISA OR EKSTROM'
+                pdb.set_trace()
+
+            print 'Merging isochrones Pisa+Ekstrom from ', isoFilePi
+            iso = merge_isochrone_pisa_Ekstrom(logAge, metallicity=metallicity,
+                                               rotation=rotation, iso_in=isoPMS)
+        else:
+            if isoFilePi not in isoFilesPa:
+                print 'Skipping isochrones from ', isoFilePi
+                print 'PROBLEM WITH PISA OR PARSEC'
+                pdb.set_trace()
+                
+            print 'Merging isochrones Pisa+Parsec from ', isoFilePi
+            iso = merge_isochrone_pisa_parsec(logAge, metallicity=metallicity,
+                                              iso_in=isoPMS)
+
+        # Make test plot, if desired. These are put in plots directory
+        if plot:
+            # Make different models different colors
+            baraffe_ind = np.where(iso.source == 'Baraffe')
+            merge_ind = np.where(iso.source == 'Baraffe+Pisa')
+            pisa_ind = np.where(iso.source == 'Pisa')
+            MS_ind = np.where( (iso.source == 'Ekstrom') | (iso.source == 'Parsec'))
+            #Extract age
+            logAge = isoFilePi.split('_')[1][:-4]
+
+            # Temporarily turn off interactive plot. Turn back on at end
+            py.ioff()
+            
+            py.figure(1)
+            py.clf()
+            py.plot(iso.logT[baraffe_ind], iso.logL[baraffe_ind], 'k-', label = 'Baraffe',
+                    linewidth=2)
+            py.plot(iso.logT[merge_ind], iso.logL[merge_ind], 'r-', label = 'Baraffe+Pisa',
+                    linewidth=2)
+            py.plot(iso.logT[pisa_ind], iso.logL[pisa_ind], 'g-', label = 'Pisa',
+                    linewidth=2)
+            py.plot(iso.logT[MS_ind], iso.logL[MS_ind], 'b-',
+                    label = 'Ekstrom/Parsec', linewidth=2)
+            py.xlabel('log Teff')
+            py.ylabel('log L')
+            py.title('Log Age = {0:s}'.format(logAge))
+            py.legend(loc=3)
+            py.axis([4.9, 3.2, -3.0, 8])
+            py.savefig(outDir+'plots/iso_'+logAge+'.png')
+
+            py.ion()
+            
+            
+        _out = open(outDir + isoFilePi, 'w')
+
+        _out.write('%12s  %10s  %10s  %10s %10s %-10s\n' % 
+                   ('# M_init', 'log T', 'log L', 'log g', 'logT_WR', 'Source'))
+        _out.write('%12s  %10s  %10s  %10s  %10s %-10s\n' % 
+                   ('# (Msun)', '(Kelvin)', '(Lsun)', '(cgs)', '(Kelvin)', '()'))
+
+        for kk in range(len(iso.mass)):
+            _out.write('%12.6f  %10.4f  %10.4f  %10.4f  %10.4f %-10s\n' %
+                       (iso.mass[kk], iso.logT[kk], iso.logL[kk],
+                        iso.logg[kk], iso.logT_WR[kk], iso.source[kk]))
+
+        _out.close()
+    return

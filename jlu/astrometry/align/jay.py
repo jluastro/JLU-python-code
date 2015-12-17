@@ -1,4 +1,4 @@
-from jlu.astrometry import ord_brite
+from jlu.astrometry.align import ord_brite
 import numpy as np
 import itertools
 import pylab as py
@@ -725,7 +725,7 @@ def miracle_match_3d(xin1, yin1, min1, xin2, yin2, min2, mag_limit=-3.5):
     
 
 def miracle_match_briteN(xin1, yin1, min1, xin2, yin2, min2, Nbrite,
-                         Nbins_vmax=200, Nbins_angle=360):
+                         Nbins_vmax=200, Nbins_angle=360,verbose=False):
     """
     Take two input starlists and select the <Nbrite> brightest stars from
     each. Then performa a triangle matching algorithm along the lines of
