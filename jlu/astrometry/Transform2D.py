@@ -25,8 +25,9 @@ class Transform2D(object):
     
     def evaluate_errors(self,x,x_err,y,y_err,nsim=500):
         '''
-        Run a MC simulation to figure out what the uncertainty from the
-        transformation should be.
+        Run a MC simulation to figure how the input uncertainties get transformed by the
+        transformation. In principle, this can be done analytically with error propagation,
+        but this is probably easier to understand. 
 
         Parameters:
         -----------
@@ -55,9 +56,6 @@ class Transform2D(object):
         for i in xrange(nsim):
             xsample = np.random.normal(loc=0.0,scale=1.0,size=len(x))
             ysample = np.random.normal(loc=0.0,scale=1.0,size=len(y))
-
-            xsample_ref = np.random.normal(loc=0.0,scale=1.0,size=len(x))
-            ysample_ref = np.random.normal(loc=0.0,scale=1.0,size=len(y))
 
             x_temp = x + xsample*x_err
             y_temp = y + ysample*y_err
@@ -314,7 +312,7 @@ class PolyClipSplineTransform(Transform2D):
         xev, yev = self.poly.evaluate(x, y)
         return self.spline.evaluate(xev, yev)
         
-class LegClipSplineTransform:
+class LegClipSplineTransform(Transform2D):
     """
     Performas a Legendre fit, then fits the residual with a spline
     can optinall y perform sigma clipping in the legendre step, by setting niter as > 0 (default to zero)
