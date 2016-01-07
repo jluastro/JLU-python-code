@@ -200,6 +200,34 @@ class StarSet(object):
         self.starlist_is_ref = isRef
 
         
+    def loadStarsUsed(self):
+        _used = open(self.root + '.starsUsed', 'r')
+
+        names = self.getArray('name')
+
+        # Make a "isUsed" variable on every star in every epoch.
+        # Start with value = False.
+        for star in self.stars:
+            for ep in star.e:
+                ep.isUsed = False
+
+        for line in _used:
+            parts = line.split()
+
+            if len(parts) != len(self.years):
+                print 'Error reading starsUsed file.'
+                return
+
+            # This is a loop through the epochs.
+            for ee in range(len(parts)):
+                if parts[ee] == '---':
+                    continue
+                
+                ss = names.index(parts[ee])
+                self.stars[ss].e[ee].isUsed = True
+
+        return
+    
     def loadPoints(self, pointsDir):
         """
         Loads .points and .phot files. The following variables are 
