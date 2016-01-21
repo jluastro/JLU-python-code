@@ -8,7 +8,7 @@ import pdb
 # except ImportError:
     # from scipy.spatial import KDTree as KDT
  
-from scipy.spatial import KDTree as KDT
+from scipy.spatial import cKDTree as KDT
  
  
 def match(x1, y1, m1, x2, y2, m2, dr_tol, dm_tol=None):

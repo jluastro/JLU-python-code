@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-from matplotlib.ticker import ScalarFormatter, FormatStrFormatter
+from matplotlib.ticker import ScalarFormatter, FormatStrFormatter, MultipleLocator, NullFormatter
 from mpl_toolkits.axes_grid1 import Grid
 import pdb
 import asciidata
@@ -8,6 +8,8 @@ from jlu.gc.gcwork import starset
 from jlu.microlens import multinest_plot
 from jlu.microlens import calc
 from astropy.time import Time
+from jlu.microlens import residuals
+from scipy import stats
 
 plotdir = '/Users/jlu/doc/papers/OTHERS/sinukoff/microlens/microlens_paper/Paper/'
 
@@ -126,8 +128,11 @@ def plotPosError(rootDir='/u/jlu/data/microlens/', plotDir=plotdir,
                 nrows_ncols=(2, 3),
                 axes_pad=0.1,
                 add_all=False,
-                label_mode='L')
-    
+                label_mode='all')
+
+    majorFmt = FormatStrFormatter('%d')
+    nullFmt = NullFormatter()
+
     for ee in range(Nepochs):
         starlist = rootDir + epochs[ee] + '/combo/starfinder/' + \
           'mag' + epochs[ee] + '_' + target + '_kp_rms_named.lis'
@@ -178,13 +183,29 @@ def plotPosError(rootDir='/u/jlu/data/microlens/', plotDir=plotdir,
         grid[ee].semilogy(mag[idx], err[idx], 'k.')
         grid[ee].semilogy(mag[ttt], err[ttt], 'r.', ms=10)
         
-        grid[ee].axis([12, 23, 2e-2, 30.0])
+        grid[ee].axis([12.5, 23, 2e-2, 30.0])
         grid[ee].axhline(0.15, color='g') 
         grid[ee].xaxis.label.set_fontsize(tickfontsize)
         grid[ee].yaxis.label.set_fontsize(tickfontsize)
-        if ee > 2:
-            grid[ee].set_xlabel('K Magnitude',
-                                fontsize= axfontsize)
+
+        # Turn off tick labels for the top row and right columns (with exceptions):
+        if ee < 3:
+            if (ee == 2) and ((target == 'ob110125') or (target == 'ob120169')):
+                pass
+            else:
+                for xlabel_i in grid[ee].xaxis.get_ticklabels():
+                    xlabel_i.set_visible(False)
+
+        if (ee == 1) or (ee == 2) or (ee == 4) or (ee == 5):
+            for ylabel_i in grid[ee].yaxis.get_ticklabels():
+                ylabel_i.set_visible(False)
+                
+        if ee > 1:
+            if (target == 'ob110022') and ee == 1:
+                pass
+            else:
+                grid[ee].set_xlabel('K Magnitude',
+                                    fontsize= axfontsize)
 
         # Write Epoch
         grid[ee].text(13, 10, epoch_txt[ee], fontsize=axfontsize, color='k')
@@ -494,5 +515,301 @@ def convert_dates():
                 phot_p, phot_p_err_p, phot_p_err_n,
                 ast_p, ast_p_err_p, ast_p_err_n)    
 
+
+def plot_residuals_figures():
+    # OB120169
+    # starNames = ['OB120169_R', 'p005_15_3.5', 'S2_16_2.5', 'p000_16_3.6', 'S6_17_2.4', 'S7_17_2.3']
+    starNames = ['OB120169_R', 'OB120169_L', 'S10_17_1.4', 'S12_17_2.4', 'S6_17_2.4', 'S7_17_2.3']
+
+    rootDir = '/Users/jlu/work/microlens/OB120169/analysis_2015_09_18/analysis_ob120169_2015_09_18_a3_m22_w4_MC100/'
+    align = 'align/align_t'
+    residuals.plotStar(starNames, rootDir=rootDir, align=align)
+
+
+def align_residuals_vs_order(align_roots, root_dir='./', only_stars_in_fit=True,
+                             out_suffix=''):
+    data_all = []
+
+    for aa in range(len(align_roots)):
+        data = residuals.check_alignment_fit(align_roots[aa], root_dir=root_dir)
+
+        data_all.append(data)
+
+    py.figure(2, figsize=(15, 3.5))
+    py.clf()
+    py.subplots_adjust(left=0.08, bottom=0.2, hspace=0, wspace=0, right=0.95, top=0.88)
+
+    order = np.arange(1, len(data_all)+1)
+    N_order = len(data_all)
+
+    year = data_all[0]['year']
+    scale = 9.95  # mas / pixel
+
+    idx_subplot = 0
+
+    majorLoc = MultipleLocator(1)
+    majorFmt = FormatStrFormatter('%d')
+    nullFmt = NullFormatter()
+
+    N_plots = len(year)
+    if only_stars_in_fit:
+        N_plots -= 1
+
+    # Plot Residuals
+    for ee in range(len(year)):
+        end = 'all'
+        if only_stars_in_fit:
+            end = 'used'
+        
+        xres = np.array([data_all[oo]['xres_rms_'+end][ee] for oo in range(N_order)])
+        yres = np.array([data_all[oo]['yres_rms_'+end][ee] for oo in range(N_order)])
+    
+        xres_e = np.array([data_all[oo]['xres_err_'+end][ee] for oo in range(N_order)])
+        yres_e = np.array([data_all[oo]['yres_err_'+end][ee] for oo in range(N_order)])
+
+        xres *= scale
+        yres *= scale
+        xres_e *= scale
+        yres_e *= scale
+
+        if only_stars_in_fit and np.isnan(xres[0]):
+            print 'Skipping Ref Epoch', ee
+            continue
+
+        idx_subplot += 1
+        py.subplot(1, N_plots, idx_subplot)
+        py.errorbar(order, xres, yerr=xres_e, fmt='r.--', label='X')
+        py.errorbar(order, yres, yerr=yres_e, fmt='b.--', label='Y')
+        py.title(data_all[0]['year'][ee])
+        py.xlim(0, 3.9)
+        py.ylim(0, 2.1)
+
+        ax = py.gca()
+        ax.xaxis.set_major_locator(majorLoc)
+        #ax.yaxis.set_major_locator(majorLoc)
+        ax.xaxis.set_major_formatter(majorFmt)
+        py.xlabel('Order')
+        
+        if idx_subplot == 1:
+            #ax.yaxis.set_major_formatter(majorFmt)
+            py.ylabel('RMS Residuals (mas)')
+        else:
+            ax.yaxis.set_major_formatter(nullFmt)
+
+        if idx_subplot == N_plots:
+            py.legend(numpoints=1)
+
+    py.savefig(plotdir + 'align_residuals_vs_order_' + out_suffix + '.png')
+
+    end = 'all'
+    if only_stars_in_fit:
+        end = 'used'
+        
+    N_par = np.array([3, 6, 10])
+
+
+    # Fit Improvement Significance
+    for ee in range(len(year)):
+        chi2x = np.array([data_all[oo]['chi2x_'+end][ee] for oo in range(N_order)])
+        chi2y = np.array([data_all[oo]['chi2y_'+end][ee] for oo in range(N_order)])
+        N_stars = np.array([data_all[oo]['N_stars_'+end][ee] for oo in range(N_order)])
+        print 'N_stars: ', N_stars
+    
+        if only_stars_in_fit and np.isnan(chi2x[0]):
+            print 'Skipping Ref Epoch', ee
+            continue
+
+        # These have shape: len(order) - 1        
+        ftest_m = order[1:]
+        ftest_dof1 = np.diff(N_par)
+        ftest_dof2 = N_stars[1:] - N_par[1:]
+        ftest_dof_ratio = 1.0 / (ftest_dof1 / ftest_dof2)
+        ftest_x = (-1 * np.diff(chi2x) / chi2x[1:]) * ftest_dof_ratio
+        ftest_y = (-1 * np.diff(chi2y) / chi2y[1:]) * ftest_dof_ratio
+
+        px_value = np.zeros(len(ftest_m), dtype=float)
+        py_value = np.zeros(len(ftest_m), dtype=float)
+
+        for mm in range(len(ftest_m)):
+            px_value[mm] = stats.f.sf(ftest_x[mm], ftest_dof1[mm], ftest_dof2[mm])
+            py_value[mm] = stats.f.sf(ftest_y[mm], ftest_dof1[mm], ftest_dof2[mm])
+            fmt = 'M = {0}: M-1 --> M   Fx = {1:5.2f} px = {2:7.4f}   Fy = {3:5.2f} py = {4:7.4f}'
+            print fmt.format(ftest_m[mm], ftest_x[mm], px_value[mm], ftest_y[mm], py_value[mm])
+
+    # Combine over all epochs to include velocities:
+    chi2x = np.array([data_all[oo]['chi2x_'+end].sum() for oo in range(N_order)])
+    chi2y = np.array([data_all[oo]['chi2y_'+end].sum() for oo in range(N_order)])
+    chi2 = chi2x + chi2y
+
+    # Number of stars is constant for all orders.
+    N_data = 2 * data_all[0]['N_stars_'+end].sum()
+    # Get the maximum number of stars used in any epoch... this is close enough?    
+    N_stars_max = data_all[0]['N_stars_'+end].max()
+    # Number of free parameters in the velocity fit.
+    N_vfit = 4 * N_stars_max   # (x0, vx, y0, vy for each star)
+    # Number of free parameters in the alignment fit.
+    N_afit = (len(year) - 1) * N_par * 2
+
+    N_free_param = N_vfit + N_afit
+    N_dof = N_data - N_free_param
+
+    print ''
+    print '*** Combined F test across epochs ***'
+    print 'N_data: ', N_data
+    print 'N_vfit: ', N_vfit
+    print 'N_afit: ', N_afit
+    print 'N_free: ', N_free_param
+    print 'chi2: ', chi2
+    print 'N_dof: ', N_dof
+
+    ftest_m = order[1:]
+    ftest_dof1 = np.diff(N_free_param)
+    ftest_dof2 = N_data - N_free_param[1:]
+    ftest_dof_ratio = 1.0 / (ftest_dof1 / ftest_dof2)
+    ftest = (-1 * np.diff(chi2) / chi2[1:]) * ftest_dof_ratio
+        
+    p_value = np.zeros(len(ftest_m), dtype=float)
+
+    print 'ftest_m: ', ftest_m
+    print 'ftest_dof1: ', ftest_dof1
+    print 'ftest_dof2: ', ftest_dof2
+    print 'ftest_dof_ratio: ', ftest_dof_ratio
+    print 'ftest: ', ftest
+    
+    for mm in range(len(ftest_m)):
+        p_value[mm] = stats.f.sf(ftest[mm], ftest_dof1[mm], ftest_dof2[mm])
+        fmt = 'M = {0}: M-1 --> M   F = {1:5.2f} p = {2:7.4f}'
+        print fmt.format(ftest_m[mm], ftest[mm], p_value[mm])
+
+    return
+
+def plot_align_order(target, only_stars_in_fit=True):
+    root_dir = '/Users/jlu/work/microlens/2015_evan/'
+    
+    if target == 'ob110022':
+        flags = ['ah', 'at', 'bf']
+    else:
+        flags = ['al', 'ax', 'bj']
+
+    align_root_fmt = 'analysis_{0}_2014_03_22{1}_MC100_omit_1/align/align'
+
+    align_roots = []
+    
+    for ii in range(len(flags)):
+        align_roots.append( align_root_fmt.format(target, flags[ii]) )
+        
+    align_residuals_vs_order(align_roots, root_dir=root_dir,
+                             only_stars_in_fit=only_stars_in_fit,
+                             out_suffix=target)
+
+    return    
+
+    
+def plot_alignment_errors(target, radius=4):
+    align = 'align/align'
+
+    rootDir = '/u/sinukoff/projects/microlens/analysis/'
+    if target == 'ob110022': 
+        rootDir += 'analysis_ob110022_2014_03_22ah_MC100_omit_1/'
+        epochs = ['2011 May','2011 Jul','2011 Jun','2012 Jul','2013 Apr','2013 Jul']
+    if target == 'ob110125': 
+        rootDir += 'analysis_ob110125_2014_03_22al_MC100_omit_1/'
+        epochs = ['2012 May','2012 Jun', '2012 Jul','2013 Apr','2013 Jul']
+    if target == 'ob120169': 
+        rootDir += 'analysis_ob120169_2014_03_22al_MC100_omit_1/'
+        epochs = ['2012 May','2012 Jun', '2012 Jul','2013 Apr','2013 Jul']
+
+    # Assume this is NIRC2 data.
+    scale = 9.92  # mas / pixel
+    
+    # Load the align and polyfit results for all stars.
+    s = starset.StarSet(rootDir + align)
+    s.loadStarsUsed()
+    
+    x = s.getArrayFromAllEpochs('xpix') * scale
+    y = s.getArrayFromAllEpochs('ypix') * scale
+    xe_p = s.getArrayFromAllEpochs('xpixerr_p') * scale
+    ye_p = s.getArrayFromAllEpochs('ypixerr_p') * scale
+    xe_a = s.getArrayFromAllEpochs('xpixerr_a') * scale
+    ye_a = s.getArrayFromAllEpochs('ypixerr_a') * scale
+    isUsed = s.getArrayFromAllEpochs('isUsed')
+
+    m = s.getArray('mag')
+    name = s.getArray('name')
+    cnt = s.getArray('velCnt')
+
+    Nepochs = len(epochs)
+
+    # Setup plot
+    axfontsize = 18
+    tickfontsize = 12
+
+    py.close(1)
+    fig = py.figure(1, figsize=(12,6))
+    fig.subplots_adjust(left=0.1, right=0.95, top=0.95)
+    grid = Grid(fig, 111,
+                nrows_ncols=(2, 3),
+                axes_pad=0.1,
+                add_all=False,
+                label_mode='L')
+
+    # Calculate the radius of each star.
+    xhalf = x.max() / 2.0
+    yhalf = y.max() / 2.0
+    r = np.hypot(x - xhalf, y - yhalf)
+
+    # Combine x and y errors (mean)    
+    err_p = (xe_p + ye_p) / 2.0
+    err_a = (xe_a + ye_a) / 2.0
+
+    for ee in range(Nepochs):
+        # Find the target
+        if target == 'ob120169':
+            target_name = 'ob120169_R'
+        else:
+            target_name = target
+            
+        ttt = np.where([nn == target_name for nn in name])[0][0]
+        ##########
+        #
+        # Plot alignment errors
+        #
+        ##########
+        idx = (np.where(r[ee, :] < (radius*1e3)))[0]
+
+        fig.add_axes(grid[ee])
+        grid[ee].semilogy(m[idx], err_p[ee, idx], 'b.')
+        grid[ee].semilogy(m[ttt], err_p[ee, ttt], 'b.', ms=10, label='Aln')
+        grid[ee].semilogy(m[idx], err_a[ee, idx], 'r.')
+        grid[ee].semilogy(m[ttt], err_a[ee, ttt], 'r.', ms=10, label='Pos')
+        
+        grid[ee].axis([12, 23, 2e-2, 30.0])
+        grid[ee].axhline(0.15, color='g') 
+        grid[ee].xaxis.label.set_fontsize(tickfontsize)
+        grid[ee].yaxis.label.set_fontsize(tickfontsize)
+        if ee == 2:
+            grid[ee].legend(numpoints=1)
+        
+        if ee > 1:
+            if (target == 'ob110022') and ee == 1:
+                pass
+            else:
+                grid[ee].set_xlabel('K Magnitude',
+                                    fontsize= axfontsize)
+
+        # Write Epoch
+        grid[ee].text(13, 10, epochs[ee], fontsize=axfontsize, color='k')
+
+        print 'Epoch: ', epochs[ee]
+        print '  N_stars = {0:3d}'.format(isUsed[ee, :].sum())
+        print '  mean err_p = {0:.2f} mas'.format(err_p[ee, idx].mean())
+        print '  mean err_a = {0:.2f} mas'.format(err_a[ee, idx].mean())
+    
+        
+        
+    py.figtext(0.02, 0.55, 'Alignment Uncertainty (mas)', fontsize=axfontsize,
+                rotation='vertical', verticalalignment='center')
+    py.savefig(plotdir + 'plotPosAlignError_%s.pdf' % (target))
+            
 
     return

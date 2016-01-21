@@ -1,5 +1,6 @@
 import pylab as py
 import numpy as np
+from popstar import evolution, atmospheres, synthetic, reddening
 from mpl_toolkits import mplot3d
 import matplotlib.pyplot as plt
 import pymc
@@ -19,7 +20,6 @@ from jlu.util import rebin
 import simCluster
 import os
 import makemodel as mm
-import getmass
 import random
 from jlu.imf import imf
 
@@ -92,84 +92,61 @@ def random_mass(x):
 
     return mass,log_prob_mass
 
-# The completeness file need to be changed later.
-def multinest_run(fitsfile='4784.fits', n_live_points=1000, count139=False,
-                  massLimits=defaultMassLimits, 
-                  saveto='/users/dhuang/work/Temporary/'):
-
-    if not os.path.exists(saveto):
-        os.makedirs(saveto)
+def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
+                  data_tab='catalog_diffDered_NN_opt_10.fits',
+                  out_dir='multinest/fit_0001'):
     
-    ## input our data.
-    t = atpy.Table(fitsfile)
+    if not os.path.exists(root_dir + out_dir):
+        os.makedirs(root_dir + out_dir)
+
+    # Input the observed data
+    t = Table.read(root_dir + data_tab)
+
+    # Some components of our model are static.
+    imf_multi = multiplicity.MultiplicyUnresolved()
+    imf_mmin = 0.1   # msun
+    imf_mmax = 150.0 # msun
+    evo_model = evolution.MergedBaraffePisaEkstromParsec()
+    red_law = reddening.RedLawNishiyama09()
+    atm_func = atmospheres.get_merged_atmosphere
+    Mcl_sim = 5.0e6
+
+    # Our data vs. model comparison will be done in
+    # magnitude-color-color space. Models will be binned
+    # to construct 3D probability density spaces.
+    # These are the bin sizes for the models.
+    
  
     def priors(cube, ndim, nparams):
         return   
     
     def likelihood(cube, ndim, nparams):
-        # Distance:
-        distance, log_prob_distance = random_distance(cube[0])
-        cube[0]=distance
-        distance=int(distance)
-
-        # Age:
-        LogAge, log_prob_LogAge = random_logAge(cube[1])
-        cube[1] = LogAge
-
-        # AKs:
-        AKs, log_prob_AKs = random_AKs(cube[2])
-        cube[2] = AKs
-
-        # alpha:
-#        alpha, log_prob_alpha = random_alpha(cube[3])
-#        cube[3] = alpha
-        # Mcl:
-#        Mcl, log_prob_Mcl = random_Mcl(cube[4])
-#        cube[4] = Mcl
-
-        # Mass[i]:
-        mass, log_prob_mass = random_mass(cube[3:3+len(t)])
+        ##########
+        # Priors (I think order matters)
+        ##########
+        parName = ['distance', 'LogAge', 'AKs', 'dAKs', 'alpha1', 'alpha2', 'mbreak', 'Mcl']
+        par, par_prior_logp = get_prior_info(cube, parName)
 
         sysMass = np.zeros(len(t))
+
+        ##########
+        # Load up the model cluster.
+        ##########
+        imf_mass_limits = np.array([mmin, par['mbreak'], mmax])
+        imf_powers = np.array([par['alpha2'], par['alpha1']])
+        imf = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers, imf_multi)
         
-        for i in range(len(t)):
-            idx = int(cube[i+3]*len(masscc))
-            cube[3+i]=masscc[idx]
-        print cube[4], cube[5], cube[500]
+        iso = syn.IsochronePhot(par['LogAge'], par['AKs'], par['distance'],
+                                evo_model=evo, atm_func=atm_func,
+                                red_law=red_law)
+        
+        cluster = synthetic.ResolvedClusterDiffRedden(iso, imf, Mcl_sim, 
+                                                      par['dAKs'], red_law=red_law)
 
+        # Convert simulated cluster into magnitude-color-color histogram
+        mcc_cluster = 
+        
 
-    cc = by.imf.sample_imf(massLimits, imfSlopes=defaultIMF,
-                           totalMass=defaultClusterMass, makeMultiples=makeMultiples)     
-    masscc = cc[0]
-
-
-
-        ## generate an isochrone
-        iso=mm.ModelTable(LogAge, AKs, distance, saveto='/users/dhuang/work/model/modelfitsfile/')
-
-##-----------------------------------------------------------------
-## Mass could not be a free parameter, i think....it should be:
-#        ## Find the relationship of mass as a function of magnitudes. Try to estimate the mass of our data.
-#        objmass125=interpolate.splrep(iso.mag125,iso.mass,k=1,s=0)   ####!!!! splrep(x,y) and splrep(y,x) 
-#        objmass139=interpolate.splrep(iso.mag139,iso.mass,k=1,s=0)
-#        objmass160=interpolate.splrep(iso.mag160,iso.mass,k=1,s=0)
-#        objmass814=interpolate.splrep(iso.mag814,iso.mass,k=1,s=0)
-#        mass125=interpolate.splev(t.mag125,objmass125,k=1,s=0)
-#        mass139=interpolate.splev(t.mag139,objmass139,k=1,s=0)
-#        mass160=interpolate.splev(t.mag160,objmass160,k=1,s=0)
-#        mass814=interpolate.splev(t.mag814,objmass814,k=1,s=0)
-#        meanMass=(mass125+mass160+mass814)/3.
-#        sigmaMass=(((mass125-meanMass)**2.+(mass160-meanMass)**2.+(mass814-meanMass)**2.)/3.)**0.5
-#        if count139==True:
-#            meanMass=(meanMass*3.+mass139)/4.
-#            sigmaMass=(((mass125-meanMass)**2.+(mass139-meanMass)**2.+(mass160-meanMass)**2.+(mass814-meanMass)**2.)/4.)**0.5
-#        mass=np.zeros(len(t))
-#        for i in range(len(t)):
-#            mass[i]=pymc.TruncateNormal('mass',meanMass[i],1.0/sigmaMass**2.)
-#        t.add_column('mass',mass)
-##------------------------------------------------------------------
-
-        t.add_column('mass',mass)
         ## Find the relationship of magnitudes as a function of mass.
         obj125=interpolate.splrep(iso.mass,iso.mag125,k=1,s=0)
         obj139=interpolate.splrep(iso.mass,iso.mag139,k=1,s=0)
@@ -205,6 +182,8 @@ def multinest_run(fitsfile='4784.fits', n_live_points=1000, count139=False,
                     verbose=True, resume=False, evidence_tolerance=ev_tol,
                     sampling_efficiency=samp_eff, n_live_points=n_live_points,
                     multimodal=True, n_clustering_params=num_dims)              
+        
+
 
 def plot_results_detail(rootdir):
     res = load_results(rootdir)
@@ -262,3 +241,27 @@ if do==1:
 ## fitsfile: the input data. 'MC6.8_0.77_5000.fits' is a synthetic cluster with logAge=6.8, Aks=0.77 and distance=5000
 ## count139: if we should take F139M into consideration.
 ## saveto  : the output address that the .txt and .dat files to be saved to.
+
+
+def get_prior_info(cube, parNames):
+    """Get parameter and prior probability from prior functions.
+    """
+    par = {}
+    par_prior_logp = {}
+    
+    # Loop through each free parameter and convert our cube random number
+    # into a random selection from the prior function and its prior probability.
+    # Save everything into a dictionary (par and par_prior_logp) accessible with
+    # the parameter names (parName).
+    for ii in range(len(parName)):
+        prior_function = globals()['random_' + parName[ii]]
+
+        par_tmp, log_prob_par_tmp = prior_function(cube[ii])
+        cube[ii] = par_tmp
+
+        par[parName[ii]] = par_tmp
+        par_prior_logp[parName[ii]] = log_prob_par_tmp
+
+    # Round some priors
+    par['distance'] = int(par['distance'])
+                        

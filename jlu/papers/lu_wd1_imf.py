@@ -387,3 +387,112 @@ def plot_completeness_vs_mag():
 
     return
     
+def plot_syn_isochrones():
+    """
+    Make plots of a set synthetic isochrones.
+    """
+    # py.close(1)
+    py.figure(1, figsize=(8,10))
+    py.clf()
+    py.subplots_adjust(left=0.1, top=0.95, bottom=0.1, hspace=0, wspace=0.25)
+
+    # Define the mean values cluster parameters
+    m_logt = 6.91
+    m_AKs = 0.69
+    m_dist = 4000
+
+    colors = ['red', 'orange', 'green', 'blue', 'cyan']
+
+    ##########
+    # Top row, change Age.
+    ##########
+    logt = [6.5, 6.7, 6.9, 7.1]
+    
+    ax_op1 = py.subplot(321)
+    ax_ir1 = py.subplot(322)
+    
+    for ii in range(len(logt)):
+        iso = ana.load_isochrone(logAge=logt[ii], AKs=m_AKs, distance=m_dist)
+
+        ax_op1.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'k-',
+                    color=colors[ii], label='{0:.1f}'.format(logt[ii]),
+                    linewidth=2)
+        ax_ir1.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'k-',
+                    color=colors[ii], label='{0:.1f}'.format(logt[ii]),
+                    linewidth=2)
+
+    ax_op1.text(3.8, 16.0, r'A$_{Ks}$=0.69 mag')
+    ax_op1.text(3.8, 17.7, 'd=4 kpc')
+    ax_ir1.legend(title='log(t)')
+    ax_op1.set_ylabel(r'm$_{\mathrm{F814W}}$ (mag)')
+    ax_ir1.set_ylabel(r'm$_{\mathrm{F125W}}$ (mag)')
+    py.setp(ax_op1.get_xticklabels(), visible=False)
+    py.setp(ax_ir1.get_xticklabels(), visible=False)
+    
+    ##########
+    # Top row, change AKs.
+    ##########
+    AKs = [0.65, 0.67, 0.69, 0.71, 0.73]
+
+    ax_op2 = py.subplot(323, sharex=ax_op1, sharey=ax_op1)
+    ax_ir2 = py.subplot(324, sharex=ax_ir1, sharey=ax_ir1)
+    
+    for ii in range(len(AKs)):
+        iso = ana.load_isochrone(logAge=m_logt, AKs=AKs[ii], distance=m_dist)
+
+        ax_op2.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'k-',
+                    color=colors[ii], label='{0:.2f}'.format(AKs[ii]),
+                    linewidth=2)
+        ax_ir2.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'k-',
+                    color=colors[ii], label='{0:.2f}'.format(AKs[ii]),
+                    linewidth=2)
+
+
+    ax_op2.text(4.2, 16.0, 'log(t)=6.91')
+    ax_op2.text(4.2, 17.7, 'd=4 kpc')
+    ax_ir2.legend(title=r'A$_{Ks}$ (mag)', fontsize=14)
+    ax_ir2.get_legend().get_title().set_fontsize('14')
+    ax_op2.set_ylabel(r'm$_{\mathrm{F814W}}$ (mag)')
+    ax_ir2.set_ylabel(r'm$_{\mathrm{F125W}}$ (mag)')
+    py.setp(ax_op2.get_xticklabels(), visible=False)
+    py.setp(ax_ir2.get_xticklabels(), visible=False)
+
+
+    ##########
+    # Top row, change Dist.
+    ##########
+    dist = [3600, 4000, 4400]
+
+    ax_op3 = py.subplot(325, sharex=ax_op1, sharey=ax_op1)
+    ax_ir3 = py.subplot(326, sharex=ax_ir1, sharey=ax_ir1)
+    
+    for ii in range(len(dist)):
+        iso = ana.load_isochrone(logAge=m_logt, AKs=m_AKs, distance=dist[ii])
+
+        ax_op3.plot(iso['mag814w'] - iso['mag125w'], iso['mag814w'], 'k-',
+                    color=colors[ii], label='{0:.1f}'.format(dist[ii]/1e3),
+                    linewidth=2)
+        ax_ir3.plot(iso['mag125w'] - iso['mag160w'], iso['mag125w'], 'k-',
+                    color=colors[ii], label='{0:.1f}'.format(dist[ii]/1e3),
+                    linewidth=2)
+
+    ax_op3.text(3.8, 16.0, 'log(t)=6.91')
+    ax_op3.text(3.8, 17.7, r'A$_{Ks}$=0.69 mag')
+    ax_ir3.legend(title='Dist. (kpc)', fontsize=14)
+    ax_ir3.get_legend().get_title().set_fontsize('14')
+    ax_op3.set_ylabel(r'm$_{\mathrm{F814W}}$ (mag)')
+    ax_ir3.set_ylabel(r'm$_{\mathrm{F125W}}$ (mag)')
+
+
+    ax_op1.invert_yaxis()
+    ax_ir1.invert_yaxis()
+    ax_op3.set_xlabel(r'm$_{\mathrm{F814W}}$ - m$_{\mathrm{F125W}}$ (mag)')
+    ax_ir3.set_xlabel(r'm$_{\mathrm{F814W}}$ - m$_{\mathrm{F125W}}$ (mag)')
+    ax_op1.set_xlim(2.5, 5.5)
+    ax_op1.set_ylim(26.5, 13.5)
+    ax_ir1.set_xlim(0.6, 1.6)
+    ax_ir1.set_ylim(22.5, 11.5)
+
+    py.savefig(out_dir + 'syn_isochrones.png')
+    
+    

@@ -10,6 +10,7 @@ from pysynphot import spectrum
 from pysynphot import ObsBandpass
 from pysynphot import observation as obs
 import pysynphot
+from popstar import synthetic
 from jlu.util import constants
 from jlu.util import plfit
 import pickle
@@ -389,44 +390,28 @@ def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
     endTime = time.time()
     print '      Time taken: %d seconds' % (endTime - startTime)
 
-def load_isochrone(logAge=6.60, AKs=defaultAKs, distance=defaultDist, isoDir='iso'):
-    inFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
-    inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
-                                                 str(distance).zfill(4))
+def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance,
+                   iso_dir='/Users/jlu/work/wd1/models/iso_2015/'):
+    tmp_dist = 4000
 
-    changeDistance = False
+    filters={'814w': 'acs,wfc1,f814w',
+             '139m': 'wfc3,ir,f127m',
+             '125w': 'wfc3,ir,f125w',
+             '160w': 'wfc3,ir,f160w'}
 
-    if not os.path.exists(inFile):
-        # File doesn't exist, but if only distance has changed we can simply rescale.
-        inFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
-        inFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
-                                                 str(defaultDist).zfill(4))
-        if not os.path.exists(inFile):
-            make_observed_isochrone_hst(logAge=logAge, AKs=AKs, distance=distance)
-        else:
-            changeDistance = True
+    print 'Using Red Law = ', synthetic.redlaw.name
+    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
+                                   iso_dir=iso_dir, massSampling=1,
+                                   filters=filters)
 
-    _in = open(inFile, 'rb')
-    iso = objects.DataHolder()
-    iso.M = pickle.load(_in)
-    iso.T = pickle.load(_in)
-    iso.logg = pickle.load(_in)
-    iso.logL = pickle.load(_in)
-    iso.mag814w = pickle.load(_in)
-    iso.mag125w = pickle.load(_in)
-    iso.mag139m = pickle.load(_in)
-    iso.mag160w = pickle.load(_in)
-    iso.isWR = pickle.load(_in)
-    _in.close()
+    col_names = iso.colnames
 
-    if changeDistance:
-        print 'Using existing isochrone with d = %d and changing to d = %d' % \
-            (defaultDist, distance)
-        deltaDM = 5.0 * math.log10(float(distance) / float(defaultDist))
-        print '    delta DM = %.2f' % deltaDM
-        iso.mag814w += deltaDM
-        iso.mag125w += deltaDM
-        iso.mag139m += deltaDM
-        iso.mag160w += deltaDM
+    for cc in range(len(col_names)):
+        if col_names[cc].startswith('mag'):
+            delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
+            print 'Changing distance: delta_DM = ', delta_DM
+            
+            iso[col_names[cc]] += delta_DM
 
     return iso
+        

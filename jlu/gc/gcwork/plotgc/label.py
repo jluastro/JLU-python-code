@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import asciidata
-import Image, ImageDraw
+# import Image, ImageDraw
 import pylab as py
 import pyfits
 from gcwork import starTables
@@ -9,7 +9,7 @@ from gcwork import starset
 from gcreduce import gcutil
 import pdb
 
-def plot(labels='/u/ghezgroup/data/gc/source_list/label.dat'):
+def plot(labels='/g/lu/data/gc/source_list/label.dat'):
     ## Read in star labels
     tab = asciidata.open(labels)
     name = [tab[0][ss].strip() for ss in range(tab.nrows)]
@@ -57,7 +57,7 @@ def plot(labels='/u/ghezgroup/data/gc/source_list/label.dat'):
     # Image
     #im = Image.open('/u/ghezgroup/public_html/gc/images/media/rgb05jullgs_hires_plain.png')
     #imgsize = (im.size)[0]
-    im = pyfits.getdata('/u/ghezgroup/data/gc/06maylgs1/combo/mag06maylgs1_dp_msc_kp.fits')
+    im = pyfits.getdata('/g/lu/data/gc/06maylgs1/combo/mag06maylgs1_dp_msc_kp.fits')
     imgsize = (im.shape)[0]
 
     # pixel position (0,0) is at upper left
