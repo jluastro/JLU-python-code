@@ -75,7 +75,7 @@ def parallax_correction(target, t0, tE, xS0, muS, muRel, beta, piE):
     daysPerYr = 365.25 
     kappa = 8.1459 # 4.0*G/(c^2*AU) units of mas/Msun
 
-    t = np.arange(2005, 2025, 0.1)
+    t = year
     
     # Compute the Einstein radius (amplitude) and piRel
     muRel_amp = np.linalg.norm(muRel)         # mas/yr
@@ -132,18 +132,34 @@ def parallax_correction(target, t0, tE, xS0, muS, muRel, beta, piE):
 
     py.figure(1)
     py.clf()
-    py.plot(dc_nop[:,0], dc_nop[:, 1], 'k.')
-    py.plot(dc_par[:,0], dc_par[:, 1], 'r.')
-
+    py.plot(dc_nop[:,0], dc_nop[:, 1], 'ko', label='No Parallax')
+    py.plot(dc_par[:,0], dc_par[:, 1], 'ro', label='Parallax')
+    py.xlabel('x_E lensing shift (mas)')
+    py.ylabel('x_N lensing shift (mas)')
+    py.legend(numpoints=1)
+    py.title(target)
+    
     py.figure(2)
     py.clf()
-    py.plot(x_nop[:,0], x_nop[:, 1], 'k.')
-    py.plot(x_par[:,0], x_par[:, 1], 'r.')
-
+    py.plot(x_nop[:,0], x_nop[:, 1], 'ko', label='No Parallax')
+    py.plot(x_par[:,0], x_par[:, 1], 'ro', label='Parallax')
+    py.xlabel('x_E position (mas)')
+    py.ylabel('x_N position (mas)')
+    py.legend(numpoints=1)
+    py.title(target)
+    
     py.figure(3)
     py.clf()
-    py.plot(t - t0, x_par[:, 0] - x_nop[:,0], 'k.')
-    py.plot(t - t0, x_par[:, 1] - x_nop[:,1], 'r.')
+    py.plot(t - t0, x_par[:, 0] - x_nop[:,0], 'ko', label='x_E')
+    py.plot(t - t0, x_par[:, 1] - x_nop[:,1], 'ro', label='x_N')
+    py.xlabel('Time since t_0 (year)')
+    py.ylabel('Parallax - No Parallax position (mas)')
+    py.legend(numpoints=1)
+    py.title(target)
+
+    print 'RMS of Parallax - No Parallax (mas)'
+    print 'X: ', (x_par[:, 0] - x_nop[:,0]).std()
+    print 'Y: ', (x_par[:, 1] - x_nop[:,1]).std()
     
     return
 

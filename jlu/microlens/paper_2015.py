@@ -7,6 +7,7 @@ import asciidata
 from jlu.gc.gcwork import starset
 from jlu.microlens import multinest_plot
 from jlu.microlens import calc
+from astropy.time import Time
 
 plotdir = '/Users/jlu/doc/papers/OTHERS/sinukoff/microlens/microlens_paper/Paper/'
 
@@ -366,5 +367,132 @@ def check_parallax_correction(target, u0pos=True):
                              params['beta'],
                              np.array([params['piEE'], params['piEN']]))
 
-    pdb.set_trace()
+    return
 
+
+def convert_dates():
+    """
+    Convert the JD dates coming from Evan's code to fractional year.
+    """
+    def print_times(target, 
+                    phot_p, phot_p_err_p, phot_p_err_n,
+                    ast_p, ast_p_err_p, ast_p_err_n):
+        hdr_f = '{0:10s} {1:13s} {2:13s}'
+        row_f = '{0:10s} {1:12.4f} {2:12.4f}'
+
+        print ''
+        print '*****************'
+        print target + ' in MJD at Earth:'
+        print hdr_f.format('', 'Photometry', 'Astrometry')
+        print row_f.format('Value', phot_p.utc.mjd, ast_p.utc.mjd)
+        print row_f.format('Error+', 
+                           phot_p_err_p.utc.mjd - phot_p.utc.mjd, 
+                           ast_p_err_p.utc.mjd - ast_p.utc.mjd)
+        print row_f.format('Error-', 
+                           phot_p_err_n.utc.mjd - phot_p.utc.mjd, 
+                           ast_p_err_n.utc.mjd - ast_p.utc.mjd)
+    
+        print target + ' in decimalYear at Earth:'
+        print hdr_f.format('', 'Photometry', 'Astrometry')
+        print row_f.format('Value', phot_p.utc.jyear, ast_p.utc.jyear)
+        print row_f.format('Error+', 
+                           phot_p_err_p.utc.jyear - phot_p.utc.jyear, 
+                           ast_p_err_p.utc.jyear - ast_p.utc.jyear)
+        print row_f.format('Error-', 
+                           phot_p_err_n.utc.jyear - phot_p.utc.jyear, 
+                           ast_p_err_n.utc.jyear - ast_p.utc.jyear)
+
+        print target + ' in MJD at Sun:'
+        print hdr_f.format('', 'Photometry', 'Astrometry')
+        print row_f.format('Value', phot_p.tcb.mjd, ast_p.tcb.mjd)
+        print row_f.format('Error+', 
+                           phot_p_err_p.tcb.mjd - phot_p.tcb.mjd, 
+                           ast_p_err_p.tcb.mjd - ast_p.tcb.mjd)
+        print row_f.format('Error-', 
+                           phot_p_err_n.tcb.mjd - phot_p.tcb.mjd, 
+                           ast_p_err_n.tcb.mjd - ast_p.tcb.mjd)
+
+        print 
+
+        return
+
+    mklat = 19.8207
+    mklon = -155.4681
+    
+    # OB110022
+    phot_p = Time(2455687.913, format='jd', scale='tcb', 
+                  lat=mklat, lon=mklon)
+    phot_p_err_p = Time(2455687.913 + 0.265, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    phot_p_err_n = Time(2455687.913 - 0.255, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    ast_p = Time(2011.3422, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+    ast_p_err_p = Time(2011.3422 + 0.0007, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+    ast_p_err_n = Time(2011.3422 - 0.0007, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+
+    print_times('OB110022', 
+                phot_p, phot_p_err_p, phot_p_err_n,
+                ast_p, ast_p_err_p, ast_p_err_n)    
+    pdb.set_trace()
+    
+
+    # OB 110125
+    phot_p = Time(2455724.431, format='jd', scale='tcb', 
+                  lat=mklat, lon=mklon)
+    phot_p_err_p = Time(2455724.431 + 0.701, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    phot_p_err_n = Time(2455724.431 - 0.724, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    ast_p = Time(2455724.431, format='jd', scale='utc', 
+                  lat=mklat, lon=mklon)
+    ast_p_err_p = Time(2455724.431 + 0.701, format='jd', scale='utc', 
+                        lat=mklat, lon=mklon)
+    ast_p_err_n = Time(2455724.431 - 0.724, format='jd', scale='utc', 
+                        lat=mklat, lon=mklon)
+
+    print_times('OB110125',
+                phot_p, phot_p_err_p, phot_p_err_n,
+                ast_p, ast_p_err_p, ast_p_err_n)    
+
+
+    # OB 120169 (u_0 > 0)
+    phot_p = Time(2456026.247, format='jd', scale='tcb', 
+                  lat=mklat, lon=mklon)
+    phot_p_err_p = Time(2456026.247 + 0.379, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    phot_p_err_n = Time(2456026.247 - 0.435, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    ast_p = Time(2012.2604, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+    ast_p_err_p = Time(2012.2604 + 0.0007, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+    ast_p_err_n = Time(2012.2604 - 0.0008, format='jyear', scale='utc', 
+                 lat=mklat, lon=mklon)
+
+    print_times('OB120169 (u_0 > 0)',
+                phot_p, phot_p_err_p, phot_p_err_n,
+                ast_p, ast_p_err_p, ast_p_err_n)    
+
+    # OB 120169 (u_0 < 0)
+    phot_p = Time(2456026.029, format='jd', scale='tcb', 
+                  lat=mklat, lon=mklon)
+    phot_p_err_p = Time(2456026.029 + 0.401, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    phot_p_err_n = Time(2456026.029 - 0.428, format='jd', scale='tcb', 
+                        lat=mklat, lon=mklon)
+    ast_p = Time(2012.2597, format='jyear', scale='utc',
+                        lat=mklat, lon=mklon)
+    ast_p_err_p = Time(2012.2597 + 0.0007, format='jyear', scale='utc',
+                        lat=mklat, lon=mklon)
+    ast_p_err_n = Time(2012.2597 - 0.0008, format='jyear', scale='utc',
+                        lat=mklat, lon=mklon)
+    
+    print_times('OB120169 (u_0 < 0)',
+                phot_p, phot_p_err_p, phot_p_err_n,
+                ast_p, ast_p_err_p, ast_p_err_n)    
+
+
+    return
