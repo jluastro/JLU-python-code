@@ -9,6 +9,8 @@ from jlu.microlens import multinest_plot
 from jlu.microlens import calc
 from jlu.microlens import residuals
 from scipy import stats
+import ephem
+import math
 
 plotdir = '/Users/jlu/doc/papers/OTHERS/sinukoff/microlens/microlens_paper/Paper/'
 
@@ -687,3 +689,68 @@ def plot_alignment_errors(target, radius=4):
 
 
     return
+
+def calc_aberration(target):
+    if target.lower() == 'ob110022':
+        ra = '17:53:17.93'
+        dec = '-30:02:29.3'
+        dec2 = '-30:02:14.3'
+        dec3 = '-30:02:19.3'
+    elif target.lower() == 'ob110125':
+        ra = '18:03:32.95'
+        dec = '-29:49:43.0'
+        dec2 = '-29:49:38.0'
+        dec3 = '-29:49:33.0'
+    elif target.lower() == 'ob120169':
+        ra = '17:49:51.38'
+        dec = '-35:22:28.0'
+        dec2 = '-35:22:23.0'
+        dec3 = '-35:22:18.0'
+
+    dates = ['2011/5/25 12:00:00', '2011/7/7 9:00:00',
+             '2012/5/23 12:00:00', '2012/6/23 10:00:00', '2012/7/10 9:00:00',
+             '2013/4/30 13:30:00', '2013/7/15 8:30:00']
+        
+    keck = ephem.Observer()
+    keck.lat = '19:49:28'
+    keck.long = '-155:28:24'
+    keck.elevation = 4154.0
+    keck.pressure = 0
+
+    star1 = ephem.FixedBody()
+    star1._ra = ephem.hours(ra)
+    star1._dec = ephem.degrees(dec)
+
+    star2 = ephem.FixedBody()
+    star2._ra = ephem.hours(ra)
+    star2._dec = ephem.degrees(dec2)
+
+    star3 = ephem.FixedBody()
+    star3._ra = ephem.hours(ra)
+    star3._dec = ephem.degrees(dec3)
+            
+    for ii in range(len(dates)):
+        keck.date = dates[ii]
+
+        star1.compute(keck)
+        star2.compute(keck)
+        star3.compute(keck)
+
+        sep12 = ephem.separation((star1.ra, star1.dec), (star2.ra, star2.dec))
+        sep12 *= (180.0 / math.pi) * 3600.0 # convert to arcsec
+        
+        sep13 = ephem.separation((star1.ra, star1.dec), (star3.ra, star3.dec))
+        sep13 *= (180.0 / math.pi) * 3600.0 # convert to arcsec
+
+        sep_orig2 = ephem.separation((star1.a_ra, star1.a_dec), (star2.a_ra, star2.a_dec))
+        sep_orig2 *= (180.0 / math.pi) * 3600.0 # convert to arcsec
+
+        sep_orig3 = ephem.separation((star1.a_ra, star1.a_dec), (star3.a_ra, star3.a_dec))
+        sep_orig3 *= (180.0 / math.pi) * 3600.0 # convert to arcsec
+                
+        delta12 = (sep12 - sep_orig2) * 1e3  # in milliarcseconds
+        delta13 = (sep13 - sep_orig3) * 1e3  # in milliarcseconds
+        
+        print '{0:20s}  Delta(10") = {1:6.3f} mas  Delta(5") = {1:6.3f} mas'.format(dates[ii], delta12, delta13)
+
+        

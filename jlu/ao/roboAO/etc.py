@@ -43,7 +43,8 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     """
     
     ifu_throughput = 0.35
-    ao_throughput = 0.55
+    #ao_throughput = 0.55
+    ao_throughput = 0.75
     tel_throughput = 0.85**2
 
     if seeing_limited:
@@ -52,7 +53,10 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
         sys_throughput = ifu_throughput * ao_throughput * tel_throughput
     
     # TO DO Need to add telescope secondary obscuration to correct the area.
-    tel_area = math.pi * (2.2 * 100. / 2.)**2   # cm^2 for UH 2.2m tel
+    tel_area = math.pi * (2.22 * 100. / 2.)**2   # cm^2 for UH 2.2m tel
+    sec_area = math.pi * (0.613 * 100. / 2.)**2   # cm^2 for UH 2.2m tel hole/secondary obscuration
+    tel_area -= sec_area
+    
     read_noise = 3.0       # electrons
     dark_current = 0.01    # electrons s^-1
 
@@ -111,7 +115,7 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     # Integrate each spectral channel using the ifu_wave (dlamda defined above).
     star_counts *= dlamda                     # photon s^-1
     bkg_counts *= dlamda                      # photon s^-1 arcsec^-2
-    vega_counts *= dlamda                     # photon s^-1 arcsec^-2
+    vega_counts *= dlamda                     # photon s^-1 NO? arcsec^-2
 
     # Integrate over the aperture for the background and make
     # an aperture correction for the star.
@@ -122,8 +126,9 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
         
     aper_area = math.pi * aper_radius**2
     star_counts *= ee                         # photon s^-1
-    # vega_counts *= ee
-    bkg_counts *= aper_area                   # photon s^-1
+    # TODO... Don't I need to do this for vega as well?
+    # vega_counts *= ee  
+    bkg_counts *= aper_area                   # photon s^-1 arcsec^-2
 
     pix_scale = 0.150                      # arcsec per pixel
     if seeing_limited:
@@ -320,6 +325,7 @@ def make_seeing_psf(filt_name):
     psf_file = 'seeing_psf_{0:s}.pickle'.format(filt_name)
 
     seeing = 0.8 # arcsec specified at 5000 Angstrom
+    
     wave = filt_wave[filt_name] # In Angstroms
     print 'Seeing at 5000 Angstroms:', seeing
 
@@ -372,7 +378,8 @@ def get_roboAO_ee(mag, filt_name, aper_radius):
     """
     Get the encircled energy.
     """
-    aper_radius_valid = [0.0375, 0.075, 0.15]
+    #aper_radius_valid = [0.0375, 0.075, 0.15]
+    aper_radius_valid = [0.15, 0.30, 0.40, 0.70]
     
     if aper_radius not in aper_radius_valid:
         print 'Invalid aperture radius. Choose from:'

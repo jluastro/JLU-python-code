@@ -1,27 +1,17 @@
 import pylab as py
 import numpy as np
 from popstar import evolution, atmospheres, synthetic, reddening
-from mpl_toolkits import mplot3d
+from popstar.imf import imf, multiplicity
+from astropy.table import Table
 import matplotlib.pyplot as plt
-import pymc
-from jlu.gc.imf import bayesian as by
 from scipy import interpolate
-from jlu.papers import lu_gc_imf
 import scipy
 import scipy.stats
 import pymultinest
 import math
-import atpy
-from gcreduce import gcutil
-import pickle
 import pdb
-from gcwork import objects
-from jlu.util import rebin
-import simCluster
 import os
-import makemodel as mm
 import random
-from jlu.imf import imf
 
 defaultAge = 7.0
 defaultDist = 3400
@@ -32,8 +22,6 @@ defaultClusterMass = 5e4
 defaultIMF = np.array([-2.3])
 makeMultiples = False
 count139 = False
-
-do = 1
 
 def make_gen(min,max):
     return scipy.stats.uniform(loc=min, scale=max-min)
@@ -49,52 +37,73 @@ def mass_generator():
     return imfPrior
 
 
-dist_gen=make_gen(3000, 6000)
-logAge_gen=make_gen(6.3, 7.2)
-alpha_gen=make_gen(1.8, 3.0)
-AKs_gen=make_gen(0.70, 0.79)
-Mcl_gen=make_gen(40000, 60000)
-mass_gen=make_generator()
+dist_gen = make_gen(3000, 6000)
+logAge_gen = make_gen(6.3, 7.2)
+alpha1_gen = make_gen(-3.0, -0.5)
+alpha2_gen = make_gen(-3.0, -1.0)
+mbreak_gen = make_gen(0.1, 3.0)
+AKs_gen = make_gen(0.70, 0.79)
+dAKs_gen = make_gen(0.00, 0.50)
+Mcl_gen = make_gen(40000, 60000)
+#mass_gen = mass_generator()
 
 def random_distance(x):
-    dist=dist_gen.ppf(x)
-    log_prob_dist=dist_gen.logpdf(dist)
-    dist=round(dist/100.,0)*100.
+    dist = dist_gen.ppf(x)
+    log_prob_dist = dist_gen.logpdf(dist)
+    dist = round(dist/100.,0)*100.
     return dist, log_prob_dist
 
-def random_logAge(x):
-    logAge=logAge_gen.ppf(x)
-    log_prob_logAge=logAge_gen.logpdf(logAge)
-    logAge=round(logAge,1)
+def random_LogAge(x):
+    logAge = logAge_gen.ppf(x)
+    log_prob_logAge = logAge_gen.logpdf(logAge)
+    logAge = round(logAge,1)
     return logAge, log_prob_logAge
 
-def random_alpha(x):
-    alpha=alpha_gen.ppf(x)
-    log_prob_alpha=alpha_gen.logpdf(alpha)
-    alpha=round(alpha,1)
-    return alpha, log_prob_alpha
+def random_alpha1(x):
+    alpha1 = alpha1_gen.ppf(x)
+    log_prob_alpha1 = alpha1_gen.logpdf(alpha1)
+    alpha1 = round(alpha1,1)
+    return alpha1, log_prob_alpha1
+
+def random_alpha2(x):
+    alpha2 = alpha2_gen.ppf(x)
+    log_prob_alpha2 = alpha2_gen.logpdf(alpha2)
+    alpha2 = round(alpha2,1)
+    return alpha2, log_prob_alpha2
+
+def random_mbreak(x):
+    mbreak = mbreak_gen.ppf(x)
+    log_prob_mbreak = mbreak_gen.logpdf(mbreak)
+    mbreak = round(mbreak,1)
+    return mbreak, log_prob_mbreak
 
 def random_AKs(x):
-    AKs=AKs_gen.ppf(x)
-    log_prob_AKs=AKs_gen.logpdf(AKs)
-    AKs=round(AKs,2)
+    AKs = AKs_gen.ppf(x)
+    log_prob_AKs = AKs_gen.logpdf(AKs)
+    AKs = round(AKs,2)
     return AKs, log_prob_AKs
 
+def random_dAKs(x):
+    dAKs = dAKs_gen.ppf(x)
+    log_prob_dAKs = dAKs_gen.logpdf(dAKs)
+    dAKs = round(dAKs, 2)
+    return dAKs, log_prob_dAKs
+
 def random_Mcl(x):
-    Mcl=Mcl_gen.ppf(x)
-    log_prob_Mcl=Mcl_gen.logpdf(Mcl)
-    Mcl=round(Mcl/10000.,0)*10000.
+    Mcl = Mcl_gen.ppf(x)
+    log_prob_Mcl = Mcl_gen.logpdf(Mcl)
+    Mcl = round(Mcl/10000.,0)*10000.
     return Mcl, log_prob_Mcl
 
-def random_mass(x):
-    mass = imfPrior.imf_dice_star_cl(x)
-    log_prob_mass = np.log10( imfPrior.imf_xi(mass) )
+# def random_mass(x):
+#     mass = imfPrior.imf_dice_star_cl(x)
+#     log_prob_mass = np.log10( imfPrior.imf_xi(mass) )
 
-    return mass,log_prob_mass
+#     return mass,log_prob_mass
 
-def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
+def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
                   data_tab='catalog_diffDered_NN_opt_10.fits',
-                  out_dir='multinest/fit_0001'):
+                  out_dir='multinest/fit_0001/'):
     
     if not os.path.exists(root_dir + out_dir):
         os.makedirs(root_dir + out_dir)
@@ -103,7 +112,7 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
     t = Table.read(root_dir + data_tab)
 
     # Some components of our model are static.
-    imf_multi = multiplicity.MultiplicyUnresolved()
+    imf_multi = multiplicity.MultiplicityUnresolved()
     imf_mmin = 0.1   # msun
     imf_mmax = 150.0 # msun
     evo_model = evolution.MergedBaraffePisaEkstromParsec()
@@ -115,7 +124,6 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
     # magnitude-color-color space. Models will be binned
     # to construct 3D probability density spaces.
     # These are the bin sizes for the models.
-    
  
     def priors(cube, ndim, nparams):
         return   
@@ -124,7 +132,8 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
         ##########
         # Priors (I think order matters)
         ##########
-        parName = ['distance', 'LogAge', 'AKs', 'dAKs', 'alpha1', 'alpha2', 'mbreak', 'Mcl']
+        parName = ['distance', 'LogAge', 'AKs', 'dAKs',
+                   'alpha1', 'alpha2', 'mbreak', 'Mcl']
         par, par_prior_logp = get_prior_info(cube, parName)
 
         sysMass = np.zeros(len(t))
@@ -132,20 +141,23 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
         ##########
         # Load up the model cluster.
         ##########
-        imf_mass_limits = np.array([mmin, par['mbreak'], mmax])
+        imf_mass_limits = np.array([imf_mmin, par['mbreak'], imf_mmax])
         imf_powers = np.array([par['alpha2'], par['alpha1']])
-        imf = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers, imf_multi)
+        new_imf = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers, imf_multi)
+
+        print 'Getting Isochrone'
+        new_iso = synthetic.IsochronePhot(par['LogAge'], par['AKs'], par['distance'],
+                                          evo_model=evo_model, atm_func=atm_func,
+                                          red_law=red_law)
         
-        iso = syn.IsochronePhot(par['LogAge'], par['AKs'], par['distance'],
-                                evo_model=evo, atm_func=atm_func,
-                                red_law=red_law)
-        
-        cluster = synthetic.ResolvedClusterDiffRedden(iso, imf, Mcl_sim, 
+        print 'Getting Cluster'
+        cluster = synthetic.ResolvedClusterDiffRedden(new_iso, new_imf, Mcl_sim, 
                                                       par['dAKs'], red_law=red_law)
 
         # Convert simulated cluster into magnitude-color-color histogram
-        mcc_cluster = 
+        pdb.set_trace()
         
+        mcc_cluster = 1
 
         ## Find the relationship of magnitudes as a function of mass.
         obj125=interpolate.splrep(iso.mass,iso.mag125,k=1,s=0)
@@ -172,16 +184,19 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05',
         print likei.sum()
         return likei.sum()
 
-    num_dims=3+len(t)
-    num_params=3+len(t)
-    ev_tol=0.3
-    samp_eff=0.8
+    num_dims = 8
+    num_params = 8
+    ev_tol = 0.3
+    samp_eff = 0.8
+    n_live_points = 300
 
-    pymultinest.run(likelihood, priors, num_dims, n_params=num_params,
-                    outputfiles_basename=saveto+'test',
-                    verbose=True, resume=False, evidence_tolerance=ev_tol,
-                    sampling_efficiency=samp_eff, n_live_points=n_live_points,
-                    multimodal=True, n_clustering_params=num_dims)              
+    # pymultinest.run(likelihood, priors, num_dims, n_params=num_params,
+    #                 outputfiles_basename=out_dir + 'test',
+    #                 verbose=True, resume=False, evidence_tolerance=ev_tol,
+    #                 sampling_efficiency=samp_eff, n_live_points=n_live_points,
+    #                 multimodal=True, n_clustering_params=num_dims)
+    cube_test = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+    likelihood(cube_test, num_dims, num_params)
         
 
 
@@ -212,7 +227,7 @@ def plot_results_detail(rootdir):
 
 def load_results(rootdir):
     root = '%s' % (rootdir)
-    tab = atpy.Table(root, type='ascii')
+    tab = Table(root, type='ascii')
 
     # Convert to log(likelihood)
     tab['col2'] /= -2.0
@@ -233,17 +248,7 @@ def load_results(rootdir):
 
     return tab    
 
-if do==1:
-    file='MC6.7_0.76_4500.fits'
-    multinest_run(fitsfile=file, n_live_points=1300, count139=False, massLimits=defaultMassLimits, 
-                   saveto='/users/dhuang/work/Temporary/'+file+'_1/')
-
-## fitsfile: the input data. 'MC6.8_0.77_5000.fits' is a synthetic cluster with logAge=6.8, Aks=0.77 and distance=5000
-## count139: if we should take F139M into consideration.
-## saveto  : the output address that the .txt and .dat files to be saved to.
-
-
-def get_prior_info(cube, parNames):
+def get_prior_info(cube, parName):
     """Get parameter and prior probability from prior functions.
     """
     par = {}
@@ -257,6 +262,7 @@ def get_prior_info(cube, parNames):
         prior_function = globals()['random_' + parName[ii]]
 
         par_tmp, log_prob_par_tmp = prior_function(cube[ii])
+
         cube[ii] = par_tmp
 
         par[parName[ii]] = par_tmp
@@ -265,3 +271,7 @@ def get_prior_info(cube, parNames):
     # Round some priors
     par['distance'] = int(par['distance'])
                         
+    return par, par_prior_logp
+
+
+    
