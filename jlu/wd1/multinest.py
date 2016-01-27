@@ -43,7 +43,7 @@ alpha1_gen = make_gen(-3.0, -0.5)
 alpha2_gen = make_gen(-3.0, -1.0)
 mbreak_gen = make_gen(0.1, 3.0)
 AKs_gen = make_gen(0.70, 0.79)
-dAKs_gen = make_gen(0.00, 0.50)
+dAKs_gen = make_gen(0.00, 0.10)
 Mcl_gen = make_gen(40000, 60000)
 #mass_gen = mass_generator()
 
@@ -143,6 +143,7 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
         ##########
         imf_mass_limits = np.array([imf_mmin, par['mbreak'], imf_mmax])
         imf_powers = np.array([par['alpha2'], par['alpha1']])
+        imf_multi = None
         new_imf = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers, imf_multi)
 
         print 'Getting Isochrone'
@@ -155,6 +156,7 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
                                                       par['dAKs'], red_law=red_law)
 
         # Convert simulated cluster into magnitude-color-color histogram
+        
         pdb.set_trace()
         
         mcc_cluster = 1
