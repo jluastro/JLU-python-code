@@ -8,19 +8,31 @@ import scipy
 import scipy.interpolate
 from gcwork import objects
 import pdb
+import ppxf
+#from joblib import Parallel,delayed
+import pp
+import itertools
+
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
 # workdir = '/u/jlu/work/m31/nucleus/ifu_09_02_24/'
 # cuberoot = 'm31_08oct_Kbb_050'
 
-workdir = '/u/jlu/work/m31/nucleus/ifu_11_11_30/'
+workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 datadir = workdir
-cuberoot = 'm31_Kbb_050'
+mctmpdir = workdir+'tmp_mc/'
+cuberoot = 'm31_all_semerr'
 
 # Start an IDL session
 idl = pidly.IDL(long_delay=0.1)
 
 cc = objects.Constants()
+
+# Modified black hole position from 2009 sep alignment 
+# analysis between NIRC2 and HST. This is the position
+# in the osiris cubes.
+#bhpos = np.array([8.7, 39.1]) * 0.05 # python coords, not ds9
+bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
 
 def run():
     """
@@ -40,7 +52,9 @@ def run():
     # This produces errors that are still a little large compared to what
     # I get if I look at the noise in a line-less region of spectra.
     # Different is nearly a factor of 2 or so.
-    errors /= (np.sqrt(nframes+1) * 2.0)
+
+    # 20160218 KEL - removing - errors already calced as SEofM
+    #errors /= (np.sqrt(nframes+1) * 2.0)
 
     # Get the wavelength solution so we can specify range:
     w0 = hdr['CRVAL1']
@@ -65,8 +79,6 @@ def run():
 
     print 'logWaveCube.shape = ', logWaveCube.shape
     print 'logWaveTemps.shape = ', logWaveTemps.shape
-    #print 'logWaveCube = ', logWaveCube
-    #print 'logWaveTemps = ', logWaveTemps
 
     py.clf()
     py.plot(np.log(wavelength), cube[10,30,:], 'r-')
@@ -111,7 +123,9 @@ def run():
     tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[0]), dtype=float)
 
 
-    for xx in range(4, newCube.shape[0]-4):
+    #for xx in range(4, newCube.shape[0]-4):
+    for xx in range(8, newCube.shape[0]-8):
+        #for yy in range(10, newCube.shape[1]-10):
         for yy in range(10, newCube.shape[1]-10):
             print 'STARTING ppxf  ', time.ctime(time.time())
 
@@ -167,8 +181,178 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
+def run_py(verbose=True,newTemplates=True):
+    """
+    Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
+    """
+    # Read in the data cube.
+    cubefits = pyfits.open(datadir + cuberoot + '.fits')
+    
+    cube = cubefits[0].data
+    hdr = cubefits[0].header
+    errors = cubefits[1].data
+    quality = cubefits[2].data
+    nframes = cubefits[3].data
 
-def runErrorMC(suffix='_1'):
+    # Convert the errors to the error on the mean vs. the stddev
+    # nframes is wrong (too low by 1)... Why?
+    # This produces errors that are still a little large compared to what
+    # I get if I look at the noise in a line-less region of spectra.
+    # Different is nearly a factor of 2 or so.
+
+    # 20160218 KEL - removing - errors already calced as SEofM
+    #errors /= (np.sqrt(nframes+1) * 2.0)
+
+    # Get the wavelength solution so we can specify range:
+    w0 = hdr['CRVAL1']
+    dw = hdr['CDELT1']
+    wavelength = w0 + dw * np.arange(cube.shape[2], dtype=float)
+    wavelength /= 1000.0   # Convert to microns
+    
+    # Test #2
+    logWaveCube, newCube, velScale = log_rebin_cube(wavelength, cube)
+
+    # Load templates
+    if newTemplates:
+        logWaveTemps, templates = load_templates(velScale,IDL=False)
+    else:
+        logWaveTemps, templates = load_templates_old(velScale,IDL=False)
+
+    # Trim down galaxy spectrum to 2.18 microns and greater.
+    # This is necessary for the ppxf routine which demands the templates
+    # have broader wavelength coverage than the galaxy spectrum.
+    #if newTemplates:
+    #    waveCut = 2.185
+    #else:
+    #    waveCut = 2.05
+    waveCut = 2.185
+    print 'blue wavelength cutoff = %.2f microns' % waveCut
+    idx = np.where(np.exp(logWaveCube) > waveCut)[0]
+    newCube = newCube[:,:,idx]
+    logWaveCube = logWaveCube[idx]
+    newErrors = errors[:,:,idx]
+
+    print 'logWaveCube.shape = ', logWaveCube.shape
+    print 'logWaveTemps.shape = ', logWaveTemps.shape
+
+    py.clf()
+    py.plot(np.log(wavelength), cube[10,30,:], 'r-')
+    py.plot(logWaveCube, newCube[10,30,:], 'b-')
+    py.plot(logWaveTemps, templates[:,0], 'g-')
+    py.show()
+
+    # Mark good pixels as those with wavelength > 2.18.
+    # Below this, atmosphere (and templates) get icky.
+    # We have already made the waveCut, so all pixels in
+    # the galaxy spectrum are good.
+    #goodPixels = np.where(np.exp(logWaveCube) > waveCut)[0]
+    #print 'goodPixels size = ', goodPixels.shape
+    #goodPixels = np.array(goodPixels, dtype=np.int32)
+
+    # Run ppxf
+    print 'Python pPXF:'
+    print '  templates set'
+    print '  velocity scale = ', velScale
+    print '  setting start velocity'
+    start = np.array([-300.0, 180.0])
+    print '  setting good pixels'
+    goodPixels = np.arange(len(logWaveCube))
+    dv = (logWaveTemps[0] - logWaveCube[0]) * cc.c
+    print '  vsyst = ', dv
+
+    # Do the whole cube
+    imgShape = (newCube.shape[0], newCube.shape[1])
+    print ' Cube size', newCube.shape[0], ' ', newCube.shape[1]
+    velocity = np.zeros(imgShape, dtype=float)
+    sigma = np.zeros(imgShape, dtype=float)
+    h3 = np.zeros(imgShape, dtype=float)
+    h4 = np.zeros(imgShape, dtype=float)
+    h5 = np.zeros(imgShape, dtype=float)
+    h6 = np.zeros(imgShape, dtype=float)
+    chi2red = np.zeros(imgShape, dtype=float)
+
+    pweights = np.zeros((newCube.shape[0], newCube.shape[1], 5), dtype=float)
+    tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
+
+    # get all the xx,yy pair possiblities - setup for parallel processing
+    xx = np.arange(8, newCube.shape[0]-8)
+    yy = np.arange(10, newCube.shape[1]-10)
+    allxxyylist = list(itertools.product(xx, yy))
+    allxxyy = np.array(allxxyylist)
+    allxx, allyy = zip(*itertools.product(xx, yy))
+
+    #pdb.set_trace()
+
+    # pp implementation
+    job_server = pp.Server()
+    print "Starting pp with", job_server.get_ncpus(), "workers"
+    t1=time.time()
+    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    #test=[0,1,2,3]
+    #jobs = [(i, job_server.submit(run_once, (newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[i]), (), ('numpy as np','time','ppxf'))) for i in test]
+    #test = run_once(newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[0])
+    #pdb.set_trace()
+    for i, job in jobs:
+        print "Setting output of ", i
+        job()
+        #pdb.set_trace()
+        xx = i[0]
+        yy = i[1]
+        solution = job.result.sol
+        velocity[xx, yy] = solution[0]
+        sigma[xx, yy] = solution[1]
+        h3[xx, yy] = solution[2]
+        h4[xx, yy] = solution[3]
+        #h5[xx, yy] = solution[4]
+        #h6[xx, yy] = solution[5]
+        chi2red[xx, yy] = job.result.chi2
+
+        pweights[xx, yy, :] = job.result.polyweights
+        tweights[xx, yy, :] = job.result.weights
+        
+        
+    #pdb.set_trace()
+    
+    output = open(workdir + '/ppxf.dat', 'w')
+    pickle.dump(velocity, output)
+    pickle.dump(sigma, output)
+    pickle.dump(h3, output)
+    pickle.dump(h4, output)
+    pickle.dump(h5, output)
+    pickle.dump(h6, output)
+    pickle.dump(chi2red, output)
+    pickle.dump(pweights, output)
+    pickle.dump(tweights, output)
+    output.close()
+
+    print "Time elapsed: ", time.time() - t1, "s"
+
+def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,verbose=False):
+    xx = allxxyy[0]
+    yy = allxxyy[1]
+
+    if verbose:
+        print 'STARTING ppxf  ', time.ctime(time.time())
+        t1 = time.time()
+        print ''
+        print '  PIXEL: xx = %d, yy = %d' % (xx, yy)
+        print '    setting galaxy spectra'
+    
+    tmp = newCube
+    tmperr = errors
+    
+    # Add a constant to the galaxy spectrum to make it above zero
+    minFlux = tmp.mean() - (3.0 * tmp.std())
+    tmp2 = tmp - minFlux
+            
+    galaxy = tmp2
+    error = tmperr
+   
+    outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+    #pdb.set_trace()
+    return outppxf
+
+def runErrorMC(newTemplates=True,jackknife=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube.
     """
@@ -186,7 +370,8 @@ def runErrorMC(suffix='_1'):
     # This produces errors that are still a little large compared to what
     # I get if I look at the noise in a line-less region of spectra.
     # Different is nearly a factor of 2 or so.
-    errors /= (np.sqrt(nframes+1) * 2.0)
+    # 20160218 KEL - removing - error already calced as SEotM
+    #errors /= (np.sqrt(nframes+1) * 2.0)
 
     # Get the wavelength solution so we can specify range:
     w0 = hdr['CRVAL1']
@@ -198,48 +383,46 @@ def runErrorMC(suffix='_1'):
     logWaveCube, newCube, velScale = log_rebin_cube(wavelength, cube)
 
     # Load templates
-    logWaveTemps, templates = load_templates(velScale)
+    if newTemplates:
+        logWaveTemps, templates = load_templates(velScale,IDL=False)
+    else:
+        logWaveTemps, templates = load_templates_old(velScale,IDL=False)
 
-    # Trim down galaxy spectrum to 2.1 microns and greater.
+
+    # Trim down galaxy spectrum to 2.18 microns and greater.
     # This is necessary for the ppxf routine which demands the templates
     # have broader wavelength coverage than the galaxy spectrum.
-    idx = np.where(np.exp(logWaveCube) > 2.1)[0]
+    waveCut = 2.185
+    print 'blue wavelength cutoff = %.2f microns' % waveCut
+    idx = np.where(np.exp(logWaveCube) > waveCut)[0]
     newCube = newCube[:,:,idx]
     logWaveCube = logWaveCube[idx]
+    newErrors = errors[:,:,idx]
 
     print 'logWaveCube.shape = ', logWaveCube.shape
     print 'logWaveTemps.shape = ', logWaveTemps.shape
-    print 'logWaveCube = ', logWaveCube
-    print 'logWaveTemps = ', logWaveTemps
-
-    #py.clf()
-    #py.plot(np.log(wavelength), cube[10,30,:], 'r-')
-    #py.plot(logWaveCube, newCube[10,30,:], 'b-')
-    #py.plot(logWaveTemps, templates[0,:], 'g-')
-    #py.show()
 
     # Mark good pixels as those with wavelength > 2.1.
     # Below this, atmosphere (and templates) get icky
-    goodPixels = np.where(np.exp(logWaveCube) > 2.1)[0]
-    print 'goodPixels = ', goodPixels
+    #goodPixels = np.where(np.exp(logWaveCube) > 2.1)[0]
+    #print 'goodPixels = ', goodPixels
 
     # Run ppxf
-    print 'IDL PPXF:'
-    print '  setting templates'
-    idl.templates = templates
-    print '  setting velocity scale = ', velScale
-    idl.velScale = velScale
+    print 'Python pPXF:'
+    print '  templates set'
+    print '  velocity scale = ', velScale
     print '  setting start velocity'
-    idl.start = np.array([-300.0, 180.0])
+    start = np.array([-300.0, 180.0])
     print '  setting good pixels'
-    idl.goodPixels = goodPixels
-    print '  setting vsyst'
-    idl.dv = (logWaveTemps[0] - logWaveCube[0]) * cc.c
-    idl('loadct, 12')
-
+    goodPixels = np.arange(len(logWaveCube))
+    dv = (logWaveTemps[0] - logWaveCube[0]) * cc.c
+    print '  vsyst = ', dv
+    
     # Error distributions
-    nsim = 10
-    imgShape = (newCube.shape[0], newCube.shape[1], nsim)
+    #nsim = 3
+    nsim = 100
+    # set array to hold MC errors
+    imgShape = (newCube.shape[0], newCube.shape[1])
     velocityErr = np.zeros(imgShape, dtype=float)
     sigmaErr = np.zeros(imgShape, dtype=float)
     h3Err = np.zeros(imgShape, dtype=float)
@@ -248,48 +431,65 @@ def runErrorMC(suffix='_1'):
     h6Err = np.zeros(imgShape, dtype=float)
     chi2redErr = np.zeros(imgShape, dtype=float)
 
-    pweightsErr = np.zeros((newCube.shape[0], newCube.shape[1], 5, nsim), 
+    pweightsErr = np.zeros((newCube.shape[0], newCube.shape[1], 5), 
                            dtype=float)
     tweightsErr = np.zeros((newCube.shape[0], newCube.shape[1], 
-                            templates.shape[0], nsim), dtype=float)
+                            templates.shape[1]), dtype=float)
 
-    for xx in range(4, 16):
-    #for xx in range(4, newCube.shape[0]-4):
-        print 'STARTING ppxf for xx = %d ' % xx, time.ctime(time.time())
-        #for yy in range(10, newCube.shape[1]-10):
-        for yy in range(26, 61):
-            print ''
-            print '  PIXEL: xx = %d, yy = %d' % (xx, yy)
+    # set arrays to hold average outputs from MC run
+    velocityAvg = np.zeros(imgShape, dtype=float)
+    sigmaAvg = np.zeros(imgShape, dtype=float)
+    h3Avg = np.zeros(imgShape, dtype=float)
+    h4Avg = np.zeros(imgShape, dtype=float)
+    h5Avg = np.zeros(imgShape, dtype=float)
+    h6Avg = np.zeros(imgShape, dtype=float)
+    chi2redAvg = np.zeros(imgShape, dtype=float)
 
-            tmp = newCube[xx,yy,:]
-            tmperr = np.zeros(len(tmp), dtype=float) + \
-                np.median(errors[xx,yy,:])
+    pweightsAvg = np.zeros((newCube.shape[0], newCube.shape[1], 5), 
+                           dtype=float)
+    tweightsAvg = np.zeros((newCube.shape[0], newCube.shape[1], 
+                            templates.shape[1]), dtype=float)
+    
+    # get all the xx,yy pair possiblities - setup for parallel processing
+    xx = np.arange(8, newCube.shape[0]-8)
+    yy = np.arange(10, newCube.shape[1]-10)
+    allxxyylist = list(itertools.product(xx,yy))
+    allxxyy = np.array(allxxyylist)
 
-            # Add a constant to the galaxy spectrum to make it above zero
-            minFlux = tmp.mean() - (3.0 * tmp.std())
-            tmp -= minFlux
+    job_server = pp.Server()
+    print "Starting pp with", job_server.get_ncpus(), "workers"
+    t1=time.time()
+    jobs = [(i,job_server.submit(run_once_mc, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    #test = run_once_mc(newCube[allxxyy[0,0],allxxyy[0,1]],newErrors[allxxyy[0,0],allxxyy[0,1]],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,allxxyy[0])
 
-            
-            for nn in range(nsim):
-                specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
-                idl.galaxy = specSim
-                idl.error = tmperr
+    # wait for all the jobs to finish before proceeding
+    job_server.wait()
+    # pdb.set_trace()
+    
+    for i in range(len(allxxyy)):
+        print "Setting output of ", i
+        xx = allxxyy[i][0]
+        yy = allxxyy[i][1]
+        
+        p = PPXFresultsMC(inputFile=mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'.dat')
+        
+        velocityErr[xx, yy] = p.velocityErr
+        sigmaErr[xx,yy] = p.sigmaErr
+        h3Err[xx,yy] = p.h3Err
+        h4Err[xx,yy] = p.h4Err
+        chi2redErr[xx,yy] = p.chi2redErr
+        pweightsErr[xx,yy,:] = p.pweightsErr
+        tweightsErr[xx,yy,:] = p.tweightsErr
 
-                idl('ppxf, templates, galaxy, error, velScale, start, sol, GOODPIXELS=goodPixels, /plot, moments=4, degree=4, vsyst=dv, polyweights=polyweights, weights=weights')
-
-                solution = idl.sol
-                velocityErr[xx, yy, nn] = solution[0]
-                sigmaErr[xx, yy, nn] = solution[1]
-                h3Err[xx, yy, nn] = solution[2]
-                h4Err[xx, yy, nn] = solution[3]
-                h5Err[xx, yy, nn] = solution[4]
-                h6Err[xx, yy, nn] = solution[5]
-                chi2redErr[xx, yy, nn] = solution[6]
-
-                pweightsErr[xx, yy, :, nn] = idl.polyweights
-                tweightsErr[xx, yy, :, nn] = idl.weights
-
-    output = open(workdir + '/ppxf_errors'+suffix+'.dat', 'w')
+        velocityAvg[xx, yy] = p.velocity
+        sigmaAvg[xx,yy] = p.sigma
+        h3Avg[xx,yy] = p.h3
+        h4Avg[xx,yy] = p.h4
+        chi2redAvg[xx,yy] = p.chi2red
+        pweightsAvg[xx,yy,:] = p.pweights
+        tweightsAvg[xx,yy,:] = p.tweights       
+                    
+    output = open(workdir + '/ppxf_errors_mc_nsim'+str(nsim)+'.dat', 'w')
     pickle.dump(velocityErr, output)
     pickle.dump(sigmaErr, output)
     pickle.dump(h3Err, output)
@@ -300,7 +500,117 @@ def runErrorMC(suffix='_1'):
     pickle.dump(pweightsErr, output)
     pickle.dump(tweightsErr, output)
     output.close()
+
+    output = open(workdir + '/ppxf_avg_mc_nsim'+str(nsim)+'.dat', 'w')
+    pickle.dump(velocityAvg, output)
+    pickle.dump(sigmaAvg, output)
+    pickle.dump(h3Avg, output)
+    pickle.dump(h4Avg, output)
+    pickle.dump(h5Avg, output)
+    pickle.dump(h6Avg, output)
+    pickle.dump(chi2redAvg, output)
+    pickle.dump(pweightsAvg, output)
+    pickle.dump(tweightsAvg, output)
+    output.close()
+
+    print "Time elapsed: ", time.time() - t1, "s"
             
+
+def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mctmpdir,jackknife,allxxyy,verbose=False):
+    # code can run either MC simulations (e.g. spectrum is perturbed within the errors, fits are calculated nsim number of times)
+    # or jackknife simulations (e.g. one spectral template at a time is dropped from the fits; nsim is disregarded in this
+    # case and the fits are calculated n_template number of times)
+    xx = allxxyy[0]
+    yy = allxxyy[1]
+
+    if verbose:
+        print 'STARTING ppxf  ', time.ctime(time.time())
+        t1 = time.time()
+        print ''
+        print '  PIXEL: xx = %d, yy = %d' % (xx, yy)
+        print '    setting galaxy spectra'
+    
+    tmp = newCube
+    tmperr = errors
+    
+    # Add a constant to the galaxy spectrum to make it above zero
+    minFlux = tmp.mean() - (3.0 * tmp.std())
+    tmp -= minFlux
+
+    if jackknife:
+        iter = templates.shape[1]
+    else:
+        iter = nsim
+
+    vall = np.zeros(iter, dtype=float)
+    sigall = np.zeros(iter, dtype=float)
+    h3all = np.zeros(iter, dtype=float)
+    h4all = np.zeros(iter, dtype=float)
+    chi2redall = np.zeros(iter, dtype=float)
+
+    pweightsall = np.zeros((iter, 5), dtype=float)
+    tweightsall = np.zeros((iter, templates.shape[1]), dtype=float)
+        
+    for n in range(iter):
+        if jackknife:
+            specSim = tmp
+        else:
+            specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
+            
+        galaxy = specSim
+        error = tmperr
+
+        if jackknife:
+            templatesJK = np.zeros((templates.shape[0],templates.shape[1]), dtype=float)
+            templatesJK[:,0:(n-1)] = templates[:,0:(n-1)]
+            templatesJK[:,(n+1):] = templates[:,(n+1):]
+        else:
+            templatesJK = templates
+        
+        p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+
+        solution = p.sol
+        vall[n] = solution[0]
+        sigall[n] = solution[1]
+        h3all[n] = solution[2]
+        h4all[n] = solution[3]
+        chi2redall[n] = p.chi2
+        pweightsall[n,:] = p.polyweights
+        tweightsall[n,:] = p.weights
+
+    velocityAvg = np.average(vall)
+    velocityErr = np.std(vall)
+    sigmaAvg = np.average(sigall)
+    sigmaErr = np.std(sigall)
+    h3Avg = np.average(h3all)
+    h3Err = np.std(h3all)
+    h4Avg = np.average(h4all)
+    h4Err = np.std(h4all)
+    chi2redAvg = np.average(chi2redall)
+    chi2redErr = np.std(chi2redall)
+    pweightsAvg = np.average(pweightsall,axis=0)
+    pweightsErr = np.std(pweightsall,axis=0)
+    tweightsAvg = np.average(tweightsall,axis=0)
+    tweightsErr = np.std(tweightsall,axis=0) 
+
+    output = open(mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'.dat', 'w')
+    pickle.dump(velocityAvg, output)
+    pickle.dump(velocityErr, output)
+    pickle.dump(sigmaAvg, output)
+    pickle.dump(sigmaErr, output)
+    pickle.dump(h3Avg, output)
+    pickle.dump(h3Err, output)
+    pickle.dump(h4Avg, output)
+    pickle.dump(h4Err, output)
+    pickle.dump(chi2redAvg, output)
+    pickle.dump(chi2redErr, output)
+    pickle.dump(pweightsAvg, output)
+    pickle.dump(pweightsErr, output)
+    pickle.dump(tweightsAvg, output)
+    pickle.dump(tweightsErr, output)
+    output.close()
+    #pdb.set_trace()
+    
 class PPXFresults(object):
     def __init__(self, inputFile=workdir+'ppxf.dat'):
         self.inputFile = inputFile
@@ -316,12 +626,25 @@ class PPXFresults(object):
         self.pweights = pickle.load(input)
         self.tweights = pickle.load(input)
 
+class PPXFresultsMC(object):
+    def __init__(self, inputFile=mctmpdir + '/mc_00_00.dat'):
+        self.inputFile = inputFile
 
-# Modified black hole position from 2009 sep alignment 
-# analysis between NIRC2 and HST. This is the position
-# in the osiris cubes.
-#bhpos = np.array([8.7, 39.1]) * 0.05 # python coords, not ds9
-bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
+        input = open(inputFile, 'r')
+        self.velocity = pickle.load(input)
+        self.velocityErr = pickle.load(input)
+        self.sigma = pickle.load(input)
+        self.sigmaErr = pickle.load(input)
+        self.h3 = pickle.load(input)
+        self.h3Err = pickle.load(input)
+        self.h4 = pickle.load(input)
+        self.h4Err = pickle.load(input)
+        self.chi2red = pickle.load(input)
+        self.chi2redErr = pickle.load(input)
+        self.pweights = pickle.load(input)
+        self.pweightsErr = pickle.load(input)
+        self.tweights = pickle.load(input)
+        self.tweightsErr = pickle.load(input)
 
 def plotResults():
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
@@ -341,12 +664,12 @@ def plotResults():
     py.subplots_adjust(left=0.01, right=0.94, top=0.95)
     py.clf()
 
-    #bhpos = np.array([9.0, 38.0]) * 0.05
     ##########
     # Plot Cube Image
     ##########
     py.subplot(1, 4, 1)
-    py.imshow(py.ma.masked_where(cubeimg<5, cubeimg), 
+    cubeimg=cubeimg.transpose()
+    py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
     py.plot([bhpos[0]], [bhpos[1]], 'kx')
@@ -381,6 +704,7 @@ def plotResults():
     ##########
     print snrimg[30,10]
     py.subplot(1, 4, 2)
+    snrimg=snrimg.transpose()
     py.imshow(py.ma.masked_invalid(snrimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
@@ -435,9 +759,13 @@ def plotResults():
 
 def plotResults2():
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
-    snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
+    #snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
 
     p = PPXFresults()
+
+    print p.velocity.shape
+    print cubeimg.shape
+    print bhpos
 
     xaxis = np.arange(p.velocity.shape[0]) * 0.05
     yaxis = np.arange(p.velocity.shape[1]) * 0.05
@@ -449,12 +777,12 @@ def plotResults2():
     py.subplots_adjust(left=0.05, right=0.94, top=0.95)
     py.clf()
 
-    #bhpos = np.array([9.0, 38.0]) * 0.05
     ##########
     # Plot Cube Image
     ##########
     py.subplot(1, 3, 1)
-    py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
+    plcube = cubeimg.transpose()
+    py.imshow(py.ma.masked_where(cubeimg<-10000, plcube), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -520,8 +848,182 @@ def plotResults2():
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
+def plotResults3():
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+
+    p = PPXFresults()
+
+    xaxis = np.arange(p.velocity.shape[0]) * 0.05
+    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(10,12))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
 
 
+    ##########
+    # Plot Velocity
+    ##########
+    py.subplot(2, 2, 1)
+    velimg = p.velocity.transpose()+308.0
+    py.imshow(py.ma.masked_where(velimg>250, velimg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')
+
+    ##########
+    # Plot Dispersion
+    ##########
+    py.subplot(2, 2, 2)
+    sigimg = p.sigma.transpose()
+    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion (km/s)')
+
+    ##########
+    # Plot h3
+    ##########
+    py.subplot(2, 2, 3)
+    h3img = p.h3.transpose()
+    py.imshow(py.ma.masked_where(h3img==0, h3img), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    ##########
+    # Plot h4
+    ##########
+    py.subplot(2, 2, 4)
+    h4img = p.h4.transpose()
+    py.imshow(py.ma.masked_where(h4img==0, h4img), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    py.tight_layout()
+
+    py.savefig(workdir + 'plots/kinematic_maps3.png')
+    py.savefig(workdir + 'plots/kinematic_maps3.eps')
+    py.show()
+
+def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
+    p = PPXFresults(inputResults)
+    a = PPXFresults(inputAvg)
+    e = PPXFresults(inputErr)
+
+    xaxis = np.arange(p.velocity.shape[0]) * 0.05
+    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(15,12))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot Velocity, MC velocity average, and MC velocity error
+    ##########
+    py.subplot(2, 3, 1)
+    velimg = p.velocity.transpose()+308.0
+    py.imshow(velimg, vmin=-250., vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')
+
+    #pdb.set_trace()
+    
+    py.subplot(2,3,2)
+    velavg = a.velocity.transpose()+308.0
+    py.imshow(velavg, vmin=-250., vmax=250.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity, MC avg, (km/s)')
+
+    py.subplot(2,3,3)
+    velerr = e.velocity.transpose()
+    py.imshow(velerr, vmin=0., vmax=25.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity, MC err, (km/s)')
+
+    ##########
+    # Plot Dispersion
+    ##########
+    py.subplot(2, 3, 4)
+    sigimg = p.sigma.transpose()
+    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion (km/s)')
+
+    py.subplot(2, 3, 5)
+    sigavg = a.sigma.transpose()
+    py.imshow(py.ma.masked_where(sigavg>sigimg.max(), sigavg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion, MC avg, (km/s)')
+
+    py.subplot(2, 3, 6)
+    sigerr = e.sigma.transpose()
+    py.imshow(py.ma.masked_where((sigerr>40), sigerr), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion, MC err, (km/s)')
+
+    py.savefig(workdir + 'plots/mc_err1.png')
+    py.savefig(workdir + 'plots/mc_err1.eps')
+    py.show()
+    
+def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
+    p = PPXFresults(inputResults)
+    a = PPXFresults(inputAvg)
+    e = PPXFresults(inputErr)
+
+    
 def precessionSpeed():
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
@@ -630,8 +1132,9 @@ def precessionSpeed():
     #py.show()
 
 
-def load_templates(velScale, resolution=3241):
-    templateDir = '/u/jlu/work/atlasSpectra/gemini/gnirs/'
+def load_templates(velScale, resolution=3241, IDL=True):
+    # IDL and Python versions of pPXF require different formats for the input templates
+    templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
 
     files = glob.glob(templateDir + '*.fits')
     print 'Using %d templates' % len(files)
@@ -641,14 +1144,20 @@ def load_templates(velScale, resolution=3241):
         newWave, newSpec = load_spectrum_gnirs(files[ff], velScale, resolution)
 
         if templates == None:
-            templates = np.zeros((len(files), len(newSpec)), dtype=float)
+            if IDL:
+                templates = np.zeros(( len(files),len(newSpec)), dtype=float)
+            else: 
+                templates = np.zeros(( len(newSpec),len(files)), dtype=float)
 
-        templates[ff,:] = newSpec
+        if IDL:
+            templates[ff,:] = newSpec
+        else:
+            templates[:,ff] = newSpec
 
     return (newWave, templates)
 
-def load_templates_old(velScale):
-    templateDir = '/u/jlu/work/atlasSpectra/medresIR/K_band'
+def load_templates_old(velScale, IDL=False):
+    templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/atlasSpectra/medresIR/K_band'
 
     files = glob.glob(templateDir + '/spec.*')
     specfiles = ['HR6406', 'KY_Cyg', 'HR8316', 'HR8726', 'HR8089',
@@ -672,9 +1181,15 @@ def load_templates_old(velScale):
         newWave, newSpec = load_spectrum_medresIR(files[ff], velScale)
 
         if templates == None:
-            templates = np.zeros((len(files), len(newSpec)), dtype=float)
+            if IDL:
+                templates = np.zeros((len(files), len(newSpec)), dtype=float)
+            else:
+                templates = np.zeros((len(newSpec), len(files)), dtype=float)
 
-        templates[ff,:] = newSpec
+        if IDL:
+            templates[ff,:] = newSpec
+        else:
+            templates[:,ff] = newSpec
 
     return (newWave, templates)
 
