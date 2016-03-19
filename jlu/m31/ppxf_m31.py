@@ -352,7 +352,7 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,ve
     #pdb.set_trace()
     return outppxf
 
-def runErrorMC(newTemplates=True,jackknife=False):
+def runErrorMC(newTemplates=True,jackknife=False,test=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube.
     """
@@ -421,8 +421,29 @@ def runErrorMC(newTemplates=True,jackknife=False):
     # Error distributions
     #nsim = 3
     nsim = 100
-    # set array to hold MC errors
+    if jackknife:
+        niter = templates.shape[1]
+    else:
+        niter = nsim
+
     imgShape = (newCube.shape[0], newCube.shape[1])
+
+    # set array to hold MC errors
+    if test:
+        npix = 6
+        velocity = np.zeros((npix, niter), dtype=float)
+        sigma = np.zeros((npix, niter), dtype=float)
+        h3 = np.zeros((npix, niter), dtype=float)
+        h4 = np.zeros((npix, niter), dtype=float)
+        h5 = np.zeros((npix, niter), dtype=float)
+        h6 = np.zeros((npix, niter), dtype=float)
+        chi2red = np.zeros((npix, niter), dtype=float)
+
+        pweights = np.zeros((npix, 5, niter), 
+                           dtype=float)
+        tweights = np.zeros((npix, 
+                            templates.shape[1], niter), dtype=float)
+    
     velocityErr = np.zeros(imgShape, dtype=float)
     sigmaErr = np.zeros(imgShape, dtype=float)
     h3Err = np.zeros(imgShape, dtype=float)
@@ -451,16 +472,23 @@ def runErrorMC(newTemplates=True,jackknife=False):
                             templates.shape[1]), dtype=float)
     
     # get all the xx,yy pair possiblities - setup for parallel processing
-    xx = np.arange(8, newCube.shape[0]-8)
-    yy = np.arange(10, newCube.shape[1]-10)
+    if test:
+        xx = [17,18,19,20,21,22]
+        yy = [35]
+        #xx = [17,18]
+        #yy = [35,35]
+    else:
+        xx = np.arange(8, newCube.shape[0]-8)
+        yy = np.arange(10, newCube.shape[1]-10)
+        
     allxxyylist = list(itertools.product(xx,yy))
     allxxyy = np.array(allxxyylist)
 
     job_server = pp.Server()
     print "Starting pp with", job_server.get_ncpus(), "workers"
     t1=time.time()
-    jobs = [(i,job_server.submit(run_once_mc, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
-    #test = run_once_mc(newCube[allxxyy[0,0],allxxyy[0,1]],newErrors[allxxyy[0,0],allxxyy[0,1]],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,allxxyy[0])
+    jobs = [(i,job_server.submit(run_once_mc, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    #test = run_once_mc(newCube[allxxyy[0,0],allxxyy[0,1]],newErrors[allxxyy[0,0],allxxyy[0,1]],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,allxxyy[0])
 
     # wait for all the jobs to finish before proceeding
     job_server.wait()
@@ -472,6 +500,17 @@ def runErrorMC(newTemplates=True,jackknife=False):
         yy = allxxyy[i][1]
         
         p = PPXFresultsMC(inputFile=mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'.dat')
+
+        if test:
+            for j in range(niter):
+                n = PPXFresults(inputFile=mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'_iter'+str(j)+'.dat')
+                velocity[i,j] = n.velocity
+                sigma[i,j] = n.sigma
+                h3[i,j] = n.h3
+                h4[i,j] = n.h4
+                chi2red[i,j] = n.chi2red
+                pweights[i,:, j] = n.pweights
+                tweights[i,:, j] = n.tweights
         
         velocityErr[xx, yy] = p.velocityErr
         sigmaErr[xx,yy] = p.sigmaErr
@@ -513,10 +552,23 @@ def runErrorMC(newTemplates=True,jackknife=False):
     pickle.dump(tweightsAvg, output)
     output.close()
 
+    if test:
+        output = open(workdir + '/ppxf_test_mc_nsim'+str(nsim)+'.dat','w')
+        pickle.dump(velocity, output)
+        pickle.dump(sigma, output)
+        pickle.dump(h3, output)
+        pickle.dump(h4, output)
+        pickle.dump(h5, output)
+        pickle.dump(h6, output)
+        pickle.dump(chi2red, output)
+        pickle.dump(pweights, output)
+        pickle.dump(tweights, output)
+        output.close()
+
     print "Time elapsed: ", time.time() - t1, "s"
             
 
-def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mctmpdir,jackknife,allxxyy,verbose=False):
+def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mctmpdir,jackknife,test,allxxyy,verbose=False):
     # code can run either MC simulations (e.g. spectrum is perturbed within the errors, fits are calculated nsim number of times)
     # or jackknife simulations (e.g. one spectral template at a time is dropped from the fits; nsim is disregarded in this
     # case and the fits are calculated n_template number of times)
@@ -542,14 +594,16 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     else:
         iter = nsim
 
-    vall = np.zeros(iter, dtype=float)
-    sigall = np.zeros(iter, dtype=float)
-    h3all = np.zeros(iter, dtype=float)
-    h4all = np.zeros(iter, dtype=float)
-    chi2redall = np.zeros(iter, dtype=float)
+    velocity = np.zeros(iter, dtype=float)
+    sigma = np.zeros(iter, dtype=float)
+    h3 = np.zeros(iter, dtype=float)
+    h4 = np.zeros(iter, dtype=float)
+    h5 = np.zeros(iter, dtype=float)
+    h6 = np.zeros(iter, dtype=float)
+    chi2red = np.zeros(iter, dtype=float)
 
-    pweightsall = np.zeros((iter, 5), dtype=float)
-    tweightsall = np.zeros((iter, templates.shape[1]), dtype=float)
+    pweights = np.zeros((iter, 5), dtype=float)
+    tweights = np.zeros((iter, templates.shape[1]), dtype=float)
         
     for n in range(iter):
         if jackknife:
@@ -570,28 +624,32 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
         p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
 
         solution = p.sol
-        vall[n] = solution[0]
-        sigall[n] = solution[1]
-        h3all[n] = solution[2]
-        h4all[n] = solution[3]
-        chi2redall[n] = p.chi2
-        pweightsall[n,:] = p.polyweights
-        tweightsall[n,:] = p.weights
+        velocity[n] = solution[0]
+        sigma[n] = solution[1]
+        h3[n] = solution[2]
+        h4[n] = solution[3]
+        chi2red[n] = p.chi2
+        pweights[n,:] = p.polyweights
+        tweights[n,:] = p.weights
 
-    velocityAvg = np.average(vall)
-    velocityErr = np.std(vall)
-    sigmaAvg = np.average(sigall)
-    sigmaErr = np.std(sigall)
-    h3Avg = np.average(h3all)
-    h3Err = np.std(h3all)
-    h4Avg = np.average(h4all)
-    h4Err = np.std(h4all)
-    chi2redAvg = np.average(chi2redall)
-    chi2redErr = np.std(chi2redall)
-    pweightsAvg = np.average(pweightsall,axis=0)
-    pweightsErr = np.std(pweightsall,axis=0)
-    tweightsAvg = np.average(tweightsall,axis=0)
-    tweightsErr = np.std(tweightsall,axis=0) 
+    velocityAvg = np.average(velocity)
+    velocityErr = np.std(velocity)
+    sigmaAvg = np.average(sigma)
+    sigmaErr = np.std(sigma)
+    h3Avg = np.average(h3)
+    h3Err = np.std(h3)
+    h4Avg = np.average(h4)
+    h4Err = np.std(h4)
+    h5Avg = np.average(h4)
+    h5Err = np.std(h4)
+    h6Avg = np.average(h4)
+    h6Err = np.std(h4)
+    chi2redAvg = np.average(chi2red)
+    chi2redErr = np.std(chi2red)
+    pweightsAvg = np.average(pweights,axis=0)
+    pweightsErr = np.std(pweights,axis=0)
+    tweightsAvg = np.average(tweights,axis=0)
+    tweightsErr = np.std(tweights,axis=0) 
 
     output = open(mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'.dat', 'w')
     pickle.dump(velocityAvg, output)
@@ -602,6 +660,10 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     pickle.dump(h3Err, output)
     pickle.dump(h4Avg, output)
     pickle.dump(h4Err, output)
+    pickle.dump(h5Avg, output)
+    pickle.dump(h5Err, output)
+    pickle.dump(h6Avg, output)
+    pickle.dump(h6Err, output)
     pickle.dump(chi2redAvg, output)
     pickle.dump(chi2redErr, output)
     pickle.dump(pweightsAvg, output)
@@ -609,6 +671,21 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     pickle.dump(tweightsAvg, output)
     pickle.dump(tweightsErr, output)
     output.close()
+
+    if test:
+        for n in range(iter):
+            output = open(mctmpdir + 'mc_'+str(xx)+'_'+str(yy)+'_iter'+str(n)+'.dat', 'w')
+            pickle.dump(velocity[n], output)
+            pickle.dump(sigma[n], output)
+            pickle.dump(h3[n], output)
+            pickle.dump(h4[n], output)
+            pickle.dump(h5[n], output)
+            pickle.dump(h6[n], output)
+            pickle.dump(chi2red[n], output)
+            pickle.dump(pweights[n,:], output)
+            pickle.dump(tweights[n,:], output)
+            output.close()
+            
     #pdb.set_trace()
     
 class PPXFresults(object):
@@ -639,6 +716,10 @@ class PPXFresultsMC(object):
         self.h3Err = pickle.load(input)
         self.h4 = pickle.load(input)
         self.h4Err = pickle.load(input)
+        self.h5 = pickle.load(input)
+        self.h5Err = pickle.load(input)
+        self.h6 = pickle.load(input)
+        self.h6Err = pickle.load(input)
         self.chi2red = pickle.load(input)
         self.chi2redErr = pickle.load(input)
         self.pweights = pickle.load(input)
