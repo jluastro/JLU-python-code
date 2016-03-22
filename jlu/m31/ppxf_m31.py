@@ -23,9 +23,6 @@ datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 cuberoot = 'm31_all_semerr'
 
-# Start an IDL session
-idl = pidly.IDL(long_delay=0.1)
-
 cc = objects.Constants()
 
 # Modified black hole position from 2009 sep alignment 
@@ -36,8 +33,12 @@ bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
 
 def run():
     """
-    Run the PPXF analysis the M31 OSIRIS data cube.
+    Run the PPXF analysis the M31 OSIRIS data cube, using the IDL
+    implementation of pPXF.
     """
+    # Start an IDL session
+    idl = pidly.IDL(long_delay=0.1)
+    
     # Read in the data cube.
     cubefits = pyfits.open(datadir + cuberoot + '.fits')
     
@@ -181,7 +182,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(verbose=True,newTemplates=True):
+def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -225,9 +226,16 @@ def run_py(verbose=True,newTemplates=True):
     #    waveCut = 2.185
     #else:
     #    waveCut = 2.05
-    waveCut = 2.185
+    if red:
+        waveCut = 2.285
+    else: 
+        waveCut = 2.185
     print 'blue wavelength cutoff = %.2f microns' % waveCut
-    idx = np.where(np.exp(logWaveCube) > waveCut)[0]
+    if blue:
+        waveCutRed = 2.285
+        idx = np.where((np.exp(logWaveCube) > waveCut) & (np.exp(logWaveCube) < waveCutRed))[0]
+    else:
+        idx = np.where(np.exp(logWaveCube) > waveCut)[0]
     newCube = newCube[:,:,idx]
     logWaveCube = logWaveCube[idx]
     newErrors = errors[:,:,idx]
@@ -838,11 +846,11 @@ def plotResults():
 
 
 
-def plotResults2():
+def plotResults2(inputFile):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     #snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
 
-    p = PPXFresults()
+    p = PPXFresults(inputFile)
 
     print p.velocity.shape
     print cubeimg.shape
@@ -896,7 +904,7 @@ def plotResults2():
     ##########
     py.subplot(1, 3, 2)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(py.ma.masked_where(velimg>250, velimg), 
+    py.imshow(velimg, vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
@@ -909,7 +917,7 @@ def plotResults2():
     ##########
     py.subplot(1, 3, 3)
     sigimg = p.sigma.transpose()
-    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+    py.imshow(sigimg, vmin=0., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
