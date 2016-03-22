@@ -22,6 +22,7 @@ workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 cuberoot = 'm31_all_semerr'
+#cuberoot = 'm31_all'
 
 cc = objects.Constants()
 
@@ -735,11 +736,11 @@ class PPXFresultsMC(object):
         self.tweights = pickle.load(input)
         self.tweightsErr = pickle.load(input)
 
-def plotResults():
+def plotResults(inputFile):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
 
-    p = PPXFresults()
+    p = PPXFresults(inputFile)
 
     print p.velocity.shape
     print cubeimg.shape
@@ -809,7 +810,7 @@ def plotResults():
     ##########
     py.subplot(1, 4, 3)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(py.ma.masked_where(velimg>250, velimg), 
+    py.imshow(velimg, vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx')
     py.xlabel('X (arcsec)')
@@ -823,7 +824,7 @@ def plotResults():
     ##########
     py.subplot(1, 4, 4)
     sigimg = p.sigma.transpose()
-    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+    py.imshow(sigimg, vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx')
@@ -937,10 +938,10 @@ def plotResults2(inputFile):
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
-def plotResults3():
+def plotResults3(inputFile):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
 
-    p = PPXFresults()
+    p = PPXFresults(inputFile)
 
     xaxis = np.arange(p.velocity.shape[0]) * 0.05
     yaxis = np.arange(p.velocity.shape[1]) * 0.05
@@ -958,7 +959,7 @@ def plotResults3():
     ##########
     py.subplot(2, 2, 1)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(py.ma.masked_where(velimg>250, velimg), 
+    py.imshow(velimg, vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -972,7 +973,7 @@ def plotResults3():
     ##########
     py.subplot(2, 2, 2)
     sigimg = p.sigma.transpose()
-    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+    py.imshow(sigimg, vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1072,7 +1073,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     ##########
     py.subplot(2, 3, 4)
     sigimg = p.sigma.transpose()
-    py.imshow(py.ma.masked_where(sigimg<=0, sigimg), 
+    py.imshow(sigimg, vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1083,7 +1084,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 5)
     sigavg = a.sigma.transpose()
-    py.imshow(py.ma.masked_where(sigavg>sigimg.max(), sigavg), 
+    py.imshow(sigavg, vmin=0., vmax=-250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1094,7 +1095,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 6)
     sigerr = e.sigma.transpose()
-    py.imshow(py.ma.masked_where((sigerr>40), sigerr), 
+    py.imshow(sigerr, vmin=0., vmax=40.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
