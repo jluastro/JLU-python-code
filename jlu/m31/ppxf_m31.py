@@ -9,9 +9,9 @@ import scipy.interpolate
 from gcwork import objects
 import pdb
 import ppxf
-#from joblib import Parallel,delayed
 import pp
 import itertools
+import pandas
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -21,6 +21,8 @@ import itertools
 workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
+modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
+
 cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
 
@@ -1221,7 +1223,18 @@ def precessionSpeed():
     py.plot(verrs, sigPErrs)
     #py.show()
 
+class modelResults(object):
+    def __init__(self, inputFile=modeldir+'nonaligned_model.dat'):
+        self.inputFile = inputFile
 
+        model = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
+        self.x = model.x
+        self.y = model.y
+        self.z = model.z
+        self.vx = model.v_x
+        self.vy = model.v_y
+        self.vz = model.v_z
+    
 def load_templates(velScale, resolution=3241, IDL=True):
     # IDL and Python versions of pPXF require different formats for the input templates
     templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
