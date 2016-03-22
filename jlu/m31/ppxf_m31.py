@@ -1084,7 +1084,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 5)
     sigavg = a.sigma.transpose()
-    py.imshow(sigavg, vmin=0., vmax=-250.,
+    py.imshow(sigavg, vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
