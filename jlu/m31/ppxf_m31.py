@@ -23,8 +23,10 @@ datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 
-cuberoot = 'm31_all_semerr'
+#cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
+#cuberoot = 'm31_all_halforgerr'
+cuberoot = 'm31_all_seventherr'
 
 cc = objects.Constants()
 
@@ -1018,6 +1020,8 @@ def plotResults3(inputFile):
     py.show()
 
 def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
+    ### Plots error on velocity and velocity dispersion
+    
     p = PPXFresults(inputResults)
     a = PPXFresults(inputAvg)
     e = PPXFresults(inputErr)
@@ -1111,10 +1115,51 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.show()
     
 def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
+    ### Plots error on h3 and h4
+    
     p = PPXFresults(inputResults)
     a = PPXFresults(inputAvg)
     e = PPXFresults(inputErr)
 
+
+def plotPDF(inputResults=workdir+'/ppxf_test_mc_nsim100.dat',inputError=workdir+'/ppxf_errors_mc_nsim100.dat'):
+    ### Plot PDF of results from runErrorMC(test=True)
+
+    p = PPXFresults(inputResults)
+    e = PPXFresults(inputError)
+
+    nspax = p.velocity.shape[0]
+    spax = np.where(e.velocity != 0.)
+
+    py.close(2)
+    py.figure(2)
+    py.clf()
+
+    for i in range(nspax):
+        py.clf()
+        ny, bins, patches = py.hist(p.velocity[i,:]+308., 50, normed=1, facecolor='green', alpha=0.75)
+        py.xlabel('Velocity (km/s)')
+        py.ylabel('Frequency')
+        titpl = 'Spaxel [%(xx)s,%(yy)s]' % {"xx": spax[0][i], "yy": spax[1][i]}
+        py.title(titpl)
+        spl = 'Err = %6.2f' % e.velocity[spax[0][i],spax[1][i]]
+        py.annotate(xy=(.05,.9),s=spl,xycoords='axes fraction')
+        outstem = workdir + 'plots/velocity_pdf_%(xx)s_%(yy)s' % {"xx": spax[0][i], "yy": spax[1][i]}
+        py.savefig(outstem + '.png')
+        #py.savefig(outstem + '.eps')
+
+    for i in range(nspax):
+        py.clf()
+        ny, bins, patches = py.hist(p.sigma[i,:], 50, normed=1, facecolor='green', alpha=0.75)
+        py.xlabel('Sigma (km/s)')
+        py.ylabel('Frequency')
+        titpl = 'Spaxel [%(xx)s,%(yy)s]' % {"xx": spax[0][i], "yy": spax[1][i]}        
+        py.title(titpl)
+        spl = 'Err = %6.2f' % e.sigma[spax[0][i],spax[1][i]]
+        py.annotate(xy=(.05,.9),s=spl,xycoords='axes fraction')
+        outstem = workdir + 'plots/sigma_pdf_%(xx)s_%(yy)s'  % {"xx": spax[0][i], "yy": spax[1][i]}
+        py.savefig(outstem + '.png')
+        #py.savefig(outstem + '.eps')
     
 def precessionSpeed():
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
