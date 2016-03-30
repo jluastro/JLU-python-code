@@ -12,6 +12,7 @@ import ppxf
 import pp
 import itertools
 import pandas
+import astropy
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -1545,6 +1546,31 @@ def log_rebin(wavelength, spectrum):
     print 'total flux = ', specNew.sum()
     return (logWave, specNew)
 
+def velErr(inputResults=workdir+'/ppxf.dat'):
+
+    ### smooths input velocity map and subtracts it from itself to get residuals
+    ### as a measure of the error on the velocity
+    p = PPXFresults(inputResults)
+
+    tmp = p.velocity
+    # set the zeroes around the edges to NaN so convolve handles them properly
+    bad = np.where(tmp == 0)    
+    tmp[bad] = np.nan
+
+    # boxcar kernel, width=3
+    kern = astropy.convolution.Box2DKernel(3)
+    v_smooth = astropy.convolution.convolve(tmp+308.,kern,boundary='extend')
+    v_smooth[bad] = 0.
+
+    v_err = p.velocity - v_smooth
+    good = np.where(np.isfinite(v_err))
+
+    result = np.std(v_err[good])
+
+    print 'Standard deviation of the residuals is %s' % result
+
+    return result
+    
 
 def play(frequency, spectrum):
 
