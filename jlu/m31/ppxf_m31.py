@@ -27,7 +27,8 @@ modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 #cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
-cuberoot = 'm31_all_seventherr'
+#cuberoot = 'm31_all_seventherr'
+cuberoot = 'm31_all_scalederr'
 
 cc = objects.Constants()
 
@@ -1121,6 +1122,94 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     p = PPXFresults(inputResults)
     a = PPXFresults(inputAvg)
     e = PPXFresults(inputErr)
+
+    xaxis = np.arange(p.velocity.shape[0]) * 0.05
+    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(15,12))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot h3, MC h3 average, and MC h3 error
+    ##########
+    py.subplot(2, 3, 1)
+    h3img = p.h3.transpose()
+    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    #pdb.set_trace()
+    
+    py.subplot(2,3,2)
+    h3avg = a.h3.transpose()
+    py.imshow(py.ma.masked_where(h3avg==0.,h3avg), vmin=-.2, vmax=.2,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3, MC avg')
+
+    py.subplot(2,3,3)
+    h3err = e.h3.transpose()
+    py.imshow(py.ma.masked_where(h3err==0.,h3err), vmin=0., vmax=.05,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3, MC err')
+
+    ##########
+    # Plot h4
+    ##########
+    py.subplot(2, 3, 4)
+    h4img = p.h4.transpose()
+    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    py.subplot(2, 3, 5)
+    h4avg = a.h4.transpose()
+    py.imshow(py.ma.masked_where(h4avg==0.,h4avg), vmin=-.2, vmax=.2,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4, MC avg')
+
+    py.subplot(2, 3, 6)
+    h4err = e.h4.transpose()
+    py.imshow(py.ma.masked_where(h4err==0.,h4err), vmin=0., vmax=.05,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4, MC err')
+
+    py.savefig(workdir + 'plots/mc_err2.png')
+    py.savefig(workdir + 'plots/mc_err2.eps')
+    py.show()
 
 
 def plotPDF(inputResults=workdir+'/ppxf_test_mc_nsim100.dat',inputError=workdir+'/ppxf_errors_mc_nsim100.dat'):
