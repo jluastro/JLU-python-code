@@ -24,11 +24,11 @@ datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 
-#cuberoot = 'm31_all_semerr'
+cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
 #cuberoot = 'm31_all_seventherr'
-cuberoot = 'm31_all_scalederr'
+#cuberoot = 'm31_all_scalederr'
 
 cc = objects.Constants()
 
@@ -1211,7 +1211,97 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.savefig(workdir + 'plots/mc_err2.eps')
     py.show()
 
+def plotQuality():
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    expimg = pyfits.getdata(datadir + cuberoot + '.fits',ext=3)
+    snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
 
+    print cubeimg.shape
+    print bhpos
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.figure(2, figsize=(12,5))
+    py.subplots_adjust(left=0.01, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot Cube Image
+    ##########
+    py.subplot(1, 3, 1)
+    cubeimg=cubeimg.transpose()
+    py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.hot)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Flux (cts/sec)')
+
+    # Make a compass rose
+    pa = 56.0
+    cosSin = np.array([ math.cos(math.radians(pa)), 
+                        math.sin(math.radians(pa)) ])
+    arr_base = np.array([ xaxis[-1]-0.5, yaxis[-1]-0.6 ])
+    arr_n = cosSin * 0.2
+    arr_w = cosSin[::-1] * 0.2
+    py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+             edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
+    py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+             edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
+    py.text(arr_base[0]+arr_n[0]+0.1, arr_base[1]+arr_n[1]+0.1, 'N', 
+            color='white', 
+            horizontalalignment='left', verticalalignment='bottom')
+    py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E', 
+            color='white',
+            horizontalalignment='right', verticalalignment='center')
+    py.title('K Image')
+
+
+    ##########
+    # Plot SNR Image
+    ##########
+    print snrimg[30,10]
+    py.subplot(1, 3, 2)
+    snrimg=snrimg.transpose()
+    py.imshow(py.ma.masked_invalid(snrimg), 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('SNR')
+    py.title('SNR')
+
+    ##########
+    # Plot number of exposures
+    ##########
+    py.subplot(1, 3, 3)
+    expimg=expimg[:,:,700]
+    expimg=expimg.transpose()
+    py.imshow(expimg,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Exposures')
+    py.title('Exposures')
+
+    py.tight_layout()
+
+    py.savefig(workdir + 'plots/quality_maps.png')
+    py.savefig(workdir + 'plots/quality_maps.eps')
+    py.show()
+
+
+
+    
 def plotPDF(inputResults=workdir+'/ppxf_test_mc_nsim100.dat',inputError=workdir+'/ppxf_errors_mc_nsim100.dat'):
     ### Plot PDF of results from runErrorMC(test=True)
 
