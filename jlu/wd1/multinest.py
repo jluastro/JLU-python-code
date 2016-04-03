@@ -103,6 +103,7 @@ def random_Mcl(x):
 
 def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
                   data_tab='catalog_diffDered_NN_opt_10.fits',
+                  comp_tab='completeness_vs_mag.fits',
                   out_dir='multinest/fit_0001/'):
     
     if not os.path.exists(root_dir + out_dir):
@@ -120,10 +121,30 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
     atm_func = atmospheres.get_merged_atmosphere
     Mcl_sim = 5.0e6
 
+
     # Our data vs. model comparison will be done in
     # magnitude-color-color space. Models will be binned
     # to construct 3D probability density spaces.
     # These are the bin sizes for the models.
+    #
+    # Note Dimensions:
+    #   mag = m_2010_F160W
+    #   col1 = m_2005_F814W - m_2010_F160W
+    #   col2 = m_2010_F125W - m_2010_F160W
+    #
+    bins_mag = np.arange(10, 20, 0.25)
+    bins_col1 = np.arange(3.0, 7.0, 0.20)
+    bins_col2 = np.arange(0.5, 1.6, 0.05)
+    bins = np.array([bins_mag, bins_col1, bins_col2])
+    
+
+    ##########
+    # Completeness Map
+    ##########
+    c = Table.read(comp_tab)
+    c_mag = c['']
+
+    
  
     def priors(cube, ndim, nparams):
         return   
@@ -156,6 +177,15 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
                                                       par['dAKs'], red_law=red_law)
 
         # Convert simulated cluster into magnitude-color-color histogram
+        mag = t['m_2010_F160W']
+        col1 = t['m_2005_F814W'] - t['m_2010_F160W']
+        col2 = t['m_2010_F125W'] - t['m_2010_F160W']
+        
+        data = np.array([mag, col1, col2])
+        bins = np.array([bins_mag, bins_col1, bins_col2])
+
+        H_all, edges = np.histogramdd(data, bins=bins)
+        H_obs = H_all * completeness_map
         
         pdb.set_trace()
         
@@ -176,9 +206,9 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
         t.add_column('u160',u160)
         t.add_column('u814',u814)
 
-        likei=np.log10(1./(2.*np.pi*t.mag125_e**2.)**0.5)+np.log10(np.e)*(-1.*(t.mag125-t.u125)**2./2./t.mag125_e**2.)
-        +np.log10(1./(2.*np.pi*t.mag160_e**2.)**0.5)+np.log10(np.e)*(-1.*(t.mag160-t.u160)**2./2./t.mag160_e**2.)
-        +np.log10(1./(2.*np.pi*t.mag814_e**2.)**0.5)+np.log10(np.e)*(-1.*(t.mag814-t.u814)**2./2./t.mag814_e**2.)
+        likei = np.log10(1./(2.*np.pi*t.mag125_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag125-t.u125)**2./2./t.mag125_e**2.)
+        + np.log10(1./(2.*np.pi*t.mag160_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag160-t.u160)**2./2./t.mag160_e**2.)
+        + np.log10(1./(2.*np.pi*t.mag814_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag814-t.u814)**2./2./t.mag814_e**2.)
 
         if count139==True:
             likei+=np.log10(1./(2.*np.pi*t.mag139_e**2.)**0.5)+np.log10(np.e)*(-1.*(t.mag139-t.u139)**2./2./t.mag139_e**2.)

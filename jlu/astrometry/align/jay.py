@@ -765,6 +765,7 @@ def miracle_match_briteN(xin1, yin1, min1, xin2, yin2, min2, Nbrite,
     print '  miracle_match_briteN: '
     x1, y1, m1 = ord_brite.order_by_brite(xin1, yin1, min1, Nbrite, verbose=verbose)
     x2, y2, m2 = ord_brite.order_by_brite(xin2, yin2, min2, Nbrite, verbose=verbose)
+
     
     ####################
     #

@@ -7,6 +7,11 @@ import residuals
 from astropy.table import Table
 import pylab as py
 import scipy.stats
+from flystar import align
+from flystar import match
+from flystar import starlists
+from flystar import transforms
+import glob
 
 def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', target='ob120169', 
                date='2015_09_14', sourceDir='analysis_ob120169_2015_09_14',
@@ -346,3 +351,105 @@ def PlotVelSigDist(plotDir, relErrX, relErrY):
     py.plot(ggx, ggy*ggamp, 'r-', linewidth=2)
     py.savefig(plotDir + '/velDist_a3_m20_w1-4.png')
     py.clf()
+
+
+def make_matched_catalog(root='/Users/jlu/work/microlens/OB110022/', prefix='analysis', target='ob110022', 
+                        date='2016_03_18', sourceDir='analysis_ob110022_2016_03_18'):
+
+    # Find the starlists.
+    lis_dir = root + prefix + '_' + date + '/' + sourceDir + '/lis/'
+    print lis_dir
+    star_lists = glob.glob(lis_dir + 'mag*_radTrim.lis')
+
+    # Use the middle starlist as a reference... this will be arbitrary in the end.
+    ref = int(len(star_lists) / 2)
+    print ref
+    print star_lists
+    ref_list = starlists.read_starlist(star_lists[ref], error=True)
+
+    N_loops = 2
+
+    # For each starlist, align and match to the reference. Since these aren't rotated and angled,
+    # we should be able to blind match pretty easily.
+    ref_list.meta['L_REF'] = ref
+    
+    for ii in range(len(star_lists)):
+        if ii == ref:
+            suffix = '_{0:d}'.format(ii)
+            ref_list.meta['L' + suffix] = os.path.split(star_lists[ii])[-1]
+
+            ref_list['name' + suffix] = ref_list['name']
+            ref_list['t' + suffix] = ref_list['t']
+            ref_list['x' + suffix] = ref_list['x']
+            ref_list['y' + suffix] = ref_list['y']
+            ref_list['m' + suffix] = ref_list['m']
+            ref_list['xe' + suffix] = ref_list['xe']
+            ref_list['ye' + suffix] = ref_list['ye']
+            
+            continue
+
+        # Read in the starlist into an astropy table.
+        star_list = starlists.read_starlist(star_lists[ii], error=True)
+
+        # Preliminary match and calculate a 1st order transformation.
+        trans = align.initial_align(star_list, ref_list, briteN=50,
+                                    transformModel=transforms.PolyTransform, order=1)
+
+        # Repeat transform + match several times.
+        for nn in range(N_loops):
+            # Apply the transformation to the starlist.
+            star_list_T = Table.copy(star_list)
+            star_list_T = align.transform_by_object(star_list_T, trans)
+
+            # Match stars between the lists.
+            idx1, idx2, dm, dr = match.match(star_list_T['x'], star_list_T['y'], star_list_T['m'],
+                                            ref_list['x'], ref_list['y'], ref_list['m'],
+                                            dr_tol=5, dm_tol=1)
+            print 'In Loop ', nn, ' found ', len(idx1), ' matches'
+            
+    
+            # Calculate transform based on the matched stars    
+            trans = transforms.PolyTransform(star_list['x'][idx1], star_list['y'][idx1],
+                                             ref_list['x'][idx2], ref_list['y'][idx2],
+                                             order=1)
+
+        
+        # The point is matching... lets do one final match.
+        star_list_T = Table.copy(star_list)
+        star_list_T = align.transform_by_object(star_list_T, trans)
+        idx1, idx2, dm, dr = match.match(star_list_T['x'], star_list_T['y'], star_list_T['m'],
+                                            ref_list['x'], ref_list['y'], ref_list['m'],
+                                            dr_tol=3, dm_tol=1)
+
+        # Add the matched stars to the reference list table. These will be un-transformed positions.
+        suffix = '_{0:d}'.format(ii)
+        ref_list['name' + suffix] = np.zeros(len(ref_list), dtype='S15')
+        ref_list['t' + suffix] = np.zeros(len(ref_list), dtype=float)
+        ref_list['x' + suffix] = np.zeros(len(ref_list), dtype=float)
+        ref_list['y' + suffix] = np.zeros(len(ref_list), dtype=float)
+        ref_list['m' + suffix] = np.zeros(len(ref_list), dtype=float)
+        ref_list['xe' + suffix] = np.zeros(len(ref_list), dtype=float)
+        ref_list['ye' + suffix] = np.zeros(len(ref_list), dtype=float)
+
+        ref_list['name' + suffix][idx2] = star_list['name'][idx1]
+        ref_list['t' + suffix][idx2] = star_list['t'][idx1]
+        ref_list['x' + suffix][idx2] = star_list['x'][idx1]
+        ref_list['y' + suffix][idx2] = star_list['y'][idx1]
+        ref_list['m' + suffix][idx2] = star_list['m'][idx1]
+        ref_list['xe' + suffix][idx2] = star_list['xe'][idx1]
+        ref_list['ye' + suffix][idx2] = star_list['ye'][idx1]
+
+        ref_list.meta['L' + suffix] = os.path.split(star_lists[ii])[-1]
+
+    # Clean up th extra copy of the reference star list:
+    ref_list.remove_columns(['name', 't', 'x', 'y', 'm', 'xe', 'ye'])
+    ref_list.remove_columns(['snr', 'corr', 'N_frames', 'flux'])
+
+    ref_list.write('ref_list.fits', overwrite=True)
+
+    return ref_list
+
+
+
+    
+    

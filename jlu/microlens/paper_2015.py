@@ -118,7 +118,7 @@ def plotPosError(rootDir='/u/jlu/data/microlens/', plotDir=plotdir,
     Nepochs = len(epochs)
     
     # Assume this is NIRC2 data.
-    scale = 0.00992
+    scale = 0.009952
     
     axfontsize = 18
     tickfontsize = 12
@@ -545,7 +545,7 @@ def align_residuals_vs_order(align_roots, root_dir='./', only_stars_in_fit=True,
     N_order = len(data_all)
 
     year = data_all[0]['year']
-    scale = 9.95  # mas / pixel
+    scale = 9.952  # mas / pixel
 
     idx_subplot = 0
 
@@ -722,7 +722,7 @@ def plot_alignment_errors(target, radius=4):
         epochs = ['2012 May','2012 Jun', '2012 Jul','2013 Apr','2013 Jul']
 
     # Assume this is NIRC2 data.
-    scale = 9.92  # mas / pixel
+    scale = 9.952  # mas / pixel
     
     # Load the align and polyfit results for all stars.
     s = starset.StarSet(rootDir + align)
@@ -781,9 +781,9 @@ def plot_alignment_errors(target, radius=4):
 
         fig.add_axes(grid[ee])
         grid[ee].semilogy(m[idx], err_p[ee, idx], 'b.')
-        grid[ee].semilogy(m[ttt], err_p[ee, ttt], 'b.', ms=10, label='Aln')
+        grid[ee].semilogy(m[ttt], err_p[ee, ttt], 'b.', ms=10, label='Pos')
         grid[ee].semilogy(m[idx], err_a[ee, idx], 'r.')
-        grid[ee].semilogy(m[ttt], err_a[ee, ttt], 'r.', ms=10, label='Pos')
+        grid[ee].semilogy(m[ttt], err_a[ee, ttt], 'r.', ms=10, label='Aln')
         
         grid[ee].axis([12, 23, 2e-2, 30.0])
         grid[ee].axhline(0.15, color='g') 
@@ -802,16 +802,18 @@ def plot_alignment_errors(target, radius=4):
         # Write Epoch
         grid[ee].text(13, 10, epochs[ee], fontsize=axfontsize, color='k')
 
-        print 'Epoch: ', epochs[ee]
+        print ''
+        print 'Epoch: ', epochs[ee], ' -- errors on stars with r<4" and m<19'
         print '  N_stars = {0:3d}'.format(isUsed[ee, :].sum())
-        print '  mean err_p = {0:.2f} mas'.format(err_p[ee, idx].mean())
-        print '  mean err_a = {0:.2f} mas'.format(err_a[ee, idx].mean())
-    
-        
+
+        idx = (np.where((r[ee, :] < (radius*1e3)) & (m < 19)))[0]
+        fmt = '  mean err_{0:s} = {1:5.2f} mas     median err_{0:s} = {2:5.2f} mas'
+        print fmt.format('p', err_p[ee, idx].mean(), np.median(err_p[ee, idx]))
+        print fmt.format('a', err_a[ee, idx].mean(), np.median(err_a[ee, idx]))
         
     py.figtext(0.02, 0.55, 'Alignment Uncertainty (mas)', fontsize=axfontsize,
                 rotation='vertical', verticalalignment='center')
-    py.savefig(plotdir + 'plotPosAlignError_%s.pdf' % (target))
+    py.savefig(plotdir + 'plotPosAlignError_%s.png' % (target))
             
 
     return
