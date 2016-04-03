@@ -6,7 +6,7 @@ stolteCatalog = '/u/jlu/work/arches/photo_calib/from_stolte/stolte_catalog.dat'
 
 def color_map_hkp():
     """
-    Plot a map of the H-Kp colors.
+    Plot a map of the H-Kp colors..
     """
     tab = asciidata.open(stolteCatalog)
 
