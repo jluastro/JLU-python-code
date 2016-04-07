@@ -1890,7 +1890,12 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'magLabel': 'F125W',
                        'colLabel': 'F125W - F160W'})
 
-    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}'.format(logAge, AKs, distance)
+    if synthetic.redlaw.name == 'Nishiyama09':
+        red_suf = 'nishi'
+    elif synthetic.redlaw.name == 'Westerlund1':
+        red_suf = 'wd1'
+
+    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}'.format(logAge, AKs, distance, red_suf)
     imf1.write(work_dir + 'imf_table_from_optical' + suffix + '.fits', overwrite=True)
     imf2.write(work_dir + 'imf_table_from_infrared' + suffix + '.fits', overwrite=True)
 
@@ -2552,20 +2557,23 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
         if IAU==True:
             iso_dir = iso_dir_wd1+'IAU_law/'
 
-    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
-                                   iso_dir=iso_dir, massSampling=1,
+    iso = synthetic.IsochronePhot(logAge, AKs, tmp_dist,
+                                   iso_dir=iso_dir, mass_sampling=1,
                                    filters=filters)
 
-    col_names = iso.colnames
+    # Extract isochrone properties
+    iso_f = iso.points
+    col_names = iso_f.keys()
 
+    # Correct for distance, if necessary
     for cc in range(len(col_names)):
         delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
         print 'Changing distance: delta_DM = ', delta_DM
         
         if col_names[cc].startswith('mag'):
-            iso[col_names[cc]] += delta_DM
+            iso_f[col_names[cc]] += delta_DM
 
-    return iso
+    return iso_f
 
         
 def check_atmospheres():
