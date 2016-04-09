@@ -1112,10 +1112,11 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     clust = np.where(pmem > 0.8)[0]
 
     # Load Wd1 isochrone
+    synthetic.redlaw = reddening.RedLawWesterlund1()
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso = iso[::3]
     
-    # Calculate a reddening vector
+    # Calculate a reddening vector based on vega
     filt_F814W = synthetic.get_filter_info('acs,wfc1,f814w')
     filt_F125W = synthetic.get_filter_info('wfc3,ir,f125w')
     filt_F139M = synthetic.get_filter_info('wfc3,ir,f139m')
@@ -1132,16 +1133,26 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_F125W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F125W.wave)
     red_F139M_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F139M.wave)
     red_F160W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F160W.wave)
-    
-    m_F814W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_0)
-    m_F125W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_0)
-    m_F139M_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_0)
-    m_F160W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_0)
 
-    m_F814W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_1)
-    m_F125W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_1)
-    m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
-    m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
+    #-------------------------------------------------------------------#
+    # Need to apply reddening to vega before passing into mag_in_filter
+    #-------------------------------------------------------------------#
+    star = synthetic.vega
+    
+    red_0 = synthetic.redlaw.reddening(AKs_0).resample(star.wave) 
+    red_star_0 = star * red_0
+    red_1 = synthetic.redlaw.reddening(AKs_1).resample(star.wave)
+    red_star_1 = star * red_1
+    
+    m_F814W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F814W)
+    m_F125W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F125W)
+    m_F139M_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F139M)
+    m_F160W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F160W)
+
+    m_F814W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F814W)
+    m_F125W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F125W)
+    m_F139M_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F139M)
+    m_F160W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F160W)
 
     # Get a couple of key masses for overplotting
     iso_mass = np.array([0.5, 1.0, 2.0, 5.0, 10.0])
@@ -1278,7 +1289,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
                                                                               synthetic.redlaw.name)
     py.savefig(plot_dir + outfile)
 
-    py.close('all')
+    #py.close('all')
     
     return
 
@@ -1572,7 +1583,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     # Read in isochrone
     print 'Loading Isochrone'
     #----FOR NISHIYAMA+09----#
-    synthetic.redlaw = reddening.RedLawNishiyama09()
+    #synthetic.redlaw = reddening.RedLawNishiyama09()
     #------------------------#
     red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
@@ -2559,7 +2570,7 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
 
     iso = synthetic.IsochronePhot(logAge, AKs, tmp_dist,
                                    iso_dir=iso_dir, mass_sampling=1,
-                                   filters=filters)
+                                   filters=filters, red_law = synthetic.redlaw)
 
     # Extract isochrone properties
     iso_f = iso.points
