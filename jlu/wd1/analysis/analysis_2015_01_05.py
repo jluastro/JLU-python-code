@@ -13,6 +13,7 @@ import matplotlib
 from popstar import synthetic, reddening, evolution
 from jlu.stellarModels import extinction
 import math
+import matplotlib.animation as animation
 
 # On LHCC
 reduce_dir = '/Users/jlu/data/wd1/hst/reduce_2015_01_05/'
@@ -291,14 +292,20 @@ def debug_2005_F814W_ks2_vs_nimfo2bar():
 
     return
     
-def plot_artstar_in_vs_out():
+def plot_artstar_in_vs_out(use_obs_align=False):
     """
     Examine the positional differences and magnitude differences
     for the artificially planted stars vs. what has come out of the
     KS2 and alignment process. Also look at the number of epochs that
     each artificial star was detected in.
     """
-    t = Table.read(art_dir + 'art_align_a4_t_combo_pos.fits')
+    in_file = art_dir + 'art_align'
+    if use_obs_align:
+        in_file += '_obs'
+    else:
+        in_file += '_art'
+    in_file += '_combo_pos_det_newerr.fits'
+    t = Table.read(in_file)
 
     epochs = ['2005_F814W', '2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
 
@@ -306,6 +313,7 @@ def plot_artstar_in_vs_out():
     # positions and magnitudes of the detected stars.
     for ee in range(len(epochs)):
         suffix = epochs[ee]
+
         print 'Plotting ', suffix
         
         det = np.where(t['n_' + suffix] > 1)[0]
@@ -320,10 +328,15 @@ def plot_artstar_in_vs_out():
         lim = 0.5
         mlim = 0.1
 
-        mag_lim = [-15, -7]
+        mag_lim = [12, 24]
         if ee > 0:
-            mag_lim = [-13, -5]
+            mag_lim = [13, 21]
 
+        if use_obs_align:
+            out_suffix = suffix + '_obs'
+        else:
+            out_suffix = suffix + '_art'
+        
         py.close(2)
         py.figure(2)
         py.clf()
@@ -332,7 +345,7 @@ def plot_artstar_in_vs_out():
         py.xlabel('x_out - x_in (pix)')
         py.ylabel('y_out - y_in (pix)')
         py.title(suffix)
-        py.savefig(plot_dir + 'art_in_out_dxy_vpd_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_dxy_vpd_' + out_suffix + '.png')
 
         py.close(1)
         py.figure(1)
@@ -345,7 +358,7 @@ def plot_artstar_in_vs_out():
         py.xlim(mag_lim[0], mag_lim[1])
         py.ylim(-lim, lim)
         py.title(suffix)
-        py.savefig(plot_dir + 'art_in_out_dxy_mag_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_dxy_mag_' + out_suffix + '.png')
 
         py.clf()
         py.plot(t_det['min_' + suffix], dm, 'k.', ms=2, alpha=0.05)
@@ -354,7 +367,7 @@ def plot_artstar_in_vs_out():
         py.xlim(mag_lim[0], mag_lim[1])
         py.ylim(-mlim, mlim)
         py.title(suffix)
-        py.savefig(plot_dir + 'art_in_out_dm_mag_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_dm_mag_' + out_suffix + '.png')
 
         bins = np.arange(-2, 2, 0.05)
         py.clf()
@@ -364,7 +377,7 @@ def plot_artstar_in_vs_out():
         py.ylabel('Number of Stars')
         py.legend()
         py.title(suffix)
-        py.savefig(plot_dir + 'art_in_out_hist_dxy_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_hist_dxy_' + out_suffix + '.png')
 
         bins = np.arange(-2, 2, 0.02)
         py.clf()
@@ -372,17 +385,17 @@ def plot_artstar_in_vs_out():
         py.xlabel('In - Out Magnitude (mag)')
         py.ylabel('Number of Stars')
         py.title(suffix)
-        py.savefig(plot_dir + 'art_in_out_hist_dm_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_hist_dm_' + out_suffix + '.png')
 
         # Trim down before we make a quiver plot
-        qscale = 9
-        mag_lim = [-12, -11.8]
+        qscale = 0.2
+        mag_lim = [20, 20.4]
         dr_lim = 0.7
         dm_lim = 0.02
         
         if ee > 0:
             qscale = 0.5
-            mag_lim = [-9, -8.8]
+            mag_lim = [13, 13.7]
             dr_lim = 0.05
         
         dr = np.hypot(dx, dy)
@@ -405,7 +418,7 @@ def plot_artstar_in_vs_out():
         else:
             py.quiverkey(q, 0.95, 0.95, 0.05, '0.05 pixel', color='red')
             
-        py.savefig(plot_dir + 'art_in_out_quiver_' + suffix + '.png')
+        py.savefig(plot_dir + 'art_in_out_quiver_' + out_suffix + '.png')
 
 
 def plot_velerr_vs_mag():
@@ -1099,10 +1112,11 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     clust = np.where(pmem > 0.8)[0]
 
     # Load Wd1 isochrone
+    synthetic.redlaw = reddening.RedLawWesterlund1()
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso = iso[::3]
     
-    # Calculate a reddening vector
+    # Calculate a reddening vector based on vega
     filt_F814W = synthetic.get_filter_info('acs,wfc1,f814w')
     filt_F125W = synthetic.get_filter_info('wfc3,ir,f125w')
     filt_F139M = synthetic.get_filter_info('wfc3,ir,f139m')
@@ -1119,16 +1133,26 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_F125W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F125W.wave)
     red_F139M_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F139M.wave)
     red_F160W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F160W.wave)
-    
-    m_F814W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_0)
-    m_F125W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_0)
-    m_F139M_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_0)
-    m_F160W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_0)
 
-    m_F814W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_1)
-    m_F125W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_1)
-    m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
-    m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
+    #-------------------------------------------------------------------#
+    # Need to apply reddening to vega before passing into mag_in_filter
+    #-------------------------------------------------------------------#
+    star = synthetic.vega
+    
+    red_0 = synthetic.redlaw.reddening(AKs_0).resample(star.wave) 
+    red_star_0 = star * red_0
+    red_1 = synthetic.redlaw.reddening(AKs_1).resample(star.wave)
+    red_star_1 = star * red_1
+    
+    m_F814W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F814W)
+    m_F125W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F125W)
+    m_F139M_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F139M)
+    m_F160W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F160W)
+
+    m_F814W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F814W)
+    m_F125W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F125W)
+    m_F139M_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F139M)
+    m_F160W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F160W)
 
     # Get a couple of key masses for overplotting
     iso_mass = np.array([0.5, 1.0, 2.0, 5.0, 10.0])
@@ -1265,11 +1289,11 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
                                                                               synthetic.redlaw.name)
     py.savefig(plot_dir + outfile)
 
-    py.close('all')
+    #py.close('all')
     
     return
 
-def compare_art_vs_obs_vel(use_obs_align=True):
+def compare_art_vs_obs_vel(use_obs_align=False):
     """
     Compare the distribution of velocities in the artificial
     vs. the observed stars. These need to match if we are going
@@ -1384,6 +1408,79 @@ def compare_art_vs_obs_vel(use_obs_align=True):
     print '   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)
     print '   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)
 
+    pdb.set_trace()
+
+
+def compare_art_vs_obs_cmds(use_obs_align=False, vel_err_cut=0.5, mag_err_cut=1.0):
+    """
+    vel_err_cut = mas/yr
+    mag_err_cut = magnitudes 
+    """
+    art = Table.read(art_cat)
+    obs = Table.read(work_dir + 'catalog_membership_3_rot_Pcolor.fits')
+
+    # Get the "detected" stars that are within our error cuts and
+    # detected in all three astrometric epochs.
+    idx = np.where((art['det_2005_F814W'] == True) &
+                   (art['det_2010_F125W'] == True) &
+                   (art['det_2010_F160W'] == True) &
+                   (art['det_2013_F160W'] == True) &
+                   (art['fit_vxe'] < vel_err_cut) &
+                   (art['fit_vye'] < vel_err_cut) &
+                   (art['me_2005_F814W'] < mag_err_cut) &
+                   (art['me_2010_F125W'] < mag_err_cut) &
+                   (art['me_2010_F160W'] < mag_err_cut) &
+                   (art['me_2013_F160W'] < mag_err_cut))[0]
+
+    art_mag = art['min_2010_F160W']
+    art_col1 = art['min_2005_F814W'] - art['min_2010_F160W']
+    art_col2 = art['min_2010_F125W'] - art['min_2010_F160W']
+    
+    det_mag = art_mag[idx]
+    det_col1 = art_col1[idx]
+    det_col2 = art_col2[idx]
+    
+    obs_mag = obs['m_2010_F160W']
+    obs_col1 = obs['m_2005_F814W'] - obs['m_2010_F160W']
+    obs_col2 = obs['m_2010_F125W'] - obs['m_2010_F160W']
+    
+    py.figure(1)
+    py.clf()
+    py.plot(det_col1, det_mag, 'k.', alpha=0.2, ms=2)
+    py.plot(obs_col1, obs_mag, 'r.')
+    py.ylim(21.5, 9.5)
+    py.xlim(2.5, 7.5)
+    py.xlabel('F814W - F160W (mag)')
+    py.ylabel('F160W (mag)')
+    
+    plot_file = plot_dir + 'compare_art_vs_obs_cmds_F160W_F814W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+
+    py.figure(2)
+    py.clf()
+    py.plot(art_col2, art_mag, 'k.', alpha=0.2, ms=2)
+    py.plot(obs_col2, obs_mag, 'r.')
+    py.ylim(21.5, 9.5)
+    py.xlim(0.2, 1.8)
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F160W (mag)')
+
+    plot_file = plot_dir + 'compare_art_vs_obs_cmds_F160W_F125W'
+    if use_obs_align:
+        plot_file += '_obs'
+    else:
+        plot_file += '_art'
+    plot_file += '.png'
+    py.savefig(plot_file)
+    
+    return
+
+    
 def make_completeness_table(vel_err_cut=0.5, mag_err_cut=1.0):
     """
     vel_err_cut = mas/yr
@@ -1425,15 +1522,16 @@ def make_completeness_table(vel_err_cut=0.5, mag_err_cut=1.0):
         # For later good behavior in interpolation, set it to
         # the first "good" value. But set errors to np.nan to notify.
         #     m=20 is arbitrary but catches both F814W and IR
-        idx = np.where((mag_bins_mid < 20) & ((ce > 0.1) | (n_all < 10)))[0]  
-        c[idx] = c[idx[-1] + 1]
-        ce[idx] = np.nan
+        idx = np.where((mag_bins_mid < 20) & ((ce > 0.1) | (n_all < 10)))[0]
+        if len(idx) > 0:
+            c[idx] = c[idx[-1] + 1]
+            ce[idx] = np.nan
 
         # Do the same for the faint end; but set to 0.
-        idx = np.where((mag_bins_mid >= 20) & ((ce > 0.1) | (n_all < 10)))[0]  
-        c[idx] = 0.0
-        ce[idx] = np.nan
-        
+        idx = np.where((mag_bins_mid >= 20) & ((ce > 0.1) | (n_all < 10)))[0]
+        if len(idx) > 0:
+            c[idx] = 0.0
+            ce[idx] = np.nan
         
         col_c = Column(c, name='c_'+ep)
         col_ce = Column(ce, name='cerr_'+ep)
@@ -1485,7 +1583,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     # Read in isochrone
     print 'Loading Isochrone'
     #----FOR NISHIYAMA+09----#
-    synthetic.redlaw = reddening.RedLawNishiyama09()
+    #synthetic.redlaw = reddening.RedLawNishiyama09()
     #------------------------#
     red_dAKs = 0.1
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
@@ -1803,7 +1901,12 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
                        'magLabel': 'F125W',
                        'colLabel': 'F125W - F160W'})
 
-    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}'.format(logAge, AKs, distance)
+    if synthetic.redlaw.name == 'Nishiyama09':
+        red_suf = 'nishi'
+    elif synthetic.redlaw.name == 'Westerlund1':
+        red_suf = 'wd1'
+
+    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}'.format(logAge, AKs, distance, red_suf)
     imf1.write(work_dir + 'imf_table_from_optical' + suffix + '.fits', overwrite=True)
     imf2.write(work_dir + 'imf_table_from_infrared' + suffix + '.fits', overwrite=True)
 
@@ -2113,6 +2216,206 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
 
     
     return comp_int
+
+def make_completeness_ccmd(vel_err_cut=0.5, mag_err_cut=1.0):
+    """
+    vel_err_cut = mas/yr
+    mag_err_cut = magnitudes 
+    """
+    art = Table.read(art_cat)
+
+    # Get the "detected" stars that are within our error cuts and
+    # detected in all three astrometric epochs.
+    idx = np.where((art['det_2005_F814W'] == True) &
+                   (art['det_2010_F125W'] == True) &
+                   (art['det_2010_F160W'] == True) &
+                   (art['det_2013_F160W'] == True) &
+                   (art['fit_vxe'] < vel_err_cut) &
+                   (art['fit_vye'] < vel_err_cut) &
+                   (art['me_2005_F814W'] < mag_err_cut) &
+                   (art['me_2010_F125W'] < mag_err_cut) &
+                   (art['me_2010_F160W'] < mag_err_cut) &
+                   (art['me_2013_F160W'] < mag_err_cut))[0]
+
+    # Bins for our 3D mag-color-color (F160W vs. F814W-F160W vs. F125W-F160W) completness table.
+    # Note these bins are bin edges. The ranges are only applicable to the cluster members and
+    # were selected based on the observed CMD (plus padding).
+    bins_mag = np.arange(10, 21, 0.25)    # F160W
+    bins_col1 = np.arange(3.0, 7.0, 0.20) # F814W - F160W
+    bins_col2 = np.arange(0.5, 1.6, 0.05) # F125W - F160W
+
+    art_mag = art['min_2010_F160W']
+    art_col1 = art['min_2005_F814W'] - art['min_2010_F160W']
+    art_col2 = art['min_2010_F125W'] - art['min_2010_F160W']
+    
+    det_mag = art_mag[idx]
+    det_col1 = art_col1[idx]
+    det_col2 = art_col2[idx]
+    
+    art_data = np.array([art_mag, art_col1, art_col2]).T
+    det_data = np.array([det_mag, det_col1, det_col2]).T
+
+    obs = Table.read(work_dir + 'catalog_membership_3_rot_Pcolor.fits')
+    # obs = Table.read(work_dir + 'catalog_diffDered_NN_opt_10.fits')
+    obs_mag = obs['m_2010_F160W']
+    obs_col1 = obs['m_2005_F814W'] - obs['m_2010_F160W']
+    obs_col2 = obs['m_2010_F125W'] - obs['m_2010_F160W']
+    
+    py.figure(1)
+    py.clf()
+    py.plot(det_col1, det_mag, 'k.', alpha=0.2, ms=2)
+    py.plot(obs_col1, obs_mag, 'r.')
+    py.ylim(21.5, 9.5)
+    py.xlim(2.5, 7.5)
+    py.xlabel('F814W - F160W (mag)')
+    py.ylabel('F160W (mag)')
+
+    py.figure(2)
+    py.clf()
+    py.plot(art_col2, art_mag, 'k.', alpha=0.2, ms=2)
+    py.plot(obs_col2, obs_mag, 'r.')
+    py.ylim(21.5, 9.5)
+    py.xlim(0.2, 1.8)
+    py.xlabel('F125W - F160W (mag)')
+    py.ylabel('F160W (mag)')
+
+    pdb.set_trace()
+    
+    
+    bins = np.array([bins_mag, bins_col1, bins_col2])
+
+    n_art, b_art = np.histogramdd(art_data, bins=bins)
+    n_det, b_det = np.histogramdd(det_data, bins=bins)
+
+    comp = n_det / n_art
+
+    bad = np.where(n_art == 0)
+
+    comp[bad] = 0.0
+
+    pdb.set_trace()
+
+    return
+
+   
+def make_completeness_cmds():
+    comp = Table.read(work_dir + 'completeness_vs_mag.fits')
+    mag = comp['mag']
+
+    n_bins = len(mag)
+    c_comp_arr = np.zeros((n_bins, n_bins, n_bins), dtype=float)
+    c_mag_arr  = np.zeros((n_bins, n_bins, n_bins), dtype=float)
+    c_col1_arr = np.zeros((n_bins, n_bins, n_bins), dtype=float)
+    c_col2_arr = np.zeros((n_bins, n_bins, n_bins), dtype=float)
+
+    comp_814 = comp['c_2005_F814W']  #### HERE ####
+    comp_125 = comp['c_2010_F125W']
+    comp_160_10 = comp['c_2010_F160W']
+    comp_160_13 = comp['c_2013_F160W']
+
+    # Loop through an array of BLUE mag and BLUE-RED color and
+    # determine the lowest completness.
+    # mm = mag F160W
+    # cc1 = color F814W - F160W
+    # cc2 = color F125W - F160W
+    for mm in range(n_bins):
+        for cc1 in range(n_bins):
+            for cc2 in range(n_bins):
+                c_mag_arr[mm, cc1, cc2] = mag[mm]
+                c_col1_arr[mm, cc1, cc2] = mag[cc1] - mag[mm]
+                c_col2_arr[mm, cc1, cc2] = mag[cc2] - mag[mm]
+
+                comp_all_filt = np.array([comp_160_10[mm], comp_160_13[mm],
+                                          comp_814[cc1], comp_125[cc2]])
+
+                # Take whichever is lower, don't multiply because they aren't 
+                # really independent.
+                c_comp_arr[mm, cc1, cc2] = comp_all_filt.min()
+
+                if c_comp_arr[mm, cc1, cc2] < 0:
+                    c_comp_arr[mm, cc1, cc2] = 0
+                
+                if c_comp_arr[mm, cc1, cc2] > 1:
+                    c_comp_arr[mm, cc1, cc2] = 1
+
+                if np.isnan(c_comp_arr[mm, cc1, cc2]):
+                    c_comp_arr[mm, cc1, cc2] = 0
+                
+    print 'Plotting raw completeness mag vs. mag (comp_mF160W_mF814W.mp4).'
+    # Plot the raw completeness array
+    py.close(1)
+    fig = py.figure(1)
+
+    ii = 0
+    im = py.imshow(c_comp_arr[:, :, ii], vmin=0, vmax=1, origin='lower',
+                   extent=(c_col1_arr[0, 0, ii] + c_mag_arr[0, 0, ii], 
+                           c_col1_arr[-1, -1, ii] + c_mag_arr[-1, -1, ii],
+                           c_mag_arr[0, 0, ii], c_mag_arr[-1, -1, ii]))
+
+    def update_fig(ii):
+        im.set_array(c_comp_arr[:, :, ii])
+        py.title('F125W = {0:5.2f}'.format(c_col2_arr[0, 0, ii] + c_mag_arr[0, 0, ii]))
+        return im,
+
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.gca().invert_yaxis()
+    py.ylabel('F160W (mag)')
+    py.xlabel('F814W (mag)')
+    # ani = animation.FuncAnimation(fig, update_fig, np.arange(c_comp_arr.shape[2]),
+    #                               interval=50, blit=True)
+    # ani.save('comp_mF160W_mF814W.mp4')
+
+    ##########
+    # Flatten the arrays and clean out invalid regions.
+    ##########
+
+    print 'Interpolating to CMD. Setup'
+    comp_int = interpolate.LinearNDInterpolator((c_mag_arr.flatten(),
+                                                 c_col1_arr.flatten(),
+                                                 c_col2_arr.flatten()),
+                                                 c_comp_arr.flatten())
+    bins_mag = np.arange(10, 20, 0.25)  # F160W
+    bins_col1 = np.arange(3.0, 7.0, 0.20) # F814W - F160W
+    bins_col2 = np.arange(0.5, 1.6, 0.05) # F125W - F160W
+
+    points_3d = np.meshgrid(bins_mag, bins_col1, bins_col2, indexing='ij')
+
+    # comp_tmp = interpolate.griddata((c_mag_arr.flatten(),
+    #                                  c_col1_arr.flatten(),
+    #                                  c_col2_arr.flatten()),
+    #                                  c_comp_arr.flatten(), points_3d)
+    # pdb.set_trace()
+
+    
+    print 'Interpolating to CMD. Calc.'
+    comp_tmp = comp_int(points_3d)
+    print points_3d.shape, comp_tmp.shape
+    pdb.set_trace()
+
+    # Plot
+    py.clf()
+        
+    ii = 0
+    im = py.imshow(comp_tmp[:, :, ii], vmin=0, vmax=1, origin='lower',
+                   extent=(bins_col1[0], bins_col1[-1],
+                           bins_mag[0], bins_mag[-1]))
+                           
+    def update_fig(ii):
+        im.set_array(comp_tmp[:, :, ii])
+        py.title('F125W = {0:5.2f}'.format(bins_col2[ii]))
+        return im,
+
+    py.axis('tight')
+    py.colorbar(label='Completeness')
+    py.gca().invert_yaxis()
+    py.ylabel('F160W (mag)')
+    py.xlabel('F814W - F160W (mag)')
+    ani = animation.FuncAnimation(fig, update_fig, np.arange(comp_tmp.shape[2]),
+                                  interval=50, blit=True)
+    ani.save('comp_cmd_mF160W_mF814W.mp4')
+    
+    # return comp_int
     
     
     
@@ -2265,20 +2568,23 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
         if IAU==True:
             iso_dir = iso_dir_wd1+'IAU_law/'
 
-    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
-                                   iso_dir=iso_dir, massSampling=1,
-                                   filters=filters)
+    iso = synthetic.IsochronePhot(logAge, AKs, tmp_dist,
+                                   iso_dir=iso_dir, mass_sampling=1,
+                                   filters=filters, red_law = synthetic.redlaw)
 
-    col_names = iso.colnames
+    # Extract isochrone properties
+    iso_f = iso.points
+    col_names = iso_f.keys()
 
+    # Correct for distance, if necessary
     for cc in range(len(col_names)):
         delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
         print 'Changing distance: delta_DM = ', delta_DM
         
         if col_names[cc].startswith('mag'):
-            iso[col_names[cc]] += delta_DM
+            iso_f[col_names[cc]] += delta_DM
 
-    return iso
+    return iso_f
 
         
 def check_atmospheres():
