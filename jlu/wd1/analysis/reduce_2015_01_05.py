@@ -2591,20 +2591,20 @@ def setup_artstar_info():
                                      '08.ks2', '09.ks2', '10.ks2',
                                      '11.ks2', '12.ks2', '13.ks2', '14.ks2'],
                  '22.KS2_2010_ART': ['01.pos1_a', '01.pos1_b', '01.pos1_c',
-                                     '01.pos1_d', '01.pos1_e', '01.pos1_f',                                    
                                      '02.pos2_a', '02.pos2_b', '02.pos2_c',
-                                     '02.pos2_d', '02.pos2_e', '02.pos2_f',                                    
                                      '03.pos3_a', '03.pos3_b', '03.pos3_c',
-                                     '03.pos3_d', '03.pos3_e', '03.pos3_f',                                    
                                      '04.pos4_a', '04.pos4_b', '04.pos4_c',
+                                     '01.pos1_d', '01.pos1_e', '01.pos1_f',                                    
+                                     '02.pos2_d', '02.pos2_e', '02.pos2_f',                                    
+                                     '03.pos3_d', '03.pos3_e', '03.pos3_f',                                    
                                      '04.pos4_d', '04.pos4_e', '04.pos4_f'],
                  '23.KS2_2013_ART': ['01.pos1_a', '01.pos1_b', '01.pos1_c',
-                                     '01.pos1_d', '01.pos1_e', '01.pos1_f',
                                      '02.pos2_a', '02.pos2_b', '02.pos2_c',
-                                     '02.pos2_d', '02.pos2_e', '02.pos2_f',
                                      '03.pos3_a', '03.pos3_b', '03.pos3_c',
-                                     '03.pos3_d', '03.pos3_e', '03.pos3_f',
                                      '04.pos4_a', '04.pos4_b', '04.pos4_c',
+                                     '01.pos1_d', '01.pos1_e', '01.pos1_f',
+                                     '02.pos2_d', '02.pos2_e', '02.pos2_f',
+                                     '03.pos3_d', '03.pos3_e', '03.pos3_f',
                                      '04.pos4_d', '04.pos4_e', '04.pos4_f']}
     art_lists = {'21.KS2_2005_ART': ['Artstarlist_2005_1.txt',
                                      'Artstarlist_2005_2.txt',
@@ -2623,48 +2623,48 @@ def setup_artstar_info():
                  '22.KS2_2010_ART': ['Artstarlist_2010_pos1_a.txt',
                                      'Artstarlist_2010_pos1_b.txt',
                                      'Artstarlist_2010_pos1_c.txt',
-                                     'Artstarlist_2010_pos1_d.txt',
-                                     'Artstarlist_2010_pos1_e.txt',
-                                     'Artstarlist_2010_pos1_f.txt',
                                      'Artstarlist_2010_pos2_a.txt',
                                      'Artstarlist_2010_pos2_b.txt',
                                      'Artstarlist_2010_pos2_c.txt',
-                                     'Artstarlist_2010_pos2_d.txt',
-                                     'Artstarlist_2010_pos2_e.txt',
-                                     'Artstarlist_2010_pos2_f.txt',
                                      'Artstarlist_2010_pos3_a.txt',
                                      'Artstarlist_2010_pos3_b.txt',
                                      'Artstarlist_2010_pos3_c.txt',
-                                     'Artstarlist_2010_pos3_d.txt',
-                                     'Artstarlist_2010_pos3_e.txt',
-                                     'Artstarlist_2010_pos3_f.txt',
                                      'Artstarlist_2010_pos4_a.txt',
                                      'Artstarlist_2010_pos4_b.txt',
                                      'Artstarlist_2010_pos4_c.txt',
+                                     'Artstarlist_2010_pos1_d.txt',
+                                     'Artstarlist_2010_pos1_e.txt',
+                                     'Artstarlist_2010_pos1_f.txt',
+                                     'Artstarlist_2010_pos2_d.txt',
+                                     'Artstarlist_2010_pos2_e.txt',
+                                     'Artstarlist_2010_pos2_f.txt',
+                                     'Artstarlist_2010_pos3_d.txt',
+                                     'Artstarlist_2010_pos3_e.txt',
+                                     'Artstarlist_2010_pos3_f.txt',
                                      'Artstarlist_2010_pos4_d.txt',
                                      'Artstarlist_2010_pos4_e.txt',
                                      'Artstarlist_2010_pos4_f.txt'],
                  '23.KS2_2013_ART': ['Artstarlist_2013_pos1_a.txt',
                                      'Artstarlist_2013_pos1_b.txt',
                                      'Artstarlist_2013_pos1_c.txt',
-                                     'Artstarlist_2013_pos1_d.txt',
-                                     'Artstarlist_2013_pos1_e.txt',
-                                     'Artstarlist_2013_pos1_f.txt',
                                      'Artstarlist_2013_pos2_a.txt',
                                      'Artstarlist_2013_pos2_b.txt',
                                      'Artstarlist_2013_pos2_c.txt',
-                                     'Artstarlist_2013_pos2_d.txt',
-                                     'Artstarlist_2013_pos2_e.txt',
-                                     'Artstarlist_2013_pos2_f.txt',
                                      'Artstarlist_2013_pos3_a.txt',
                                      'Artstarlist_2013_pos3_b.txt',
                                      'Artstarlist_2013_pos3_c.txt',
-                                     'Artstarlist_2013_pos3_d.txt',
-                                     'Artstarlist_2013_pos3_e.txt',
-                                     'Artstarlist_2013_pos3_f.txt',
                                      'Artstarlist_2013_pos4_a.txt',
                                      'Artstarlist_2013_pos4_b.txt',
                                      'Artstarlist_2013_pos4_c.txt',
+                                     'Artstarlist_2013_pos1_d.txt',
+                                     'Artstarlist_2013_pos1_e.txt',
+                                     'Artstarlist_2013_pos1_f.txt',
+                                     'Artstarlist_2013_pos2_d.txt',
+                                     'Artstarlist_2013_pos2_e.txt',
+                                     'Artstarlist_2013_pos2_f.txt',
+                                     'Artstarlist_2013_pos3_d.txt',
+                                     'Artstarlist_2013_pos3_e.txt',
+                                     'Artstarlist_2013_pos3_f.txt',
                                      'Artstarlist_2013_pos4_d.txt',
                                      'Artstarlist_2013_pos4_e.txt',
                                      'Artstarlist_2013_pos4_f.txt']}
@@ -2757,19 +2757,25 @@ def recombine_artstar_subsets():
     #
     ##################################################
     epoch = '22.KS2_2010_ART'
-    positions = ['pos1', 'pos2', 'pos3', 'pos4']
-    subsets = {'pos1': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos2': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos3': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos4': ['a', 'b', 'c', 'd', 'e', 'f']}
+    positions = ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1', 'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2']
+    subsets = {'pos1_1': ['a', 'b', 'c'],
+               'pos2_1': ['a', 'b', 'c'],
+               'pos3_1': ['a', 'b', 'c'],
+               'pos4_1': ['a', 'b', 'c'],
+               'pos1_2': ['d', 'e', 'f'],
+               'pos2_2': ['d', 'e', 'f'],
+               'pos3_2': ['d', 'e', 'f'],
+               'pos4_2': ['d', 'e', 'f']}
     filter_names = {1: 'F160W', 2: 'F139M', 3: 'F125W'}
 
     for pp in range(len(positions)):
         # The name of this mosaic position.
-        pos = positions[pp]
+        pos_out = positions[pp]
+        pos = positions[pp].split('_')[0]
+        pos_idx = int(pos[-1])
         
         # List of subset directory suffixes for this mosaic position.
-        subs = subsets[pos]
+        subs = subsets[pos_out]
 
         for filt in filters[epoch]:
             t_2010 = None
@@ -2777,7 +2783,7 @@ def recombine_artstar_subsets():
 
             for ii in range(len(subs)):
                 table_file = work_dir + epoch
-                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
+                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pos_idx, pos, subs[ii])
                 table_file += 'Artstarlist_2010_{0:s}_{1:s}'.format(pos, subs[ii])
                 table_file += '_F{0:d}'.format(filt)
                 table_file += '_joined.fits'
@@ -2794,7 +2800,7 @@ def recombine_artstar_subsets():
                 N_largest = t_2010['name'][-1]
 
             # Save output to file.
-            outfile = 'artstar_2010_{0}_{1}.fits'.format(filter_names[filt], pos)
+            outfile = 'artstar_2010_{0}_{1}.fits'.format(filter_names[filt], pos_out)
             outfile = work_dir + '51.ALIGN_ART/' + outfile
             t_2010.write(outfile, overwrite=True)
 
@@ -2804,19 +2810,25 @@ def recombine_artstar_subsets():
     #
     ##################################################
     epoch = '23.KS2_2013_ART'
-    positions = ['pos1', 'pos2', 'pos3', 'pos4']
-    subsets = {'pos1': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos2': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos3': ['a', 'b', 'c', 'd', 'e', 'f'],
-               'pos4': ['a', 'b', 'c', 'd', 'e', 'f']}
+    positions = ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1', 'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2']
+    subsets = {'pos1_1': ['a', 'b', 'c'],
+               'pos2_1': ['a', 'b', 'c'],
+               'pos3_1': ['a', 'b', 'c'],
+               'pos4_1': ['a', 'b', 'c'],
+               'pos1_2': ['d', 'e', 'f'],
+               'pos2_2': ['d', 'e', 'f'],
+               'pos3_2': ['d', 'e', 'f'],
+               'pos4_2': ['d', 'e', 'f']}
     filter_names = {1: 'F160W'}
 
     for pp in range(len(positions)):
         # The name of this mosaic position.
-        pos = positions[pp]
+        pos_out = positions[pp]
+        pos = positions[pp].split('_')[0]
+        pos_idx = int(pos[-1])
         
-        # List of subset directory suffixes.
-        subs = subsets[pos]
+        # List of subset directory suffixes for this mosaic position.
+        subs = subsets[pos_out]
 
         for filt in filters[epoch]:
             t_2013 = None
@@ -2824,7 +2836,7 @@ def recombine_artstar_subsets():
 
             for ii in range(len(subs)):
                 table_file = work_dir + epoch
-                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pp+1, pos, subs[ii])
+                table_file += '/{0:02d}.{1:s}_{2:s}/'.format(pos_idx, pos, subs[ii])
                 table_file += 'Artstarlist_2013_{0:s}_{1:s}'.format(pos, subs[ii])
                 table_file += '_F{0:d}'.format(filt)
                 table_file += '_joined.fits'
@@ -2841,7 +2853,7 @@ def recombine_artstar_subsets():
                 N_largest = t_2013['name'][-1]
 
             # Save output to file.
-            outfile = 'artstar_2013_{0}_{1}.fits'.format(filter_names[filt], pos)
+            outfile = 'artstar_2013_{0}_{1}.fits'.format(filter_names[filt], pos_out)
             outfile = work_dir + '51.ALIGN_ART/' + outfile
             t_2013.write(outfile, overwrite=True)
 
@@ -2858,30 +2870,25 @@ def align_artstars(use_obs_align=False):
         combine_mosaic_pos()
     This will have the mosaic positions combined together. 
     """
-    starlists = ['artstar_2005_F814W.fits',
-                 'artstar_2010_F125W_pos1.fits',
-                 'artstar_2010_F125W_pos2.fits',
-                 'artstar_2010_F125W_pos3.fits',
-                 'artstar_2010_F125W_pos4.fits',
-                 'artstar_2010_F139M_pos1.fits',
-                 'artstar_2010_F139M_pos2.fits',
-                 'artstar_2010_F139M_pos3.fits',
-                 'artstar_2010_F139M_pos4.fits',
-                 'artstar_2010_F160W_pos1.fits',
-                 'artstar_2010_F160W_pos2.fits',
-                 'artstar_2010_F160W_pos3.fits',
-                 'artstar_2010_F160W_pos4.fits',
-                 'artstar_2013_F160W_pos1.fits',
-                 'artstar_2013_F160W_pos2.fits',
-                 'artstar_2013_F160W_pos3.fits',
-                 'artstar_2013_F160W_pos4.fits']
     mosaic_epochs = ['2005_F814W', '2010_F125W', '2010_F139M',
-                  '2010_F160W', '2013_F160W']
+                     '2010_F160W', '2013_F160W']
     pos_for_epoch = {'2005_F814W': [''],
-                     '2010_F125W': ['pos1', 'pos2', 'pos3', 'pos4'],
-                     '2010_F139M': ['pos1', 'pos2', 'pos3', 'pos4'],
-                     '2010_F160W': ['pos1', 'pos2', 'pos3', 'pos4'],
-                     '2013_F160W': ['pos1', 'pos2', 'pos3', 'pos4']}
+                     '2010_F125W': ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1', 
+                                    'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2'],
+                     '2010_F139M': ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1',
+                                    'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2'],
+                     '2010_F160W': ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1',
+                                    'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2'],
+                     '2013_F160W': ['pos1_1', 'pos2_1', 'pos3_1', 'pos4_1',
+                                    'pos1_2', 'pos2_2', 'pos3_2', 'pos4_2']}
+    
+    # WARNING Hard-coding the order -- arrays above need to be matched to
+    # the align.list file from the observed data. No checks!!
+    align_indices = {'2005_F814W': [0], 
+                     '2010_F125W': [1, 2, 3, 4, 1, 2, 3, 4], 
+                     '2010_F139M': [5, 6, 7, 8, 5, 6, 7, 8], 
+                     '2010_F160W': [9, 10, 11, 12, 9, 10, 11, 12],
+                     '2013_F160W': [13, 14, 15, 16, 13, 14, 15, 16]}
 
     if use_obs_align:
         align_root = 'align_a4_t'
@@ -2938,10 +2945,6 @@ def align_artstars(use_obs_align=False):
         
         return (xout_e, yout_e)
     
-    # WARNING Hard-coding the order -- arrays above need to be matched to
-    # the align.list file from the observed data. No checks!!
-    align_idx = 0
-
     # This will be the final table
     t_out = Table()
     t_out.table_name = 'art_align'
@@ -2976,12 +2979,12 @@ def align_artstars(use_obs_align=False):
         for pp in range(len(positions)):
             # Get the current position
             pos = positions[pp]
+            align_idx = align_indices[epoch][pp]
+            pos_only = pos.split('_')[0]
 
             # Get the transformation for this epoch
             tr = trans[align_idx]
 
-            print '  ks2 pos = ', pos, '  align list = ', align_list[align_idx]
-            
             # Make a suffix string from the current position
             if pos != '':
                 pos_suffix = '_' + pos
@@ -2990,6 +2993,8 @@ def align_artstars(use_obs_align=False):
 
             # Read in the table
             artstar_list = 'artstar_{0}{1}.fits'.format(epoch, pos_suffix)
+
+            print '   ks2 list = ', artstar_list, '  align list = ', align_list[align_idx].split()[0]
 
             t = Table.read(work_dir + '51.ALIGN_ART/' + artstar_list)
 
@@ -3031,8 +3036,7 @@ def align_artstars(use_obs_align=False):
             name = np.append(name, new_name)
 
             print '   position = {0}, added {1} star'.format(pos, len(x_out_t))
-            
-            align_idx += 1
+            print ''
 
         # Add new columns to the table
         t_out.add_column(Column(x, name='x_' + epoch))
@@ -3050,6 +3054,7 @@ def align_artstars(use_obs_align=False):
         t_out.add_column(Column(m_in, name='min_' + epoch))
 
         t_out.add_column(Column(name, name='name_' + epoch))
+
             
     #fix_art_magnitudes(t_out)
 
