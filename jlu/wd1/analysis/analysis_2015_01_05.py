@@ -1114,10 +1114,12 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     clust = np.where(pmem > 0.8)[0]
 
     # Load Wd1 isochrone
+
+    synthetic.redlaw = reddening.RedLawWesterlund1()
     iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
     iso = iso[::3]
     
-    # Calculate a reddening vector
+    # Calculate a reddening vector based on vega
     filt_F814W = synthetic.get_filter_info('acs,wfc1,f814w')
     filt_F125W = synthetic.get_filter_info('wfc3,ir,f125w')
     filt_F139M = synthetic.get_filter_info('wfc3,ir,f139m')
@@ -1134,16 +1136,26 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
     red_F125W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F125W.wave)
     red_F139M_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F139M.wave)
     red_F160W_1 = synthetic.redlaw.reddening(AKs_1).resample(filt_F160W.wave)
-    
-    m_F814W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_0)
-    m_F125W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_0)
-    m_F139M_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_0)
-    m_F160W_AKs_0 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_0)
 
-    m_F814W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F814W, red_F814W_1)
-    m_F125W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F125W, red_F125W_1)
-    m_F139M_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F139M, red_F139M_1)
-    m_F160W_AKs_1 = synthetic.mag_in_filter(synthetic.vega, filt_F160W, red_F160W_1)
+    #-------------------------------------------------------------------#
+    # Need to apply reddening to vega before passing into mag_in_filter
+    #-------------------------------------------------------------------#
+    star = synthetic.vega
+    
+    red_0 = synthetic.redlaw.reddening(AKs_0).resample(star.wave) 
+    red_star_0 = star * red_0
+    red_1 = synthetic.redlaw.reddening(AKs_1).resample(star.wave)
+    red_star_1 = star * red_1
+    
+    m_F814W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F814W)
+    m_F125W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F125W)
+    m_F139M_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F139M)
+    m_F160W_AKs_0 = synthetic.mag_in_filter(red_star_0, filt_F160W)
+
+    m_F814W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F814W)
+    m_F125W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F125W)
+    m_F139M_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F139M)
+    m_F160W_AKs_1 = synthetic.mag_in_filter(red_star_1, filt_F160W)
 
     # Get a couple of key masses for overplotting
     iso_mass = np.array([0.5, 1.0, 2.0, 5.0, 10.0])
@@ -1280,7 +1292,7 @@ def plot_cmd_isochrone(logAge=wd1_logAge, AKs=wd1_AKs,
                                                                               synthetic.redlaw.name)
     py.savefig(plot_dir + outfile)
 
-    py.close('all')
+    #py.close('all')
     
     return
 
@@ -1661,6 +1673,14 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     py.ylabel(blue_name + ' (mag)')
     py.savefig(plot_dir + 'completeness_cmd_raw_' + blue_name + '_' + red_name + '.png')
     
+    # Read in isochrone
+    print 'Loading Isochrone'
+    #----FOR NISHIYAMA+09----#
+    #synthetic.redlaw = reddening.RedLawNishiyama09()
+    #------------------------#
+    red_dAKs = 0.1
+    iso = load_isochrone(logAge=logAge, AKs=AKs, distance=distance)
+    iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
 
     # Plot interpolated completeness image in CMD space: F814W vx. F160W
     if blue_name == 'F814W':
@@ -1898,6 +1918,15 @@ def make_completeness_ccmd():
     bcent_mag = bins_mag[:-1] + (np.diff(bins_mag) / 2.0)
     bcent_col1 = bins_col1[:-1] + (np.diff(bins_col1) / 2.0)
     bcent_col2 = bins_col2[:-1] + (np.diff(bins_col2) / 2.0)
+
+    if synthetic.redlaw.name == 'Nishiyama09':
+        red_suf = 'nishi'
+    elif synthetic.redlaw.name == 'Westerlund1':
+        red_suf = 'wd1'
+
+    suffix = '_t{0:4.2f}_AKs{1:4.2f}_d{2:4.0f}_{3}'.format(logAge, AKs, distance, red_suf)
+    imf1.write(work_dir + 'imf_table_from_optical' + suffix + '.fits', overwrite=True)
+    imf2.write(work_dir + 'imf_table_from_infrared' + suffix + '.fits', overwrite=True)
 
     points_3d_tmp = np.meshgrid(bcent_mag, bcent_col1, bcent_col2, indexing='ij')
     points_3d = np.array([points_3d_tmp[0], points_3d_tmp[1], points_3d_tmp[2]]).T
@@ -2687,20 +2716,23 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
         if IAU==True:
             iso_dir = iso_dir_wd1+'IAU_law/'
 
-    iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
-                                   iso_dir=iso_dir, massSampling=1,
-                                   filters=filters)
+    iso = synthetic.IsochronePhot(logAge, AKs, tmp_dist,
+                                   iso_dir=iso_dir, mass_sampling=1,
+                                   filters=filters, red_law = synthetic.redlaw)
 
-    col_names = iso.colnames
+    # Extract isochrone properties
+    iso_f = iso.points
+    col_names = iso_f.keys()
 
+    # Correct for distance, if necessary
     for cc in range(len(col_names)):
         delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
         print 'Changing distance: delta_DM = ', delta_DM
         
         if col_names[cc].startswith('mag'):
-            iso[col_names[cc]] += delta_DM
+            iso_f[col_names[cc]] += delta_DM
 
-    return iso
+    return iso_f
 
         
 def check_atmospheres():
