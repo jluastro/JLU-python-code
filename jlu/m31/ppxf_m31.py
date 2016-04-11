@@ -6,6 +6,7 @@ import time
 import math, glob
 import scipy
 import scipy.interpolate
+from scipy.optimize import curve_fit#, OptimizeWarning
 from gcwork import objects
 import pdb
 import ppxf
@@ -13,6 +14,8 @@ import pp
 import itertools
 import pandas
 import astropy
+import os
+import warnings
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -23,9 +26,10 @@ workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
+contmpdir = workdir+'tmp_convert/'
 
-cuberoot = 'm31_all_semerr'
-#cuberoot = 'm31_all'
+#cuberoot = 'm31_all_semerr'
+cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
 #cuberoot = 'm31_all_seventherr'
 #cuberoot = 'm31_all_scalederr'
@@ -488,10 +492,11 @@ def runErrorMC(newTemplates=True,jackknife=False,test=False):
     
     # get all the xx,yy pair possiblities - setup for parallel processing
     if test:
-        xx = [17,18,19,20,21,22]
+        #xx = [17,18,19,20,21,22]
         yy = [35]
         #xx = [17,18]
         #yy = [35,35]
+        xx = [8,23,38]
     else:
         xx = np.arange(8, newCube.shape[0]-8)
         yy = np.arange(10, newCube.shape[1]-10)
@@ -1067,7 +1072,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2,3,3)
     velerr = e.velocity.transpose()
-    py.imshow(velerr, vmin=0., vmax=25.,
+    py.imshow(velerr, vmin=0., vmax=205.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1103,7 +1108,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 6)
     sigerr = e.sigma.transpose()
-    py.imshow(sigerr, vmin=0., vmax=40.,
+    py.imshow(sigerr, vmin=0., vmax=200.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1308,9 +1313,9 @@ def plotPDF(inputResults=workdir+'/ppxf_test_mc_nsim100.dat',inputError=workdir+
     p = PPXFresults(inputResults)
     e = PPXFresults(inputError)
 
-    nspax = p.velocity.shape[0]
     spax = np.where(e.velocity != 0.)
-
+    nspax = len(spax[0])
+    
     py.close(2)
     py.figure(2)
     py.clf()
@@ -1448,11 +1453,389 @@ def precessionSpeed():
     py.plot(verrs, sigPErrs)
     #py.show()
 
-class modelResults(object):
-    def __init__(self, inputFile=modeldir+'nonaligned_model.dat'):
+def modelBin(nonaligned=True,clean=False):
+    ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
+    #### match OSIRIS observations), bins individual stellar particles to match the
+    #### spaxel size in observations, and fits LOSVDs to the resulting velocity
+    #### histograms.
+
+    ### clean: keyword to control how LOSVD are fit. With clean=False, LOSVDs are fit
+    #### to all bins. If no fit is possible (e.g. if there are too few particles in the
+    #### bin), the mean velocity is taken as the ensemble velocity and 0 is recorded for
+    #### the higher moments (sigma, h3, h4). With clean=True, 0 is also recorded for the
+    #### ensemble velocity in these bins. In addition, marginal fits (where OptimizeWarning
+    #### is returned by the fitter) are also discarded and 0 recorded for all kinematic
+    #### parameters.
+
+    py.ioff()
+
+    model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+
+    # bin size = 0.05" = 0.1865 pc
+    binpc = 0.1865
+    
+    # BH position in the OSIRIS data: [22.5, 37.5]. Matching pixel phase, 0.5*0.05" = 0.09325 pc:
+    model.x += 0.09325
+    model.y += 0.09325
+
+    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    posxbin = np.ceil(np.max(model.x)/binpc)
+    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    nxbin = posxbin+negxbin
+    posybin = np.ceil(np.max(model.y)/binpc)
+    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    nybin = posybin + negybin
+
+    nstar = np.zeros((nxbin,nybin))
+    losv = np.zeros((nxbin,nybin))
+    sigma = np.zeros((nxbin,nybin))
+    h3 = np.zeros((nxbin,nybin))
+    h4 = np.zeros((nxbin,nybin))
+
+    leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
+    bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
+
+    t1 = time.time()
+    
+    # this loop is solely for binning the particles and writing their locations/velocities
+    # to a separate file for each bin
+    # first, check to see if the files already exist (checking the first one)
+    if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
+        # make array copies 
+        modx = np.array(model.x)
+        mody = np.array(model.y)
+        modz = np.array(model.z)
+        modvx = np.array(model.vx)
+        modvy = np.array(model.vy)
+        modvz = np.array(model.vz)
+        for i in range(len(leftxbound)):
+            for j in range(len(bottomybound)):
+                good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
+                # nstar is the number of star particles in the bin
+                ntmp = good[0].shape[0]
+                nstar[i,j] = ntmp
+                # write just these particles out to a file
+                outputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat'
+                tmpx = modx[good[0]]
+                tmpy = mody[good[0]]
+                tmpz = modz[good[0]]
+                tmpvx = modvx[good[0]]
+                tmpvy = modvy[good[0]]
+                tmpvz = modvz[good[0]]
+                np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
+                # remove the written out particles from the master arrays, to improve computational time
+                modx = np.delete(modx,good[0])
+                mody = np.delete(mody,good[0])
+                modz = np.delete(modz,good[0])
+                modvx = np.delete(modvx,good[0])
+                modvy = np.delete(modvy,good[0])
+                modvz = np.delete(modvz,good[0])
+                
+    print "Time elapsed for binning: ", time.time() - t1, "s"
+    t2 = time.time()
+
+    #pdb.set_trace()
+
+    if clean:
+        warnings.simplefilter("error", OptimizeWarning)            
+    # this loop does the LOSVD fits for each bin, to get the kinematics
+    for i in range(len(leftxbound)):
+        print "Starting column ", i
+        for j in range(len(bottomybound)):
+            model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
+            # make sure that nstar is populated - if binning code and outputs were run separately
+            # previously, it will not yet have been filled in
+            if nstar[i,j] == 0.:
+                nstar[i,j] = model.x.shape[0]
+            if model.x.shape[0] == 0:
+                losv[i,j] = 0.
+                sigma[i,j] = 0.
+                h3[i,j] = 0.
+                h4[i,j] = 0.
+            elif model.x.shape[0] == 1:
+                if clean:
+                    losv[i,j] = 0.
+                else:
+                    losv[i,j] = model.vz
+                sigma[i,j] = 0.
+                h3[i,j] = 0.
+                h4[i,j] = 0.
+            else:
+                # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
+                binsize = 5.
+                ny, bins, patches = py.hist(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize),facecolor='green',alpha=.75)
+                if clean:
+                    try:
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        # popt = [gamma, v, sigma, h3, h4]
+                        losv[i,j] = popt[1]
+                        sigma[i,j] = popt[2]
+                        h3[i,j] = popt[3]
+                        h4[i,j] = popt[4]
+                    except (RuntimeError, OptimizeWarning):
+                        # if get an error on the fit, drop the bin
+                        losv[i,j] = 0.
+                        sigma[i,j] = 0.
+                        h3[i,j] = 0.
+                        h4[i,j] = 0.
+                else:
+                    try:
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        # popt = [gamma, v, sigma, h3, h4]
+                        losv[i,j] = popt[1]
+                        sigma[i,j] = popt[2]
+                        h3[i,j] = popt[3]
+                        h4[i,j] = popt[4]
+                    except (RuntimeError):
+                        # if no fit is possible, take the mean
+                        losv[i,j] = np.mean(model.vz)
+                        sigma[i,j] = 0.
+                        h3[i,j] = 0.
+                        h4[i,j] = 0.                    
+                py.close()
+        # code crashes after exiting this loop (why??), so setting output here for now
+        if i == len(leftxbound)-1:
+            if nonaligned:
+                output = open(modeldir + 'nonaligned_OSIRIScoords_fits.dat', 'w')
+            else:
+                output = open(modeldir + 'aligned_OSIRIScoords_fits.dat', 'w')
+        
+            pickle.dump(nstar, output)
+            pickle.dump(losv, output)
+            pickle.dump(sigma, output)
+            pickle.dump(h3, output)
+            pickle.dump(h4, output)
+            output.close()
+
+    print "Time elapsed for LOSVD fitting: ", time.time() - t2, "s"
+    #pdb.set_trace()
+    
+def gaussHermite(x,gamma,v,sigma,h3,h4):
+    # Hermite polynomials are from van der Marel & Franx 1993, Appendix A
+    a = (x - v)/sigma
+    H3 = (1./np.sqrt(6.)) * (2.*np.sqrt(2)*(a**3) - 3.*np.sqrt(2)*a)
+    H4 = (1./np.sqrt(24)) * (4.*(a**4) - 12.*(a**2) + 3.)
+    return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
+
+class modelFitResults(object):
+    def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits.dat'):
         self.inputFile = inputFile
+        
+        input = open(inputFile, 'r')
+        self.nstar = pickle.load(input)
+        self.velocity = pickle.load(input)
+        self.sigma = pickle.load(input)
+        self.h3 = pickle.load(input)
+        self.h4 = pickle.load(input)
+    
+def modelConvertCoordinates(nonaligned=True):
+    if nonaligned:
+        inputFile = modeldir + 'nonaligned_model.dat'
+    else:
+        inputFile = modeldir + 'aligned_model.dat'
+
+    model = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
+
+    t1 = time.time()
+    ### angles, transformations from Peiris & Tremaine 2003 (table 2; eq. 4)
+    ### angles originally measured in degrees
+    if nonaligned:
+        thetaL = np.radians(-42.8)
+        thetaI = np.radians(54.1)
+        thetaA = np.radians(-34.5)
+    else:
+        thetaL = np.radians(-52.3)
+        thetaI = np.radians(77.5)
+        thetaA = np.radians(-11.0)
+        
+    matL = np.matrix([[np.cos(thetaL),-np.sin(thetaL),0.],[np.sin(thetaL),np.cos(thetaL),0.],[0.,0.,1.]])
+    matI = np.matrix([[1.,0.,0.],[0.,np.cos(thetaI),-np.sin(thetaI)],[0.,np.sin(thetaI),np.cos(thetaI)]])
+    matA = np.matrix([[np.cos(thetaA),-np.sin(thetaA),0.],[np.sin(thetaA),np.cos(thetaA),0.],[0.,0.,1.]])
+
+    # create subsets of the inputs in chunks of 5000 
+    isets = np.arange(math.ceil(len(model.x)/5000.))
+    istart = np.arange(0,len(model.x),5000)
+    istop = np.arange(5000,len(model.x),5000)
+    istop = np.concatenate((istop,[len(model.x)+1]))
+    startstop = np.concatenate(([istart],[istop]),axis=0)
+    startstop = startstop.transpose()
+
+    xyz = np.column_stack((model.x,model.y,model.z))
+    vxyz = np.column_stack((model.v_x,model.v_y,model.v_z))
+    
+    #job_server = pp.Server()
+    #print "Starting pp with", job_server.get_ncpus(), "workers"
+    #jobs = [(i,job_server.submit(run_once_convert, args=(xyz[i[0]:i[1]],vxyz[i[0]:i[1]],matL,matI,matA,i[0],contmpdir), depfuncs=(), modules=('numpy as np',))) for i in startstop]
+    #test = run_once_convert(xyz[startstop[0][0]:startstop[0][1]],vxyz[startstop[0][0]:startstop[0][1]],matL,matI,matA,startstop[0][0],contmpdir)
+    #pdb.set_trace()
+
+    #job_server.wait()
+
+    # job_server.submit keeps failing - doing a for loop for now
+    for i in startstop:
+        job = run_once_convert(xyz[i[0]:i[1]],vxyz[i[0]:i[1]],matL,matI,matA,i[0],contmpdir)
+
+    bigX = np.zeros(len(model.x))
+    bigY = np.zeros(len(model.x))
+    bigZ = np.zeros(len(model.x))
+    bigVX = np.zeros(len(model.x))
+    bigVY = np.zeros(len(model.x))
+    bigVZ = np.zeros(len(model.x))
+    
+    for i in range(len(istart)):
+        print "Setting output of ", i
+        set = istart[i]
+
+        tmpInput = contmpdir + 'convert_'+str(set)+'.dat'
+    
+        tmpmodel = pandas.read_csv(tmpInput,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
+
+        bigX[istart[i]:istop[i]] = tmpmodel.x
+        bigY[istart[i]:istop[i]] = tmpmodel.y
+        bigZ[istart[i]:istop[i]] = tmpmodel.z
+        bigVX[istart[i]:istop[i]] = tmpmodel.v_x
+        bigVY[istart[i]:istop[i]] = tmpmodel.v_y
+        bigVZ[istart[i]:istop[i]] = tmpmodel.v_z
+    
+    if nonaligned:
+        outputFile = modeldir + 'nonaligned_model_skycoords.dat'
+    else:
+        outputFile = modeldir + 'aligned_model_skycoords.dat'
+        
+    np.savetxt(outputFile,np.c_[bigX,bigY,bigZ,bigVX,bigVY,bigVZ],fmt='%8.6f',delimiter='\t')
+
+    print "Time elapsed: ", time.time() - t1, "s"
+    
+def run_once_convert(xyz,vxyz,matL,matI,matA,set,contmpdir):
+    
+    for i in range(len(xyz)):
+        tmp = matL.dot(matI).dot(matA).dot(xyz[i])
+        tmpv = matL.dot(matI).dot(matA).dot(vxyz[i])
+        if i==0:
+            bigXYZ = tmp
+            bigV_XYZ = tmpv
+        else:
+            bigXYZ = np.squeeze(bigXYZ)
+            bigV_XYZ = np.squeeze(bigV_XYZ)
+            bigXYZ = np.append(bigXYZ,tmp,axis=0)
+            bigV_XYZ = np.append(bigV_XYZ,tmpv,axis=0)
+
+    tmpx, tmpy, tmpz = np.hsplit(bigXYZ, 3)
+    tmpvx, tmpvy, tmpvz = np.hsplit(bigV_XYZ, 3)
+
+    np.savetxt(contmpdir + 'convert_'+str(set)+'.dat',np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
+
+def modelOSIRISrotation(nonaligned=True):
+    # transforming from sky coordinates (+Y is north, +X is west) to OSIRIS coordinates,
+    ### taking into account the PA
+    
+    model = modelResults(nonaligned,skycoords=True)
+
+    t1 = time.time()
+
+    # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
+    # by definition of the rotation matrix
+    pa = 56.0
+    # taking the complementary angle for the rotation
+    cpa = 90. - pa
+    thetaCPA = np.radians(cpa)
+
+    rotMat = np.matrix([[np.cos(thetaCPA),-np.sin(thetaCPA)],[np.sin(thetaCPA),np.cos(thetaCPA)]])
+
+    # create subsets of the inputs in chunks of 5000 
+    isets = np.arange(math.ceil(len(model.x)/5000.))
+    istart = np.arange(0,len(model.x),5000)
+    istop = np.arange(5000,len(model.x),5000)
+    istop = np.concatenate((istop,[len(model.x)+1]))
+    startstop = np.concatenate(([istart],[istop]),axis=0)
+    startstop = startstop.transpose()
+
+    # rotating in the plane of the sky, so only transforming x and y (and v_x and v_y)
+    xy = np.column_stack((model.x,model.y))
+    vxy = np.column_stack((model.vx,model.vy))
+
+    #job_server = pp.Server()
+    #print "Starting pp with", job_server.get_ncpus(), "workers"
+    #jobs = [(i, job_server.submit(run_once_osiris_convert, (xy[i[0]:i[1]],vxy[i[0]:i[1]],rotMat,i[0],contmpdir,i), (), ('numpy as np'))) for i in startstop]
+
+    #job_server.wait()
+
+    for i in startstop:
+        job = run_once_osiris_convert(xy[i[0]:i[1]],vxy[i[0]:i[1]],rotMat,i[0],contmpdir)
+    
+    
+    bigX = np.zeros(len(model.x))
+    bigY = np.zeros(len(model.x))
+    bigZ = model.z
+    bigVX = np.zeros(len(model.x))
+    bigVY = np.zeros(len(model.x))
+    bigVZ = model.vz
+
+    for i in range(len(istart)):
+        print "Setting output of ", i
+        set = istart[i]
+
+        tmpInput = contmpdir + 'convertOSIRIS_'+str(set)+'.dat'
+    
+        tmpmodel = pandas.read_csv(tmpInput,delim_whitespace=True,header=None,names=['x','y','vx','vy'])
+
+        bigX[istart[i]:istop[i]] = tmpmodel.x
+        bigY[istart[i]:istop[i]] = tmpmodel.y
+        bigVX[istart[i]:istop[i]] = tmpmodel.vx
+        bigVY[istart[i]:istop[i]] = tmpmodel.vy
+      
+    if nonaligned:
+        outputFile = modeldir + 'nonaligned_model_OSIRIScoords.dat'
+    else:
+        outputFile = modeldir + 'aligned_model_OSIRIScoords.dat'
+        
+    np.savetxt(outputFile,np.c_[bigX,bigY,bigZ,bigVX,bigVY,bigVZ],fmt='%8.6f',delimiter='\t')
+
+    print "Time elapsed: ", time.time() - t1, "s"
+
+def run_once_osiris_convert(xy,vxy,rotMat,set,contmpdir):
+    
+    for i in range(len(xy)):
+        tmp = rotMat.dot(xy[i])
+        tmpv = rotMat.dot(vxy[i])
+        if i==0:
+            outXY = tmp
+            outV_XY = tmpv
+        else:
+            outXY = np.squeeze(outXY)
+            outV_XY = np.squeeze(outV_XY)
+            outXY = np.append(outXY,tmp,axis=0)
+            outV_XY = np.append(outV_XY,tmpv,axis=0)
+
+    tmpx, tmpy = np.hsplit(outXY, 2)
+    tmpvx, tmpvy = np.hsplit(outV_XY, 2)
+
+    outputFile = contmpdir + 'convertOSIRIS_'+str(set)+'.dat'    
+    np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpvx,tmpvy],fmt='%8.6f',delimiter='\t')
+    
+class modelResults(object):
+    def __init__(self,inputFile=None,nonaligned=True,skycoords=True,OSIRIS=False):
+
+        if inputFile:
+            inputFile = inputFile
+        else:
+            if nonaligned:
+                if skycoords:
+                    inputFile = modeldir + 'nonaligned_model_skycoords.dat'
+                    if OSIRIS:
+                        inputFile = modeldir + 'nonaligned_model_OSIRIScoords.dat'
+                else:
+                    inputFile = modeldir + 'nonaligned_model.dat'
+            else:
+                if skycoords:
+                    inputFile = modeldir + 'aligned_model_skycoords.dat'
+                    if OSIRIS:
+                        inputFile = modeldir + 'aligned_model_OSIRIScoords.dat'
+                else:
+                    inputFile = modeldir + 'aligned_model.dat'
 
         model = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
+    
         self.x = model.x
         self.y = model.y
         self.z = model.z
