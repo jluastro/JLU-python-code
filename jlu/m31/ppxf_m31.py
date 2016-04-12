@@ -27,6 +27,7 @@ datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 contmpdir = workdir+'tmp_convert/'
+modelworkdir = '/Users/kel/Documents/Projects/M31/analysis_new/modeling/'
 
 #cuberoot = 'm31_all_semerr'
 cuberoot = 'm31_all'
@@ -1453,18 +1454,21 @@ def precessionSpeed():
     py.plot(verrs, sigPErrs)
     #py.show()
 
-def plotModelKinematics(nonaligned=True,clean=False,trim=False):
+def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
 
-    if nonaligned:
-        if clean:
-            inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat'
-        else:
-            inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_full.dat'
+    if inputFile:
+        inputFile=inputFile
     else:
-        if clean:
-            inputFile = modeldir + 'aligned_OSIRIScoords_fits_clean.dat'
+        if nonaligned:
+            if clean:
+                inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat'
+            else:
+                inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_full.dat'
         else:
-            inputFile = modeldir + 'aligned_OSIRIScoords_fits_full.dat'
+            if clean:
+                inputFile = modeldir + 'aligned_OSIRIScoords_fits_clean.dat'
+            else:
+                inputFile = modeldir + 'aligned_OSIRIScoords_fits_full.dat'
 
     model = modelFitResults(inputFile)
 
@@ -1555,12 +1559,12 @@ def plotModelKinematics(nonaligned=True,clean=False,trim=False):
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4')
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     py.tight_layout()
 
-    py.savefig(workdir + 'plots/model_kinematics.png')
-    py.savefig(workdir + 'plots/model_kinematics.eps')
+    py.savefig(modelworkdir + 'plots/model_kinematics.png')
+    py.savefig(modelworkdir + 'plots/model_kinematics.eps')
     py.show()
 
 def modelBin(nonaligned=True,clean=False):
@@ -1577,7 +1581,8 @@ def modelBin(nonaligned=True,clean=False):
     #### is returned by the fitter) are also discarded and 0 recorded for all kinematic
     #### parameters.
 
-    py.ioff()
+    if clean:
+        from scipy.optimize import OptimizeWarning
 
     model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
 
@@ -1618,8 +1623,32 @@ def modelBin(nonaligned=True,clean=False):
         modvx = np.array(model.vx)
         modvy = np.array(model.vy)
         modvz = np.array(model.vz)
+        # create the irange array
+        # this array starts in the center then steps its way out, alternating sides
+        # the maximum number of particles are near the center, so this should speed up the where
+        # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
         for i in range(len(leftxbound)):
-            for j in range(len(bottomybound)):
+            if i==0:
+                irangetmp = np.array([np.floor(len(leftxbound)/2.)])
+            else:
+                tmp = irangetmp[-1] + (((-1.)**i)*i)
+                irangetmp = np.append(irangetmp,tmp)
+        badilo = np.where(irangetmp < 0.)
+        irangetmp2 = np.delete(irangetmp,badilo)
+        badihi = np.where(irangetmp2 > len(leftxbound))
+        irange = np.delete(irangetmp2,badihi)
+        for j in range(len(bottomybound)):
+            if j == 0:
+                jrangetmp = np.array([np.floor(len(bottomybound)/2.)])
+            else:
+                tmp = jrangetmp[-1] + (((-1.)**j)*j)
+                jrangetmp = np.append(jrangetmp,tmp)
+        badjlo = np.where(jrangetmp < 0.)
+        jrangetmp2 = np.delete(jrangetmp,badjlo)
+        badjhi = np.where(jrangetmp2 > len(bottomybound))
+        jrange = np.delete(jrangetmp2,badjhi)
+        for i in irange:
+            for j in jrange:
                 good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
                 # nstar is the number of star particles in the bin
                 ntmp = good[0].shape[0]
