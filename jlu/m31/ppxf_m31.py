@@ -1453,6 +1453,116 @@ def precessionSpeed():
     py.plot(verrs, sigPErrs)
     #py.show()
 
+def plotModelKinematics(nonaligned=True,clean=False,trim=False):
+
+    if nonaligned:
+        if clean:
+            inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat'
+        else:
+            inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_full.dat'
+    else:
+        if clean:
+            inputFile = modeldir + 'aligned_OSIRIScoords_fits_clean.dat'
+        else:
+            inputFile = modeldir + 'aligned_OSIRIScoords_fits_full.dat'
+
+    model = modelFitResults(inputFile)
+
+    # trim model results to match OSIRIS FOV
+    trimrange = [[37.,84.],[18.,99.]]
+    if trim:
+        modbhpos = bhpos
+        xaxis = np.arange(trimrange[0][1]-trimrange[0][0]) * 0.05
+        yaxis = np.arange(trimrange[1][1]-trimrange[1][0]) * 0.05
+    else:
+        modbhpos = [((model.velocity.shape[0]/2.)+.5) * 0.05,((model.velocity.shape[1]/2.)+.5) * 0.05]
+        xaxis = np.arange(model.velocity.shape[0]) * 0.05
+        yaxis = np.arange(model.velocity.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(10,12))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot Velocity
+    ##########
+    py.subplot(2, 2, 1)
+    if trim:
+        velimg = model.velocity[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+    else:
+        velimg = model.velocity
+        #py.ma.masked_where(velimg == 0.,velimg)
+    py.imshow(velimg, vmin=-250., vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')    
+
+    ##########
+    # Plot Dispersion
+    ##########
+    py.subplot(2, 2, 2)
+    if trim:
+        sigimg = model.sigma[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+    else:
+        sigimg = model.sigma
+    py.imshow(py.ma.masked_where(sigimg == 0.,sigimg), vmin=0., vmax=250.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion (km/s)')
+
+    ##########
+    # Plot h3
+    ##########
+    py.subplot(2, 2, 3)
+    if trim:
+        h3img = model.h3[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+    else:
+        h3img = model.h3
+    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    ##########
+    # Plot h4
+    ##########
+    py.subplot(2, 2, 4)
+    if trim:
+        h4img = model.h4[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+    else:
+        h4img = model.h4
+    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    pdb.set_trace()
+
+    py.tight_layout()
+
+    py.savefig(workdir + 'plots/model_kinematics.png')
+    py.savefig(workdir + 'plots/model_kinematics.eps')
+    py.show()
+
 def modelBin(nonaligned=True,clean=False):
     ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
     #### match OSIRIS observations), bins individual stellar particles to match the
@@ -1552,18 +1662,19 @@ def modelBin(nonaligned=True,clean=False):
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
-            elif model.x.shape[0] == 1:
+            elif model.x.shape[0] <= 6:
                 if clean:
                     losv[i,j] = 0.
                 else:
-                    losv[i,j] = model.vz
+                    losv[i,j] = np.mean(model.vz)
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
             else:
                 # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
                 binsize = 5.
-                ny, bins, patches = py.hist(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize),facecolor='green',alpha=.75)
+                #ny, bins, patches = py.hist(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize),facecolor='green',alpha=.75)
+                ny, bins = py.histogram(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize,binsize))
                 if clean:
                     try:
                         popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
@@ -1594,11 +1705,17 @@ def modelBin(nonaligned=True,clean=False):
                         h4[i,j] = 0.                    
                 py.close()
         # code crashes after exiting this loop (why??), so setting output here for now
-        if i == len(leftxbound)-1:
+        if i == (len(leftxbound)-1):
             if nonaligned:
-                output = open(modeldir + 'nonaligned_OSIRIScoords_fits.dat', 'w')
+                if clean:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
             else:
-                output = open(modeldir + 'aligned_OSIRIScoords_fits.dat', 'w')
+                if clean:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
         
             pickle.dump(nstar, output)
             pickle.dump(losv, output)
@@ -1618,7 +1735,7 @@ def gaussHermite(x,gamma,v,sigma,h3,h4):
     return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
 
 class modelFitResults(object):
-    def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits.dat'):
+    def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits_full.dat'):
         self.inputFile = inputFile
         
         input = open(inputFile, 'r')
