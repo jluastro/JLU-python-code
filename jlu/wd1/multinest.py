@@ -9,8 +9,10 @@ import scipy
 import scipy.stats
 import pymultinest
 import math
+import pyfits
 import pdb
 import os
+import pickle
 import random
 
 defaultAge = 7.0
@@ -103,7 +105,7 @@ def random_Mcl(x):
 
 def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
                   data_tab='catalog_diffDered_NN_opt_10.fits',
-                  comp_tab='completeness_vs_mag.fits',
+                  comp_tab='completeness_ccmd.fits',
                   out_dir='multinest/fit_0001/'):
     
     if not os.path.exists(root_dir + out_dir):
@@ -111,6 +113,14 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
 
     # Input the observed data
     t = Table.read(root_dir + data_tab)
+
+    # Input the completeness table and bins.
+    completeness_map = pyfits.getdata(root_dir + comp_tab)
+    completeness_map = completeness_map.T
+    _in_bins = open(root_dir + comp_tab.replace('.fits', '_bins.pickle'), 'r')
+    bins_mag = pickle.load(_in_bins)
+    bins_col1 = pickle.load(_in_bins)
+    bins_col2 = pickle.load(_in_bins)
 
     # Some components of our model are static.
     imf_multi = multiplicity.MultiplicityUnresolved()
@@ -132,20 +142,9 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
     #   col1 = m_2005_F814W - m_2010_F160W
     #   col2 = m_2010_F125W - m_2010_F160W
     #
-    bins_mag = np.arange(10, 20, 0.25)
-    bins_col1 = np.arange(3.0, 7.0, 0.20)
-    bins_col2 = np.arange(0.5, 1.6, 0.05)
     bins = np.array([bins_mag, bins_col1, bins_col2])
     
 
-    ##########
-    # Completeness Map
-    ##########
-    c = Table.read(comp_tab)
-    c_mag = c['']
-
-    
- 
     def priors(cube, ndim, nparams):
         return   
     
@@ -176,42 +175,66 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
         cluster = synthetic.ResolvedClusterDiffRedden(new_iso, new_imf, Mcl_sim, 
                                                       par['dAKs'], red_law=red_law)
 
-        # Convert simulated cluster into magnitude-color-color histogram
+        # Convert simulated cluster into agnitude-color-color histogram
+        mag = cluster.star_systems['mag160w']
+        col1 = cluster.star_systems['mag814w'] - mag
+        col2 = cluster.star_systems['mag125w'] - mag
+
+        data = np.array([mag, col1, col2]).T
+        bins = np.array([bins_mag, bins_col1, bins_col2])
+
+        H_sim_c, edges = np.histogramdd(data, bins=bins, normed=True)
+        H_sim = H_sim_c * completeness_map
+        
+        # Convert Observed cluster into magnitude-color-color histogram
         mag = t['m_2010_F160W']
         col1 = t['m_2005_F814W'] - t['m_2010_F160W']
         col2 = t['m_2010_F125W'] - t['m_2010_F160W']
         
-        data = np.array([mag, col1, col2])
+        data = np.array([mag, col1, col2]).T
         bins = np.array([bins_mag, bins_col1, bins_col2])
 
-        H_all, edges = np.histogramdd(data, bins=bins)
-        H_obs = H_all * completeness_map
+        H_obs, edges = np.histogramdd(data, bins=bins)
+
+        # Plotting
+        extent = (bins_col1[0], bins_col2[-1], bins_mag[0], bins_mag[-1])
+        py.figure(1)
+        py.clf()
+        py.imshow(H_sim_c.sum(axis=2), extent=extent)
+        py.gca().invert_yaxis()
+        py.colorbar()
+        py.axis('tight')
+        py.title('Sim Complete')
+
+        py.figure(2)
+        py.clf()
+        py.imshow(H_sim.sum(axis=2), extent=extent)
+        py.gca().invert_yaxis()
+        py.colorbar()
+        py.axis('tight')
+        py.title('Sim Incomplete')
         
+        py.figure(3)
+        py.clf()
+        py.imshow(H_obs.sum(axis=2), extent=extent)
+        py.gca().invert_yaxis()
+        py.colorbar()
+        py.axis('tight')
+        py.title('Obs Incomplete')
+
+        py.figure(4)
+        py.clf()
+        py.imshow(completeness_map.mean(axis=2), extent=extent,
+                  vmin=0, vmax=1)
+        py.gca().invert_yaxis()
+        py.colorbar()
+        py.axis('tight')
+        py.title('Completeness Map')
+                
         pdb.set_trace()
         
         mcc_cluster = 1
 
-        ## Find the relationship of magnitudes as a function of mass.
-        obj125=interpolate.splrep(iso.mass,iso.mag125,k=1,s=0)
-        obj139=interpolate.splrep(iso.mass,iso.mag139,k=1,s=0)
-        obj160=interpolate.splrep(iso.mass,iso.mag160,k=1,s=0)
-        obj814=interpolate.splrep(iso.mass,iso.mag814,k=1,s=0)
-        
-        u125=interpolate.splev(t.mass,obj125)
-        u139=interpolate.splev(t.mass,obj139)
-        u160=interpolate.splev(t.mass,obj160)
-        u814=interpolate.splev(t.mass,obj814)
-        t.add_column('u125',u125)
-        t.add_column('u139',u139)
-        t.add_column('u160',u160)
-        t.add_column('u814',u814)
-
-        likei = np.log10(1./(2.*np.pi*t.mag125_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag125-t.u125)**2./2./t.mag125_e**2.)
-        + np.log10(1./(2.*np.pi*t.mag160_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag160-t.u160)**2./2./t.mag160_e**2.)
-        + np.log10(1./(2.*np.pi*t.mag814_e**2.)**0.5) + np.log10(np.e)*(-1.*(t.mag814-t.u814)**2./2./t.mag814_e**2.)
-
-        if count139==True:
-            likei+=np.log10(1./(2.*np.pi*t.mag139_e**2.)**0.5)+np.log10(np.e)*(-1.*(t.mag139-t.u139)**2./2./t.mag139_e**2.)
 
         print likei.sum()
         return likei.sum()

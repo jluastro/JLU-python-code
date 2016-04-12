@@ -456,6 +456,11 @@ def loadData(catalogfile, vel_err, mag_err, rotate=True):
     d['fit_vxe'] *= pscale 
     d['fit_vye'] *= pscale
 
+    d['fit_x0'] *= pscale / 1e3
+    d['fit_y0'] *= pscale / 1e3
+    d['fit_x0e'] *= pscale / 1e3
+    d['fit_y0e'] *= pscale / 1e3
+
     # Applying the error cuts, only to F153m filter
     lowErr = np.where((d['fit_vxe'] < vel_err) &
                       (d['fit_vye'] < vel_err) &
@@ -468,6 +473,9 @@ def loadData(catalogfile, vel_err, mag_err, rotate=True):
 
     #--- If rotate flag, then rotate to RA/DEC ---#
     if rotate:
+        center = np.array([d_trim['fit_x0'].mean(), d_trim['fit_y0'].mean()])
+        x0_tmp, y0_tmp = pos_rotate(d_trim['fit_x0'], d_trim['fit_y0'], angle, center)  
+        x0e_tmp, y0e_tmp = velerr_rotate(d_trim['fit_x0e'], d_trim['fit_y0e'], angle)
         vx_tmp, vy_tmp = vel_rotate(d_trim['fit_vx'], d_trim['fit_vy'], angle)  
         vxe_tmp, vye_tmp = velerr_rotate(d_trim['fit_vxe'], d_trim['fit_vye'], angle)
 
@@ -475,6 +483,11 @@ def loadData(catalogfile, vel_err, mag_err, rotate=True):
         d_trim['fit_vy'] = vy_tmp
         d_trim['fit_vxe'] = vxe_tmp
         d_trim['fit_vye'] = vye_tmp
+
+        d_trim['fit_x0'] = x0_tmp * -1.0
+        d_trim['fit_y0'] = y0_tmp
+        d_trim['fit_x0e'] = x0e_tmp
+        d_trim['fit_y0e'] = y0_tmp
         
     return d_trim
 
@@ -853,7 +866,8 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
     magcut: phot error cut (mag)
     N_gauss: number of gaussians
     
-    Identifies stars with a cluster membership probability GREATER THAN prob as high-prob members
+    Identifies stars with a cluster membership probability GREATER THAN
+    prob as high-prob members.
     
     Produces new catalog cluster.fits which only contains cluster members. THIS HAS POSITIONS/PMs
     IN PIXELS. Membership probabilities are added in last column. Also makes new catalog
@@ -867,7 +881,7 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
     If rotate = True, rotates velocities to RA/DEC to calculate membership probs.
     NOT COMPATABLE WITH MAKING VPD!!!
     """
-    #Extract catalog data
+    # Extract catalog data
     d = loadData(catalogfile, velcut, magcut, rotate=rotate)
 
     star_xpos_pix = d['x_2010_F160W']
@@ -1017,6 +1031,15 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
 
     return 
 
+
+def pos_rotate(x, y, angle, center):
+    cosa = np.cos(angle)
+    sina = np.sin(angle)
+    
+    x_new = ((x - center[0]) * cosa) + ((y - center[1]) * sina)
+    y_new = (-1.0 * (x - center[0]) * sina) + ((y - center[1]) * cosa)
+        
+    return x_new, y_new
 
 def vel_rotate(x, y, angle):
     cosa = np.cos(angle)
