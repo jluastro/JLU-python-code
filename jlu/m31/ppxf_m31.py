@@ -1473,13 +1473,15 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     model = modelFitResults(inputFile)
 
     # trim model results to match OSIRIS FOV
-    trimrange = [[37.,84.],[18.,99.]]
+    trimrange = [[41.,88.],[21.,102.]]
     if trim:
         modbhpos = bhpos
         xaxis = np.arange(trimrange[0][1]-trimrange[0][0]) * 0.05
         yaxis = np.arange(trimrange[1][1]-trimrange[1][0]) * 0.05
     else:
-        modbhpos = [((model.velocity.shape[0]/2.)+.5) * 0.05,((model.velocity.shape[1]/2.)+.5) * 0.05]
+        # modbhpos given by modelBin
+        # PA = -34
+        modbhpos = [63.5 * 0.05, 58.5 * 0.05]
         xaxis = np.arange(model.velocity.shape[0]) * 0.05
         yaxis = np.arange(model.velocity.shape[1]) * 0.05
     
@@ -1495,11 +1497,10 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 1)
     if trim:
-        velimg = model.velocity[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+        velimg = model.velocity[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
     else:
         velimg = model.velocity
-        #py.ma.masked_where(velimg == 0.,velimg)
-    py.imshow(velimg, vmin=-250., vmax=250., 
+    py.imshow(velimg.transpose(), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1513,12 +1514,12 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 2)
     if trim:
-        sigimg = model.sigma[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+        sigimg = model.sigma[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
     else:
         sigimg = model.sigma
-    py.imshow(py.ma.masked_where(sigimg == 0.,sigimg), vmin=0., vmax=250.,
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
-              cmap=py.cm.jet)
+    py.imshow(sigimg.transpose(), vmin=0., vmax=250.,
+                extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+                cmap=py.cm.jet)
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1530,9 +1531,10 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 3)
     if trim:
-        h3img = model.h3[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+        h3img = model.h3[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        h3img = h3img.transpose()
     else:
-        h3img = model.h3
+        h3img = model.h3.transpose()
     py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
@@ -1547,9 +1549,10 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 4)
     if trim:
-        h4img = model.h4[trimrange[1][0]:trimrange[1][1],trimrange[0][0]:trimrange[0][1]]
+        h4img = model.h4[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        h4img = h4img.transpose()
     else:
-        h4img = model.h4
+        h4img = model.h4.transpose()
     py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
@@ -1601,6 +1604,10 @@ def modelBin(nonaligned=True,clean=False):
     negybin = np.ceil(np.abs(np.min(model.y)/binpc))
     nybin = posybin + negybin
 
+    modbhpos = [negxbin+0.5,negybin+0.5]
+    print "Model BH is at ", modbhpos
+    #pdb.set_trace()
+
     nstar = np.zeros((nxbin,nybin))
     losv = np.zeros((nxbin,nybin))
     sigma = np.zeros((nxbin,nybin))
@@ -1611,6 +1618,33 @@ def modelBin(nonaligned=True,clean=False):
     bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
 
     t1 = time.time()
+
+    # create the irange array
+    # this array starts in the center then steps its way out, alternating sides
+    # the maximum number of particles are near the center, so this should speed up the where
+    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
+    for i in range(int(nxbin)):
+        if i==0:
+            irangetmp = np.array([np.floor(nxbin/2)])
+        else:
+            tmp = irangetmp[-1] + (((-1)**i)*i)
+            irangetmp = np.append(irangetmp,tmp)
+    badilo = np.where(irangetmp < 0)
+    irangetmp2 = np.delete(irangetmp,badilo)
+    badihi = np.where(irangetmp2 > len(leftxbound))
+    irange = np.delete(irangetmp2,badihi)
+    irange = irange.astype(int)
+    for j in range(int(nybin)):
+        if j == 0:
+            jrangetmp = np.array([np.floor(nybin/2)])
+        else:
+            tmp = jrangetmp[-1] + (((-1)**j)*j)
+            jrangetmp = np.append(jrangetmp,tmp)
+    badjlo = np.where(jrangetmp < 0)
+    jrangetmp2 = np.delete(jrangetmp,badjlo)
+    badjhi = np.where(jrangetmp2 > len(bottomybound))
+    jrange = np.delete(jrangetmp2,badjhi)
+    jrange = jrange.astype(int)
     
     # this loop is solely for binning the particles and writing their locations/velocities
     # to a separate file for each bin
@@ -1623,30 +1657,6 @@ def modelBin(nonaligned=True,clean=False):
         modvx = np.array(model.vx)
         modvy = np.array(model.vy)
         modvz = np.array(model.vz)
-        # create the irange array
-        # this array starts in the center then steps its way out, alternating sides
-        # the maximum number of particles are near the center, so this should speed up the where
-        # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
-        for i in range(len(leftxbound)):
-            if i==0:
-                irangetmp = np.array([np.floor(len(leftxbound)/2.)])
-            else:
-                tmp = irangetmp[-1] + (((-1.)**i)*i)
-                irangetmp = np.append(irangetmp,tmp)
-        badilo = np.where(irangetmp < 0.)
-        irangetmp2 = np.delete(irangetmp,badilo)
-        badihi = np.where(irangetmp2 > len(leftxbound))
-        irange = np.delete(irangetmp2,badihi)
-        for j in range(len(bottomybound)):
-            if j == 0:
-                jrangetmp = np.array([np.floor(len(bottomybound)/2.)])
-            else:
-                tmp = jrangetmp[-1] + (((-1.)**j)*j)
-                jrangetmp = np.append(jrangetmp,tmp)
-        badjlo = np.where(jrangetmp < 0.)
-        jrangetmp2 = np.delete(jrangetmp,badjlo)
-        badjhi = np.where(jrangetmp2 > len(bottomybound))
-        jrange = np.delete(jrangetmp2,badjhi)
         for i in irange:
             for j in jrange:
                 good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
@@ -1654,7 +1664,7 @@ def modelBin(nonaligned=True,clean=False):
                 ntmp = good[0].shape[0]
                 nstar[i,j] = ntmp
                 # write just these particles out to a file
-                outputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat'
+                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
                 tmpx = modx[good[0]]
                 tmpy = mody[good[0]]
                 tmpz = modz[good[0]]
@@ -1678,14 +1688,16 @@ def modelBin(nonaligned=True,clean=False):
     if clean:
         warnings.simplefilter("error", OptimizeWarning)            
     # this loop does the LOSVD fits for each bin, to get the kinematics
-    for i in range(len(leftxbound)):
+    for i in range(int(nxbin)):
         print "Starting column ", i
-        for j in range(len(bottomybound)):
+        for j in range(int(nybin)):
             model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
             # make sure that nstar is populated - if binning code and outputs were run separately
             # previously, it will not yet have been filled in
             if nstar[i,j] == 0.:
                 nstar[i,j] = model.x.shape[0]
+            # v_LOS = -v_z
+            modvLOS = -1.* model.vz
             if model.x.shape[0] == 0:
                 losv[i,j] = 0.
                 sigma[i,j] = 0.
@@ -1695,18 +1707,24 @@ def modelBin(nonaligned=True,clean=False):
                 if clean:
                     losv[i,j] = 0.
                 else:
-                    losv[i,j] = np.mean(model.vz)
+                    losv[i,j] = np.mean(modvLOS)
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
             else:
                 # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
-                binsize = 5.
-                #ny, bins, patches = py.hist(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize),facecolor='green',alpha=.75)
-                ny, bins = py.histogram(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize,binsize))
+                #binsize = 5.
+                binsize = 1.
+                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
+                gamma0 = ny.sum()
+                v0 = np.mean(modvLOS)
+                s0 = np.std(modvLOS)
+                h3_0 = 0.
+                h4_0 = 0.
+                guess = [gamma0, v0, s0, h3_0, h4_0]
                 if clean:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -1720,7 +1738,7 @@ def modelBin(nonaligned=True,clean=False):
                         h4[i,j] = 0.
                 else:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -1728,13 +1746,13 @@ def modelBin(nonaligned=True,clean=False):
                         h4[i,j] = popt[4]
                     except (RuntimeError):
                         # if no fit is possible, take the mean
-                        losv[i,j] = np.mean(model.vz)
+                        losv[i,j] = np.mean(modvLOS)
                         sigma[i,j] = 0.
                         h3[i,j] = 0.
                         h4[i,j] = 0.                    
                 py.close()
         # code crashes after exiting this loop (why??), so setting output here for now
-        if i == (len(leftxbound)-1):
+        if i == (nxbin-1):
             if nonaligned:
                 if clean:
                     output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
@@ -1761,7 +1779,8 @@ def gaussHermite(x,gamma,v,sigma,h3,h4):
     a = (x - v)/sigma
     H3 = (1./np.sqrt(6.)) * (2.*np.sqrt(2)*(a**3) - 3.*np.sqrt(2)*a)
     H4 = (1./np.sqrt(24)) * (4.*(a**4) - 12.*(a**2) + 3.)
-    return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
+    #return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
+    return (gamma / (sigma*np.sqrt(2.*math.pi))) * np.exp((-0.5)*(a**2.)) * (1. + h3*H3 + h4*H4)
 
 class modelFitResults(object):
     def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits_full.dat'):
@@ -1874,16 +1893,18 @@ def run_once_convert(xyz,vxyz,matL,matI,matA,set,contmpdir):
 def modelOSIRISrotation(nonaligned=True):
     # transforming from sky coordinates (+Y is north, +X is west) to OSIRIS coordinates,
     ### taking into account the PA
-    
-    model = modelResults(nonaligned,skycoords=True)
+
+    if nonaligned:
+        model = modelResults(nonaligned=True,skycoords=True)
+    else:
+        model = modelResults(nonaligned=False,skycoords=True)
 
     t1 = time.time()
 
     # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
     # by definition of the rotation matrix
-    pa = 56.0
-    # taking the complementary angle for the rotation
-    cpa = 90. - pa
+    cpa = -34.
+    
     thetaCPA = np.radians(cpa)
 
     rotMat = np.matrix([[np.cos(thetaCPA),-np.sin(thetaCPA)],[np.sin(thetaCPA),np.cos(thetaCPA)]])
