@@ -7,6 +7,7 @@ import math, glob
 import scipy
 import scipy.interpolate
 from scipy.optimize import curve_fit#, OptimizeWarning
+from scipy import signal
 from gcwork import objects
 import pdb
 import ppxf
@@ -16,6 +17,7 @@ import pandas
 import astropy
 import os
 import warnings
+from jlu.m31 import ifu
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -1497,7 +1499,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 1)
     if trim:
-        velimg = model.velocity[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        velimg = trimModel(model.velocity)
     else:
         velimg = model.velocity
     py.imshow(velimg.transpose(), vmin=-250., vmax=250.,
@@ -1514,7 +1516,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 2)
     if trim:
-        sigimg = model.sigma[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        sigimg = trimModel(model.sigma)
     else:
         sigimg = model.sigma
     py.imshow(sigimg.transpose(), vmin=0., vmax=250.,
@@ -1531,7 +1533,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 3)
     if trim:
-        h3img = model.h3[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        h3img = trimModel(model.h3)
         h3img = h3img.transpose()
     else:
         h3img = model.h3.transpose()
@@ -1549,7 +1551,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     ##########
     py.subplot(2, 2, 4)
     if trim:
-        h4img = model.h4[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+        h4img = trimModel(model.h4)
         h4img = h4img.transpose()
     else:
         h4img = model.h4.transpose()
@@ -1570,6 +1572,237 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     py.savefig(modelworkdir + 'plots/model_kinematics.eps')
     py.show()
 
+def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputRes=workdir+'model_residuals.dat'):
+
+    data = PPXFresults(inputData)
+    model = modelFitResults(inputModel)
+    res = modelFitResults(inputRes)
+
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+
+    xaxis = np.arange(data.velocity.shape[0]) * 0.05
+    yaxis = np.arange(data.velocity.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(22,8))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot flux/nstar
+    ##########
+    py.subplot(1,3,1)
+    py.imshow((cubeimg/cubeimg.max()).transpose(),vmin=0.,vmax=1.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Flux (norm)')
+
+    py.subplot(1,3,2)
+    py.imshow((trimModel(model.nstar)/trimModel(model.nstar).max()).transpose(),vmin=0.,vmax=1.,
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model, number of stars (norm)')
+
+    py.subplot(1,3,3)
+    py.imshow(res.nstar.transpose(),vmin=-.25,vmax=.25,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Normed flux residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_flux.png')
+    py.savefig(modelworkdir + 'plots/residuals_flux.eps')
+    py.show()
+
+    ##########
+    # Plot velocity
+    ##########  
+    py.clf()
+
+    py.subplot(1,3,1)
+    py.imshow(data.velocity.transpose()+308.,vmin=-250.,vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')
+
+    py.subplot(1,3,2)
+    py.imshow(trimModel(model.velocity).transpose(),vmin=-250.,vmax=250., 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model velocity (km/s)')
+
+    py.subplot(1,3,3)
+    py.imshow(res.velocity.transpose(),vmin=-100.,vmax=200., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity residuals (km/s)')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_velocity.png')
+    py.savefig(modelworkdir + 'plots/residuals_velocity.eps')
+    py.show()
+
+    ##########
+    # Plot sigma
+    ##########  
+    py.clf()
+
+    py.subplot(1,3,1)
+    py.imshow(data.sigma.transpose(),vmin=0.,vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Sigma (km/s)')
+
+    py.subplot(1,3,2)
+    py.imshow(trimModel(model.sigma).transpose(),vmin=0.,vmax=250., 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model sigma (km/s)')
+
+    py.subplot(1,3,3)
+    py.imshow(res.sigma.transpose(),vmin=-100.,vmax=100., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Sigma residuals (km/s)')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_sigma.png')
+    py.savefig(modelworkdir + 'plots/residuals_sigma.eps')
+    py.show()
+
+    ##########
+    # Plot h3
+    ##########  
+    py.clf()
+
+    py.subplot(1,3,1)
+    py.imshow(data.h3.transpose(),vmin=-0.2,vmax=0.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    py.subplot(1,3,2)
+    py.imshow(trimModel(model.h3).transpose(),vmin=-0.2,vmax=0.2, 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model h3')
+
+    py.subplot(1,3,3)
+    py.imshow(res.h3.transpose(),vmin=-0.2,vmax=0.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3 residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_h3.png')
+    py.savefig(modelworkdir + 'plots/residuals_h3.eps')
+    py.show()
+
+    ##########
+    # Plot h4
+    ##########  
+    py.clf()
+
+    py.subplot(1,3,1)
+    py.imshow(data.h4.transpose(),vmin=-0.2,vmax=0.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    py.subplot(1,3,2)
+    py.imshow(trimModel(model.h4).transpose(),vmin=-0.2,vmax=0.2, 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model h4')
+
+    py.subplot(1,3,3)
+    py.imshow(res.h4.transpose(),vmin=-0.2,vmax=0.2, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4 residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_h4.png')
+    py.savefig(modelworkdir + 'plots/residuals_h4.eps')
+    py.show()
+
+
+
+def trimModel(input):
+
+    # trim models to match OSIRIS FOV
+    # set up for PA = -34
+    trimrange = [[41.,88.],[21.,102.]]
+    return input[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+    
+    
 def modelBin(nonaligned=True,clean=False):
     ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
     #### match OSIRIS observations), bins individual stellar particles to match the
@@ -1792,6 +2025,66 @@ class modelFitResults(object):
         self.sigma = pickle.load(input)
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
+
+def smoothModels(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full.dat', inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt', twoGauss=False):
+
+    model = modelFitResults(inputFile=inputModel)
+
+    if twoGauss:
+        PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=True)
+    else:
+        PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=False)
+
+    PSF = ifu.gauss_kernel(PSFparams.sig1[0], PSFparams.amp1[0], half_box=50)
+    nstar = signal.convolve(model.nstar,PSF,mode='same')
+    velocity = signal.convolve(model.velocity,PSF,mode='same')
+    sigma = signal.convolve(model.sigma,PSF,mode='same')
+    h3 = signal.convolve(model.h3,PSF,mode='same')
+    h4 = signal.convolve(model.h4,PSF,mode='same')
+
+    output = open(modeldir + 'aligned_OSIRIScoords_fits_full_smooth.dat', 'w')                    
+        
+    pickle.dump(nstar, output)
+    pickle.dump(velocity, output)
+    pickle.dump(sigma, output)
+    pickle.dump(h3, output)
+    pickle.dump(h4, output)
+    output.close()
+
+def modelResiduals(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputData=workdir+'ppxf.dat'):
+
+    model = modelFitResults(inputFile=inputModel)
+    data = PPXFresults(inputFile=inputData)
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+
+    # normalized flux residuals
+    nstar = (cubeimg/cubeimg.max()) - (trimModel(model.nstar)/trimModel(model.nstar).max())
+    velocity = (data.velocity+308.) - py.ma.masked_where(data.velocity == 0.,trimModel(model.velocity))
+    sigma = data.sigma - py.ma.masked_where(data.sigma == 0.,trimModel(model.sigma))
+    h3 = data.h3 - py.ma.masked_where(data.h3 == 0.,trimModel(model.h3))
+    h4 = data.h4 - py.ma.masked_where(data.h4 == 0.,trimModel(model.h4))
+
+    output = open(workdir+'model_residuals.dat','w')
+
+    pickle.dump(nstar, output)
+    pickle.dump(velocity, output)
+    pickle.dump(sigma, output)
+    pickle.dump(h3, output)
+    pickle.dump(h4, output)
+    output.close()    
+        
+class readPSFparams(object):
+    def __init__(self, inputFile = workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt',twoGauss=False):
+        self.inputFile = inputFile
+
+        if twoGauss:
+            input = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['h1','sig1','h3','h4','h5','amp1','h6','h7','r1','r2','x1','x2','y1','y2','s1','s2'],usecols=['sig1','amp1'])
+            self.sig1 = input.sig1
+            self.amp1 = input.amp1
+        else:
+            input = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['h1','sig1','h2','amp1','r1','r2','x1','x2','y1','y2','s1','s2'],usecols=['sig1','amp1'])
+            self.sig1 = input.sig1
+            self.amp1 = input.amp1
     
 def modelConvertCoordinates(nonaligned=True):
     if nonaligned:
