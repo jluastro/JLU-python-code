@@ -31,8 +31,8 @@ modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 contmpdir = workdir+'tmp_convert/'
 modelworkdir = '/Users/kel/Documents/Projects/M31/analysis_new/modeling/'
 
-#cuberoot = 'm31_all_semerr'
-cuberoot = 'm31_all'
+cuberoot = 'm31_all_semerr'
+#cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
 #cuberoot = 'm31_all_seventherr'
 #cuberoot = 'm31_all_scalederr'
@@ -196,12 +196,15 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(verbose=True,newTemplates=True,blue=False,red=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
     # Read in the data cube.
-    cubefits = pyfits.open(datadir + cuberoot + '.fits')
+    if inputFile:
+        cubefits = pyfits.open(inputFile)
+    else:
+        cubefits = pyfits.open(datadir + cuberoot + '.fits')
     
     cube = cubefits[0].data
     hdr = cubefits[0].header
@@ -297,8 +300,10 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
 
     # get all the xx,yy pair possiblities - setup for parallel processing
-    xx = np.arange(8, newCube.shape[0]-8)
-    yy = np.arange(10, newCube.shape[1]-10)
+    #xx = np.arange(8, newCube.shape[0]-8)
+    #yy = np.arange(10, newCube.shape[1]-10)
+    xx = np.arange(newCube.shape[0])
+    yy = np.arange(newCube.shape[1])
     allxxyylist = list(itertools.product(xx, yy))
     allxxyy = np.array(allxxyylist)
     allxx, allyy = zip(*itertools.product(xx, yy))
@@ -310,9 +315,11 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     print "Starting pp with", job_server.get_ncpus(), "workers"
     t1=time.time()
     jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
-    #test=[0,1,2,3]
-    #jobs = [(i, job_server.submit(run_once, (newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[i]), (), ('numpy as np','time','ppxf'))) for i in test]
-    #test = run_once(newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[0])
+    #test=np.array([(0,0),(0,5),(10,30)])
+    #test=np.array([(10,30)])
+    #jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf','pdb'))) for i in test]
+    #test = run_once(newCube[10,30,:],newErrors[10,30,:]+1.,templates,velScale,start,goodPixels,dv,[10,30])
+    job_server.wait()
     #pdb.set_trace()
     for i, job in jobs:
         print "Setting output of ", i
@@ -320,17 +327,29 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
         #pdb.set_trace()
         xx = i[0]
         yy = i[1]
-        solution = job.result.sol
-        velocity[xx, yy] = solution[0]
-        sigma[xx, yy] = solution[1]
-        h3[xx, yy] = solution[2]
-        h4[xx, yy] = solution[3]
-        #h5[xx, yy] = solution[4]
-        #h6[xx, yy] = solution[5]
-        chi2red[xx, yy] = job.result.chi2
+        if job.result==None:
+            velocity[xx, yy] = 0
+            sigma[xx, yy] = 0
+            h3[xx, yy] = 0
+            h4[xx, yy] = 0
+            #h5[xx, yy] = 0
+            #h6[xx, yy] = 0
+            chi2red[xx, yy] = 0
 
-        pweights[xx, yy, :] = job.result.polyweights
-        tweights[xx, yy, :] = job.result.weights
+            pweights[xx, yy, :] = 0
+            tweights[xx, yy, :] = 0
+        else:
+            solution = job.result.sol
+            velocity[xx, yy] = solution[0]
+            sigma[xx, yy] = solution[1]
+            h3[xx, yy] = solution[2]
+            h4[xx, yy] = solution[3]
+            #h5[xx, yy] = solution[4]
+            #h6[xx, yy] = solution[5]
+            chi2red[xx, yy] = job.result.chi2
+
+            pweights[xx, yy, :] = job.result.polyweights
+            tweights[xx, yy, :] = job.result.weights
         
         
     #pdb.set_trace()
@@ -369,8 +388,9 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,ve
             
     galaxy = tmp2
     error = tmperr
-   
+
     outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+
     #pdb.set_trace()
     return outppxf
 
