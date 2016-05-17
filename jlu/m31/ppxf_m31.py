@@ -31,11 +31,12 @@ modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 contmpdir = workdir+'tmp_convert/'
 modelworkdir = '/Users/kel/Documents/Projects/M31/analysis_new/modeling/'
 
-cuberoot = 'm31_all_semerr'
+#cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
 #cuberoot = 'm31_all_seventherr'
 #cuberoot = 'm31_all_scalederr'
+cuberoot = 'm31_all_scalederr_cleanhdr'
 
 cc = objects.Constants()
 
@@ -43,7 +44,11 @@ cc = objects.Constants()
 # analysis between NIRC2 and HST. This is the position
 # in the osiris cubes.
 #bhpos = np.array([8.7, 39.1]) * 0.05 # python coords, not ds9
-bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
+#bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
+# position in new mosaic, 2016/05
+#bhpos = np.array([20.,41.]) * 0.05
+# position in new mosaic, using new Lauer F435 frame
+bhpos = np.array([19.1,40.7]) * 0.05
 
 def run():
     """
@@ -519,10 +524,12 @@ def runErrorMC(newTemplates=True,jackknife=False,test=False):
         yy = [35]
         #xx = [17,18]
         #yy = [35,35]
-        xx = [8,23,38]
+        xx = [0,1]
     else:
-        xx = np.arange(8, newCube.shape[0]-8)
-        yy = np.arange(10, newCube.shape[1]-10)
+        #xx = np.arange(8, newCube.shape[0]-8)
+        #yy = np.arange(10, newCube.shape[1]-10)
+        xx = np.arange(newCube.shape[0])
+        yy = np.arange(newCube.shape[1])
         
     allxxyylist = list(itertools.product(xx,yy))
     allxxyy = np.array(allxxyylist)
@@ -532,7 +539,7 @@ def runErrorMC(newTemplates=True,jackknife=False,test=False):
     t1=time.time()
     jobs = [(i,job_server.submit(run_once_mc, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
     #test = run_once_mc(newCube[allxxyy[0,0],allxxyy[0,1]],newErrors[allxxyy[0,0],allxxyy[0,1]],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,allxxyy[0])
-
+    #pdb.set_trace()
     # wait for all the jobs to finish before proceeding
     job_server.wait()
     # pdb.set_trace()
@@ -647,33 +654,36 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
 
     pweights = np.zeros((iter, 5), dtype=float)
     tweights = np.zeros((iter, templates.shape[1]), dtype=float)
-        
-    for n in range(iter):
-        if jackknife:
-            specSim = tmp
-        else:
-            specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
+
+    # check if the error array is all 0 - if so, bad spaxel so
+    # just leave the zeros in the initialized array
+    if tmperr.mean() != 0.:
+        for n in range(iter):
+            if jackknife:
+                specSim = tmp
+            else:
+                specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
             
-        galaxy = specSim
-        error = tmperr
+            galaxy = specSim
+            error = tmperr
 
-        if jackknife:
-            templatesJK = np.zeros((templates.shape[0],templates.shape[1]), dtype=float)
-            templatesJK[:,0:(n-1)] = templates[:,0:(n-1)]
-            templatesJK[:,(n+1):] = templates[:,(n+1):]
-        else:
-            templatesJK = templates
+            if jackknife:
+                templatesJK = np.zeros((templates.shape[0],templates.shape[1]), dtype=float)
+                templatesJK[:,0:(n-1)] = templates[:,0:(n-1)]
+                templatesJK[:,(n+1):] = templates[:,(n+1):]
+            else:
+                templatesJK = templates
         
-        p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+            p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
 
-        solution = p.sol
-        velocity[n] = solution[0]
-        sigma[n] = solution[1]
-        h3[n] = solution[2]
-        h4[n] = solution[3]
-        chi2red[n] = p.chi2
-        pweights[n,:] = p.polyweights
-        tweights[n,:] = p.weights
+            solution = p.sol
+            velocity[n] = solution[0]
+            sigma[n] = solution[1]
+            h3[n] = solution[2]
+            h4[n] = solution[3]
+            chi2red[n] = p.chi2
+            pweights[n,:] = p.polyweights
+            tweights[n,:] = p.weights
 
     velocityAvg = np.average(velocity)
     velocityErr = np.std(velocity)
@@ -792,7 +802,7 @@ def plotResults(inputFile):
     # Plot Cube Image
     ##########
     py.subplot(1, 4, 1)
-    cubeimg=cubeimg.transpose()
+    #cubeimg=cubeimg.transpose()
     py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
@@ -1071,7 +1081,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     ##########
     py.subplot(2, 3, 1)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(velimg, vmin=-250., vmax=250., 
+    py.imshow(py.ma.masked_where(velimg==308.,velimg), vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1084,7 +1094,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     
     py.subplot(2,3,2)
     velavg = a.velocity.transpose()+308.0
-    py.imshow(velavg, vmin=-250., vmax=250.,
+    py.imshow(py.ma.masked_where(velavg==308.,velavg), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1095,7 +1105,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2,3,3)
     velerr = e.velocity.transpose()
-    py.imshow(velerr, vmin=0., vmax=205.,
+    py.imshow(py.ma.masked_where(velerr==0.,velerr), vmin=0., vmax=40.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1109,7 +1119,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     ##########
     py.subplot(2, 3, 4)
     sigimg = p.sigma.transpose()
-    py.imshow(sigimg, vmin=0., vmax=250.,
+    py.imshow(py.ma.masked_where(sigimg==0.,sigimg), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1120,7 +1130,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 5)
     sigavg = a.sigma.transpose()
-    py.imshow(sigavg, vmin=0., vmax=250.,
+    py.imshow(py.ma.masked_where(sigavg==0.,sigimg), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1131,7 +1141,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
 
     py.subplot(2, 3, 6)
     sigerr = e.sigma.transpose()
-    py.imshow(sigerr, vmin=0., vmax=200.,
+    py.imshow(py.ma.masked_where(sigerr==0.,sigerr), vmin=0., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
@@ -1495,7 +1505,9 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     model = modelFitResults(inputFile)
 
     # trim model results to match OSIRIS FOV
-    trimrange = [[41.,88.],[21.,102.]]
+    #trimrange = [[41.,88.],[21.,102.]]
+    # updated trim to match new BH coordinates
+    trimrange = [[43.5,84.5],[17.5,101.5]]
     if trim:
         modbhpos = bhpos
         xaxis = np.arange(trimrange[0][1]-trimrange[0][0]) * 0.05
@@ -1522,7 +1534,8 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
         velimg = trimModel(model.velocity)
     else:
         velimg = model.velocity
-    py.imshow(velimg.transpose(), vmin=-250., vmax=250.,
+    #py.imshow(velimg.transpose(), vmin=-250., vmax=250.,
+    py.imshow(velimg.transpose(), vmin=-50., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1557,7 +1570,8 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
         h3img = h3img.transpose()
     else:
         h3img = model.h3.transpose()
-    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2, 
+    #py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2,
+    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.05, vmax=.05, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1575,7 +1589,8 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
         h4img = h4img.transpose()
     else:
         h4img = model.h4.transpose()
-    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+    #py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.05, vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
     py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
@@ -1592,7 +1607,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     py.savefig(modelworkdir + 'plots/model_kinematics.eps')
     py.show()
 
-def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputRes=workdir+'model_residuals.dat'):
+def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputRes=workdir+'model_residuals.dat',nonaligned=True):
 
     data = PPXFresults(inputData)
     model = modelFitResults(inputModel)
@@ -1614,7 +1629,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     # Plot flux/nstar
     ##########
     py.subplot(1,3,1)
-    py.imshow((cubeimg/cubeimg.max()).transpose(),vmin=0.,vmax=1.,
+    py.imshow((cubeimg/cubeimg.max()),vmin=0.,vmax=1.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1624,7 +1639,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('Flux (norm)')
 
     py.subplot(1,3,2)
-    py.imshow((trimModel(model.nstar)/trimModel(model.nstar).max()).transpose(),vmin=0.,vmax=1.,
+    py.imshow((trimModel(model.nstar,nonaligned=nonaligned)/trimModel(model.nstar,nonaligned=nonaligned).max()).transpose(),vmin=0.,vmax=1.,
             extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1665,7 +1680,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('Velocity (km/s)')
 
     py.subplot(1,3,2)
-    py.imshow(trimModel(model.velocity).transpose(),vmin=-250.,vmax=250., 
+    py.imshow(trimModel(model.velocity,nonaligned=nonaligned).transpose(),vmin=-250.,vmax=250., 
             extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1706,7 +1721,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('Sigma (km/s)')
 
     py.subplot(1,3,2)
-    py.imshow(trimModel(model.sigma).transpose(),vmin=0.,vmax=250., 
+    py.imshow(trimModel(model.sigma,nonaligned=nonaligned).transpose(),vmin=0.,vmax=250., 
             extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1733,12 +1748,14 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     ##########
     # Plot h3
-    ##########  
+    ##########
+    py.close(2)
+    py.figure(2, figsize=(22,8))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95) 
     py.clf()
 
     py.subplot(1,3,1)
-    py.imshow(data.h3.transpose(),vmin=-0.2,vmax=0.2, 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(data.h3.transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1747,8 +1764,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('h3')
 
     py.subplot(1,3,2)
-    py.imshow(trimModel(model.h3).transpose(),vmin=-0.2,vmax=0.2, 
-            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(trimModel(model.h3,nonaligned=nonaligned).transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1757,8 +1773,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('Model h3')
 
     py.subplot(1,3,3)
-    py.imshow(res.h3.transpose(),vmin=-0.2,vmax=0.2, 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(res.h3.transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1772,14 +1787,18 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.savefig(modelworkdir + 'plots/residuals_h3.eps')
     py.show()
 
+    py.close(2)
+    py.figure(2, figsize=(22,8))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+    
     ##########
     # Plot h4
     ##########  
     py.clf()
 
     py.subplot(1,3,1)
-    py.imshow(data.h4.transpose(),vmin=-0.2,vmax=0.2, 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(data.h4.transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1788,8 +1807,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('h4')
 
     py.subplot(1,3,2)
-    py.imshow(trimModel(model.h4).transpose(),vmin=-0.2,vmax=0.2, 
-            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(trimModel(model.h4,nonaligned=nonaligned).transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1798,8 +1816,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     cbar.set_label('Model h4')
 
     py.subplot(1,3,3)
-    py.imshow(res.h4.transpose(),vmin=-0.2,vmax=0.2, 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.imshow(res.h4.transpose(),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -1815,15 +1832,25 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
 
 
-def trimModel(input):
+def trimModel(input,nonaligned=True):
 
     # trim models to match OSIRIS FOV
     # set up for PA = -34
-    trimrange = [[41.,88.],[21.,102.]]
+    #trimrange = [[41.,88.],[21.,102.]]
+    # new trimrange to match new BH position
+    #trimrange = [[43.5,84.5],[17.5,101.5]]
+    # BHpos (data) = [19.1,  40.7]
+    if nonaligned:
+        # BHpos (nonaligned) = [63.954999999999998, 59.034999999999997]
+        trimrange = [[44.9,85.9],[18.3,102.3]]
+    else:
+        # BHpos (aligned) = [54.954999999999998, 59.034999999999997]
+        trimrange = [[35.9, 75.9],[18.3,102.3]]
+        
     return input[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
     
     
-def modelBin(nonaligned=True,clean=False):
+def modelBin(inputFile=None,nonaligned=True,clean=False):
     ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
     #### match OSIRIS observations), bins individual stellar particles to match the
     #### spaxel size in observations, and fits LOSVDs to the resulting velocity
@@ -1840,14 +1867,22 @@ def modelBin(nonaligned=True,clean=False):
     if clean:
         from scipy.optimize import OptimizeWarning
 
-    model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+    if inputFile:
+        model=modelResults(inputFile)
+    else:
+        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
 
     # bin size = 0.05" = 0.1865 pc
     binpc = 0.1865
     
     # BH position in the OSIRIS data: [22.5, 37.5]. Matching pixel phase, 0.5*0.05" = 0.09325 pc:
-    model.x += 0.09325
-    model.y += 0.09325
+    #model.x += 0.09325
+    #model.y += 0.09325
+    # new BH position: [19.1, 40.6]
+    xfrac = bhpos[0]-np.floor(bhpos[0])
+    yfrac = bhpos[1]-np.floor(bhpos[1])
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
 
     # get the full size of the binned array, but making sure to leave bin boundaries on the axes
     posxbin = np.ceil(np.max(model.x)/binpc)
@@ -1857,7 +1892,8 @@ def modelBin(nonaligned=True,clean=False):
     negybin = np.ceil(np.abs(np.min(model.y)/binpc))
     nybin = posybin + negybin
 
-    modbhpos = [negxbin+0.5,negybin+0.5]
+    #modbhpos = [negxbin+0.5,negybin+0.5]
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
     print "Model BH is at ", modbhpos
     #pdb.set_trace()
 
@@ -2076,6 +2112,7 @@ def modelResiduals(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth
     model = modelFitResults(inputFile=inputModel)
     data = PPXFresults(inputFile=inputData)
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    cubeimg = cubeimg.transpose()
 
     # normalized flux residuals
     nstar = (cubeimg/cubeimg.max()) - (trimModel(model.nstar)/trimModel(model.nstar).max())
