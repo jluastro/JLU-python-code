@@ -203,7 +203,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -299,12 +299,20 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
     sigma = np.zeros(imgShape, dtype=float)
     h3 = np.zeros(imgShape, dtype=float)
     h4 = np.zeros(imgShape, dtype=float)
+    if twocomp:
+        velocity2 = np.zeros(imgShape, dtype=float)
+        sigma2 = np.zeros(imgShape, dtype=float)
+        h3_2 = np.zeros(imgShape, dtype=float)
+        h4_2 = np.zeros(imgShape, dtype=float)
     h5 = np.zeros(imgShape, dtype=float)
     h6 = np.zeros(imgShape, dtype=float)
     chi2red = np.zeros(imgShape, dtype=float)
 
     pweights = np.zeros((newCube.shape[0], newCube.shape[1], 5), dtype=float)
-    tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
+    if twocomp:
+        tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]*2), dtype=float)
+    else:
+        tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
     bestfit = np.zeros((newCube.shape[0], newCube.shape[1], len(idx)), dtype=float)
 
     # get all the xx,yy pair possiblities - setup for parallel processing
@@ -322,11 +330,11 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
     job_server = pp.Server()
     print "Starting pp with", job_server.get_ncpus(), "workers"
     t1=time.time()
-    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
     #test=np.array([(0,0),(0,5),(10,30)])
     #test=np.array([(10,30)])
-    #jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf','pdb'))) for i in test]
-    #test = run_once(newCube[10,30,:],newErrors[10,30,:]+1.,templates,velScale,start,goodPixels,dv,[10,30])
+    #jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf','pdb'))) for i in test]
+    #test = run_once(newCube[20,45,:],newErrors[20,45,:]+1.,templates,velScale,start,goodPixels,dv,twocomp,[20,45])
     job_server.wait()
     #pdb.set_trace()
     for i, job in jobs:
@@ -336,6 +344,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
         xx = i[0]
         yy = i[1]
         if job.result==None:
+            # don't actually need this, since they're all 0 initially
             velocity[xx, yy] = 0
             sigma[xx, yy] = 0
             h3[xx, yy] = 0
@@ -348,11 +357,23 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
             tweights[xx, yy, :] = 0
             bestfit[xx, yy, :] = 0
         else:
-            solution = job.result.sol
-            velocity[xx, yy] = solution[0]
-            sigma[xx, yy] = solution[1]
-            h3[xx, yy] = solution[2]
-            h4[xx, yy] = solution[3]
+            if twocomp:
+                solution = job.result.sol[0]
+                velocity[xx, yy] = solution[0]
+                sigma[xx, yy] = solution[1]
+                #h3[xx, yy] = solution[2]
+                #h4[xx, yy] = solution[3]
+                solution2 = job.result.sol[1]
+                velocity2[xx, yy] = solution2[0]
+                sigma2[xx, yy] = solution2[1]
+                #h3_2[xx, yy] = solution2[2]
+                #h4_2[xx, yy] = solution2[3]
+            else:
+                solution = job.result.sol
+                velocity[xx, yy] = solution[0]
+                sigma[xx, yy] = solution[1]
+                h3[xx, yy] = solution[2]
+                h4[xx, yy] = solution[3]
             #h5[xx, yy] = solution[4]
             #h6[xx, yy] = solution[5]
             chi2red[xx, yy] = job.result.chi2
@@ -370,6 +391,11 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
     pickle.dump(sigma, output)
     pickle.dump(h3, output)
     pickle.dump(h4, output)
+    if twocomp:
+        pickle.dump(velocity2, output)
+        pickle.dump(sigma2, output)
+        pickle.dump(h3_2, output)
+        pickle.dump(h4_2, output)
     pickle.dump(h5, output)
     pickle.dump(h6, output)
     pickle.dump(chi2red, output)
@@ -381,7 +407,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False):
 
     print "Time elapsed: ", time.time() - t1, "s"
 
-def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,verbose=False):
+def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,allxxyy,verbose=False):
     xx = allxxyy[0]
     yy = allxxyy[1]
 
@@ -402,7 +428,12 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,ve
     galaxy = tmp2
     error = tmperr
 
-    outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+    if twocomp:
+        templates2 = np.concatenate((templates,templates),axis=1)
+        outppxf = ppxf.ppxf(templates2, galaxy, error, velScale, [start,start], goodpixels=goodPixels, plot=False, moments=[2,2], mdegree=4, vsyst=vsyst,component=[0]*23+[1]*23)
+    else:
+        outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+    
 
     #pdb.set_trace()
     return outppxf
@@ -750,7 +781,7 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     #pdb.set_trace()
     
 class PPXFresults(object):
-    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False):
+    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False,twocomp=False):
         self.inputFile = inputFile
         
         input = open(inputFile, 'r')
@@ -758,6 +789,11 @@ class PPXFresults(object):
         self.sigma = pickle.load(input)
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
+        if twocomp:
+            self.velocity2 = pickle.load(input)
+            self.sigma2 = pickle.load(input)
+            self.h3_2 = pickle.load(input)
+            self.h4_2 = pickle.load(input)
         self.h5 = pickle.load(input)
         self.h6 = pickle.load(input)
         self.chi2red = pickle.load(input)
@@ -1018,10 +1054,10 @@ def plotResults2(inputFile):
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
-def plotResults3(inputFile,zoom=False):
+def plotResults3(inputFile,zoom=False,twocomp=False):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
-
-    p = PPXFresults(inputFile)
+       
+    p = PPXFresults(inputFile,twocomp=twocomp)
 
     xaxis = np.arange(cubeimg.shape[0]) * 0.05
     yaxis = np.arange(cubeimg.shape[1]) * 0.05
@@ -1051,7 +1087,10 @@ def plotResults3(inputFile,zoom=False):
     # Plot Velocity
     ##########
     py.subplot(2, 2, 1)
-    velimg = p.velocity.transpose()+308.0
+    if twocomp:
+        velimg = p.velocity2.transpose()+308.0
+    else:
+        velimg = p.velocity.transpose()+308.0
     py.imshow(np.rot90(py.ma.masked_where(velimg[x0:x1,y0:y1]==308.,velimg[x0:x1,y0:y1]),3), vmin=-250., vmax=250.,
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
     py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
@@ -1066,7 +1105,10 @@ def plotResults3(inputFile,zoom=False):
     # Plot Dispersion
     ##########
     py.subplot(2, 2, 2)
-    sigimg = p.sigma.transpose()
+    if twocomp:
+        sigimg = p.sigma2.transpose()
+    else:
+       sigimg = p.sigma.transpose()
     py.imshow(np.rot90(py.ma.masked_where(sigimg[x0:x1,y0:y1]==0.,sigimg[x0:x1,y0:y1]),3), vmin=0., vmax=250.,
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]],
               cmap=py.cm.jet)
@@ -1081,8 +1123,11 @@ def plotResults3(inputFile,zoom=False):
     # Plot h3
     ##########
     py.subplot(2, 2, 3)
-    h3img = p.h3.transpose()
-    py.imshow(np.rot90(py.ma.masked_where(h3img[x0:x1,y0:y1]==0, h3img[x0:x1,y0:y1]),3), 
+    if twocomp:
+        h3img = p.h3_2.transpose()
+    else:
+        h3img = p.h3.transpose()
+    py.imshow(np.rot90(py.ma.masked_where(h3img[x0:x1,y0:y1]==0, h3img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
     py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
@@ -1096,8 +1141,11 @@ def plotResults3(inputFile,zoom=False):
     # Plot h4
     ##########
     py.subplot(2, 2, 4)
-    h4img = p.h4.transpose()
-    py.imshow(np.rot90(py.ma.masked_where(h4img[x0:x1,y0:y1]==0, h4img[x0:x1,y0:y1]),3), 
+    if twocomp:
+        h4img = p.h4_2.transpose()
+    else:
+        h4img = p.h4.transpose()
+    py.imshow(np.rot90(py.ma.masked_where(h4img[x0:x1,y0:y1]==0, h4img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
     py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
@@ -2279,9 +2327,9 @@ def modelConvertCoordinates(nonaligned=True,test=False):
     ### angles originally measured in degrees
     if nonaligned:
         if test:
-            thetaL = np.radians(-25)
-            thetaI = np.radians(54.1)
-            thetaA = np.radians(-34.5)
+            thetaL = np.radians(0.)
+            thetaI = np.radians(10.)
+            thetaA = np.radians(45.)
         else:
             thetaL = np.radians(-42.8)
             thetaI = np.radians(54.1)
@@ -2373,14 +2421,17 @@ def run_once_convert(xyz,vxyz,matL,matI,matA,set,contmpdir):
 
     np.savetxt(contmpdir + 'convert_'+str(set)+'.dat',np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
 
-def modelOSIRISrotation(nonaligned=True):
+def modelOSIRISrotation(inputFile=None,nonaligned=True):
     # transforming from sky coordinates (+Y is north, +X is west) to OSIRIS coordinates,
     ### taking into account the PA
 
-    if nonaligned:
-        model = modelResults(nonaligned=True,skycoords=True)
+    if inputFile:
+        model = modelResults(inputFile)
     else:
-        model = modelResults(nonaligned=False,skycoords=True)
+        if nonaligned:
+            model = modelResults(nonaligned=True,skycoords=True)
+        else:
+            model = modelResults(nonaligned=False,skycoords=True)
 
     t1 = time.time()
 
