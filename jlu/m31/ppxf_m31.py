@@ -17,7 +17,7 @@ import pandas
 import astropy
 import os
 import warnings
-from jlu.m31 import ifu
+#from jlu.m31 import ifu
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -2012,8 +2012,10 @@ def trimModel(input,nonaligned=True):
     #trimrange = [[43.5,84.5],[17.5,101.5]]
     # BHpos (data) = [19.1,  40.7]
     if nonaligned:
-        # BHpos (nonaligned) = [63.954999999999998, 59.034999999999997]
+        # BHpos (nonaligned, PA=-34) = [63.954999999999998, 59.034999999999997]
         trimrange = [[44.9,85.9],[18.3,102.3]]
+        # BHpos (nonaligned, PA=-56) = [57.954999999999998, 58.034999999999997]
+        #trimrange = [[38.9,79.9],[17.3,101.3]]
     else:
         # BHpos (aligned) = [54.954999999999998, 59.034999999999997]
         trimrange = [[35.9, 75.9],[18.3,102.3]]
@@ -2021,7 +2023,7 @@ def trimModel(input,nonaligned=True):
     return input[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
     
     
-def modelBin(inputFile=None,nonaligned=True,clean=False):
+def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
     #### match OSIRIS observations), bins individual stellar particles to match the
     #### spaxel size in observations, and fits LOSVDs to the resulting velocity
@@ -2044,14 +2046,17 @@ def modelBin(inputFile=None,nonaligned=True,clean=False):
         model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
 
     # bin size = 0.05" = 0.1865 pc
-    binpc = 0.1865
+    if l98bin:
+        binpc = 0.08504
+    else:
+        binpc = 0.1865
     
-    # BH position in the OSIRIS data: [22.5, 37.5]. Matching pixel phase, 0.5*0.05" = 0.09325 pc:
-    #model.x += 0.09325
-    #model.y += 0.09325
-    # new BH position: [19.1, 40.6]
+    # Setting the BH pixel phase to match that of the data
     xfrac = bhpos[0]-np.floor(bhpos[0])
     yfrac = bhpos[1]-np.floor(bhpos[1])
+    if l98bin:
+        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
+        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
     model.x += (binpc*xfrac)
     model.y += (binpc*yfrac)
 
@@ -2063,7 +2068,6 @@ def modelBin(inputFile=None,nonaligned=True,clean=False):
     negybin = np.ceil(np.abs(np.min(model.y)/binpc))
     nybin = posybin + negybin
 
-    #modbhpos = [negxbin+0.5,negybin+0.5]
     modbhpos = [negxbin+xfrac,negybin+yfrac]
     print "Model BH is at ", modbhpos
     #pdb.set_trace()
@@ -2074,10 +2078,13 @@ def modelBin(inputFile=None,nonaligned=True,clean=False):
     h3 = np.zeros((nxbin,nybin))
     h4 = np.zeros((nxbin,nybin))
 
+    # left/bottom edges of each spaxel
     leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
     bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
 
     t1 = time.time()
+
+    #bins = 
 
     # create the irange array
     # this array starts in the center then steps its way out, alternating sides
@@ -2269,7 +2276,7 @@ def smoothModels(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full.dat', in
     h3 = signal.convolve(model.h3,PSF,mode='same')
     h4 = signal.convolve(model.h4,PSF,mode='same')
 
-    output = open(modeldir + 'aligned_OSIRIScoords_fits_full_smooth.dat', 'w')                    
+    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full_smooth.dat', 'w')                    
         
     pickle.dump(nstar, output)
     pickle.dump(velocity, output)
@@ -2437,7 +2444,8 @@ def modelOSIRISrotation(inputFile=None,nonaligned=True):
 
     # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
     # by definition of the rotation matrix
-    cpa = -34.
+    #cpa = -34.
+    cpa = -56.
     
     thetaCPA = np.radians(cpa)
 
