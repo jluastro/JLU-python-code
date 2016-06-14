@@ -44,10 +44,13 @@ def createVoronoiInput():
         for ny in yy:
             tmpcube = cube[nx,ny]
             # add a constant to the spectrum to make it above 0
-            minFlux = tmpcube.mean() - (3.0 * tmpcube.std())
-            tmpcube += minFlux
+            #print "old cube mean is %f " % tmpcube.mean()
+            minFlux = tmpcube.mean() - (1.0 * tmpcube.std())
+            #print "minflux is %f" % minFlux
+            tmpcube += np.abs(minFlux)
+            #print "new cube mean is %f " % tmpcube.mean()
             tmpcubeavg = tmpcube.mean()
-            tmpsnr = snrimg[nx,ny]
+            tmpsnr = np.abs(snrimg[nx,ny])
             # calc errors for tessellation based on the empirical
             # S/N already calculated
             tmperr = tmpcubeavg/tmpsnr
@@ -69,14 +72,42 @@ def tessellate(inputFile=datadir+cuberoot+'_vor.fits',targetSN=50):
     hdr = cubefits[0].header
     errors = cubefits[1].data
 
+    #pdb.set_trace()
     #xx = np.arange(cube.shape[0])
     #yy = np.arange(cube.shape[1])
-    good = np.where(cube > 0)
+    good = np.where((cube > 0) & (errors > 0) & ((cube/errors) >=2.))
+    goodbad=np.zeros((cube.shape[0],cube.shape[1]),dtype=float)
+    goodbad[good]=1.
     xx = good[1]
     yy = good[0]
+    #pdb.set_trace()
+    binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale, pixSize = v2d.voronoi_2d_binning(xx, yy, cube[good], errors[good], targetSN, plot=1, quiet=0)
 
-    binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale = v2d.voronoi_2d_binning(xx, yy, cube[good], errors[good], targetSN, plot=1, quiet=0)
+    py.clf()
+    py.subplot(211)
+    rnd = np.argsort(np.random.random(xNode.size))  # Randomize bin colors
+    # added in flips to display in the same orientation as the data
+    # divide by 20 to put in arcsec (0.05 arcsec per pixel)
+    v2d._display_pixels(xx/20., np.flipud(yy)/20., rnd[binNum], pixSize/20., horflip=True)
+    py.plot(xNode/20., yNode/20., '+w', scalex=False, scaley=False) # do not rescale after imshow()
+    py.xlabel('R (arcsec)')
+    py.ylabel('R (arcsec)')
+    py.title('Map of Voronoi bins')
+    
+    py.subplot(212)
+    rad = np.sqrt(xBar**2 + yBar**2)  # Use centroids, NOT generators
+    w = nPixels == 1
+    py.plot(rad[~w]/20., sn[~w], 'or', label='Voronoi bins')
+    py.xlabel('R (arcsec)')
+    py.ylabel('Bin S/N')
+    py.axis([np.min(rad/20.), np.max(rad/20.), 0, np.max(sn)])  # x0, x1, y0, y1
+    if np.sum(w) > 0:
+        py.plot(rad[w]/20., sn[w], 'xb', label='single spaxels')
+    py.axhline(targetSN)
+    py.legend()
+    py.pause(0.01)  # allow plot to appear in certain cases
 
+    pdb.set_trace()
     np.savetxt(datadir+'voronoi_2d_binning_output.txt', np.column_stack([xx, yy, binNum]),
                fmt=b'%10.6f %10.6f %8i')
 
