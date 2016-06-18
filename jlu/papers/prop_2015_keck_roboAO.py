@@ -2,6 +2,8 @@ import numpy as np
 import pylab as py
 from astropy.table import Table
 from astropy.table import Column
+from scipy.interpolate import interp1d
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 
 work_dir = '/u/jlu/work/ao/roboAO'
 
@@ -85,4 +87,68 @@ def plot_sensitivity_curve(tint=1200, spec_res=100):
     py.xlim(15, 21)
     py.savefig(in_file + '_snr_sum_j_proposal.png')
 
+    return
+
+def plot_bulk_flow():
+    prop_dir = '/u/jlu/doc/proposals/nsf/msip/2016/uh_rts/'
+
+    obs_data = Table.read(prop_dir + 'flows_redcurves.txt', format='ascii')
+    sim_data = Table.read(prop_dir + 'flows_blackcurves.txt', format='ascii')
+
+    obs_int = interp1d(obs_data['col1'], obs_data['col2'], kind='cubic')
+    obs_err_int = interp1d(obs_data['col1'], obs_data['col3'], kind='cubic')
+
+    sim_int = interp1d(sim_data['col1'], sim_data['col2'], kind='cubic')
+    sim_err_int = interp1d(sim_data['col1'], sim_data['col3'], kind='cubic')
+
+    vel_exp_obs = np.arange(10, 400, 5)
+    vel_exp_sim = np.arange(40, 400, 5)
+    
+    obs = obs_int(vel_exp_obs)
+    obs_err = obs_err_int(vel_exp_obs)
+    obs_hi = obs + obs_err
+    obs_lo = obs - obs_err
+
+    sim = sim_int(vel_exp_sim)
+    sim_err = sim_err_int(vel_exp_sim)
+    sim_hi = sim + sim_err
+    sim_lo = sim - sim_err
+
+    H0 = 71.0 # km/s/Mpc
+    
+    d = vel_exp_obs * 100.0 / H0
+
+    verr = 431. * d**-0.5
+    
+    
+    ##########
+    # Plotting
+    ##########
+    py.clf()
+    py.plot(vel_exp_sim, sim, 'b-', label='Theory')
+    py.fill_between(vel_exp_sim, sim_lo, sim_hi, color='b', alpha=0.1)
+    
+    py.plot(vel_exp_obs, obs, 'r-', label='Observed')
+    py.fill_between(vel_exp_obs, obs_lo, obs_hi, color='r', alpha=0.2)
+    py.fill_between(vel_exp_obs, obs + verr, obs - verr, color='r', alpha=0.5)
+    
+    py.xlabel('Expansion Velocity [x100 km/s]')
+    py.ylabel('Bulk Peculiar Velocity [km/s]')
+    py.legend()
+
+    py.axvline(120, color='k', linestyle='--')
+    py.axvline(300, color='k', linestyle='--')
+    py.text(115, 430, 'Limit of\nCF2', horizontalalignment='right', fontsize=14)
+    py.text(295, 430, 'Limit of\nRTS', horizontalalignment='right', fontsize=14)
+
+    majorLocator = MultipleLocator(100)
+    minorLocator = MultipleLocator(20)
+    majorFormatter = FormatStrFormatter('%d')
+
+    py.gca().xaxis.set_major_locator(majorLocator)
+    py.gca().xaxis.set_minor_locator(minorLocator)
+    py.gca().xaxis.set_major_formatter(majorFormatter)
+
+    py.savefig(prop_dir + 'vpec_vs_vexp_new.png')
+    
     return
