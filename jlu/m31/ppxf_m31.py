@@ -7,6 +7,7 @@ import math, glob
 import scipy
 import scipy.interpolate
 from scipy.optimize import curve_fit#, OptimizeWarning
+from scipy import signal,ndimage
 from gcwork import objects
 import pdb
 import ppxf
@@ -16,6 +17,7 @@ import pandas
 import astropy
 import os
 import warnings
+#from jlu.m31 import ifu
 
 
 # datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
@@ -27,12 +29,14 @@ datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
 modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
 contmpdir = workdir+'tmp_convert/'
+modelworkdir = '/Users/kel/Documents/Projects/M31/analysis_new/modeling/'
 
 #cuberoot = 'm31_all_semerr'
-cuberoot = 'm31_all'
+#cuberoot = 'm31_all'
 #cuberoot = 'm31_all_halforgerr'
 #cuberoot = 'm31_all_seventherr'
 #cuberoot = 'm31_all_scalederr'
+cuberoot = 'm31_all_scalederr_cleanhdr'
 
 cc = objects.Constants()
 
@@ -40,7 +44,13 @@ cc = objects.Constants()
 # analysis between NIRC2 and HST. This is the position
 # in the osiris cubes.
 #bhpos = np.array([8.7, 39.1]) * 0.05 # python coords, not ds9
-bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
+#bhpos = np.array([22.5, 37.5]) * 0.05 # guessed offset for new M31 mosaic
+# position in new mosaic, 2016/05
+#bhpos = np.array([20.,41.]) * 0.05
+# position in new mosaic, using new Lauer F435 frame
+bhpos = np.array([19.1,40.7]) * 0.05
+# for plotting horizontally
+bhpos_hor = np.array([(83-40.7), 19.1]) * 0.05
 
 def run():
     """
@@ -193,12 +203,15 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(verbose=True,newTemplates=True,blue=False,red=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
     # Read in the data cube.
-    cubefits = pyfits.open(datadir + cuberoot + '.fits')
+    if inputFile:
+        cubefits = pyfits.open(inputFile)
+    else:
+        cubefits = pyfits.open(datadir + cuberoot + '.fits')
     
     cube = cubefits[0].data
     hdr = cubefits[0].header
@@ -286,16 +299,27 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     sigma = np.zeros(imgShape, dtype=float)
     h3 = np.zeros(imgShape, dtype=float)
     h4 = np.zeros(imgShape, dtype=float)
+    if twocomp:
+        velocity2 = np.zeros(imgShape, dtype=float)
+        sigma2 = np.zeros(imgShape, dtype=float)
+        h3_2 = np.zeros(imgShape, dtype=float)
+        h4_2 = np.zeros(imgShape, dtype=float)
     h5 = np.zeros(imgShape, dtype=float)
     h6 = np.zeros(imgShape, dtype=float)
     chi2red = np.zeros(imgShape, dtype=float)
 
     pweights = np.zeros((newCube.shape[0], newCube.shape[1], 5), dtype=float)
-    tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
+    if twocomp:
+        tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]*2), dtype=float)
+    else:
+        tweights = np.zeros((newCube.shape[0], newCube.shape[1], templates.shape[1]), dtype=float)
+    bestfit = np.zeros((newCube.shape[0], newCube.shape[1], len(idx)), dtype=float)
 
     # get all the xx,yy pair possiblities - setup for parallel processing
-    xx = np.arange(8, newCube.shape[0]-8)
-    yy = np.arange(10, newCube.shape[1]-10)
+    #xx = np.arange(8, newCube.shape[0]-8)
+    #yy = np.arange(10, newCube.shape[1]-10)
+    xx = np.arange(newCube.shape[0])
+    yy = np.arange(newCube.shape[1])
     allxxyylist = list(itertools.product(xx, yy))
     allxxyy = np.array(allxxyylist)
     allxx, allyy = zip(*itertools.product(xx, yy))
@@ -306,10 +330,12 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     job_server = pp.Server()
     print "Starting pp with", job_server.get_ncpus(), "workers"
     t1=time.time()
-    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
-    #test=[0,1,2,3]
-    #jobs = [(i, job_server.submit(run_once, (newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[i]), (), ('numpy as np','time','ppxf'))) for i in test]
-    #test = run_once(newCube,errors,templates,velScale,start,goodPixels,dv,allxxyy[0])
+    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    #test=np.array([(0,0),(0,5),(10,30)])
+    #test=np.array([(10,30)])
+    #jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf','pdb'))) for i in test]
+    #test = run_once(newCube[20,45,:],newErrors[20,45,:]+1.,templates,velScale,start,goodPixels,dv,twocomp,[20,45])
+    job_server.wait()
     #pdb.set_trace()
     for i, job in jobs:
         print "Setting output of ", i
@@ -317,17 +343,45 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
         #pdb.set_trace()
         xx = i[0]
         yy = i[1]
-        solution = job.result.sol
-        velocity[xx, yy] = solution[0]
-        sigma[xx, yy] = solution[1]
-        h3[xx, yy] = solution[2]
-        h4[xx, yy] = solution[3]
-        #h5[xx, yy] = solution[4]
-        #h6[xx, yy] = solution[5]
-        chi2red[xx, yy] = job.result.chi2
+        if job.result==None:
+            # don't actually need this, since they're all 0 initially
+            velocity[xx, yy] = 0
+            sigma[xx, yy] = 0
+            h3[xx, yy] = 0
+            h4[xx, yy] = 0
+            #h5[xx, yy] = 0
+            #h6[xx, yy] = 0
+            chi2red[xx, yy] = 0
 
-        pweights[xx, yy, :] = job.result.polyweights
-        tweights[xx, yy, :] = job.result.weights
+            pweights[xx, yy, :] = 0
+            tweights[xx, yy, :] = 0
+            bestfit[xx, yy, :] = 0
+        else:
+            if twocomp:
+                solution = job.result.sol[0]
+                velocity[xx, yy] = solution[0]
+                sigma[xx, yy] = solution[1]
+                #h3[xx, yy] = solution[2]
+                #h4[xx, yy] = solution[3]
+                solution2 = job.result.sol[1]
+                velocity2[xx, yy] = solution2[0]
+                sigma2[xx, yy] = solution2[1]
+                #h3_2[xx, yy] = solution2[2]
+                #h4_2[xx, yy] = solution2[3]
+            else:
+                solution = job.result.sol
+                velocity[xx, yy] = solution[0]
+                sigma[xx, yy] = solution[1]
+                h3[xx, yy] = solution[2]
+                h4[xx, yy] = solution[3]
+            #h5[xx, yy] = solution[4]
+            #h6[xx, yy] = solution[5]
+            chi2red[xx, yy] = job.result.chi2
+
+            pweights[xx, yy, :] = job.result.polyweights
+            tweights[xx, yy, :] = job.result.weights
+            bestfit[xx, yy, :] = job.result.bestfit
+            
         
         
     #pdb.set_trace()
@@ -337,16 +391,23 @@ def run_py(verbose=True,newTemplates=True,blue=False,red=False):
     pickle.dump(sigma, output)
     pickle.dump(h3, output)
     pickle.dump(h4, output)
+    if twocomp:
+        pickle.dump(velocity2, output)
+        pickle.dump(sigma2, output)
+        pickle.dump(h3_2, output)
+        pickle.dump(h4_2, output)
     pickle.dump(h5, output)
     pickle.dump(h6, output)
     pickle.dump(chi2red, output)
     pickle.dump(pweights, output)
     pickle.dump(tweights, output)
+    pickle.dump(newCube, output)
+    pickle.dump(bestfit, output)
     output.close()
 
     print "Time elapsed: ", time.time() - t1, "s"
 
-def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,verbose=False):
+def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,allxxyy,verbose=False):
     xx = allxxyy[0]
     yy = allxxyy[1]
 
@@ -366,8 +427,14 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,allxxyy,ve
             
     galaxy = tmp2
     error = tmperr
-   
-    outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+
+    if twocomp:
+        templates2 = np.concatenate((templates,templates),axis=1)
+        outppxf = ppxf.ppxf(templates2, galaxy, error, velScale, [start,start], goodpixels=goodPixels, plot=False, moments=[2,2], mdegree=4, vsyst=vsyst,component=[0]*23+[1]*23)
+    else:
+        outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+    
+
     #pdb.set_trace()
     return outppxf
 
@@ -496,10 +563,12 @@ def runErrorMC(newTemplates=True,jackknife=False,test=False):
         yy = [35]
         #xx = [17,18]
         #yy = [35,35]
-        xx = [8,23,38]
+        xx = [0,1]
     else:
-        xx = np.arange(8, newCube.shape[0]-8)
-        yy = np.arange(10, newCube.shape[1]-10)
+        #xx = np.arange(8, newCube.shape[0]-8)
+        #yy = np.arange(10, newCube.shape[1]-10)
+        xx = np.arange(newCube.shape[0])
+        yy = np.arange(newCube.shape[1])
         
     allxxyylist = list(itertools.product(xx,yy))
     allxxyy = np.array(allxxyylist)
@@ -509,7 +578,7 @@ def runErrorMC(newTemplates=True,jackknife=False,test=False):
     t1=time.time()
     jobs = [(i,job_server.submit(run_once_mc, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
     #test = run_once_mc(newCube[allxxyy[0,0],allxxyy[0,1]],newErrors[allxxyy[0,0],allxxyy[0,1]],templates,velScale,start,goodPixels,dv,nsim,mctmpdir,jackknife,test,allxxyy[0])
-
+    #pdb.set_trace()
     # wait for all the jobs to finish before proceeding
     job_server.wait()
     # pdb.set_trace()
@@ -624,33 +693,36 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
 
     pweights = np.zeros((iter, 5), dtype=float)
     tweights = np.zeros((iter, templates.shape[1]), dtype=float)
-        
-    for n in range(iter):
-        if jackknife:
-            specSim = tmp
-        else:
-            specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
+
+    # check if the error array is all 0 - if so, bad spaxel so
+    # just leave the zeros in the initialized array
+    if tmperr.mean() != 0.:
+        for n in range(iter):
+            if jackknife:
+                specSim = tmp
+            else:
+                specSim = tmp + (np.random.randn(len(tmp)) * tmperr)
             
-        galaxy = specSim
-        error = tmperr
+            galaxy = specSim
+            error = tmperr
 
-        if jackknife:
-            templatesJK = np.zeros((templates.shape[0],templates.shape[1]), dtype=float)
-            templatesJK[:,0:(n-1)] = templates[:,0:(n-1)]
-            templatesJK[:,(n+1):] = templates[:,(n+1):]
-        else:
-            templatesJK = templates
+            if jackknife:
+                templatesJK = np.zeros((templates.shape[0],templates.shape[1]), dtype=float)
+                templatesJK[:,0:(n-1)] = templates[:,0:(n-1)]
+                templatesJK[:,(n+1):] = templates[:,(n+1):]
+            else:
+                templatesJK = templates
         
-        p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
+            p = ppxf.ppxf(templatesJK, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
 
-        solution = p.sol
-        velocity[n] = solution[0]
-        sigma[n] = solution[1]
-        h3[n] = solution[2]
-        h4[n] = solution[3]
-        chi2red[n] = p.chi2
-        pweights[n,:] = p.polyweights
-        tweights[n,:] = p.weights
+            solution = p.sol
+            velocity[n] = solution[0]
+            sigma[n] = solution[1]
+            h3[n] = solution[2]
+            h4[n] = solution[3]
+            chi2red[n] = p.chi2
+            pweights[n,:] = p.polyweights
+            tweights[n,:] = p.weights
 
     velocityAvg = np.average(velocity)
     velocityErr = np.std(velocity)
@@ -709,7 +781,7 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     #pdb.set_trace()
     
 class PPXFresults(object):
-    def __init__(self, inputFile=workdir+'ppxf.dat'):
+    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False,twocomp=False):
         self.inputFile = inputFile
         
         input = open(inputFile, 'r')
@@ -717,11 +789,19 @@ class PPXFresults(object):
         self.sigma = pickle.load(input)
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
+        if twocomp:
+            self.velocity2 = pickle.load(input)
+            self.sigma2 = pickle.load(input)
+            self.h3_2 = pickle.load(input)
+            self.h4_2 = pickle.load(input)
         self.h5 = pickle.load(input)
         self.h6 = pickle.load(input)
         self.chi2red = pickle.load(input)
         self.pweights = pickle.load(input)
         self.tweights = pickle.load(input)
+        if bestfit:
+            self.galaxy = pickle.load(input)
+            self.bestfit = pickle.load(input)
 
 class PPXFresultsMC(object):
     def __init__(self, inputFile=mctmpdir + '/mc_00_00.dat'):
@@ -756,27 +836,30 @@ def plotResults(inputFile):
     print p.velocity.shape
     print cubeimg.shape
     print bhpos
-    xaxis = np.arange(p.velocity.shape[0]) * 0.05
-    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
     
     xtickLoc = py.MultipleLocator(0.5)
 
-    py.figure(2, figsize=(12,5))
+    #py.figure(2, figsize=(12,5))
+    py.figure(2, figsize=(6,17))
     py.subplots_adjust(left=0.01, right=0.94, top=0.95)
     py.clf()
 
     ##########
     # Plot Cube Image
     ##########
-    py.subplot(1, 4, 1)
-    cubeimg=cubeimg.transpose()
-    py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
+    py.subplot(4, 1, 1)
+    #cubeimg=cubeimg.transpose()
+    cubeimg=py.ma.masked_where(cubeimg==0.,cubeimg)
+    py.imshow(np.rot90(py.ma.masked_where(cubeimg<-10000, cubeimg),3), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Flux (cts/sec)')
 
@@ -784,17 +867,22 @@ def plotResults(inputFile):
     pa = 56.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
-    arr_base = np.array([ xaxis[-1]-0.5, yaxis[-1]-0.6 ])
+    arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
     arr_n = cosSin * 0.2
     arr_w = cosSin[::-1] * 0.2
-    py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+    arr_n_rot90 = cosSin[::-1] * 0.2
+    arr_w_rot90 = cosSin * 0.2
+    #py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_n_rot90[0], arr_n_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    #py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_w_rot90[0], -arr_w_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.text(arr_base[0]+arr_n[0]+0.1, arr_base[1]+arr_n[1]+0.1, 'N', 
+    py.text(arr_base[0]-arr_n[0]-.25, arr_base[1]-arr_n[1]-0.28, 'E', 
             color='white', 
             horizontalalignment='left', verticalalignment='bottom')
-    py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E', 
+    #py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E',
+    py.text(arr_base[0]-arr_n_rot90[0]-0.18, arr_base[1]+arr_n_rot90[1]+0.1, 'N', 
             color='white',
             horizontalalignment='right', verticalalignment='center')
     py.title('K Image')
@@ -804,14 +892,16 @@ def plotResults(inputFile):
     # Plot SNR Image
     ##########
     print snrimg[30,10]
-    py.subplot(1, 4, 2)
+    py.subplot(4, 1, 2)
     snrimg=snrimg.transpose()
+    snrimg=np.rot90(snrimg,3)
     py.imshow(py.ma.masked_invalid(snrimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('SNR')
     py.title('SNR')
@@ -819,13 +909,14 @@ def plotResults(inputFile):
     ##########
     # Plot Velocity
     ##########
-    py.subplot(1, 4, 3)
+    py.subplot(4, 1, 3)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(velimg, vmin=-250., vmax=250.,
+    py.imshow(np.rot90(py.ma.masked_where(velimg==308.,velimg),3), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Velocity (km/s)')
     py.title('Velocity')
@@ -833,14 +924,15 @@ def plotResults(inputFile):
     ##########
     # Plot Dispersion
     ##########
-    py.subplot(1, 4, 4)
+    py.subplot(4, 1, 4)
     sigimg = p.sigma.transpose()
-    py.imshow(sigimg, vmin=0., vmax=250.,
+    py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Dispersion (km/s)')
     py.title('Dispersion')
@@ -852,6 +944,8 @@ def plotResults(inputFile):
 #                  p.velocity[xx:xx+2,yy:yy+2].mean(), 
 #                  p.velocity[xx:xx+2,yy:yy+2].std())
 
+    py.tight_layout()
+    
     py.savefig(workdir + 'plots/kinematic_maps.png')
     py.savefig(workdir + 'plots/kinematic_maps.eps')
     py.show()
@@ -868,28 +962,30 @@ def plotResults2(inputFile):
     print cubeimg.shape
     print bhpos
 
-    xaxis = np.arange(p.velocity.shape[0]) * 0.05
-    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
     
     xtickLoc = py.MultipleLocator(0.5)
 
     py.close(2)
-    py.figure(2, figsize=(22,8))
+    py.figure(2, figsize=(7,15))
     py.subplots_adjust(left=0.05, right=0.94, top=0.95)
     py.clf()
 
     ##########
     # Plot Cube Image
     ##########
-    py.subplot(1, 3, 1)
-    plcube = cubeimg.transpose()
-    py.imshow(py.ma.masked_where(cubeimg<-10000, plcube), 
+    py.subplot(3, 1, 1)
+    #plcube = cubeimg.transpose()
+    cubeimg=py.ma.masked_where(cubeimg==0.,cubeimg)
+    py.imshow(np.rot90(py.ma.masked_where(cubeimg<-10000, cubeimg),3), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Flux (cts/sec)')
 
@@ -897,44 +993,51 @@ def plotResults2(inputFile):
     pa = 56.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
-    arr_base = np.array([ xaxis[-1]-0.5, yaxis[-1]-0.6 ])
+    arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
     arr_n = cosSin * 0.2
     arr_w = cosSin[::-1] * 0.2
-    py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+    arr_n_rot90 = cosSin[::-1] * 0.2
+    arr_w_rot90 = cosSin * 0.2
+    #py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_n_rot90[0], arr_n_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    #py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_w_rot90[0], -arr_w_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.text(arr_base[0]+arr_n[0]+0.1, arr_base[1]+arr_n[1]+0.1, 'N', 
+    py.text(arr_base[0]-arr_n[0]-.25, arr_base[1]-arr_n[1]-0.28, 'E', 
             color='white', 
             horizontalalignment='left', verticalalignment='bottom')
-    py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E', 
+    #py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E',
+    py.text(arr_base[0]-arr_n_rot90[0]-0.18, arr_base[1]+arr_n_rot90[1]+0.1, 'N', 
             color='white',
             horizontalalignment='right', verticalalignment='center')
 
     ##########
     # Plot Velocity
     ##########
-    py.subplot(1, 3, 2)
+    py.subplot(3, 1, 2)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(velimg, vmin=-250., vmax=250., 
+    py.imshow(np.rot90(py.ma.masked_where(velimg==308.,velimg),3), vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Velocity (km/s)')
 
     ##########
     # Plot Dispersion
     ##########
-    py.subplot(1, 3, 3)
+    py.subplot(3, 1, 3)
     sigimg = p.sigma.transpose()
-    py.imshow(sigimg, vmin=0., vmax=250., 
+    py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Dispersion (km/s)')
 
@@ -945,37 +1048,56 @@ def plotResults2(inputFile):
 #                  p.velocity[xx:xx+2,yy:yy+2].mean(), 
 #                  p.velocity[xx:xx+2,yy:yy+2].std())
 
+    py.tight_layout()
+
     py.savefig(workdir + 'plots/kinematic_maps2.png')
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
-def plotResults3(inputFile):
+def plotResults3(inputFile,zoom=False,twocomp=False):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+       
+    p = PPXFresults(inputFile,twocomp=twocomp)
 
-    p = PPXFresults(inputFile)
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
 
-    xaxis = np.arange(p.velocity.shape[0]) * 0.05
-    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    if zoom:
+        x0 = np.abs(xaxis-(bhpos_hor[0]-0.5)).argmin()
+        x1 = np.abs(xaxis-(bhpos_hor[0]+0.5)).argmin()
+        y0 = np.abs(yaxis-(bhpos_hor[1]-0.5)).argmin()
+        y1 = np.abs(yaxis-(bhpos_hor[1]+0.5)).argmin()
+    else:
+        x0 = 0
+        x1 = -1
+        y0 = 0
+        y1 = -1
     
     xtickLoc = py.MultipleLocator(0.5)
 
     py.close(2)
-    py.figure(2, figsize=(10,12))
+    if zoom:
+        py.figure(2, figsize=(9,7))
+    else:
+        py.figure(2, figsize=(15,7))
     py.subplots_adjust(left=0.05, right=0.94, top=0.95)
     py.clf()
-
 
     ##########
     # Plot Velocity
     ##########
     py.subplot(2, 2, 1)
-    velimg = p.velocity.transpose()+308.0
-    py.imshow(velimg, vmin=-250., vmax=250.,
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    if twocomp:
+        velimg = p.velocity2.transpose()+308.0
+    else:
+        velimg = p.velocity.transpose()+308.0
+    py.imshow(np.rot90(py.ma.masked_where(velimg[x0:x1,y0:y1]==308.,velimg[x0:x1,y0:y1]),3), vmin=-250., vmax=250.,
+              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Velocity (km/s)')
 
@@ -983,13 +1105,17 @@ def plotResults3(inputFile):
     # Plot Dispersion
     ##########
     py.subplot(2, 2, 2)
-    sigimg = p.sigma.transpose()
-    py.imshow(sigimg, vmin=0., vmax=250.,
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+    if twocomp:
+        sigimg = p.sigma2.transpose()
+    else:
+       sigimg = p.sigma.transpose()
+    py.imshow(np.rot90(py.ma.masked_where(sigimg[x0:x1,y0:y1]==0.,sigimg[x0:x1,y0:y1]),3), vmin=0., vmax=250.,
+              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Dispersion (km/s)')
 
@@ -997,13 +1123,17 @@ def plotResults3(inputFile):
     # Plot h3
     ##########
     py.subplot(2, 2, 3)
-    h3img = p.h3.transpose()
-    py.imshow(py.ma.masked_where(h3img==0, h3img), 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    if twocomp:
+        h3img = p.h3_2.transpose()
+    else:
+        h3img = p.h3.transpose()
+    py.imshow(np.rot90(py.ma.masked_where(h3img[x0:x1,y0:y1]==0, h3img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
+              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h3')
 
@@ -1011,206 +1141,232 @@ def plotResults3(inputFile):
     # Plot h4
     ##########
     py.subplot(2, 2, 4)
-    h4img = p.h4.transpose()
-    py.imshow(py.ma.masked_where(h4img==0, h4img), 
-              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    if twocomp:
+        h4img = p.h4_2.transpose()
+    else:
+        h4img = p.h4.transpose()
+    py.imshow(np.rot90(py.ma.masked_where(h4img[x0:x1,y0:y1]==0, h4img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
+              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4')
 
     py.tight_layout()
 
-    py.savefig(workdir + 'plots/kinematic_maps3.png')
-    py.savefig(workdir + 'plots/kinematic_maps3.eps')
+    if zoom:
+        py.savefig(workdir + 'plots/kinematic_maps3_zoom.png')
+        py.savefig(workdir + 'plots/kinematic_maps3_zoom.eps')
+    else:
+        py.savefig(workdir + 'plots/kinematic_maps3.png')
+        py.savefig(workdir + 'plots/kinematic_maps3.eps')
     py.show()
 
 def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     ### Plots error on velocity and velocity dispersion
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     
     p = PPXFresults(inputResults)
     a = PPXFresults(inputAvg)
     e = PPXFresults(inputErr)
 
-    xaxis = np.arange(p.velocity.shape[0]) * 0.05
-    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
     
     xtickLoc = py.MultipleLocator(0.5)
 
     py.close(2)
-    py.figure(2, figsize=(15,12))
+    py.figure(2, figsize=(15,13))
     py.subplots_adjust(left=0.05, right=0.94, top=0.95)
     py.clf()
 
     ##########
     # Plot Velocity, MC velocity average, and MC velocity error
     ##########
-    py.subplot(2, 3, 1)
+    py.subplot(3, 2, 1)
     velimg = p.velocity.transpose()+308.0
-    py.imshow(velimg, vmin=-250., vmax=250., 
+    py.imshow(np.rot90(py.ma.masked_where(velimg==308.,velimg),3), vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Velocity (km/s)')
 
     #pdb.set_trace()
     
-    py.subplot(2,3,2)
+    py.subplot(3,2,3)
     velavg = a.velocity.transpose()+308.0
-    py.imshow(velavg, vmin=-250., vmax=250.,
+    py.imshow(np.rot90(py.ma.masked_where(velavg==308.,velavg),3), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
-    cbar.set_label('Velocity, MC avg, (km/s)')
+    cbar.set_label('Velocity, MC avg')
 
-    py.subplot(2,3,3)
+    py.subplot(3,2,5)
     velerr = e.velocity.transpose()
-    py.imshow(velerr, vmin=0., vmax=205.,
+    py.imshow(np.rot90(py.ma.masked_where(velerr==0.,velerr),3), vmin=0., vmax=40.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
-    cbar.set_label('Velocity, MC err, (km/s)')
+    cbar.set_label('Velocity, MC err')
 
     ##########
     # Plot Dispersion
     ##########
-    py.subplot(2, 3, 4)
+    py.subplot(3, 2, 2)
     sigimg = p.sigma.transpose()
-    py.imshow(sigimg, vmin=0., vmax=250.,
+    py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Dispersion (km/s)')
 
-    py.subplot(2, 3, 5)
+    py.subplot(3, 2, 4)
     sigavg = a.sigma.transpose()
-    py.imshow(sigavg, vmin=0., vmax=250.,
+    py.imshow(np.rot90(py.ma.masked_where(sigavg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
-    cbar.set_label('Dispersion, MC avg, (km/s)')
+    cbar.set_label('Dispersion, MC avg')
 
-    py.subplot(2, 3, 6)
+    py.subplot(3, 2, 6)
     sigerr = e.sigma.transpose()
-    py.imshow(sigerr, vmin=0., vmax=200.,
+    py.imshow(np.rot90(py.ma.masked_where(sigerr==0.,sigerr),3), vmin=0., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
-    cbar.set_label('Dispersion, MC err, (km/s)')
+    cbar.set_label('Dispersion, MC err')
 
+    py.tight_layout()
+    
     py.savefig(workdir + 'plots/mc_err1.png')
     py.savefig(workdir + 'plots/mc_err1.eps')
     py.show()
     
 def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     ### Plots error on h3 and h4
-    
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+        
     p = PPXFresults(inputResults)
     a = PPXFresults(inputAvg)
     e = PPXFresults(inputErr)
 
-    xaxis = np.arange(p.velocity.shape[0]) * 0.05
-    yaxis = np.arange(p.velocity.shape[1]) * 0.05
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
     
     xtickLoc = py.MultipleLocator(0.5)
 
     py.close(2)
-    py.figure(2, figsize=(15,12))
+    py.figure(2, figsize=(15,13))
     py.subplots_adjust(left=0.05, right=0.94, top=0.95)
     py.clf()
 
     ##########
     # Plot h3, MC h3 average, and MC h3 error
     ##########
-    py.subplot(2, 3, 1)
+    py.subplot(3, 2, 1)
     h3img = p.h3.transpose()
-    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2, 
+    py.imshow(np.rot90(py.ma.masked_where(h3img == 0.,h3img),3), vmin=-.2, vmax=.2, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h3')
 
     #pdb.set_trace()
     
-    py.subplot(2,3,2)
+    py.subplot(3,2,3)
     h3avg = a.h3.transpose()
-    py.imshow(py.ma.masked_where(h3avg==0.,h3avg), vmin=-.2, vmax=.2,
+    py.imshow(np.rot90(py.ma.masked_where(h3avg==0.,h3avg),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h3, MC avg')
 
-    py.subplot(2,3,3)
+    py.subplot(3,2,5)
     h3err = e.h3.transpose()
-    py.imshow(py.ma.masked_where(h3err==0.,h3err), vmin=0., vmax=.05,
+    py.imshow(np.rot90(py.ma.masked_where(h3err==0.,h3err),3), vmin=0., vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h3, MC err')
 
     ##########
     # Plot h4
     ##########
-    py.subplot(2, 3, 4)
+    py.subplot(3,2,2)
     h4img = p.h4.transpose()
-    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+    py.imshow(np.rot90(py.ma.masked_where(h4img==0.,h4img),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4')
 
-    py.subplot(2, 3, 5)
+    py.subplot(3,2,4)
     h4avg = a.h4.transpose()
-    py.imshow(py.ma.masked_where(h4avg==0.,h4avg), vmin=-.2, vmax=.2,
+    py.imshow(np.rot90(py.ma.masked_where(h4avg==0.,h4avg),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4, MC avg')
 
-    py.subplot(2, 3, 6)
+    py.subplot(3,2,6)
     h4err = e.h4.transpose()
-    py.imshow(py.ma.masked_where(h4err==0.,h4err), vmin=0., vmax=.05,
+    py.imshow(np.rot90(py.ma.masked_where(h4err==0.,h4err),3), vmin=0., vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4, MC err')
+
+    py.tight_layout()
 
     py.savefig(workdir + 'plots/mc_err2.png')
     py.savefig(workdir + 'plots/mc_err2.eps')
@@ -1228,22 +1384,26 @@ def plotQuality():
     
     xtickLoc = py.MultipleLocator(0.5)
 
-    py.figure(2, figsize=(12,5))
+    #py.figure(2, figsize=(15,8))
+    py.figure(2, figsize=(7,15))
     py.subplots_adjust(left=0.01, right=0.94, top=0.95)
     py.clf()
 
     ##########
     # Plot Cube Image
     ##########
-    py.subplot(1, 3, 1)
-    cubeimg=cubeimg.transpose()
-    py.imshow(py.ma.masked_where(cubeimg<-10000, cubeimg), 
+    #py.subplot(1, 3, 1)
+    py.subplot(3, 1, 1)
+    #cubeimg=cubeimg.transpose()
+    #cubeimg=np.rot90(cubeimg)
+    py.imshow(np.rot90((py.ma.masked_where(cubeimg<-10000, cubeimg)),3), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Flux (cts/sec)')
 
@@ -1251,17 +1411,21 @@ def plotQuality():
     pa = 56.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
-    arr_base = np.array([ xaxis[-1]-0.5, yaxis[-1]-0.6 ])
+    arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
     arr_n = cosSin * 0.2
     arr_w = cosSin[::-1] * 0.2
-    py.arrow(arr_base[0], arr_base[1], arr_n[0], arr_n[1],
+    arr_n_rot90 = cosSin[::-1] * 0.2
+    arr_w_rot90 = cosSin * 0.2
+    #py.arrow(arr_base[0], arr_base[1], arr_n[0], -arr_n[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_n_rot90[0], arr_n_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    #py.arrow(arr_base[0], arr_base[1], -arr_w[0], arr_w[1],
+    py.arrow(arr_base[0], arr_base[1], -arr_w_rot90[0], -arr_w_rot90[1],
              edgecolor='w', facecolor='w', width=0.03, head_width=0.08)
-    py.text(arr_base[0]+arr_n[0]+0.1, arr_base[1]+arr_n[1]+0.1, 'N', 
+    py.text(arr_base[0]-arr_n[0]-.25, arr_base[1]-arr_n[1]-0.28, 'E', 
             color='white', 
             horizontalalignment='left', verticalalignment='bottom')
-    py.text(arr_base[0]-arr_w[0]-0.15, arr_base[1]+arr_w[1]+0.1, 'E', 
+    py.text(arr_base[0]-arr_n_rot90[0]-0.18, arr_base[1]+arr_n_rot90[1]+0.1, 'N', 
             color='white',
             horizontalalignment='right', verticalalignment='center')
     py.title('K Image')
@@ -1271,14 +1435,17 @@ def plotQuality():
     # Plot SNR Image
     ##########
     print snrimg[30,10]
-    py.subplot(1, 3, 2)
+    #py.subplot(1, 3, 2)
+    py.subplot(3, 1, 2)
     snrimg=snrimg.transpose()
+    snrimg=np.rot90(snrimg,3) 
     py.imshow(py.ma.masked_invalid(snrimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('SNR')
     py.title('SNR')
@@ -1286,14 +1453,16 @@ def plotQuality():
     ##########
     # Plot number of exposures
     ##########
-    py.subplot(1, 3, 3)
+    #py.subplot(1, 3, 3)
+    py.subplot(3, 1, 3)
     expimg=expimg[:,:,700]
     expimg=expimg.transpose()
-    py.imshow(expimg,
+    py.imshow(np.rot90(expimg,3),
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos[0]], [bhpos[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Exposures')
     py.title('Exposures')
@@ -1303,7 +1472,6 @@ def plotQuality():
     py.savefig(workdir + 'plots/quality_maps.png')
     py.savefig(workdir + 'plots/quality_maps.eps')
     py.show()
-
 
 
     
@@ -1453,7 +1621,409 @@ def precessionSpeed():
     py.plot(verrs, sigPErrs)
     #py.show()
 
-def modelBin(nonaligned=True,clean=False):
+def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
+
+    if inputFile:
+        inputFile=inputFile
+    else:
+        if nonaligned:
+            if clean:
+                inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat'
+            else:
+                inputFile = modeldir + 'nonaligned_OSIRIScoords_fits_full.dat'
+        else:
+            if clean:
+                inputFile = modeldir + 'aligned_OSIRIScoords_fits_clean.dat'
+            else:
+                inputFile = modeldir + 'aligned_OSIRIScoords_fits_full.dat'
+
+    model = modelFitResults(inputFile)
+
+    # trim model results to match OSIRIS FOV
+    #trimrange = [[41.,88.],[21.,102.]]
+    # updated trim to match new BH coordinates
+    #trimrange = [[43.5,84.5],[17.5,101.5]]
+    # use trimModel() instead
+    if trim:
+        modbhpos = bhpos_hor
+        #xaxis = np.arange(trimrange[0][1]-trimrange[0][0]) * 0.05
+        #yaxis = np.arange(trimrange[1][1]-trimrange[1][0]) * 0.05
+        xaxis = np.arange(84) * 0.05
+        yaxis = np.arange(41) * 0.05
+    else:
+        # modbhpos given by modelBin
+        # PA = -34
+        if nonaligned:
+            modbhpos = [(model.velocity.shape[1]-59.035) * 0.05, 63.955 * 0.05]
+        else:
+            modbhpos = [(model.velocity.shape[1]-59.035) * 0.05, 54.955 * 0.05] 
+        xaxis = np.arange(model.velocity.shape[1]) * 0.05
+        yaxis = np.arange(model.velocity.shape[0]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(10,12))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot Velocity
+    ##########
+    py.subplot(2, 2, 1)
+    if trim:
+        velimg = trimModel(model.velocity,nonaligned=nonaligned)
+    else:
+        velimg = model.velocity
+    py.imshow(np.rot90(velimg.transpose(),3), vmin=-250., vmax=250.,
+    #py.imshow(velimg.transpose(), vmin=-50., vmax=50.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')    
+
+    ##########
+    # Plot Dispersion
+    ##########
+    py.subplot(2, 2, 2)
+    if trim:
+        sigimg = trimModel(model.sigma,nonaligned=nonaligned)
+    else:
+        sigimg = model.sigma
+    py.imshow(np.rot90(sigimg.transpose(),3), vmin=0., vmax=250.,
+                extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+                cmap=py.cm.jet)
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Dispersion (km/s)')
+
+    ##########
+    # Plot h3
+    ##########
+    py.subplot(2, 2, 3)
+    if trim:
+        h3img = trimModel(model.h3,nonaligned=nonaligned)
+        h3img = np.rot90(h3img.transpose(),3)
+    else:
+        h3img = np.rot90(model.h3.transpose(),3)
+    py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2,
+    #py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.05, vmax=.05, 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    ##########
+    # Plot h4
+    ##########
+    py.subplot(2, 2, 4)
+    if trim:
+        h4img = trimModel(model.h4,nonaligned=nonaligned)
+        h4img = np.rot90(h4img.transpose(),3)
+    else:
+        h4img = np.rot90(model.h4.transpose(),3)
+    py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.2, vmax=.2,
+    #py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.05, vmax=.05,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+              cmap=py.cm.jet)
+    py.plot([modbhpos[0]], [modbhpos[1]], 'kx', markeredgewidth=3)
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    #pdb.set_trace()
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/model_kinematics.png')
+    py.savefig(modelworkdir + 'plots/model_kinematics.eps')
+    py.show()
+
+def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputRes=workdir+'model_residuals.dat',nonaligned=True):
+
+    data = PPXFresults(inputData)
+    model = modelFitResults(inputModel)
+    res = modelFitResults(inputRes)
+
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+
+    xaxis = np.arange(cubeimg.shape[0]) * 0.05
+    yaxis = np.arange(cubeimg.shape[1]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(7,15))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+
+    ##########
+    # Plot flux/nstar
+    ##########
+    py.subplot(3,1,1)
+    py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,cubeimg/cubeimg.max()),3),vmin=0.,vmax=1.,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Data')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Flux (norm)')
+
+    py.subplot(3,1,2)
+    py.imshow(np.rot90((trimModel(model.nstar,nonaligned=nonaligned).transpose()/trimModel(model.nstar,nonaligned=nonaligned).max().transpose()),3),vmin=0.,vmax=1.,
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Model')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model, number of stars (norm)')
+
+    py.subplot(3,1,3)
+    py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.nstar.transpose()),3),vmin=-.25,vmax=.25,
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Residuals')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Normed flux residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_flux.png')
+    py.savefig(modelworkdir + 'plots/residuals_flux.eps')
+    py.show()
+    pdb.set_trace()
+    ##########
+    # Plot velocity
+    ##########  
+    py.clf()
+
+    py.subplot(3,1,1)
+    py.imshow(np.rot90(py.ma.masked_where((data.velocity.transpose()+308.)==308.,data.velocity.transpose()+308.),3),vmin=-250.,vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Data')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity (km/s)')
+    
+    py.subplot(3,1,2)
+    py.imshow(np.rot90(trimModel(model.velocity,nonaligned=nonaligned).transpose(),3),vmin=-250.,vmax=250., 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Model')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model velocity (km/s)')
+
+    py.subplot(3,1,3)
+    py.imshow(np.rot90(res.velocity.transpose(),3),vmin=-100.,vmax=200., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Residuals')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Velocity residuals (km/s)')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_velocity.png')
+    py.savefig(modelworkdir + 'plots/residuals_velocity.eps')
+    py.show()
+
+    ##########
+    # Plot sigma
+    ##########  
+    py.clf()
+
+    py.subplot(3,1,1)
+    py.imshow(np.rot90(py.ma.masked_where(data.sigma.transpose()==0.,data.sigma.transpose()),3),vmin=0.,vmax=250., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Data')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Sigma (km/s)')
+
+    py.subplot(3,1,2)
+    py.imshow(np.rot90(trimModel(model.sigma,nonaligned=nonaligned).transpose(),3),vmin=0.,vmax=250., 
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Model')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model sigma (km/s)')
+
+    py.subplot(3,1,3)
+    py.imshow(np.rot90(res.sigma.transpose(),3),vmin=-100.,vmax=100., 
+              extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Residuals')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Sigma residuals (km/s)')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_sigma.png')
+    py.savefig(modelworkdir + 'plots/residuals_sigma.eps')
+    py.show()
+
+    ##########
+    # Plot h3
+    ##########
+    py.close(2)
+    py.figure(2, figsize=(7,15))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95) 
+    py.clf()
+
+    py.subplot(3,1,1)
+    py.imshow(np.rot90(py.ma.masked_where(data.h3.transpose()==0.,data.h3.transpose()),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Data')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3')
+
+    py.subplot(3,1,2)
+    py.imshow(np.rot90(trimModel(model.h3,nonaligned=nonaligned).transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Model')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model h3')
+
+    py.subplot(3,1,3)
+    py.imshow(np.rot90(res.h3.transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Residuals')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h3 residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_h3.png')
+    py.savefig(modelworkdir + 'plots/residuals_h3.eps')
+    py.show()
+
+    py.close(2)
+    py.figure(2, figsize=(7,15))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.clf()
+    
+    ##########
+    # Plot h4
+    ##########  
+    py.clf()
+
+    py.subplot(3,1,1)
+    py.imshow(np.rot90(py.ma.masked_where(data.h4.transpose()==0.,data.h4.transpose()),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Data')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4')
+
+    py.subplot(3,1,2)
+    py.imshow(np.rot90(trimModel(model.h4,nonaligned=nonaligned).transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Model')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Model h4')
+
+    py.subplot(3,1,3)
+    py.imshow(np.rot90(res.h4.transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    #py.ylabel('Y (arcsec)')
+    py.ylabel('Residuals')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('h4 residuals')
+
+    py.tight_layout()
+
+    py.savefig(modelworkdir + 'plots/residuals_h4.png')
+    py.savefig(modelworkdir + 'plots/residuals_h4.eps')
+    py.show()
+
+
+
+def trimModel(input,nonaligned=True):
+
+    # trim models to match OSIRIS FOV
+    # set up for PA = -34
+    #trimrange = [[41.,88.],[21.,102.]]
+    # new trimrange to match new BH position
+    #trimrange = [[43.5,84.5],[17.5,101.5]]
+    # BHpos (data) = [19.1,  40.7]
+    if nonaligned:
+        # BHpos (nonaligned, PA=-34) = [63.954999999999998, 59.034999999999997]
+        trimrange = [[44.9,85.9],[18.3,102.3]]
+        # BHpos (nonaligned, PA=-56) = [57.954999999999998, 58.034999999999997]
+        #trimrange = [[38.9,79.9],[17.3,101.3]]
+    else:
+        # BHpos (aligned) = [54.954999999999998, 59.034999999999997]
+        trimrange = [[35.9, 75.9],[18.3,102.3]]
+        
+    return input[trimrange[0][0]:trimrange[0][1],trimrange[1][0]:trimrange[1][1]]
+    
+    
+def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
     #### match OSIRIS observations), bins individual stellar particles to match the
     #### spaxel size in observations, and fits LOSVDs to the resulting velocity
@@ -1467,39 +2037,102 @@ def modelBin(nonaligned=True,clean=False):
     #### is returned by the fitter) are also discarded and 0 recorded for all kinematic
     #### parameters.
 
-    py.ioff()
+    if clean:
+        from scipy.optimize import OptimizeWarning
 
-    model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+    if inputFile:
+        model=modelResults(inputFile)
+    else:
+        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
 
     # bin size = 0.05" = 0.1865 pc
-    binpc = 0.1865
+    # if matching L98 photometry, use 0.0228" = 0.08504 pc
+    if l98bin:
+        binpc = 0.08504
+    else:
+        binpc = 0.1865
     
-    # BH position in the OSIRIS data: [22.5, 37.5]. Matching pixel phase, 0.5*0.05" = 0.09325 pc:
-    model.x += 0.09325
-    model.y += 0.09325
+    # Setting the BH pixel phase to match that of the data
+    xfrac = bhpos[0]-np.floor(bhpos[0])
+    yfrac = bhpos[1]-np.floor(bhpos[1])
+    # if L98 bin size, divide by the ratio of the two pixel scales and
+    # calc the new pixel phase
+    if l98bin:
+        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
+        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
+    # reposition BH (originally at origin in model) to the correct pixel phase
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
 
     # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    # positive and negative extent of the x axis
     posxbin = np.ceil(np.max(model.x)/binpc)
     negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
     nxbin = posxbin+negxbin
+    # and y axis
     posybin = np.ceil(np.max(model.y)/binpc)
     negybin = np.ceil(np.abs(np.min(model.y)/binpc))
     nybin = posybin + negybin
 
+    # new BH position: (0,0) + (xfrac,yfrac)
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
+    print "Model BH is at ", modbhpos
+    #pdb.set_trace()
+
+    # initializing flux and kinematic arrays
     nstar = np.zeros((nxbin,nybin))
     losv = np.zeros((nxbin,nybin))
     sigma = np.zeros((nxbin,nybin))
     h3 = np.zeros((nxbin,nybin))
     h4 = np.zeros((nxbin,nybin))
 
+    # left/bottom edges of each spaxel (in units of pc), to be used in where statement later
     leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
     bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
 
     t1 = time.time()
+
+    #bins = 
+
+    # create the irange array
+    
+    # this array starts in the center then steps its way out, alternating sides
+    # the maximum number of particles are near the center, so this should speed up the where
+    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
+
+    # create the arrays to loop through (starting in center and stepping out)
+    for i in range(int(nxbin)):
+        # 0th entry is the center bin of the x axis
+        if i==0:
+            irangetmp = np.array([np.floor(nxbin/2)])
+        # after that, step outwards, alternating sides
+        else:
+            tmp = irangetmp[-1] + (((-1)**i)*i)
+            irangetmp = np.append(irangetmp,tmp)
+    # make sure no bad bins were grabbed
+    badilo = np.where(irangetmp < 0)
+    irangetmp2 = np.delete(irangetmp,badilo)
+    badihi = np.where(irangetmp2 > len(leftxbound))
+    irange = np.delete(irangetmp2,badihi)
+    # final array to loop through
+    irange = irange.astype(int)
+    # same thing but for y axis
+    for j in range(int(nybin)):
+        if j == 0:
+            jrangetmp = np.array([np.floor(nybin/2)])
+        else:
+            tmp = jrangetmp[-1] + (((-1)**j)*j)
+            jrangetmp = np.append(jrangetmp,tmp)
+    badjlo = np.where(jrangetmp < 0)
+    jrangetmp2 = np.delete(jrangetmp,badjlo)
+    badjhi = np.where(jrangetmp2 > len(bottomybound))
+    jrange = np.delete(jrangetmp2,badjhi)
+    jrange = jrange.astype(int)
     
     # this loop is solely for binning the particles and writing their locations/velocities
     # to a separate file for each bin
-    # first, check to see if the files already exist (checking the first one)
+    # first, check to see if the files already exist (checking just the first one)
+    # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
     if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
         # make array copies 
         modx = np.array(model.x)
@@ -1508,14 +2141,16 @@ def modelBin(nonaligned=True,clean=False):
         modvx = np.array(model.vx)
         modvy = np.array(model.vy)
         modvz = np.array(model.vz)
-        for i in range(len(leftxbound)):
-            for j in range(len(bottomybound)):
+        # loop through the arrays created above
+        for i in irange:
+            for j in jrange:
+                # find the particles in the current bin
                 good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
                 # nstar is the number of star particles in the bin
                 ntmp = good[0].shape[0]
                 nstar[i,j] = ntmp
                 # write just these particles out to a file
-                outputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat'
+                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
                 tmpx = modx[good[0]]
                 tmpy = mody[good[0]]
                 tmpz = modz[good[0]]
@@ -1539,34 +2174,49 @@ def modelBin(nonaligned=True,clean=False):
     if clean:
         warnings.simplefilter("error", OptimizeWarning)            
     # this loop does the LOSVD fits for each bin, to get the kinematics
-    for i in range(len(leftxbound)):
+    # using the normal bin order for this
+    for i in range(int(nxbin)):
         print "Starting column ", i
-        for j in range(len(bottomybound)):
+        for j in range(int(nybin)):
             model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
             # make sure that nstar is populated - if binning code and outputs were run separately
             # previously, it will not yet have been filled in
             if nstar[i,j] == 0.:
                 nstar[i,j] = model.x.shape[0]
+            # by definition, v_LOS = -v_z
+            modvLOS = -1.* model.vz
+            # if there are no particles, set everything to zero
             if model.x.shape[0] == 0:
                 losv[i,j] = 0.
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
-            elif model.x.shape[0] == 1:
+            # if there are too few particles to perform a fit, hack something together 
+            elif model.x.shape[0] <= 6:
                 if clean:
                     losv[i,j] = 0.
                 else:
-                    losv[i,j] = model.vz
+                    losv[i,j] = np.mean(modvLOS)
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
+            # for everything else, fit the LOSVD histogram
             else:
                 # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
-                binsize = 5.
-                ny, bins, patches = py.hist(model.vz,bins=np.arange(min(model.vz),max(model.vz)+binsize),facecolor='green',alpha=.75)
+                #binsize = 5.
+                # can actually do widths of 1 km/s
+                binsize = 1.
+                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
+                # set the initial values
+                gamma0 = ny.sum()
+                v0 = np.mean(modvLOS)
+                s0 = np.std(modvLOS)
+                h3_0 = 0.
+                h4_0 = 0.
+                guess = [gamma0, v0, s0, h3_0, h4_0]
                 if clean:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -1580,7 +2230,7 @@ def modelBin(nonaligned=True,clean=False):
                         h4[i,j] = 0.
                 else:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny)
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -1588,17 +2238,24 @@ def modelBin(nonaligned=True,clean=False):
                         h4[i,j] = popt[4]
                     except (RuntimeError):
                         # if no fit is possible, take the mean
-                        losv[i,j] = np.mean(model.vz)
+                        losv[i,j] = np.mean(modvLOS)
                         sigma[i,j] = 0.
                         h3[i,j] = 0.
                         h4[i,j] = 0.                    
                 py.close()
         # code crashes after exiting this loop (why??), so setting output here for now
-        if i == len(leftxbound)-1:
+        # update: it shouldn't crash here anymore, but this is fine here
+        if i == (nxbin-1):
             if nonaligned:
-                output = open(modeldir + 'nonaligned_OSIRIScoords_fits.dat', 'w')
+                if clean:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
             else:
-                output = open(modeldir + 'aligned_OSIRIScoords_fits.dat', 'w')
+                if clean:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
         
             pickle.dump(nstar, output)
             pickle.dump(losv, output)
@@ -1615,10 +2272,11 @@ def gaussHermite(x,gamma,v,sigma,h3,h4):
     a = (x - v)/sigma
     H3 = (1./np.sqrt(6.)) * (2.*np.sqrt(2)*(a**3) - 3.*np.sqrt(2)*a)
     H4 = (1./np.sqrt(24)) * (4.*(a**4) - 12.*(a**2) + 3.)
-    return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
+    #return (gamma / np.sqrt(2.*math.pi*(sigma**0.5))) * np.exp(-(x-v)**2./(2.*(sigma**2.))) * (1. + h3*H3 + h4*H4)
+    return (gamma / (sigma*np.sqrt(2.*math.pi))) * np.exp((-0.5)*(a**2.)) * (1. + h3*H3 + h4*H4)
 
 class modelFitResults(object):
-    def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits.dat'):
+    def __init__(self, inputFile=modeldir+'nonaligned_OSIRIScoords_fits_full.dat'):
         self.inputFile = inputFile
         
         input = open(inputFile, 'r')
@@ -1627,8 +2285,69 @@ class modelFitResults(object):
         self.sigma = pickle.load(input)
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
+
+def smoothModels(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full.dat', inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt', twoGauss=False):
+
+    model = modelFitResults(inputFile=inputModel)
+
+    if twoGauss:
+        PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=True)
+    else:
+        PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=False)
+
+    PSF = ifu.gauss_kernel(PSFparams.sig1[0], PSFparams.amp1[0], half_box=50)
+    nstar = signal.convolve(model.nstar,PSF,mode='same')
+    velocity = signal.convolve(model.velocity,PSF,mode='same')
+    sigma = signal.convolve(model.sigma,PSF,mode='same')
+    h3 = signal.convolve(model.h3,PSF,mode='same')
+    h4 = signal.convolve(model.h4,PSF,mode='same')
+
+    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full_smooth.dat', 'w')                    
+        
+    pickle.dump(nstar, output)
+    pickle.dump(velocity, output)
+    pickle.dump(sigma, output)
+    pickle.dump(h3, output)
+    pickle.dump(h4, output)
+    output.close()
+
+def modelResiduals(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full_smooth.dat',inputData=workdir+'ppxf.dat'):
+
+    model = modelFitResults(inputFile=inputModel)
+    data = PPXFresults(inputFile=inputData)
+    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    cubeimg = cubeimg.transpose()
+
+    # normalized flux residuals
+    nstar = (cubeimg/cubeimg.max()) - (trimModel(model.nstar)/trimModel(model.nstar).max())
+    velocity = (data.velocity+308.) - py.ma.masked_where(data.velocity == 0.,trimModel(model.velocity))
+    sigma = data.sigma - py.ma.masked_where(data.sigma == 0.,trimModel(model.sigma))
+    h3 = data.h3 - py.ma.masked_where(data.h3 == 0.,trimModel(model.h3))
+    h4 = data.h4 - py.ma.masked_where(data.h4 == 0.,trimModel(model.h4))
+
+    output = open(workdir+'model_residuals.dat','w')
+
+    pickle.dump(nstar, output)
+    pickle.dump(velocity, output)
+    pickle.dump(sigma, output)
+    pickle.dump(h3, output)
+    pickle.dump(h4, output)
+    output.close()    
+        
+class readPSFparams(object):
+    def __init__(self, inputFile = workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt',twoGauss=False):
+        self.inputFile = inputFile
+
+        if twoGauss:
+            input = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['h1','sig1','h3','h4','h5','amp1','h6','h7','r1','r2','x1','x2','y1','y2','s1','s2'],usecols=['sig1','amp1'])
+            self.sig1 = input.sig1
+            self.amp1 = input.amp1
+        else:
+            input = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['h1','sig1','h2','amp1','r1','r2','x1','x2','y1','y2','s1','s2'],usecols=['sig1','amp1'])
+            self.sig1 = input.sig1
+            self.amp1 = input.amp1
     
-def modelConvertCoordinates(nonaligned=True):
+def modelConvertCoordinates(nonaligned=True,test=False):
     if nonaligned:
         inputFile = modeldir + 'nonaligned_model.dat'
     else:
@@ -1640,9 +2359,15 @@ def modelConvertCoordinates(nonaligned=True):
     ### angles, transformations from Peiris & Tremaine 2003 (table 2; eq. 4)
     ### angles originally measured in degrees
     if nonaligned:
-        thetaL = np.radians(-42.8)
-        thetaI = np.radians(54.1)
-        thetaA = np.radians(-34.5)
+        if test:
+            thetaL = np.radians(0.)
+            thetaI = np.radians(10.)
+            thetaA = np.radians(45.)
+        else:
+            thetaL = np.radians(-42.8)
+            thetaI = np.radians(54.1)
+            thetaA = np.radians(-34.5)
+
     else:
         thetaL = np.radians(-52.3)
         thetaI = np.radians(77.5)
@@ -1698,7 +2423,11 @@ def modelConvertCoordinates(nonaligned=True):
         bigVZ[istart[i]:istop[i]] = tmpmodel.v_z
     
     if nonaligned:
-        outputFile = modeldir + 'nonaligned_model_skycoords.dat'
+        if test:
+            outputFile = modeldir + 'nonaligned_model_skycoords_testrotate.dat'
+        else:
+            outputFile = modeldir + 'nonaligned_model_skycoords.dat'
+        
     else:
         outputFile = modeldir + 'aligned_model_skycoords.dat'
         
@@ -1725,19 +2454,25 @@ def run_once_convert(xyz,vxyz,matL,matI,matA,set,contmpdir):
 
     np.savetxt(contmpdir + 'convert_'+str(set)+'.dat',np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
 
-def modelOSIRISrotation(nonaligned=True):
+def modelOSIRISrotation(inputFile=None,nonaligned=True):
     # transforming from sky coordinates (+Y is north, +X is west) to OSIRIS coordinates,
     ### taking into account the PA
-    
-    model = modelResults(nonaligned,skycoords=True)
+
+    if inputFile:
+        model = modelResults(inputFile)
+    else:
+        if nonaligned:
+            model = modelResults(nonaligned=True,skycoords=True)
+        else:
+            model = modelResults(nonaligned=False,skycoords=True)
 
     t1 = time.time()
 
     # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
     # by definition of the rotation matrix
-    pa = 56.0
-    # taking the complementary angle for the rotation
-    cpa = 90. - pa
+    #cpa = -34.
+    cpa = -56.
+    
     thetaCPA = np.radians(cpa)
 
     rotMat = np.matrix([[np.cos(thetaCPA),-np.sin(thetaCPA)],[np.sin(thetaCPA),np.cos(thetaCPA)]])
@@ -2281,4 +3016,266 @@ def test():
     # Test #2
     logWave3, specNew3 = log_rebin2(wavelength, cube[10,30,:])
 
+def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
+    ### Copy of modelBin on 2016 06 14, for testing code optimization
+    ### to run:
+    #### 1. copy the model file (already transformed to sky-plane coordinates, with the
+    ####    OSIRIS rotation applied if desired) to your modeldir
+    #### 2. create a folder within modeldir called 'spax' (modeldir/spax) to hold the temporary
+    ####    bin files. These can be reused for recalculating the LOSVD, which means the
+    ####    folder needs to be manually emptied/moved if rebinning is desired.
+    #### 3. specify your path to modeldir either at the top of this file or below
+    #### running:
+    #### OSIRIS pixel scale (0.05"):
+    #### > ppxf_m31.modelBinTest('/path/to/model/file.dat')
+    #### L98 pixel scale (0.0228"):
+    #### > ppxf_m31.modelBinTest('/path/to/model/file.dat',l98bin=True)
+    #### output is written to modeldir
+    
+    ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
+    #### match OSIRIS observations), bins individual stellar particles to match the
+    #### spaxel size in observations, and fits LOSVDs to the resulting velocity
+    #### histograms.
 
+    ### clean: [update: shouldn't need to use this anymore]
+    #### keyword to control how LOSVD are fit. With clean=False, LOSVDs are fit
+    #### to all bins. If no fit is possible (e.g. if there are too few particles in the
+    #### bin), the mean velocity is taken as the ensemble velocity and 0 is recorded for
+    #### the higher moments (sigma, h3, h4). With clean=True, 0 is also recorded for the
+    #### ensemble velocity in these bins. In addition, marginal fits (where OptimizeWarning
+    #### is returned by the fitter) are also discarded and 0 recorded for all kinematic
+    #### parameters.
+
+    # set directory where the model file lives
+    modeldir = ''
+
+    if clean:
+        from scipy.optimize import OptimizeWarning
+
+    if inputFile:
+        model=modelResults(inputFile)
+    else:
+        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+
+    # bin size = 0.05" = 0.1865 pc
+    # if matching L98 photometry, use 0.0228" = 0.08504 pc
+    if l98bin:
+        binpc = 0.08504
+    else:
+        binpc = 0.1865
+    
+    # Setting the BH pixel phase to match that of the data
+    xfrac = bhpos[0]-np.floor(bhpos[0])
+    yfrac = bhpos[1]-np.floor(bhpos[1])
+    # if L98 bin size, divide by the ratio of the two pixel scales and
+    # calc the new pixel phase
+    if l98bin:
+        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
+        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
+    # reposition BH (originally at origin in model) to the correct pixel phase
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
+
+    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    # positive and negative extent of the x axis
+    posxbin = np.ceil(np.max(model.x)/binpc)
+    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    nxbin = posxbin+negxbin
+    # and y axis
+    posybin = np.ceil(np.max(model.y)/binpc)
+    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    nybin = posybin + negybin
+
+    # new BH position: (0,0) + (xfrac,yfrac)
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
+    print "Model BH is at ", modbhpos
+    #pdb.set_trace()
+
+    # initializing flux and kinematic arrays
+    nstar = np.zeros((nxbin,nybin))
+    losv = np.zeros((nxbin,nybin))
+    sigma = np.zeros((nxbin,nybin))
+    h3 = np.zeros((nxbin,nybin))
+    h4 = np.zeros((nxbin,nybin))
+
+    # left/bottom edges of each spaxel (in units of pc), to be used in where statement later
+    leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
+    bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
+
+    t1 = time.time()
+
+    #bins = 
+
+    # create the irange array
+    
+    # this array starts in the center then steps its way out, alternating sides
+    # the maximum number of particles are near the center, so this should speed up the where
+    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
+
+    # create the arrays to loop through (starting in center and stepping out)
+    for i in range(int(nxbin)):
+        # 0th entry is the center bin of the x axis
+        if i==0:
+            irangetmp = np.array([np.floor(nxbin/2)])
+        # after that, step outwards, alternating sides
+        else:
+            tmp = irangetmp[-1] + (((-1)**i)*i)
+            irangetmp = np.append(irangetmp,tmp)
+    # make sure no bad bins were grabbed
+    badilo = np.where(irangetmp < 0)
+    irangetmp2 = np.delete(irangetmp,badilo)
+    badihi = np.where(irangetmp2 > len(leftxbound))
+    irange = np.delete(irangetmp2,badihi)
+    # final array to loop through
+    irange = irange.astype(int)
+    # same thing but for y axis
+    for j in range(int(nybin)):
+        if j == 0:
+            jrangetmp = np.array([np.floor(nybin/2)])
+        else:
+            tmp = jrangetmp[-1] + (((-1)**j)*j)
+            jrangetmp = np.append(jrangetmp,tmp)
+    badjlo = np.where(jrangetmp < 0)
+    jrangetmp2 = np.delete(jrangetmp,badjlo)
+    badjhi = np.where(jrangetmp2 > len(bottomybound))
+    jrange = np.delete(jrangetmp2,badjhi)
+    jrange = jrange.astype(int)
+    
+    # this loop is solely for binning the particles and writing their locations/velocities
+    # to a separate file for each bin
+    # first, check to see if the files already exist (checking just the first one)
+    # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
+    if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
+        # make array copies 
+        modx = np.array(model.x)
+        mody = np.array(model.y)
+        modz = np.array(model.z)
+        modvx = np.array(model.vx)
+        modvy = np.array(model.vy)
+        modvz = np.array(model.vz)
+        # loop through the arrays created above
+        for i in irange:
+            for j in jrange:
+                # find the particles in the current bin
+                good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
+                # nstar is the number of star particles in the bin
+                ntmp = good[0].shape[0]
+                nstar[i,j] = ntmp
+                # write just these particles out to a file
+                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
+                tmpx = modx[good[0]]
+                tmpy = mody[good[0]]
+                tmpz = modz[good[0]]
+                tmpvx = modvx[good[0]]
+                tmpvy = modvy[good[0]]
+                tmpvz = modvz[good[0]]
+                np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
+                # remove the written out particles from the master arrays, to improve computational time
+                modx = np.delete(modx,good[0])
+                mody = np.delete(mody,good[0])
+                modz = np.delete(modz,good[0])
+                modvx = np.delete(modvx,good[0])
+                modvy = np.delete(modvy,good[0])
+                modvz = np.delete(modvz,good[0])
+                
+    print "Time elapsed for binning: ", time.time() - t1, "s"
+    t2 = time.time()
+
+    #pdb.set_trace()
+
+    if clean:
+        warnings.simplefilter("error", OptimizeWarning)            
+    # this loop does the LOSVD fits for each bin, to get the kinematics
+    # using the normal bin order for this
+    for i in range(int(nxbin)):
+        print "Starting column ", i
+        for j in range(int(nybin)):
+            model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
+            # make sure that nstar is populated - if binning code and outputs were run separately
+            # previously, it will not yet have been filled in
+            if nstar[i,j] == 0.:
+                nstar[i,j] = model.x.shape[0]
+            # by definition, v_LOS = -v_z
+            modvLOS = -1.* model.vz
+            # if there are no particles, set everything to zero
+            if model.x.shape[0] == 0:
+                losv[i,j] = 0.
+                sigma[i,j] = 0.
+                h3[i,j] = 0.
+                h4[i,j] = 0.
+            # if there are too few particles to perform a fit, hack something together 
+            elif model.x.shape[0] <= 6:
+                if clean:
+                    losv[i,j] = 0.
+                else:
+                    losv[i,j] = np.mean(modvLOS)
+                sigma[i,j] = 0.
+                h3[i,j] = 0.
+                h4[i,j] = 0.
+            # for everything else, fit the LOSVD histogram
+            else:
+                # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
+                #binsize = 5.
+                # can actually do widths of 1 km/s
+                binsize = 1.
+                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
+                # set the initial values
+                gamma0 = ny.sum()
+                v0 = np.mean(modvLOS)
+                s0 = np.std(modvLOS)
+                h3_0 = 0.
+                h4_0 = 0.
+                guess = [gamma0, v0, s0, h3_0, h4_0]
+                if clean:
+                    try:
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+                        # popt = [gamma, v, sigma, h3, h4]
+                        losv[i,j] = popt[1]
+                        sigma[i,j] = popt[2]
+                        h3[i,j] = popt[3]
+                        h4[i,j] = popt[4]
+                    except (RuntimeError, OptimizeWarning):
+                        # if get an error on the fit, drop the bin
+                        losv[i,j] = 0.
+                        sigma[i,j] = 0.
+                        h3[i,j] = 0.
+                        h4[i,j] = 0.
+                else:
+                    try:
+                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+                        # popt = [gamma, v, sigma, h3, h4]
+                        losv[i,j] = popt[1]
+                        sigma[i,j] = popt[2]
+                        h3[i,j] = popt[3]
+                        h4[i,j] = popt[4]
+                    except (RuntimeError):
+                        # if no fit is possible, take the mean
+                        losv[i,j] = np.mean(modvLOS)
+                        sigma[i,j] = 0.
+                        h3[i,j] = 0.
+                        h4[i,j] = 0.                    
+                py.close()
+        # code crashes after exiting this loop (why??), so setting output here for now
+        # update: it shouldn't crash here anymore, but this is fine here
+        if i == (nxbin-1):
+            if nonaligned:
+                if clean:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
+            else:
+                if clean:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
+                else:
+                    output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
+        
+            pickle.dump(nstar, output)
+            pickle.dump(losv, output)
+            pickle.dump(sigma, output)
+            pickle.dump(h3, output)
+            pickle.dump(h4, output)
+            output.close()
+
+    print "Time elapsed for LOSVD fitting: ", time.time() - t2, "s"
+    #pdb.set_trace()
+    
