@@ -6,6 +6,7 @@ import objects
 import util
 import starTables
 import time
+import pdb
 
 class StarSet(object):
     """Object containing align output.
@@ -73,9 +74,6 @@ class StarSet(object):
             # Initialize a new star with the proper name. Append to the set.
             star = objects.Star(_vel[0])
             self.stars.append(star)
-
-            #if (len(self.stars) % 100) == 0:
-            #    print 'Processing star {0}: {1}'.format(len(self.stars), time.ctime())
 
             # Parse velocity file
             star.velCnt = int(_vel[1])
@@ -223,8 +221,11 @@ class StarSet(object):
                 if parts[ee] == '---':
                     continue
                 
-                ss = names.index(parts[ee])
-                self.stars[ss].e[ee].isUsed = True
+                try:
+                    ss = names.index(parts[ee])
+                    self.stars[ss].e[ee].isUsed = True
+                except ValueError:
+                    pass
 
         return
     
@@ -509,6 +510,7 @@ class StarSet(object):
                 idx = names.index(efit.name)
                 star = self.stars[idx]
             except ValueError, e:
+
                 print 'Failed to find efit data for %s' % efit.name
                 continue
  
