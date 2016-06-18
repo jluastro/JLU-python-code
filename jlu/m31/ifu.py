@@ -88,7 +88,8 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
 
     ### Register the NIRC2 image to the OSIRIS image.
     # Read in the NIRC2 image (scale = 10 mas/pixel)
-    nirc2file = '/u/jlu/data/m31/05jul/combo/m31_05jul_kp.fits'
+    #nirc2file = '/u/jlu/data/m31/05jul/combo/m31_05jul_kp.fits'
+    nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/m31_05jul_kp.fits'
     img, imghdr = pyfits.getdata(nirc2file, header=True)
 
     # Get the PA of the OSIRIS spectrograph image
@@ -104,7 +105,8 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
     # Get the shifts constructed manually
     xshift = 0
     yshift = 0
-    shiftsTable = asciidata.open(rootdir + 'shifts.txt')
+    #shiftsTable = asciidata.open(rootdir + 'shifts.txt')
+    shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/analysis_old/ifu_11_11_30/data/shifts.txt')
     for rr in range(shiftsTable.nrows):
         if rr == 0:
             xshift0 = float(shiftsTable[1][rr])
@@ -175,19 +177,21 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
     cidx = np.where(cubeimg < cubeimg.max()*0.05)
     cubeimg[cidx] = 0
 
-    def fitfunction(params, plot=False, verbose=False):
+    def fitfunction(params, plot=False, verbose=True):
         amp1 = abs(params[0])
-        amp2 = abs(params[1])
-        sigma1 = abs(params[2])
-        sigma2 = abs(params[3])
+        #amp2 = abs(params[1])
+        #sigma1 = abs(params[2])
+        sigma1 = abs(params[1])
+        #sigma2 = abs(params[3])
 
         # Actually amp1 should be fixed to 1.0
         amp1 = 1.0
-        sigma2 = 8.0
+        #sigma2 = 8.0
 
         # Convolve the NIRC2 image with a gaussian
         boxsize = min(cubeimg.shape) / 2
-        psf = twogauss_kernel(sigma1, sigma2, amp1, amp2, half_box=50)
+        #psf = twogauss_kernel(sigma1, sigma2, amp1, amp2, half_box=50)
+        psf = gauss_kernel(sigma1, amp1, half_box=50)
         newimg = signal.convolve(img, psf, mode='full')
         
         xlo = (psf.shape[1] / 2)
@@ -212,8 +216,10 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
         residuals[cidx] = 0
 
         if verbose:
-            print 'Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2),
-            print ' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2)
+            #print 'Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2),
+            #print ' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2)
+            print 'Parameters: sig1 = %5.2f ' % (sigma1),
+            print ' amp1 = %9.2e ' % (amp1)
             print 'Residuals:  ', math.sqrt((residuals*residuals).sum())
             print '' 
 
@@ -240,11 +246,13 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
             
         return residuals.flatten()
 
-    params = np.zeros(4, dtype=float)
+    #params = np.zeros(4, dtype=float)
+    params = np.zeros(2, dtype=float)
     params[0] = 1.0 # amp1
-    params[1] = 0.000001 # amp2
-    params[2] = 0.9 # sigma1 (near-diffraction-limit)
-    params[3] = 6.0 # sigma2 (seeing halo)
+    #params[1] = 0.000001 # amp2
+    params[1] = 0.9 #sigma1
+    #params[2] = 0.9 # sigma1 (near-diffraction-limit)
+    #params[3] = 6.0 # sigma2 (seeing halo)
 
     print 'Fitting PSF: '
     print ''
@@ -260,13 +268,18 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
     residuals = fitfunction(p, plot=True, verbose=True)
 
     amp1 = abs(p[0])
-    amp2 = abs(p[1])
-    sigma1 = abs(p[2])
-    sigma2 = abs(p[3])
-
+    #amp2 = abs(p[1])
+    sigma1 = abs(p[1])
+    #sigma1 = abs(p[2])
+    #sigma2 = abs(p[3])
+    
+    pdb.set_trace()
+    
     _out = open(plotdir + 'osir_perf_' + cubefile.replace('.fits', '_params.txt'), 'w')
-    _out.write('sig1: %5.2f  sig2: %5.2f  amp1: %9.2e  amp2: %9.2e  res: %7.5f  ' %
-               (sigma1, sigma2, amp1, amp2, math.sqrt((residuals**2).sum())))
+    #_out.write('sig1: %5.2f  sig2: %5.2f  amp1: %9.2e  amp2: %9.2e  res: %7.5f  ' %
+    #           (sigma1, sigma2, amp1, amp2, math.sqrt((residuals**2).sum())))
+    _out.write('sig1: %5.2f  amp1: %9.2e  res: %7.5f  ' %
+                (sigma1, amp1, math.sqrt((residuals**2).sum())))
     _out.write('xpixSNR: %2d  ypixSNR: %2d  SNR: %5.1f\n' % (xpixSNR, ypixSNR, specSNR))
     _out.close()
 
@@ -293,6 +306,26 @@ def twogauss_kernel(sigma1, sigma2, amplitude1, amplitude2, half_box=50):
     psf /= psf.sum()
 
     return psf
+
+def gauss_kernel(sigma1, amplitude1, half_box=50):
+
+    if (half_box < 3*sigma1):
+        print 'PSF width is too big (%5.2f pixels) for the ' % sigma1
+        print 'box size (%3d pixels). Change sigma1.'  % (2*half_box)
+        return
+
+    # Create a 2D grid of X and Y positions in our PSF
+    x, y = scipy.mgrid[-half_box:half_box+1, -half_box:half_box+1]
+
+    # Create the  gaussian
+    g1 = amplitude1 * np.exp( -( (x/sigma1)**2 + (y/sigma1)**2 ) )
+
+    # Sum and normalize the gaussians
+    psf = g1
+    psf /= psf.sum()
+
+    return psf
+
 
     
 def integrated_spectrum():

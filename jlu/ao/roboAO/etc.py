@@ -13,14 +13,15 @@ import os
 import time
 import pickle
 from astropy.modeling.functional_models import Gaussian2D
+from astropy.modeling.functional_models import Moffat2D
 
 
 # Convert from m_AB to m_Vega. Values reported below are
 # m_AB - m_Vega and were taken from:
 # http://www.astronomy.ohio-state.edu/~martini/usefuldata.html
-# which mostly come from Blanton et al. 2007
-Vega_to_AB = {'B': 0.79, 'V': 0.02, 'R': 0.21, 'I': 0.45,
-              'J': 0.91, 'H': 1.39, 'K': 1.85}
+# Which mostly come from Blanton et al. 2007
+Vega_to_AB = {'B': 0.790, 'V': 0.02, 'R': 0.21, 'I': 0.45, 'z': 0.54,
+              'Y': 0.634, 'J': 0.91, 'H': 1.39, 'K': 1.85}
 
 # Central wavelength in Angstroms.
 filt_wave = {'Z': 8818.1, 'Y': 10368.1, 'J': 12369.9, 'H': 16464.4}
@@ -34,7 +35,7 @@ filt_wave = {'Z': 8818.1, 'Y': 10368.1, 'J': 12369.9, 'H': 16464.4}
 # Email Brent and John and Shelley and Christoph outputs
 #
 
-def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_res=300, 
+def etc_uh_roboAO(mag, filt_name, tint, sq_aper_diam=0.3, phot_sys='Vega', spec_res=100, 
                   seeing_limited=False):
     """
     Exposure time calculator for a UH Robo-AO system and a NIR IFU spectrograph.
@@ -43,7 +44,8 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     """
     
     ifu_throughput = 0.35
-    ao_throughput = 0.55
+    #ao_throughput = 0.55
+    ao_throughput = 0.76  # New Design
     tel_throughput = 0.85**2
 
     if seeing_limited:
@@ -52,7 +54,10 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
         sys_throughput = ifu_throughput * ao_throughput * tel_throughput
     
     # TO DO Need to add telescope secondary obscuration to correct the area.
-    tel_area = math.pi * (2.2 * 100. / 2.)**2   # cm^2 for UH 2.2m tel
+    tel_area = math.pi * (2.22 * 100. / 2.)**2   # cm^2 for UH 2.2m tel
+    sec_area = math.pi * (0.613 * 100. / 2.)**2   # cm^2 for UH 2.2m tel hole/secondary obscuration
+    tel_area -= sec_area
+    
     read_noise = 3.0       # electrons
     dark_current = 0.01    # electrons s^-1
 
@@ -65,6 +70,9 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     # Calculate the wave set for the IFU. Include Nyquist sampled pixels.
     dlamda = (filt.avgwave() / spec_res) / 2.0
     ifu_wave = np.arange(filt.wave.min(), filt.wave.max()+dlamda, dlamda)
+
+    # Estimate the number of pixels across our spectrum.
+    npix_spec = len(ifu_wave)
     
     # Get the Earth transmission spectrum. Sample everything
     # onto this grid.
@@ -86,7 +94,7 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     # Observe the star and background through a filter and resample
     # at the IFU spectral sampling.
     star_obs = observation.Observation(star, filt, binset=ifu_wave)
-    bkg_obs = observation.Observation(earth_bkg, filt, binset=ifu_wave)
+    bkg_obs = observation.Observation(earth_bkg, filt, binset=ifu_wave, force="extrap")
     vega = pysynphot.FileSpectrum(pysynphot.locations.VegaFile)
     vega_obs = observation.Observation(vega, filt, binset=ifu_wave)
 
@@ -111,25 +119,27 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     # Integrate each spectral channel using the ifu_wave (dlamda defined above).
     star_counts *= dlamda                     # photon s^-1
     bkg_counts *= dlamda                      # photon s^-1 arcsec^-2
-    vega_counts *= dlamda                     # photon s^-1 arcsec^-2
+    vega_counts *= dlamda                     # photon s^-1 NO? arcsec^-2
 
     # Integrate over the aperture for the background and make
     # an aperture correction for the star.
     if seeing_limited:
-        ee = get_seeing_ee(filt_name, aper_radius)
+        ee = get_seeing_ee(filt_name, sq_aper_diam)
     else:
-        ee = get_roboAO_ee(mag, filt_name, aper_radius)
+        ee = get_roboAO_ee(mag, filt_name, sq_aper_diam)
         
-    aper_area = math.pi * aper_radius**2
+    aper_area = sq_aper_diam**2               # square
     star_counts *= ee                         # photon s^-1
-    # vega_counts *= ee
-    bkg_counts *= aper_area                   # photon s^-1
+    # TODO... Don't I need to do this for vega as well?
+    # vega_counts *= ee  
+    bkg_counts *= aper_area                   # photon s^-1 arcsec^-2
 
     pix_scale = 0.150                      # arcsec per pixel
     if seeing_limited:
-        pix_scale = 0.200
+        pix_scale = 0.400
         
-    npix = aper_area / pix_scale**2
+    npix = (aper_area / pix_scale**2)
+    npix *= npix_spec
 
     vega_mag = 0.03
     star_mag = -2.5 * math.log10(star_counts.sum() / vega_counts.sum()) + vega_mag
@@ -149,7 +159,9 @@ def etc_uh_roboAO(mag, filt_name, tint, aper_radius=0.15, phot_sys='Vega', spec_
     avg_signal = signal.sum()
     avg_noise = noise.sum()
     avg_snr = avg_signal / avg_noise
-    print 'signal = ', avg_signal, ' bkg = ', bkg.mean(), ' SNR = ', avg_snr
+
+    msg = 'filt = {0:s}  signal = {1:13.1f}  bkg = {2:9.1f}  SNR = {3:7.1f}'
+    print msg.format(filt_name, avg_signal, bkg.mean(), avg_snr)
 
     # Inter-OH gives an overal reduction in background of
     # 2.3 mag at H - probably slightly less than this because this was with NIRSPEC
@@ -294,7 +306,7 @@ def get_filter_info(name, vega=None):
 
     return filt, vega_flux, vega_mag
 
-def get_seeing_ee(filt_name, aper_radius, overwrite=False):
+def get_seeing_ee(filt_name, sq_aper_diam, overwrite=False):
     """
     Get the ensquared energy for a seeing limited 
     """
@@ -307,19 +319,23 @@ def get_seeing_ee(filt_name, aper_radius, overwrite=False):
     _psf = open(psf_file, 'r')
     r = pickle.load(_psf)
     ee = pickle.load(_psf)
+    sq_diam = pickle.load(_psf)
+    sq_ee = pickle.load(_psf)
     _psf.close()
             
-    # Integrate out to the desired radius
-    dr_idx = np.abs(r - aper_radius).argmin()
+    # Integrate out to the desired square diameter
+    dd_idx = np.abs(sq_diam - sq_aper_diam).argmin()
 
-    ee_good = ee[dr_idx]
+    ee_good = sq_ee[dd_idx]
 
     return ee_good
     
 def make_seeing_psf(filt_name):
     psf_file = 'seeing_psf_{0:s}.pickle'.format(filt_name)
 
-    seeing = 0.8 # arcsec specified at 5000 Angstrom
+    # Note that seeing is taken as FWHM.
+    seeing = 0.86 # arcsec specified at 5000 Angstrom
+    
     wave = filt_wave[filt_name] # In Angstroms
     print 'Seeing at 5000 Angstroms:', seeing
 
@@ -336,8 +352,14 @@ def make_seeing_psf(filt_name):
     x, y = np.meshgrid(xy1d, xy1d)
     
     # Use a 2D Gaussian as our PSF.
-    print 'Make Gaussian sigma=', seeing/2.35
-    psf = Gaussian2D.eval(x, y, 1, 0, 0, seeing/2.35, seeing/2.35, 0)
+    # print 'Make Gaussian sigma=', seeing/2.35
+    # psf = Gaussian2D.evaluate(x, y, 1, 0, 0, seeing/2.35, seeing/2.35, 0)
+
+    # Use a 2D Moffatt as our PSF.
+    alpha = 2.5
+    gamma = seeing / (2.0 * (2**(1.0/alpha) - 1)**0.5)
+    print 'Make Moffat 2D alpha=2.5, gamma=', gamma
+    psf = Moffat2D.evaluate(x, y, 1, 0, 0, gamma, alpha)
     
     # Integrate over each pixel
     print 'Integrate and normalize'
@@ -358,75 +380,87 @@ def make_seeing_psf(filt_name):
         idx = np.where(r < r_save[rr])
 
         ee_save[rr] = psf[idx].sum()
+
+    # Make an ensquared energy curve.
+    sq_diam_save = np.arange(0.025, 2, 0.025)
+    sq_ee_save = np.zeros(len(sq_diam_save), dtype=float)
+
+    x_dist = np.abs(x)
+    y_dist = np.abs(y)
+    
+    for ii in range(len(sq_diam_save)):
+        print 'Integrating over square diameter: ', sq_diam_save[ii]
+        dist = sq_diam_save[ii] / 2.0
+        idx = np.where((x_dist < dist) & (y_dist < dist))
+
+        sq_ee_save[ii] = psf[idx].sum()
+        
         
     print 'Save'
     _psf = open(psf_file, 'w')
     pickle.dump(r_save, _psf)
     pickle.dump(ee_save, _psf)
+    pickle.dump(sq_diam_save, _psf)
+    pickle.dump(sq_ee_save, _psf)
     _psf.close()
 
     return
 
-    
-def get_roboAO_ee(mag, filt_name, aper_radius):
+def get_roboAO_ee(mag, filt_name, sq_aper_diam,
+                  data_dir='/Users/jlu/work/ao/roboAO/2016_01_18/UHRoboAO_EE_with_cumulative/'):
     """
     Get the encircled energy.
+
+    Note we assume zenith angle = 30 degrees.
     """
-    aper_radius_valid = [0.0375, 0.075, 0.15]
+    #sq_aper_diam_valid = [0.0375, 0.075, 0.15]
+    sq_aper_diam_valid = [0.15, 0.30, 0.40, 0.70]
     
-    if aper_radius not in aper_radius_valid:
-        print 'Invalid aperture radius. Choose from:'
-        print aper_radius_valid
-    
-    guide_mag = np.array([10, 17, 18, 19, 20], dtype=float)
+    if sq_aper_diam not in sq_aper_diam_valid:
+        print 'Invalid square-aperture diameter. Choose from:'
+        print sq_aper_diam_valid
 
-    # These are ensquared energies; but I am assuming they are encircled energies.
-    # These come from Christoph's spreadsheet; but they have been renamed (from 
-    # his column names) based on aperture radius rather than diameter as he had it.
-    roboAO_ee_0375 = {}
-    roboAO_ee_0375['Z'] = np.array([0.08, 0.06, 0.05, 0.04, 0.03])
-    roboAO_ee_0375['Y'] = np.array([0.11, 0.08, 0.06, 0.05, 0.03])
-    roboAO_ee_0375['J'] = np.array([0.12, 0.09, 0.08, 0.06, 0.04])
-    roboAO_ee_0375['H'] = np.array([0.11, 0.10, 0.08, 0.06, 0.04])
+    # Hard-coded magnitudes of the files.
+    guide_mag = np.array([10, 17, 18, 19, 20], dtype=int)
+    ee_mag = np.zeros(len(guide_mag), dtype=float)
 
-    roboAO_ee_075 = {}
-    roboAO_ee_075['Z'] = np.array([0.19, 0.17, 0.15, 0.12, 0.10])
-    roboAO_ee_075['Y'] = np.array([0.26, 0.22, 0.20, 0.16, 0.12])
-    roboAO_ee_075['J'] = np.array([0.33, 0.28, 0.25, 0.20, 0.14])
-    roboAO_ee_075['H'] = np.array([0.35, 0.31, 0.27, 0.22, 0.16])
-    
-    roboAO_ee_150 = {}
-    roboAO_ee_150['Z'] = np.array([0.35, 0.35, 0.35, 0.34, 0.31])
-    roboAO_ee_150['Y'] = np.array([0.42, 0.42, 0.43, 0.41, 0.36])
-    roboAO_ee_150['J'] = np.array([0.54, 0.54, 0.52, 0.42, 0.43])
-    roboAO_ee_150['H'] = np.array([0.66, 0.64, 0.62, 0.57, 0.48])
-    
-    if aper_radius == 0.15:
-        roboAO_ee = roboAO_ee_150
-    if aper_radius == 0.075:
-        roboAO_ee = roboAO_ee_075
-    if aper_radius == 0.0375:
-        roboAO_ee = roboAO_ee_0375
+    for gg in range(len(guide_mag)):
+        filename = 'ee_cdf_V{0:2d}_z30.txt'.format(guide_mag[gg])
 
-    ee = np.interp(mag, guide_mag, roboAO_ee[filt_name])
+        t = Table.read(data_dir + filename, format='ascii')
+
+        col_name = '{0:s}_EE{1:03.0f}'.format(filt_name, sq_aper_diam*1e3)
+
+        cprob = t['cprob']
+        ee = t[col_name]
+
+        idx = np.where(cprob == 0.5)[0]
+        ee_mag[gg] = ee[idx[0]]
+        
+    ee = np.interp(mag, guide_mag, ee_mag)
 
     return ee
     
-def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_limited=False):
+def make_sensitivity_curves(tint=1200, spec_res=100, sq_aper_diam=0.30, seeing_limited=False):
     mag = np.arange(10, 22)
+    snr_z = np.zeros(len(mag), dtype=float)
     snr_y = np.zeros(len(mag), dtype=float)
     snr_j = np.zeros(len(mag), dtype=float)
     snr_h = np.zeros(len(mag), dtype=float)
+    snr_sum_z = np.zeros(len(mag), dtype=float)
     snr_sum_y = np.zeros(len(mag), dtype=float)
     snr_sum_j = np.zeros(len(mag), dtype=float)
     snr_sum_h = np.zeros(len(mag), dtype=float)
+    bkg_z = np.zeros(len(mag), dtype=float)
     bkg_y = np.zeros(len(mag), dtype=float)
     bkg_j = np.zeros(len(mag), dtype=float)
     bkg_h = np.zeros(len(mag), dtype=float)
+    star_z = np.zeros(len(mag), dtype=float)
     star_y = np.zeros(len(mag), dtype=float)
     star_j = np.zeros(len(mag), dtype=float)
     star_h = np.zeros(len(mag), dtype=float)
 
+    spec_z_tab = None
     spec_y_tab = None
     spec_j_tab = None
     spec_h_tab = None
@@ -434,13 +468,14 @@ def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     # Calculate the number of supernovae.
     N_SNe = 4500.0 * 0.6 * 10**(mag - 18.9)
 
-    out_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, aper_radius)
+    out_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res,
+                                                                    sq_aper_diam)
     
     # Save the output to a table.
     _out = open(out_file + '.txt', 'w')
 
-    meta1 = '# tint = {0:5d}, R = {1:5d}, apRad = {2:5.3f}"\n'
-    _out.write(meta1.format(tint, spec_res, aper_radius))
+    meta1 = '# tint = {0:5d}, R = {1:5d}, sq_ap_diam = {2:5.3f}"\n'
+    _out.write(meta1.format(tint, spec_res, sq_aper_diam))
     _out.write('# Sensitivity integrated over broad band.')
     
     hdr = '{0:5s}  {1:6s}  {2:5s}  {3:5s}  {4:5s}  {5:5s}  {6:5s}  {7:5s}\n'
@@ -449,31 +484,40 @@ def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
                
     for mm in range(len(mag)):
         print 'Mag: ', mag[mm]
+        blah_z = etc_uh_roboAO(mag[mm], 'Z', tint,
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam, 
+                               seeing_limited=seeing_limited)
         blah_y = etc_uh_roboAO(mag[mm], 'Y', tint,
-                               spec_res=spec_res, aper_radius=aper_radius, 
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam, 
                                seeing_limited=seeing_limited)
         blah_j = etc_uh_roboAO(mag[mm], 'J', tint,
-                               spec_res=spec_res, aper_radius=aper_radius,
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam,
                                seeing_limited=seeing_limited)
         blah_h = etc_uh_roboAO(mag[mm], 'H', tint,
-                               spec_res=spec_res, aper_radius=aper_radius,
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam,
                                seeing_limited=seeing_limited)
         
+        col_z_suffix = '_Z_{0:d}'.format(mag[mm])
         col_y_suffix = '_Y_{0:d}'.format(mag[mm])
         col_j_suffix = '_J_{0:d}'.format(mag[mm])
         col_h_suffix = '_H_{0:d}'.format(mag[mm])
 
+        spec_signal_z = Column(name='sig'+col_z_suffix, data=blah_z[4])
         spec_signal_y = Column(name='sig'+col_y_suffix, data=blah_y[4])
         spec_signal_j = Column(name='sig'+col_j_suffix, data=blah_j[4])
         spec_signal_h = Column(name='sig'+col_h_suffix, data=blah_h[4])
+        spec_bkg_z = Column(name='bkg'+col_z_suffix, data=blah_z[5])
         spec_bkg_y = Column(name='bkg'+col_y_suffix, data=blah_y[5])
         spec_bkg_j = Column(name='bkg'+col_j_suffix, data=blah_j[5])
         spec_bkg_h = Column(name='bkg'+col_h_suffix, data=blah_h[5])
+        spec_snr_z = Column(name='snr'+col_z_suffix, data=blah_z[6])
         spec_snr_y = Column(name='snr'+col_y_suffix, data=blah_y[6])
         spec_snr_j = Column(name='snr'+col_j_suffix, data=blah_j[6])
         spec_snr_h = Column(name='snr'+col_h_suffix, data=blah_h[6])
 
         
+        if spec_z_tab == None:
+            spec_z_tab = Table([blah_z[3]], names=['wave_Z'])
         if spec_y_tab == None:
             spec_y_tab = Table([blah_y[3]], names=['wave_Y'])
         if spec_j_tab == None:
@@ -481,39 +525,45 @@ def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
         if spec_h_tab == None:
             spec_h_tab = Table([blah_h[3]], names=['wave_H'])
 
+        spec_z_tab.add_columns([spec_signal_z, spec_bkg_z, spec_snr_z])
         spec_y_tab.add_columns([spec_signal_y, spec_bkg_y, spec_snr_y])
         spec_j_tab.add_columns([spec_signal_j, spec_bkg_j, spec_snr_j])
         spec_h_tab.add_columns([spec_signal_h, spec_bkg_h, spec_snr_h])
 
+        snr_z[mm]  = blah_z[0]
         snr_y[mm]  = blah_y[0]
         snr_j[mm]  = blah_j[0]
         snr_h[mm]  = blah_h[0]
+        snr_sum_z[mm] = math.sqrt((spec_snr_z**2).sum())
         snr_sum_y[mm] = math.sqrt((spec_snr_y**2).sum())
         snr_sum_j[mm] = math.sqrt((spec_snr_j**2).sum())
         snr_sum_h[mm] = math.sqrt((spec_snr_h**2).sum())
 
+        star_z[mm]  = blah_z[1]
         star_y[mm]  = blah_y[1]
         star_j[mm]  = blah_j[1]
         star_h[mm]  = blah_h[1]
+        bkg_z[mm]  = blah_z[2]
         bkg_y[mm]  = blah_y[2]
         bkg_j[mm]  = blah_j[2]
         bkg_h[mm]  = blah_h[2]
 
-    avg_tab = Table([mag, snr_y, snr_j, snr_h, 
-                     snr_sum_y, snr_sum_j, snr_sum_h,
-                     star_y, star_j, star_h, bkg_y, bkg_j, bkg_h],
-                    names=['mag', 'snr_y', 'snr_j', 'snr_h', 
-                           'snr_sum_y', 'snr_sum_j', 'snr_sum_h',
-                           'star_y', 'star_j', 'star_h', 
-                           'bkg_y', 'bkg_j', 'bkg_h'])
+    avg_tab = Table([mag, snr_z, snr_y, snr_j, snr_h, 
+                     snr_sum_z, snr_sum_y, snr_sum_j, snr_sum_h,
+                     star_z, star_y, star_j, star_h, bkg_z, bkg_y, bkg_j, bkg_h],
+                    names=['mag', 'snr_z', 'snr_y', 'snr_j', 'snr_h', 
+                           'snr_sum_z', 'snr_sum_y', 'snr_sum_j', 'snr_sum_h',
+                           'star_z', 'star_y', 'star_j', 'star_h', 
+                           'bkg_z', 'bkg_y', 'bkg_j', 'bkg_h'])
 
 
-    out_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, aper_radius)
+    out_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, sq_aper_diam)
 
     if seeing_limited:
         out_file += '_seeing'
     
     # Save the tables
+    spec_z_tab.write(out_file + '_spec_z_tab.fits', overwrite=True)
     spec_y_tab.write(out_file + '_spec_y_tab.fits', overwrite=True)
     spec_j_tab.write(out_file + '_spec_j_tab.fits', overwrite=True)
     spec_h_tab.write(out_file + '_spec_h_tab.fits', overwrite=True)
@@ -522,8 +572,8 @@ def make_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     return
 
 
-def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_limited=False):
-    in_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, aper_radius)
+def plot_sensitivity_curves(tint=1200, spec_res=100, sq_aper_diam=0.30, seeing_limited=False):
+    in_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, sq_aper_diam)
 
     if seeing_limited:
         in_file += '_seeing'
@@ -534,15 +584,16 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     mag = avg_tab['mag']
     N_SNe = 4500.0 * 10**(0.6*(mag - 18.9))
 
-    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}  {4:8s}'
-    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}  {7:8s}'
-    print hdr1.format('Mag', '  Y-band SNR', '  J-band SNR', '  H-band SNR', 'Number')
-    print hdr2.format('', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'of SN Ia')
-    print hdr2.format('---', '-------', '-------', '-------', '-------', '-------', '-------', '--------')
+    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}   {4:15s}  {5:8s}'
+    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}   {7:7s} {8:7s}  {9:8s}'
+    print hdr1.format('Mag', '  Z-band SNR', '  Y-band SNR', '  J-band SNR', '  H-band SNR', 'Number')
+    print hdr2.format('', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'Per_Ch', 'Summed', 'of SN Ia')
+    print hdr2.format('---', '-------', '-------','-------', '-------',  '-------', '-------', '-------', '-------', '--------')
 
     for mm in range(len(mag)):
-        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}  {7:8.0f}'
+        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}  {7:7.1f} {8:7.1f}   {9:8.0f}'
         print fmt.format(mag[mm], 
+                         avg_tab['snr_z'][mm], avg_tab['snr_sum_z'][mm],
                          avg_tab['snr_y'][mm], avg_tab['snr_sum_y'][mm],
                          avg_tab['snr_j'][mm], avg_tab['snr_sum_j'][mm],
                          avg_tab['snr_h'][mm], avg_tab['snr_sum_h'][mm],
@@ -550,25 +601,27 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
 
     py.figure(1)
     py.clf()
-    py.semilogy(avg_tab['mag'], avg_tab['snr_y'], label='Y')
+    py.semilogy(avg_tab['mag'], avg_tab['snr_z'], label='Z')
+    py.plot(avg_tab['mag'], avg_tab['snr_y'], label='Y')
     py.plot(avg_tab['mag'], avg_tab['snr_j'], label='J')
     py.plot(avg_tab['mag'], avg_tab['snr_h'], label='H')
     py.xlabel('Magnitude')
     py.ylabel('SNR Per Spectral Channel')
-    py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
+    py.title('Tint={0:d} s, R={1:d}, aper_diam={2:0.3f}"'.format(tint, spec_res, sq_aper_diam))
     py.legend()
     py.ylim(1, 1e4)
     py.savefig(in_file + '_snr_per.png')
     
     py.clf()
-    py.semilogy(avg_tab['mag'], avg_tab['snr_sum_y'], label='Y')
+    py.semilogy(avg_tab['mag'], avg_tab['snr_sum_z'], label='Z')
+    py.plot(avg_tab['mag'], avg_tab['snr_sum_y'], label='Y')
     py.plot(avg_tab['mag'], avg_tab['snr_sum_j'], label='J')
     py.plot(avg_tab['mag'], avg_tab['snr_sum_h'], label='H')
     py.xlabel('Magnitude')
     py.ylabel('SNR Over Filter')
     py.ylim(1, 1e4)
     py.legend()
-    py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
+    py.title('Tint={0:d} s, R={1:d}, aper_diam={2:0.3f}"'.format(tint, spec_res, sq_aper_diam))
     py.savefig(in_file + '_snr_sum.png')
 
     # Two-panel - in the presentation
@@ -582,10 +635,11 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     ax1.set_ylabel('Number of SN Ia')
     py.setp(ax1.get_xticklabels(), visible=False)
     py.axvline(19, color='black', linestyle='--')
-    py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
+    py.title('Tint={0:d} s, R={1:d}, aper_diam={2:0.3f}"'.format(tint, spec_res, sq_aper_diam))
 
     ax2 = py.subplot(212, sharex=ax1)
-    py.semilogy(avg_tab['mag'], avg_tab['snr_sum_y'], label='Y')
+    py.semilogy(avg_tab['mag'], avg_tab['snr_sum_z'], label='Z')
+    py.plot(avg_tab['mag'], avg_tab['snr_sum_y'], label='Y')
     py.plot(avg_tab['mag'], avg_tab['snr_sum_j'], label='J')
     py.plot(avg_tab['mag'], avg_tab['snr_sum_h'], label='H')
     py.xlabel('Magnitude')
@@ -601,8 +655,8 @@ def plot_sensitivity_curves(tint=1200, spec_res=100, aper_radius=0.15, seeing_li
     py.savefig(in_file + '_snr_Nsne.png')
 
 
-def plot_sensitivity_curves_noOH(tint=1200, spec_res=3000, aper_radius=0.15):
-    in_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, aper_radius)
+def plot_sensitivity_curves_noOH(tint=1200, spec_res=3000, sq_aper_diam=0.30):
+    in_file = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, sq_aper_diam)
 
     spec_y_tab = Table.read(in_file + '_spec_y_tab.fits')
     spec_j_tab = Table.read(in_file + '_spec_j_tab.fits')
@@ -638,16 +692,16 @@ def plot_sensitivity_curves_noOH(tint=1200, spec_res=3000, aper_radius=0.15):
     py.plot(avg_tab['mag'], avg_tab['snr_h'], label='H')
     py.xlabel('Magnitude')
     py.ylabel('SNR')
-    py.title('Tint={0:d} s, R={1:d}, aper={2:0.3f}"'.format(tint, spec_res, aper_radius))
+    py.title('Tint={0:d} s, R={1:d}, aper_diam={2:0.3f}"'.format(tint, spec_res, sq_aper_diam))
     py.savefig(in_file + '.png')
     
 
 def plot_seeing_vs_ao(tint=1200, spec_res=100):
-    ap_rad_see = 0.4
-    ap_rad_rao = 0.150
+    ap_diam_see = 0.8
+    ap_diam_rao = 0.30
     
-    in_file_see = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}_seeing'.format(tint, spec_res, ap_rad_see)
-    in_file_rao = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, ap_rad_rao)
+    in_file_see = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}_seeing'.format(tint, spec_res, ap_diam_see)
+    in_file_rao = 'roboAO_sensitivity_t{0:d}_R{1:d}_ap{2:0.3f}'.format(tint, spec_res, ap_diam_rao)
     print in_file_see
     print in_file_rao
 
@@ -658,21 +712,40 @@ def plot_seeing_vs_ao(tint=1200, spec_res=100):
     mag_rao = avg_tab_rao['mag']
     mag_see = avg_tab_see['mag']
 
-    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}'
-    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}'
-    print hdr1.format('Mag', 'Y SNR (summed)', 'J SNR (summed)', 'H SNR (summed)')
-    print hdr2.format('', 'Robo-AO', 'Seeing', 'Robo-AO', 'Seeing', 'Robo-AO', 'Seeing')
-    print hdr2.format('---', '-------', '-------', '-------', '-------', '-------', '-------')
+    hdr1 = '# {0:3s}  {1:15s}   {2:15s}   {3:15s}   {4:15s}'
+    hdr2 = '# {0:3s}  {1:7s} {2:7s}   {3:7s} {4:7s}   {5:7s} {6:7s}   {7:7s} {8:7s}'
+    print hdr1.format('Mag', 'Y SNR (summed)', 'X SNR (summed)', 'J SNR (summed)', 'H SNR (summed)')
+    print hdr2.format('', 'Robo-AO', 'Seeing', 'Robo-AO', 'Seeing', 'Robo-AO', 'Seeing', 'Robo-AO', 'Seeing')
+    print hdr2.format('---', '-------', '-------', '-------', '-------', '-------', '-------', '-------', '-------')
 
     for mm in range(len(mag_rao)):
-        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}'
+        fmt = '  {0:3d}  {1:7.1f} {2:7.1f}   {3:7.1f} {4:7.1f}   {5:7.1f} {6:7.1f}   {7:7.1f} {8:7.1f}'
         print fmt.format(mag_rao[mm], 
+                         avg_tab_rao['snr_sum_z'][mm], avg_tab_see['snr_sum_z'][mm],
                          avg_tab_rao['snr_sum_y'][mm], avg_tab_see['snr_sum_y'][mm],
                          avg_tab_rao['snr_sum_j'][mm], avg_tab_see['snr_sum_j'][mm],
                          avg_tab_rao['snr_sum_h'][mm], avg_tab_see['snr_sum_h'][mm])
         
     N_SNe = 4500.0 * 0.6 * 10**(avg_tab_rao['mag'] - 18.9)
     
+    py.clf()
+    py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_z'], label='UH Robo-AO')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_z'], label='Seeing-Limited')
+    py.xlabel('Z-band Magnitude')
+    py.ylabel('Signal-to-Noise (Filter Integrated)')
+    py.legend()
+    py.title('Tint={0:d} s, R={1:d}'.format(tint, spec_res))
+    py.savefig(in_file_rao + '_z_snr_sum_vs_seeing.png')
+
+    py.clf()
+    py.plot(avg_tab_rao['mag'], avg_tab_rao['snr_sum_z'] / avg_tab_see['snr_sum_z'])
+    py.xlabel('Z-band Magnitude')
+    py.ylabel('Gain in Signal-to-Noise')
+    py.title('Tint={0:d} s, R={1:d}'.format(tint, spec_res))
+    py.savefig(in_file_rao + '_z_snr_gain_vs_seeing.png')
+
+
+
     py.clf()
     py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_y'], label='UH Robo-AO')
     py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_y'], label='Seeing-Limited')
@@ -708,7 +781,6 @@ def plot_seeing_vs_ao(tint=1200, spec_res=100):
     
 
     py.clf()
-
     py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_h'], label='UH Robo-AO')
     py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_h'], label='Seeing-Limited')
     py.xlabel('H-band Magnitude')
@@ -723,10 +795,38 @@ def plot_seeing_vs_ao(tint=1200, spec_res=100):
     py.ylabel('Gain in Signal-to-Noise')
     py.title('Tint={0:d} s, R={1:d}'.format(tint, spec_res))
     py.savefig(in_file_rao + '_h_snr_gain_vs_seeing.png')
+
+
+    # Combine across filters.
+    py.clf()
+    py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_z'], 'c-', label='Z UH Robo-AO')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_z'], 'c--', label='Z Seeing-Limited')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_y'], 'b-', label='Y UH Robo-AO')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_y'], 'b--', label='Y Seeing-Limited')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_j'], 'g-', label='J UH Robo-AO')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_j'], 'g--', label='J Seeing-Limited')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_rao['snr_sum_h'], 'r-', label='H UH Robo-AO')
+    py.semilogy(avg_tab_rao['mag'], avg_tab_see['snr_sum_h'], 'r--', label='H Seeing-Limited')
+    py.xlabel('Magnitude')
+    py.ylabel('Signal-to-Noise (Filter Integrated)')
+    py.legend()
+    py.title('Tint={0:d} s, R={1:d}'.format(tint, spec_res))
+    py.savefig(in_file_rao + '_all_snr_sum_vs_seeing.png')
     
+    py.clf()
+    py.plot(avg_tab_rao['mag'], avg_tab_rao['snr_sum_z'] / avg_tab_see['snr_sum_z'], label='Z')
+    py.plot(avg_tab_rao['mag'], avg_tab_rao['snr_sum_y'] / avg_tab_see['snr_sum_y'], label='Y')
+    py.plot(avg_tab_rao['mag'], avg_tab_rao['snr_sum_j'] / avg_tab_see['snr_sum_j'], label='J')
+    py.plot(avg_tab_rao['mag'], avg_tab_rao['snr_sum_h'] / avg_tab_see['snr_sum_h'], label='H')
+    py.legend(loc='upper left')
+    py.xlabel('Magnitude')
+    py.ylabel('Gain in Signal-to-Noise')
+    py.title('Tint={0:d} s, R={1:d}'.format(tint, spec_res))
+    py.savefig(in_file_rao + '_all_snr_gain_vs_seeing.png')
+        
     
 
-def make_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=False):
+def make_tint_curves(mag=20, spec_res=100, sq_aper_diam=0.30, seeing_limited=False):
     tint = np.arange(300, 3600+1, 300)
     snr_y = np.zeros(len(tint), dtype=float)
     snr_j = np.zeros(len(tint), dtype=float)
@@ -743,13 +843,13 @@ def make_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=Fals
     for tt in range(len(tint)):
         print 'Tint: ', tint[tt]
         blah_y = etc_uh_roboAO(mag, 'Y', tint[tt],
-                               spec_res=spec_res, aper_radius=aper_radius, 
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam, 
                                seeing_limited=seeing_limited)
         blah_j = etc_uh_roboAO(mag, 'J', tint[tt],
-                               spec_res=spec_res, aper_radius=aper_radius,
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam,
                                seeing_limited=seeing_limited)
         blah_h = etc_uh_roboAO(mag, 'H', tint[tt],
-                               spec_res=spec_res, aper_radius=aper_radius,
+                               spec_res=spec_res, sq_aper_diam=sq_aper_diam,
                                seeing_limited=seeing_limited)
         
         col_y_suffix = '_Y_{0:d}'.format(tint[tt])
@@ -796,7 +896,7 @@ def make_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=Fals
                            'snr_h', 'snr_sum_h'])
 
 
-    out_file = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, aper_radius)
+    out_file = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, sq_aper_diam)
 
     if seeing_limited:
         out_file += '_seeing'
@@ -809,8 +909,8 @@ def make_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=Fals
 
     return
     
-def plot_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=False):
-    in_file = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, aper_radius)
+def plot_tint_curves(mag=20, spec_res=100, sq_aper_diam=0.30, seeing_limited=False):
+    in_file = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, sq_aper_diam)
 
     if seeing_limited:
         in_file += '_seeing'
@@ -839,7 +939,7 @@ def plot_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=Fals
     py.plot(avg_tab['tint'], avg_tab['snr_h'], label='H')
     py.xlabel('Integration Time (s)')
     py.ylabel('SNR Per Spectral Channel')
-    py.title('Mag={0:d}, R={1:d}, aper={2:0.3f}"'.format(mag, spec_res, aper_radius))
+    py.title('Mag={0:d}, R={1:d}, aper_diam={2:0.3f}"'.format(mag, spec_res, sq_aper_diam))
     py.legend()
     py.ylim(0, 80)
     py.savefig(in_file + '_snr_per.png')
@@ -852,16 +952,16 @@ def plot_tint_curves(mag=20, spec_res=100, aper_radius=0.15, seeing_limited=Fals
     py.ylabel('SNR Over Filter')
     py.ylim(0, 80)
     py.legend()
-    py.title('Mag={0:d}, R={1:d}, aper={2:0.3f}"'.format(mag, spec_res, aper_radius))
+    py.title('Mag={0:d}, R={1:d}, aper_diam={2:0.3f}"'.format(mag, spec_res, sq_aper_diam))
     py.savefig(in_file + '_snr_sum.png')
 
 
 def plot_seeing_vs_ao_tint(mag=20, spec_res=100):
-    ap_rad_see = 0.4
-    ap_rad_rao = 0.15
+    ap_diam_see = 0.8
+    ap_diam_rao = 0.3
     
-    in_file_see = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}_seeing'.format(mag, spec_res, ap_rad_see)
-    in_file_rao = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, ap_rad_rao)
+    in_file_see = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}_seeing'.format(mag, spec_res, ap_diam_see)
+    in_file_rao = 'roboAO_tint_m{0:d}_R{1:d}_ap{2:0.3f}'.format(mag, spec_res, ap_diam_rao)
 
     avg_tab_rao = Table.read(in_file_rao + '_avg_tab.fits')
     avg_tab_see = Table.read(in_file_see + '_avg_tab.fits')
