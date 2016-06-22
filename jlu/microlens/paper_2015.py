@@ -3452,12 +3452,12 @@ def table_lens_parameters():
                                      mnest_root = mnest_root,
                                      phot_file = phot_file,
                                      target = target)
-    multinest_plot.calc_chi2_lens_fit(root_dir=roto_dir,
+    multinest_plot.calc_chi2_lens_fit(root_dir=root_dir,
                                       analysis_dir=analysis_dir_tt,
                                       mnest_run=mnest_root,
                                       target=target,
                                       useMedian=False, verbose=True)
-    multinest_plot.calc_chi2_lens_fit(root_dir=roto_dir,
+    multinest_plot.calc_chi2_lens_fit(root_dir=root_dir,
                                       analysis_dir=analysis_dir_tt,
                                       mnest_run=mnest_root,
                                       target=target,
