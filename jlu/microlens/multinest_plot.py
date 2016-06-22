@@ -510,6 +510,164 @@ def pair_posterior(atpy_table, weights, outfile=None, title=None):
     return
 
 
+def calc_chi2_lens_fit(root_dir='/Users/jlu/work/microlens/2015_evan/',
+                       analysis_dir='analysis_ob110022_2014_03_22al_MC100_omit_1/',
+                       mnest_run='bf',
+                       target='OB110022',
+                       useMedian=False, verbose=True):
+    
+    # Assume this is NIRC2 data.
+    pixScale = 9.952  # mas / pixel
+
+    if target == 'ob120169':
+        targname = 'ob120169_R'
+    else:
+        targname = target
+
+    #Plot astrometric observations
+    pointsFile = root_dir + analysis_dir + 'points_d/' + targname + '.points'
+    pointsTab = Table.read(pointsFile, format='ascii')
+    tobs = pointsTab['col1']
+    xpix = pointsTab['col2']
+    ypix = pointsTab['col3']
+    xerr = pointsTab['col4']
+    yerr = pointsTab['col5']
+
+    thetaSx_data = xpix * pixScale
+    thetaSy_data = ypix * pixScale
+    xerr_data = xerr * pixScale
+    yerr_data = yerr * pixScale
+
+    # Load Best-Fit Microlensing Model
+    mnest_dir = 'multiNest/' + mnest_run + '/'
+    mnest_root = mnest_run
+    tab = load_mnest_results(root_dir=root_dir + analysis_dir,
+                             mnest_dir=mnest_dir,
+                             mnest_root=mnest_root)
+
+    params = tab.keys()
+    pcnt = len(params)
+    Masslim = 0.0
+
+    # Clean table and only keep valid results.
+    ind = np.where((tab['Mass'] >= Masslim))[0]
+    tab = tab[ind]
+
+    if not useMedian:    
+        best = np.argmax(tab['logLike'])
+        maxLike = tab['logLike'][best]
+        if verbose:
+            print 'Best-Fit Solution:'
+            print '  Index = {0:d}'.format(best)
+            print '  Log(L) = {0:6.2f}'.format(maxLike)
+            print '  Params:'
+            for i in range(pcnt):
+                print '     {0:15s}  {1:10.3f}'.format(params[i], tab[params[i]][best])
+
+        t0 = tab['t0'][best]
+        tE = tab['tE'][best]
+        thetaS0x = tab['thetaS0x'][best]
+        thetaS0y = tab['thetaS0y'][best]
+        muSx = tab['muSx'][best]
+        muSy = tab['muSy'][best]
+        muRelx = tab['muRelx'][best]
+        muRely = tab['muRely'][best]
+        beta = tab['beta'][best]
+        piEN = tab['piEN'][best]
+        piEE = tab['piEE'][best]
+
+        if verbose:
+            print '     muLx = {0:5.2f} mas/yr'.format(muSx - muRelx)
+            print '     muLy = {0:5.2f} mas/yr'.format(muSy - muRely)
+    else:
+        t0 = weighted_quantile(tab['t0'], 0.5, sample_weight=tab['weights'])
+        tE = weighted_quantile(tab['tE'], 0.5, sample_weight=tab['weights'])
+        thetaS0x = weighted_quantile(tab['thetaS0x'], 0.5, sample_weight=tab['weights'])
+        thetaS0y = weighted_quantile(tab['thetaS0y'], 0.5, sample_weight=tab['weights'])
+        muSx = weighted_quantile(tab['muSx'], 0.5, sample_weight=tab['weights'])
+        muSy = weighted_quantile(tab['muSy'], 0.5, sample_weight=tab['weights'])
+        muRelx = weighted_quantile(tab['muRelx'], 0.5, sample_weight=tab['weights'])
+        muRely = weighted_quantile(tab['muRely'], 0.5, sample_weight=tab['weights'])
+        beta = weighted_quantile(tab['beta'], 0.5, sample_weight=tab['weights'])
+        piEN = weighted_quantile(tab['piEN'], 0.5, sample_weight=tab['weights'])
+        piEE = weighted_quantile(tab['piEE'], 0.5, sample_weight=tab['weights'])
+
+        if verbose:
+            print 'Median Solution:'
+            print '   Params:'
+            print '     {0:15s}  {1:10.3f}'.format('t0', t0)
+            print '     {0:15s}  {1:10.3f}'.format('tE', tE)
+            print '     {0:15s}  {1:10.3f}'.format('thetaS0x', thetaS0x)
+            print '     {0:15s}  {1:10.3f}'.format('thetaS0y', thetaS0y)
+            print '     {0:15s}  {1:10.3f}'.format('muSx', muSx)
+            print '     {0:15s}  {1:10.3f}'.format('muSy', muSy)
+            print '     {0:15s}  {1:10.3f}'.format('muRelx', muRelx)
+            print '     {0:15s}  {1:10.3f}'.format('muRely', muRely)
+            print '     {0:15s}  {1:10.3f}'.format('beta', beta)
+            print '     {0:15s}  {1:10.3f}'.format('piEN', piEN)
+            print '     {0:15s}  {1:10.3f}'.format('piEE', piEE)
+            print '     muLx = {0:5.2f} mas/yr'.format(muSx - muRelx)
+            print '     muLy = {0:5.2f} mas/yr'.format(muSy - muRely)
+
+
+    ##########
+    # Get astrometry for best-fit model. Do this on a fine time grid
+    # and also at the points of the observations.
+    ##########
+    tmod = np.arange(t0-20.0, t0+20.0, 0.01)
+    model = MCMC_LensModel.LensModel_Trial1(tmod, t0, tE, [thetaS0x, thetaS0y],
+                                            [muSx,muSy], [muRelx, muRely],
+                                            beta, [piEN, piEE])
+    model_tobs = MCMC_LensModel.LensModel_Trial1(tobs, t0, tE, [thetaS0x, thetaS0y],
+                                                [muSx,muSy], [muRelx, muRely],
+                                                beta, [piEN, piEE])
+
+    thetaS_model = model[0]
+    thetaE_amp = model[1]
+    M = model[2]
+    shift = model[3]
+    thetaS_nolens = model[4]
+
+    thetaS_model_tobs = model_tobs[0]
+    thetaE_amp_tobs = model_tobs[1]
+    M_tobs = model_tobs[2]
+    shift_tobs = model_tobs[3]
+    thetaS_nolens_tobs = model_tobs[4]
+
+    thetaSx_model = thetaS_model[:,0]
+    thetaSy_model = thetaS_model[:,1]
+    thetaS_nolensx = thetaS_nolens[:,0]
+    thetaS_nolensy = thetaS_nolens[:,1]
+    shiftx = shift[:,0]
+    shifty = shift[:,1]
+
+    thetaSx_model_tobs = thetaS_model_tobs[:,0]
+    thetaSy_model_tobs = thetaS_model_tobs[:,1]
+
+    ##########
+    # Calculate Chi-Squared Star for comparison to velocity-only fit.
+    ##########
+    # Find the model points closest to the data.
+    dx = thetaSx_data - thetaSx_model_tobs
+    dy = thetaSy_data - thetaSy_model_tobs
+    chi2_x = ((dx / xerr_data)**2).sum()
+    chi2_y = ((dy / yerr_data)**2).sum()
+    N_dof = (2*len(dx)) - 9
+    chi2_tot = chi2_x + chi2_y
+    chi2_red = chi2_tot / N_dof
+
+    if verbose:
+        print 'Chi-Squared of Lens Model Fit:'
+        print '        X Chi^2 = {0:5.2f}'.format(chi2_x)
+        print '        Y Chi^2 = {0:5.2f}'.format(chi2_y)
+        print '    Total Chi^2 = {0:5.2f} ({1:d} DOF)'.format(chi2_tot, N_dof)
+        print '  Reduced Chi^2 = {0:5.2f}'.format(chi2_red)
+        print ''
+        print ''
+
+    return chi2_tot, N_dif, chi2_red
+
+
 def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
                       mnest_dir='analysis_ob110022_2014_03_22al_MC100_omit_1/multiNest/bf/',
                       mnest_root='bf',

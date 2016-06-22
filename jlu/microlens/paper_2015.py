@@ -19,7 +19,7 @@ import scipy.stats
 from astropy.table import Table
 import astropy.table as table
 import shutil
-from jlu.microlens.multinest import run_ob110022_err_x2 as mnest_ob110022
+# from jlu.microlens.multinest import run_ob110022_err_x2 as mnest_ob110022
 
 plot_dir = '/Users/jlu/doc/papers/microlens/microlens_paper/Paper/'
 pub_dir = plot_dir + '699-2_Publication_apj_v3/'
@@ -3452,6 +3452,16 @@ def table_lens_parameters():
                                      mnest_root = mnest_root,
                                      phot_file = phot_file,
                                      target = target)
+    multinest_plot.calc_chi2_lens_fit(root_dir=roto_dir,
+                                      analysis_dir=analysis_dir_tt,
+                                      mnest_run=mnest_root,
+                                      target=target,
+                                      useMedian=False, verbose=True)
+    multinest_plot.calc_chi2_lens_fit(root_dir=roto_dir,
+                                      analysis_dir=analysis_dir_tt,
+                                      mnest_run=mnest_root,
+                                      target=target,
+                                      useMedian=True, verbose=True)
         
 
     # OB120169
