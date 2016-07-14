@@ -17,6 +17,8 @@ import pandas
 import astropy
 import os
 import warnings
+import matplotlib as mpl
+import colormaps as cmaps
 #from jlu.m31 import ifu
 
 
@@ -203,7 +205,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False,selectTemp=None):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -239,7 +241,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,tw
 
     # Load templates
     if newTemplates:
-        logWaveTemps, templates = load_templates(velScale,IDL=False)
+        logWaveTemps, templates = load_templates(velScale,IDL=False,selectTemp=selectTemp)
     else:
         logWaveTemps, templates = load_templates_old(velScale,IDL=False)
 
@@ -324,7 +326,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,tw
     allxxyy = np.array(allxxyylist)
     allxx, allyy = zip(*itertools.product(xx, yy))
 
-    #pdb.set_trace()
+    pdb.set_trace()
 
     # pp implementation
     job_server = pp.Server()
@@ -864,7 +866,8 @@ def plotResults(inputFile):
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -990,7 +993,8 @@ def plotResults2(inputFile):
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -1164,6 +1168,97 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         py.savefig(workdir + 'plots/kinematic_maps3.eps')
     py.show()
 
+def plotTempWeights(inputResults=workdir+'ppxf.dat'):
+    # Creates n/6 plots (6 plots per page), where n=# of templates used, colored by the weight
+
+    p = PPXFresults(inputResults)
+    tw = p.tweights
+
+    ntw = tw.shape[2]
+    nplot = np.ceil(ntw/6.)
+
+    goodtemp = np.zeros((tw.shape[0],tw.shape[1],tw.shape[2]),dtype=int)
+    good = np.where(tw != 0)
+    goodtemp[good] = 1
+    ntemp = np.sum(goodtemp,axis=2)
+
+    names, spectype = load_template_names()
+
+    xaxis = np.arange(tw.shape[1]) * 0.05
+    yaxis = np.arange(tw.shape[0]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    # discrete colormap
+    tmpcmap = py.get_cmap('jet',10)
+    
+    # plot the number of templates used at each bin
+    py.close(2)
+    py.figure(2, figsize=(7,4))
+    py.imshow(np.rot90(ntemp.T,3), extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]], cmap=tmpcmap)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical',cmap=tmpcmap)
+    cbar.set_label('Number of templates')
+
+    py.savefig(workdir + 'plots/tempweights_ntemp.png')
+    py.show()
+    pdb.set_trace()
+    
+    py.close(2)
+    py.figure(2, figsize=(15,13))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+
+    # plot the weights of each template
+    for pagen in np.arange(nplot):
+        py.clf()
+        for plotn in np.arange(6):
+            py.subplot(3,2,plotn+1)
+            tmpn = (pagen*6) + plotn
+            tmpn = tmpn.astype('int')
+            if tmpn <= (ntw-1):
+                tmp = tw[:,:,tmpn]
+                tmpimg = np.rot90(tmp.T,3)
+                py.imshow(tmpimg, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],cmap=cmaps.inferno)
+                py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'cx', markeredgewidth=3)
+                py.ylabel('Y (arcsec)')
+                py.xlabel('X (arcsec)')
+                py.gca().get_xaxis().set_major_locator(xtickLoc)
+                py.axis('image')
+                cbar = py.colorbar(orientation='vertical')
+                lab = '%s (%s)'  % (names[tmpn], spectype[tmpn])
+                cbar.set_label(lab)
+        
+        filename = 'plots/tempweights_%1.0f.png' % pagen
+        py.savefig(workdir + filename)
+        py.show()
+
+def plotChi2(inputResults=workdir+'/ppxf.dat'):
+    p = PPXFresults(inputResults)
+
+    xaxis = np.arange(p.chi2red.shape[1]) * 0.05
+    yaxis = np.arange(p.chi2red.shape[0]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(8,4))
+    py.subplots_adjust(left=0.1, right=0.96, top=0.95)
+    py.clf()
+
+    chi2 = np.rot90(p.chi2red.T,3)
+    py.imshow(chi2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Reduced $\chi^2$')
+    
 def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     ### Plots error on velocity and velocity dispersion
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
@@ -1408,7 +1503,8 @@ def plotQuality():
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -2286,6 +2382,145 @@ class modelFitResults(object):
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
 
+def modelConvert2CSV(inputFile=None,smooth=False,l98bin=False,centerBH=None,reorient=True,normFlux=False):
+    # convert pickle file to flat file
+    # structure matches that of Hiranya's CSVs:
+    ### flux file: [bin_y, bin_x, flux (or, here, nstar)]
+    ### velocity file: [bin_y, bin_x, pos_y (in arcsec), pos_x, velocity, sigma, h3, h4]
+
+    # Keywords:
+    # smooth: smooth maps before flattening
+    # l98bin: when False (default), pixel scale=0.05" (OSIRIS scale), when True,
+    ### pixel scale=0.0228" (L98 pixel scale)
+    # centerBH: if BH coordinates are given ([x,y]), pos_x and pos_y place the BH
+    ### at [0.0, 0.0]
+    # reorient: if True (default), orientation is N is 56 degrees to the left of top, 
+    ###  E 90 degrees to the left of that
+    # fluxNorm: normalize flux so peak flux = 1
+
+    inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt'
+    
+    mod = modelFitResults(inputFile)
+    gridShape = mod.nstar.shape
+    bingrid = np.indices((gridShape[0],gridShape[1]))
+    rowgrid = bingrid[0,:,:]
+    colgrid = bingrid[1,:,:]
+    tmpbinx = colgrid.flatten()
+    tmpbiny = rowgrid.flatten()
+    tmpbinx = tmpbinx.astype(int)
+    tmpbiny = tmpbiny.astype(int)
+    PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=False)
+    if l98bin:
+        pixscale = 0.0228
+        PSF = ifu.gauss_kernel(PSFparams.sig1[0]*2.19, PSFparams.amp1[0], half_box=50)
+    else:
+        pixscale = 0.05
+        PSF = ifu.gauss_kernel(PSFparams.sig1[0], PSFparams.amp1[0], half_box=50)
+    if centerBH:
+        tmpposx = (tmpbinx - centerBH[0])*pixscale
+        tmpposy = (tmpbiny - centerBH[1])*pixscale
+    else:
+        tmpposx = tmpbinx*pixscale
+        tmpposy = tmpbiny*pixscale
+    
+    if reorient:
+        tmpnstar = np.rot90(mod.nstar.T,3)
+        tmpv = np.rot90(mod.velocity.T,3)
+        tmpsig = np.rot90(mod.sigma.T,3)
+        tmph3 = np.rot90(mod.h3.T,3)
+        tmph4 = np.rot90(mod.h4.T,3)
+    else:
+        tmpnstar = mod.nstar
+        tmpv = mod.velocity
+        tmpsig = mod.sigma
+        tmph3 = mod.h3
+        tmph4 = mod.h4
+        
+    if smooth:
+        tmpnstar = signal.convolve(tmpnstar,PSF,mode='same')
+        tmpv = signal.convolve(tmpv,PSF,mode='same')
+        tmpsig = signal.convolve(tmpsig,PSF,mode='same')
+        tmph3 = signal.convolve(tmph3,PSF,mode='same')
+        tmph4 = signal.convolve(tmph4,PSF,mode='same')
+        
+    tmpnstar = tmpnstar.flatten()
+    if normFlux:
+        tmpnstar = tmpnstar/tmpnstar.max()
+    tmpv = tmpv.flatten()
+    tmpsig = tmpsig.flatten()
+    tmph3 = tmph3.flatten()
+    tmph4 = tmph4.flatten()
+    #pdb.set_trace()
+    outputFileFlux = inputFile.replace('.dat', '_fluxCSV.dat')
+    outputFileVel = inputFile.replace('.dat', '_velCSV.dat')
+    np.savetxt(outputFileFlux,np.c_[tmpbinx,tmpbiny,tmpnstar],fmt=('%d','%d','%8.6f'),delimiter='\t')
+    np.savetxt(outputFileVel,np.c_[tmpbinx,tmpbiny, tmpposx, tmpposy, tmpv,tmpsig,tmph3,tmph4],fmt=('%d','%d','%8.6f','%8.6f','%8.6f','%8.6f','%8.6f','%8.6f'),delimiter='\t')
+
+class modelReadCSV(object):
+    def __init__(self, inputFile=None, vel=False):
+        self.inputFile = inputFile
+        # read in the file created by modelConvert2CSV
+
+        if vel is False:
+            mod = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['y','x','f'])
+        else:
+            mod = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['y','x','posy','posx','v','sigma','h3','h4'])
+
+        imgShape = (mod.x.max()-mod.x.min()+1,mod.y.max()-mod.y.min()+1)
+
+        off = mod.x.min()
+
+        if vel:
+            tmpposx = np.zeros(imgShape,dtype=float)
+            tmpposy = np.zeros(imgShape,dtype=float)
+            tmpv = np.zeros(imgShape,dtype=float)
+            tmpsig = np.zeros(imgShape,dtype=float)
+            tmph3 = np.zeros(imgShape,dtype=float)
+            tmph4 = np.zeros(imgShape,dtype=float)
+
+            
+            for i in range(mod.y.shape[0]):
+                tmpposx[mod.x[i]-off,mod.y[i]-off] = mod.posx[i]
+                tmpposy[mod.x[i]-off,mod.y[i]-off] = mod.posy[i]
+                tmpv[mod.x[i]-off,mod.y[i]-off] = mod.v[i]
+                tmpsig[mod.x[i]-off,mod.y[i]-off] = mod.sigma[i]
+                tmph3[mod.x[i]-off,mod.y[i]-off] = mod.h3[i]
+                tmph4[mod.x[i]-off,mod.y[i]-off] = mod.h4[i]
+
+            # check the order of the sorting - if x is increasing faster, use 'f',
+            # if y is increasing faster, use 'c'
+            #if mod.x[0]==mod.y[1]:
+            #    sortorder = 'c'
+            #else:
+            #    sortorder = 'f'
+            #tmpposx = np.reshape(mod.posx,imgShape,order=sortorder)
+            #tmpposy = np.reshape(mod.posy,imgShape,order=sortorder)
+            #tmpv = np.reshape(mod.v,imgShape,order=sortorder)
+            #tmpsig = np.reshape(mod.sigma,imgShape,order=sortorder)
+            #tmph3 = np.reshape(mod.h3,imgShape,order=sortorder)
+            #tmph4 = np.reshape(mod.h4,imgShape,order=sortorder)
+            
+            self.posx = tmpposx
+            self.posy = tmpposy
+            self.v = tmpv
+            self.sigma = tmpsig
+            self.h3 = tmph3
+            self.h4 = tmph4
+            
+        else:
+            tmpnstar = np.zeros(imgShape,dtype=float)
+
+            for i in range(mod.y.shape[0]):
+                tmpnstar[mod.x[i]-off,mod.y[i]-off] = mod.f[i]
+
+            #if mod.x[0]==mod.y[1]:
+            #    sortorder = 'c'
+            #else:
+            #    sortorder = 'f'
+            #tmpnstar = np.reshape(mod.f,imgShape,order=sortorder)
+            
+            self.nstar = tmpnstar
+            
 def smoothModels(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full.dat', inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt', twoGauss=False):
 
     model = modelFitResults(inputFile=inputModel)
@@ -2361,8 +2596,8 @@ def modelConvertCoordinates(nonaligned=True,test=False):
     if nonaligned:
         if test:
             thetaL = np.radians(0.)
-            thetaI = np.radians(10.)
-            thetaA = np.radians(45.)
+            thetaI = np.radians(-10.)
+            thetaA = np.radians(0.)
         else:
             thetaL = np.radians(-42.8)
             thetaI = np.radians(54.1)
@@ -2470,8 +2705,10 @@ def modelOSIRISrotation(inputFile=None,nonaligned=True):
 
     # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
     # by definition of the rotation matrix
-    #cpa = -34.
-    cpa = -56.
+    cpa = -34.
+    #cpa = -56.
+    #testing a model rotation thing - reset to -56 when done
+    #cpa = -45.
     
     thetaCPA = np.radians(cpa)
 
@@ -2578,12 +2815,12 @@ class modelResults(object):
         self.vy = model.v_y
         self.vz = model.v_z
     
-def load_templates(velScale, resolution=3241, IDL=True):
+def load_templates(velScale, resolution=3241, IDL=True, selectTemp=None):
     # IDL and Python versions of pPXF require different formats for the input templates
     templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
 
     files = glob.glob(templateDir + '*.fits')
-    print 'Using %d templates' % len(files)
+    
 
     templates = None
     for ff in range(len(files)):
@@ -2600,7 +2837,39 @@ def load_templates(velScale, resolution=3241, IDL=True):
         else:
             templates[:,ff] = newSpec
 
+    if selectTemp:
+        print 'Using %d templates' % len(selectTemp)
+        if IDL:
+            newTemp = templates[selectTemp,:]
+            templates = newTemp
+        else:
+            newTemp = templates[:,selectTemp]
+            templates = newTemp
+    else:
+        print 'Using %d templates' % len(files)
+            
     return (newWave, templates)
+
+def load_template_names():
+    templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
+    nc = len(templateDir)
+    
+    files = glob.glob(templateDir + '*.fits')
+    nf = len(files)
+
+    specdict = {'hd113538': 'K8 V', 'hd173764': 'G4 IIa', 'hd1737': 'G5 III', 'hd20038': 'F7 IIIw', 'hd206067': 'K0 III', 'hd212320': 'G6 III', 'hd218594': 'K1 III', 'hd224533': 'G9 III', 'hd2490': 'M0 III', 'hd26965': 'K1 V(a)', 'hd32440': 'K6 III', 'hd34642': 'K0 IV', 'hd35369': 'G8 III', 'hd36079': 'G5 II', 'hd38392': 'K2 V', 'hd39425': 'K2 III', 'hd4188': 'K0 III', 'hd4730': 'K3 III', 'hd63425B': 'K7 III', 'hd64606': 'G8 V', 'hd6461': 'G3 V', 'hd720': 'K5 III', 'hd9138': 'K4 III'}
+    
+    names = []
+    spectype = []
+    for i in range(nf):
+        tmpname = files[i][nc:-1]
+        tmpname = tmpname.split('_')
+        tmpname = tmpname[0]
+        names.append(tmpname)
+        tmpspec = specdict[tmpname]
+        spectype.append(tmpspec)
+
+    return (names, spectype)
 
 def load_templates_old(velScale, IDL=False):
     templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/atlasSpectra/medresIR/K_band'
