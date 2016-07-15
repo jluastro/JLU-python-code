@@ -596,7 +596,6 @@ def make_cluster_catalog():
                                   vel_err_cut, mag_err_cut,
                                   out_dir, N_gauss, prob, 
                                   rotate=True)
-
     return
     
 
@@ -902,12 +901,21 @@ def calc_color_members():
     py.savefig(plot_dir + 'membership_color_infrared.png')
 
     ##########
-    # Calculate p(color) based on F814W vs. F814W - F160W only.
+    # Calculate p(color) based on F814W vs. F814W - F160W and F125W vs. F125W - F160W.
     ##########
     pcolor = np.zeros(len(m814), dtype=int)
     
     points = np.vstack((color1, m814)).T
-    idx = np.where(optical_path.contains_points(points) == True)[0]
+    idx_opt = np.where(optical_path.contains_points(points) == True)[0]
+    print 'Found {0:d} optical color members'.format(len(idx_opt))
+    points = np.vstack((color2, m125)).T
+    idx_ir = np.where(infrared_path.contains_points(points) == True)[0]
+    print 'Found {0:d} infrared color members'.format(len(idx_ir))
+    
+    idx = np.intersect1d(idx_opt, idx_ir)
+    print 'Found {0:d} optica+infrared color members'.format(len(idx))
+    
+    
     fmt = 'Setting P(color) = 0 for {0} of {1} stars based on color cut.'
     print fmt.format(len(m814) - len(idx), len(m814))
 
@@ -932,6 +940,7 @@ def calc_color_members():
     py.xlim(1, 10)
     py.xlabel('F814W - F160W')
     py.ylabel('F814W')
+    py.savefig(plot_dir + 'membership_color_final.png')
 
     return
 

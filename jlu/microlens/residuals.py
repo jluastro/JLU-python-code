@@ -567,9 +567,10 @@ def ResVectorPlot(root='./', align='align/align_t',
             
     return
 
-def check_alignment_fit(align_root, root_dir='./'):
+def check_alignment_fit(root_dir='./', align_root='align/align_t', poly_root='polyfit_d/fit'):
 	
     s = starset.StarSet(root_dir + align_root)
+    s.loadPolyfit(root_dir + poly_root, accel=0, arcsec=0)
     s.loadStarsUsed()
 
     x = s.getArrayFromAllEpochs('xpix')
@@ -580,12 +581,19 @@ def check_alignment_fit(align_root, root_dir='./'):
     ye_a = s.getArrayFromAllEpochs('ypixerr_a')
     isUsed = s.getArrayFromAllEpochs('isUsed')
 
-    x0 = s.getArray('fitpXalign.p')
-    vx = s.getArray('fitpXalign.v')
-    t0x = s.getArray('fitpXalign.t0')
-    y0 = s.getArray('fitpYalign.p')
-    vy = s.getArray('fitpYalign.v')
-    t0y = s.getArray('fitpYalign.t0')
+    # x0 = s.getArray('fitpXalign.p')
+    # vx = s.getArray('fitpXalign.v')
+    # t0x = s.getArray('fitpXalign.t0')
+    # y0 = s.getArray('fitpYalign.p')
+    # vy = s.getArray('fitpYalign.v')
+    # t0y = s.getArray('fitpYalign.t0')
+
+    x0 = s.getArray('fitpXv.p')
+    vx = s.getArray('fitpXv.v')
+    t0x = s.getArray('fitpXv.t0')
+    y0 = s.getArray('fitpYv.p')
+    vy = s.getArray('fitpYv.v')
+    t0y = s.getArray('fitpYv.t0')
 
     m = s.getArray('mag')
     cnt = s.getArray('velCnt')
@@ -593,6 +601,7 @@ def check_alignment_fit(align_root, root_dir='./'):
     N_epochs = x.shape[0]
     N_stars = x.shape[1]
 
+    # Setup arrays.
     xresid_rms_all = np.zeros(N_epochs, dtype=float)
     yresid_rms_all = np.zeros(N_epochs, dtype=float)
     
@@ -602,8 +611,8 @@ def check_alignment_fit(align_root, root_dir='./'):
     xresid_err_a_all = np.zeros(N_epochs, dtype=float)
     yresid_err_a_all = np.zeros(N_epochs, dtype=float)
     
-    xresid_err_p_used = np.zeros(N_epochs, dtype=float)
-    yresid_err_p_used = np.zeros(N_epochs, dtype=float)
+    xresid_err_a_used = np.zeros(N_epochs, dtype=float)
+    yresid_err_a_used = np.zeros(N_epochs, dtype=float)
 
     xresid_err_p_all = np.zeros(N_epochs, dtype=float)
     yresid_err_p_all = np.zeros(N_epochs, dtype=float)
@@ -621,6 +630,9 @@ def check_alignment_fit(align_root, root_dir='./'):
     N_stars_used = np.zeros(N_epochs, dtype=float)
     
     year = np.zeros(N_epochs, dtype=float)
+    
+    idx = np.where(cnt > 2)[0]
+    N_stars_3ep = len(idx)
 
     for ee in range(N_epochs):
         idx = np.where((cnt > 2) & (x[ee, :] > -1000) & (xe_p[ee, :] > 0))[0]
@@ -639,6 +651,7 @@ def check_alignment_fit(align_root, root_dir='./'):
         N_stars_all[ee] = len(xresid)
         N_stars_used[ee] = len(xresid[used])
 
+        # Note this chi^2 only includes positional errors.
         chi2x_terms = xresid**2 / xe_p[ee, idx]**2
         chi2y_terms = yresid**2 / ye_p[ee, idx]**2
 
@@ -671,12 +684,14 @@ def check_alignment_fit(align_root, root_dir='./'):
 
     data = {'xres_rms_all': xresid_rms_all, 'yres_rms_all': yresid_rms_all,
             'xres_rms_used': xresid_rms_used, 'yres_rms_used': yresid_rms_used,
-            'xres_err_all': xresid_err_all, 'yres_err_all': yresid_err_all, 
-            'xres_err_used': xresid_err_used, 'yres_err_used': yresid_err_used, 
+            'xres_err_p_all': xresid_err_p_all, 'yres_err_p_all': yresid_err_p_all, 
+            'xres_err_p_used': xresid_err_p_used, 'yres_err_p_used': yresid_err_p_used, 
+            'xres_err_a_all': xresid_err_a_all, 'yres_err_a_all': yresid_err_a_all, 
+            'xres_err_a_used': xresid_err_a_used, 'yres_err_a_used': yresid_err_a_used, 
             'chi2x_all': chi2x_all, 'chi2y_all': chi2y_all,
             'chi2x_used': chi2x_used, 'chi2y_used': chi2y_used,
             'N_stars_all': N_stars_all, 'N_stars_used': N_stars_used,
-            'year': year}
+            'year': year, 'N_stars_3ep': N_stars_3ep}
         
     return data
 
@@ -999,3 +1014,227 @@ def sum_all_stars(root='./', align='align/align_t',
     savefig(root+'plots/residualsAll_pub.eps')
     savefig(root+'plots/residualsAll_pub.png')
     clf()
+
+
+def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
+                         only_stars_in_fit=False, plotfile=None):
+    """
+    Plot the complete chi^2 distribution of all stars
+    positions at all epochs. Restrict down to just those
+    stars detected in all epochs. Only divide by the
+    positional error. This is the metric for how good
+    our alignment + velocity fitting was and whether
+    we used the right sample and right order.
+    """
+
+    # Load up the list of stars used in the transformation.	
+    s = starset.StarSet(root_dir + align_root)
+    s.loadPolyfit(root_dir + poly_root, accel=0, arcsec=0)
+    s.loadStarsUsed()
+
+    trans = Table.read(root_dir + align_root + '.trans', format='ascii')
+    N_par = trans['NumParams'][0]
+    
+    # Keep only stars detected in all epochs.
+    cnt = s.getArray('velCnt')
+    used = s.getArray('isUsed')
+    N_epochs = cnt.max()
+
+    idx = np.where(cnt == N_epochs)[0]
+    msg = 'Keeping {0:d} stars in all epochs'
+
+    if only_stars_in_fit:
+        isUsed = s.getArrayFromAllEpochs('isUsed')
+        cnt_used = isUsed.sum(axis=0)
+        idx = np.where(cnt_used == cnt_used.max())[0]
+
+        msg += ' and used'
+        
+    newstars = [s.stars[i] for i in idx]
+    s.stars = newstars
+    print msg.format(len(idx))
+
+    # Now that we have are final list of stars, fetch all the
+    # relevant variables.     
+    cnt = s.getArray('velCnt')
+
+    x = s.getArrayFromAllEpochs('xpix')
+    y = s.getArrayFromAllEpochs('ypix')
+    xe_p = s.getArrayFromAllEpochs('xpixerr_p')
+    ye_p = s.getArrayFromAllEpochs('ypixerr_p')
+    xe_a = s.getArrayFromAllEpochs('xpixerr_a')
+    ye_a = s.getArrayFromAllEpochs('ypixerr_a')
+    isUsed = s.getArrayFromAllEpochs('isUsed')
+
+    # x02 = s.getArray('fitpXalign.p')
+    # vx2 = s.getArray('fitpXalign.v')
+    # t0x2 = s.getArray('fitpXalign.t0')
+    # y02 = s.getArray('fitpYalign.p')
+    # vy2 = s.getArray('fitpYalign.v')
+    # t0y2 = s.getArray('fitpYalign.t0')
+
+    x0 = s.getArray('fitpXv.p')
+    vx = s.getArray('fitpXv.v')
+    t0x = s.getArray('fitpXv.t0')
+    y0 = s.getArray('fitpYv.p')
+    vy = s.getArray('fitpYv.v')
+    t0y = s.getArray('fitpYv.t0')
+
+    m = s.getArray('mag')
+
+    N_epochs = x.shape[0]
+    N_stars = x.shape[1]
+    year = np.zeros(N_epochs, dtype=float)
+
+    # Make some output variables with the right shape/size.
+    chi2x = np.zeros((N_epochs, N_stars), dtype=float)
+    chi2y = np.zeros((N_epochs, N_stars), dtype=float)
+    chi2 = np.zeros((N_epochs, N_stars), dtype=float)
+
+    xresid = np.zeros((N_epochs, N_stars), dtype=float)
+    yresid = np.zeros((N_epochs, N_stars), dtype=float)
+    resid = np.zeros((N_epochs, N_stars), dtype=float)
+
+    for ee in range(N_epochs):
+        # Everything below should be arrays sub-indexed by "idx"
+        dt_x = s.years[ee] - t0x
+        dt_y = s.years[ee] - t0y
+
+        x_fit = x0 + (vx * dt_x)
+        y_fit = y0 + (vy * dt_y)
+
+        xresid[ee, :] = x[ee, :] - x_fit
+        yresid[ee, :] = y[ee, :] - y_fit
+
+    # Note this chi^2 only includes positional errors.
+    chi2x = ((xresid / xe_p)**2).sum(axis=0)
+    chi2y = ((yresid / ye_p)**2).sum(axis=0)
+    chi2 = chi2x + chi2y
+
+    # Total residuals for each star.
+    resid = np.hypot(xresid, yresid)
+
+    # Total error for each star.
+    xye_p = np.hypot(xresid * xe_p, yresid * ye_p) / resid
+    xye_a = np.hypot(xresid * xe_a, yresid * ye_a) / resid
+
+    # Figure out the number of degrees of freedom expected
+    # for this chi^2 distribution.
+    # N_data = N_stars * N_epochs * 2.0   # times 2 for X and Y measurements
+    # N_free = N_par * N_epochs * 2.0
+    N_data = N_epochs * 2.0   # times 2 for X and Y measurements
+    N_free = 4.0
+    N_dof = N_data - N_free
+    N_dof_1 = N_dof / 2.0
+    print N_data, N_free, N_dof
+
+    # Setup some bins for making chi2 and residuals histograms
+    chi2_lim = int(np.ceil(chi2.max()))
+    if chi2_lim > (N_dof * 20):
+        chi2_lim = N_dof * 20
+    chi2_bin = chi2_lim / 20.0
+    chi2_bins = np.arange(0, chi2_lim, chi2_bin)
+    chi2_mod_bin = 0.25
+    chi2_mod_bins = np.arange(0, chi2_lim, chi2_mod_bin)
+
+    res_lim = 1.1 * resid.max()
+    if res_lim > 1:
+        res_lim = 1
+    res_bin = 2.0 * res_lim / 25.0
+    res_bins = np.arange(-res_lim, res_lim + res_bin, res_bin)
+
+    sig_lim = 1.1 * (resid / xye_p).max()
+    if sig_lim > 6:
+        sig_lim = 6
+    sig_bin = 2.0 * sig_lim / 20.0
+    sig_bins = np.arange(-sig_lim, sig_lim + sig_bin, sig_bin)
+    sig_mod_bin = sig_bin / 10.0
+    sig_mod_bins = np.arange(-sig_lim, sig_lim + sig_mod_bin, sig_mod_bin)
+
+    # Setup theoretical chi^2 distributions for X, Y, total.
+    chi2_dist_a = scipy.stats.chi2(N_dof)
+    chi2_dist_1 = scipy.stats.chi2(N_dof_1)
+    chi2_plot_a = chi2_dist_a.pdf(chi2_mod_bins)
+    chi2_plot_1 = chi2_dist_1.pdf(chi2_mod_bins)
+    chi2_plot_a *= N_stars / chi2_mod_bin
+    chi2_plot_1 *= N_stars / chi2_mod_bin
+
+    # Setup theoretical normalized residuals distribution for X and Y
+    sig_plot_1 = scipy.stats.norm.pdf(sig_mod_bins)
+    sig_plot_1 *= N_stars * N_epochs / (sig_plot_1 * sig_mod_bin).sum()
+
+    if plotfile != None:    
+        ##########
+        # Plot Chi^2 Distribution
+        ##########
+        py.clf()
+        fig = py.gcf()
+        fig.set_size_inches(12, 12, forward=True)
+        py.subplots_adjust(bottom=0.08, left=0.08, top=0.95, wspace=0.28, hspace=0.32)
+
+        ax_chi2 = py.subplot(3, 3, 1)
+        py.hist(chi2x, bins=chi2_bins, color='blue')
+        py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
+        py.xlabel(r'$\chi^2$')
+        py.ylabel(r'N$_{obs}$')
+        py.title('X')
+
+        py.subplot(3, 3, 2, sharex=ax_chi2, sharey=ax_chi2)
+        py.hist(chi2y, bins=chi2_bins, color='green')
+        py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
+        py.xlabel(r'$\chi^2$')
+        py.title('Y')
+
+        py.subplot(3, 3, 3, sharex=ax_chi2, sharey=ax_chi2)
+        py.hist(chi2.flatten(), bins=chi2_bins, color='red')
+        py.plot(chi2_mod_bins, chi2_plot_a, 'k--')
+        py.xlabel(r'$\chi^2$')
+        py.title('X and Y')
+
+        ax_res = py.subplot(3, 3, 4)
+        py.hist(xresid.flatten(), bins=res_bins, color='blue')
+        py.xlabel('X Residuals (mas)')
+        py.ylabel(r'N$_{obs}$')
+
+        py.subplot(3, 3, 5, sharex=ax_res, sharey=ax_res)
+        py.hist(yresid.flatten(), bins=res_bins, color='green')
+        py.xlabel('Y Residuals (mas)')
+
+        py.subplot(3, 3, 6, sharey=ax_res)
+        py.hist(resid.flatten(), bins=res_bins, color='red')
+        py.xlim(0, res_lim)
+        py.xlabel('Total Residuals (mas)')
+
+        ax_nres = py.subplot(3, 3, 7)
+        py.hist((xresid / xe_p).flatten(), bins=sig_bins, color='blue')
+        py.plot(sig_mod_bins, sig_plot_1, 'k--')
+        py.xlabel('Normalized X Res.')
+
+        py.subplot(3, 3, 8, sharex=ax_nres, sharey=ax_nres)
+        py.hist((yresid / ye_p).flatten(), bins=sig_bins, color='green')
+        py.plot(sig_mod_bins, sig_plot_1, 'k--')
+        py.xlabel('Normalized Y Res.')
+
+        py.subplot(3, 3, 9, sharey=ax_nres)
+        py.hist((resid / xye_p).flatten(), bins=sig_bins, color='red')
+        py.xlim(0, sig_lim)
+        py.xlabel('Normalized Total Res.')
+
+        outfile = root_dir + '../plots/'
+        outfile += 'chi2_dist_all_epochs'
+        if only_stars_in_fit:
+            outfile += '_infit'
+        outfile += '.png'
+
+        py.savefig(plotfile)
+
+
+    return_val = {'chi2x': chi2x, 'chi2y': chi2y, 'chi2': chi2,
+                  'xres': xresid, 'yres': yresid, 'res': resid,
+                  'xe_p':   xe_p, 'ye_p':   ye_p, 'xye_p': xye_p,
+                  'xe_a':   xe_a, 'ye_a':   ye_a, 'xye_a': xye_a,
+                  'Ndof_x': N_dof_1, 'Ndof_y': N_dof_1, 'Ndof': N_dof}
+    
+    return return_val
+
+    

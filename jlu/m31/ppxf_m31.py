@@ -1,7 +1,8 @@
 import numpy as np
 import pylab as py
-import pidly
-import pyfits, pickle
+# import pidly
+from astropy.io import fits as pyfits
+import pickle
 import time
 import math, glob
 import scipy
@@ -10,8 +11,8 @@ from scipy.optimize import curve_fit#, OptimizeWarning
 from scipy import signal,ndimage
 from gcwork import objects
 import pdb
-import ppxf
-import pp
+# import ppxf
+# import pp
 import itertools
 import pandas
 import astropy
@@ -3322,9 +3323,9 @@ def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
         from scipy.optimize import OptimizeWarning
 
     if inputFile:
-        model=modelResults(inputFile)
+        model = modelResults(inputFile)
     else:
-        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+        model = modelResults(nonaligned=nonaligned, skycoords=True, OSIRIS=True)
 
     # bin size = 0.05" = 0.1865 pc
     # if matching L98 photometry, use 0.0228" = 0.08504 pc
@@ -3334,13 +3335,15 @@ def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
         binpc = 0.1865
     
     # Setting the BH pixel phase to match that of the data
-    xfrac = bhpos[0]-np.floor(bhpos[0])
-    yfrac = bhpos[1]-np.floor(bhpos[1])
+    xfrac = bhpos[0] - np.floor(bhpos[0])
+    yfrac = bhpos[1] - np.floor(bhpos[1])
+    
     # if L98 bin size, divide by the ratio of the two pixel scales and
     # calc the new pixel phase
     if l98bin:
-        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
-        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
+        xfrac = (xfrac*(.05/.0228)) - np.floor(xfrac*(0.05/0.0228))
+        yfrac = (yfrac*(.05/.0228)) - np.floor(yfrac*(0.05/0.0228))
+        
     # reposition BH (originally at origin in model) to the correct pixel phase
     model.x += (binpc*xfrac)
     model.y += (binpc*yfrac)
@@ -3350,6 +3353,7 @@ def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     posxbin = np.ceil(np.max(model.x)/binpc)
     negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
     nxbin = posxbin+negxbin
+    
     # and y axis
     posybin = np.ceil(np.max(model.y)/binpc)
     negybin = np.ceil(np.abs(np.min(model.y)/binpc))
@@ -3368,183 +3372,204 @@ def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     h4 = np.zeros((nxbin,nybin))
 
     # left/bottom edges of each spaxel (in units of pc), to be used in where statement later
-    leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
-    bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
+    # leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
+    # bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
+    # vzbins = np.arange(np.min(model.vz), np.max(model.vz)+1.0, 1.0)
 
+    leftxbound = np.arange(-1.*negxbin*binpc, (posxbin*binpc) + binpc, binpc)
+    bottomybound = np.arange(-1*negybin*binpc, (posybin*binpc) + binpc, binpc)
+    vzbins = np.arange(np.min(model.vz), np.max(model.vz)+1.0, 1.0)
+    
+    ##########
+    # JLU TEST
+    ##########
     t1 = time.time()
+    bins = (leftxbound, bottomybound, vzbins)
+    losvd, bins_new, bin_num = scipy.stats.binned_statistic_dd((model.x, model.y, model.vz),
+                                                               model.vz,
+                                                               statistic='sum',
+                                                               bins=bins)
 
-    #bins = 
-
-    # create the irange array
+    Nstars, bins_new2, bin_num2 = scipy.stats.binned_statistic_dd((model.x, model.y),
+                                                                  model.vz,
+                                                                  statistic='count',
+                                                                  bins=(leftxbound, bottomybound))
     
-    # this array starts in the center then steps its way out, alternating sides
-    # the maximum number of particles are near the center, so this should speed up the where
-    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
+    print 'Time Point 1: dt = {0:.0f} s'.format(time.time() - t1)
+    pdb.set_trace()
+    # t1 = time.time()
 
-    # create the arrays to loop through (starting in center and stepping out)
-    for i in range(int(nxbin)):
-        # 0th entry is the center bin of the x axis
-        if i==0:
-            irangetmp = np.array([np.floor(nxbin/2)])
-        # after that, step outwards, alternating sides
-        else:
-            tmp = irangetmp[-1] + (((-1)**i)*i)
-            irangetmp = np.append(irangetmp,tmp)
-    # make sure no bad bins were grabbed
-    badilo = np.where(irangetmp < 0)
-    irangetmp2 = np.delete(irangetmp,badilo)
-    badihi = np.where(irangetmp2 > len(leftxbound))
-    irange = np.delete(irangetmp2,badihi)
-    # final array to loop through
-    irange = irange.astype(int)
-    # same thing but for y axis
-    for j in range(int(nybin)):
-        if j == 0:
-            jrangetmp = np.array([np.floor(nybin/2)])
-        else:
-            tmp = jrangetmp[-1] + (((-1)**j)*j)
-            jrangetmp = np.append(jrangetmp,tmp)
-    badjlo = np.where(jrangetmp < 0)
-    jrangetmp2 = np.delete(jrangetmp,badjlo)
-    badjhi = np.where(jrangetmp2 > len(bottomybound))
-    jrange = np.delete(jrangetmp2,badjhi)
-    jrange = jrange.astype(int)
+
+    # # create the irange array
     
-    # this loop is solely for binning the particles and writing their locations/velocities
-    # to a separate file for each bin
-    # first, check to see if the files already exist (checking just the first one)
-    # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
-    if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
-        # make array copies 
-        modx = np.array(model.x)
-        mody = np.array(model.y)
-        modz = np.array(model.z)
-        modvx = np.array(model.vx)
-        modvy = np.array(model.vy)
-        modvz = np.array(model.vz)
-        # loop through the arrays created above
-        for i in irange:
-            for j in jrange:
-                # find the particles in the current bin
-                good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
-                # nstar is the number of star particles in the bin
-                ntmp = good[0].shape[0]
-                nstar[i,j] = ntmp
-                # write just these particles out to a file
-                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
-                tmpx = modx[good[0]]
-                tmpy = mody[good[0]]
-                tmpz = modz[good[0]]
-                tmpvx = modvx[good[0]]
-                tmpvy = modvy[good[0]]
-                tmpvz = modvz[good[0]]
-                np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
-                # remove the written out particles from the master arrays, to improve computational time
-                modx = np.delete(modx,good[0])
-                mody = np.delete(mody,good[0])
-                modz = np.delete(modz,good[0])
-                modvx = np.delete(modvx,good[0])
-                modvy = np.delete(modvy,good[0])
-                modvz = np.delete(modvz,good[0])
+    # # this array starts in the center then steps its way out, alternating sides
+    # # the maximum number of particles are near the center, so this should speed up the where
+    # # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
+
+    # # create the arrays to loop through (starting in center and stepping out)
+    # for i in range(int(nxbin)):
+    #     # 0th entry is the center bin of the x axis
+    #     if i==0:
+    #         irangetmp = np.array([np.floor(nxbin/2)])
+    #     # after that, step outwards, alternating sides
+    #     else:
+    #         tmp = irangetmp[-1] + (((-1)**i)*i)
+    #         irangetmp = np.append(irangetmp,tmp)
+    # # make sure no bad bins were grabbed
+    # badilo = np.where(irangetmp < 0)
+    # irangetmp2 = np.delete(irangetmp,badilo)
+    # badihi = np.where(irangetmp2 > len(leftxbound))
+    # irange = np.delete(irangetmp2,badihi)
+    # # final array to loop through
+    # irange = irange.astype(int)
+    # # same thing but for y axis
+    # for j in range(int(nybin)):
+    #     if j == 0:
+    #         jrangetmp = np.array([np.floor(nybin/2)])
+    #     else:
+    #         tmp = jrangetmp[-1] + (((-1)**j)*j)
+    #         jrangetmp = np.append(jrangetmp,tmp)
+    # badjlo = np.where(jrangetmp < 0)
+    # jrangetmp2 = np.delete(jrangetmp,badjlo)
+    # badjhi = np.where(jrangetmp2 > len(bottomybound))
+    # jrange = np.delete(jrangetmp2,badjhi)
+    # jrange = jrange.astype(int)
+    
+    # # this loop is solely for binning the particles and writing their locations/velocities
+    # # to a separate file for each bin
+    # # first, check to see if the files already exist (checking just the first one)
+    # # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
+    # if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
+    #     # make array copies 
+    #     modx = np.array(model.x)
+    #     mody = np.array(model.y)
+    #     modz = np.array(model.z)
+    #     modvx = np.array(model.vx)
+    #     modvy = np.array(model.vy)
+    #     modvz = np.array(model.vz)
+    #     # loop through the arrays created above
+    #     for i in irange:
+    #         for j in jrange:
+    #             # find the particles in the current bin
+    #             good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
+    #             # nstar is the number of star particles in the bin
+    #             ntmp = good[0].shape[0]
+    #             nstar[i,j] = ntmp
+    #             # write just these particles out to a file
+    #             outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
+    #             tmpx = modx[good[0]]
+    #             tmpy = mody[good[0]]
+    #             tmpz = modz[good[0]]
+    #             tmpvx = modvx[good[0]]
+    #             tmpvy = modvy[good[0]]
+    #             tmpvz = modvz[good[0]]
+    #             np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
+    #             # remove the written out particles from the master arrays, to improve computational time
+    #             modx = np.delete(modx,good[0])
+    #             mody = np.delete(mody,good[0])
+    #             modz = np.delete(modz,good[0])
+    #             modvx = np.delete(modvx,good[0])
+    #             modvy = np.delete(modvy,good[0])
+    #             modvz = np.delete(modvz,good[0])
                 
-    print "Time elapsed for binning: ", time.time() - t1, "s"
-    t2 = time.time()
+    # print "Time elapsed for binning: ", time.time() - t1, "s"
+    # t2 = time.time()
 
-    #pdb.set_trace()
+    # #pdb.set_trace()
 
-    if clean:
-        warnings.simplefilter("error", OptimizeWarning)            
-    # this loop does the LOSVD fits for each bin, to get the kinematics
-    # using the normal bin order for this
-    for i in range(int(nxbin)):
-        print "Starting column ", i
-        for j in range(int(nybin)):
-            model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
-            # make sure that nstar is populated - if binning code and outputs were run separately
-            # previously, it will not yet have been filled in
-            if nstar[i,j] == 0.:
-                nstar[i,j] = model.x.shape[0]
-            # by definition, v_LOS = -v_z
-            modvLOS = -1.* model.vz
-            # if there are no particles, set everything to zero
-            if model.x.shape[0] == 0:
-                losv[i,j] = 0.
-                sigma[i,j] = 0.
-                h3[i,j] = 0.
-                h4[i,j] = 0.
-            # if there are too few particles to perform a fit, hack something together 
-            elif model.x.shape[0] <= 6:
-                if clean:
-                    losv[i,j] = 0.
-                else:
-                    losv[i,j] = np.mean(modvLOS)
-                sigma[i,j] = 0.
-                h3[i,j] = 0.
-                h4[i,j] = 0.
-            # for everything else, fit the LOSVD histogram
-            else:
-                # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
-                #binsize = 5.
-                # can actually do widths of 1 km/s
-                binsize = 1.
-                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
-                # set the initial values
-                gamma0 = ny.sum()
-                v0 = np.mean(modvLOS)
-                s0 = np.std(modvLOS)
-                h3_0 = 0.
-                h4_0 = 0.
-                guess = [gamma0, v0, s0, h3_0, h4_0]
-                if clean:
-                    try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
-                        # popt = [gamma, v, sigma, h3, h4]
-                        losv[i,j] = popt[1]
-                        sigma[i,j] = popt[2]
-                        h3[i,j] = popt[3]
-                        h4[i,j] = popt[4]
-                    except (RuntimeError, OptimizeWarning):
-                        # if get an error on the fit, drop the bin
-                        losv[i,j] = 0.
-                        sigma[i,j] = 0.
-                        h3[i,j] = 0.
-                        h4[i,j] = 0.
-                else:
-                    try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
-                        # popt = [gamma, v, sigma, h3, h4]
-                        losv[i,j] = popt[1]
-                        sigma[i,j] = popt[2]
-                        h3[i,j] = popt[3]
-                        h4[i,j] = popt[4]
-                    except (RuntimeError):
-                        # if no fit is possible, take the mean
-                        losv[i,j] = np.mean(modvLOS)
-                        sigma[i,j] = 0.
-                        h3[i,j] = 0.
-                        h4[i,j] = 0.                    
-                py.close()
-        # code crashes after exiting this loop (why??), so setting output here for now
-        # update: it shouldn't crash here anymore, but this is fine here
-        if i == (nxbin-1):
-            if nonaligned:
-                if clean:
-                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
-                else:
-                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
-            else:
-                if clean:
-                    output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
-                else:
-                    output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
+    # if clean:
+    #     warnings.simplefilter("error", OptimizeWarning)            
+    # # this loop does the LOSVD fits for each bin, to get the kinematics
+    # # using the normal bin order for this
+    # for i in range(int(nxbin)):
+    #     print "Starting column ", i
+    #     for j in range(int(nybin)):
+    #         model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
+    #         # make sure that nstar is populated - if binning code and outputs were run separately
+    #         # previously, it will not yet have been filled in
+    #         if nstar[i,j] == 0.:
+    #             nstar[i,j] = model.x.shape[0]
+    #         # by definition, v_LOS = -v_z
+    #         modvLOS = -1.* model.vz
+    #         # if there are no particles, set everything to zero
+    #         if model.x.shape[0] == 0:
+    #             losv[i,j] = 0.
+    #             sigma[i,j] = 0.
+    #             h3[i,j] = 0.
+    #             h4[i,j] = 0.
+    #         # if there are too few particles to perform a fit, hack something together 
+    #         elif model.x.shape[0] <= 6:
+    #             if clean:
+    #                 losv[i,j] = 0.
+    #             else:
+    #                 losv[i,j] = np.mean(modvLOS)
+    #             sigma[i,j] = 0.
+    #             h3[i,j] = 0.
+    #             h4[i,j] = 0.
+    #         # for everything else, fit the LOSVD histogram
+    #         else:
+    #             # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
+    #             #binsize = 5.
+    #             # can actually do widths of 1 km/s
+    #             binsize = 1.
+    #             ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
+    #             # set the initial values
+    #             gamma0 = ny.sum()
+    #             v0 = np.mean(modvLOS)
+    #             s0 = np.std(modvLOS)
+    #             h3_0 = 0.
+    #             h4_0 = 0.
+    #             guess = [gamma0, v0, s0, h3_0, h4_0]
+    #             if clean:
+    #                 try:
+    #                     popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+    #                     # popt = [gamma, v, sigma, h3, h4]
+    #                     losv[i,j] = popt[1]
+    #                     sigma[i,j] = popt[2]
+    #                     h3[i,j] = popt[3]
+    #                     h4[i,j] = popt[4]
+    #                 except (RuntimeError, OptimizeWarning):
+    #                     # if get an error on the fit, drop the bin
+    #                     losv[i,j] = 0.
+    #                     sigma[i,j] = 0.
+    #                     h3[i,j] = 0.
+    #                     h4[i,j] = 0.
+    #             else:
+    #                 try:
+    #                     popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+    #                     # popt = [gamma, v, sigma, h3, h4]
+    #                     losv[i,j] = popt[1]
+    #                     sigma[i,j] = popt[2]
+    #                     h3[i,j] = popt[3]
+    #                     h4[i,j] = popt[4]
+    #                 except (RuntimeError):
+    #                     # if no fit is possible, take the mean
+    #                     losv[i,j] = np.mean(modvLOS)
+    #                     sigma[i,j] = 0.
+    #                     h3[i,j] = 0.
+    #                     h4[i,j] = 0.                    
+    #             py.close()
+    #     # code crashes after exiting this loop (why??), so setting output here for now
+    #     # update: it shouldn't crash here anymore, but this is fine here
+    #     if i == (nxbin-1):
+    #         if nonaligned:
+    #             if clean:
+    #                 output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
+    #             else:
+    #                 output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
+    #         else:
+    #             if clean:
+    #                 output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
+    #             else:
+    #                 output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
         
-            pickle.dump(nstar, output)
-            pickle.dump(losv, output)
-            pickle.dump(sigma, output)
-            pickle.dump(h3, output)
-            pickle.dump(h4, output)
-            output.close()
+    #         pickle.dump(nstar, output)
+    #         pickle.dump(losv, output)
+    #         pickle.dump(sigma, output)
+    #         pickle.dump(h3, output)
+    #         pickle.dump(h4, output)
+    #         output.close()
 
-    print "Time elapsed for LOSVD fitting: ", time.time() - t2, "s"
-    #pdb.set_trace()
+    # print "Time elapsed for LOSVD fitting: ", time.time() - t2, "s"
+    # #pdb.set_trace()
     
