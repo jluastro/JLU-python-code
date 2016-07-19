@@ -2098,7 +2098,97 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.savefig(modelworkdir + 'plots/residuals_h4.eps')
     py.show()
 
+def plotQuiver(inputFile=None,nonaligned=True,binsize=0.25):
+    # makes a quiver plot (x and y motions on the sky) of the model velocities
+    # use binsize to specify bin size (in arcsec) for plotting
 
+    if inputFile:
+        model=modelResults(inputFile)
+    else:
+        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+
+    # 1" = 3.73 pc
+    binpc = binsize*3.73
+    
+    # Setting the BH pixel phase to match that of the data
+    xfrac = bhpos[0]-np.floor(bhpos[0])
+    yfrac = bhpos[1]-np.floor(bhpos[1])
+    # correct for binsize != 0.05: divide by the ratio of the two pixel scales and
+    # calc the new pixel phase
+    xfrac = (xfrac*(.05/binsize))-np.floor(xfrac*(0.05/binsize))
+    yfrac = (yfrac*(.05/binsize))-np.floor(yfrac*(0.05/binsize))
+    # reposition BH (originally at origin in model) to the correct pixel phase
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
+
+    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    # positive and negative extent of the x axis
+    posxbin = np.ceil(np.max(model.x)/binpc)
+    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    nxbin = posxbin+negxbin
+    # and y axis
+    posybin = np.ceil(np.max(model.y)/binpc)
+    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    nybin = posybin + negybin
+
+    # new BH position: (0,0) + (xfrac,yfrac)
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
+    #print "Model BH is at ", modbhpos
+    #pdb.set_trace()
+
+    # initializing kinematic vectors
+    vx = np.zeros((nxbin,nybin))
+    vy = np.zeros((nxbin,nybin))
+
+    # left/bottom edges of each spaxel (in units of pc)
+    leftxbound = np.arange(-1.*negxbin*binpc, (posxbin*binpc) + (0.5*binpc), binpc)
+    bottomybound = np.arange(-1*negybin*binpc, (posybin*binpc) + (0.5*binpc), binpc)
+    # binning x and y velocity in bins of 5 km/s, with cuts at +/- 1000 km/s
+    vxbins = np.arange(-1000., 1005., 5.)
+    vybins = np.arange(-1000., 1005., 5.)
+
+    t1 = time.time()
+
+    # create the histogram and average the x velocities in each bin
+    binsx = (leftxbound, bottomybound, vxbins)
+    sumvx, bins_vx, bin_num = scipy.stats.binned_statistic_dd((model.x, model.y, model.vx),
+                                                               model.vx,
+                                                               statistic='sum',
+                                                               bins=binsx)
+
+    # create the histogram and average the y velocities in each bin
+    binsy = (leftxbound, bottomybound, vybins)
+    sumvy, bins_vy, bin_num2 = scipy.stats.binned_statistic_dd((model.x, model.y, model.vy),
+                                                               model.vy,
+                                                               statistic='sum',
+                                                               bins=binsy)
+
+    # create the histogram and count up the number of particles in each spatial bin
+    nstar, bins_count, bin_num3 = scipy.stats.binned_statistic_dd((model.x, model.y),
+                                                                  model.vx,
+                                                                  statistic='count',
+                                                                  bins=(leftxbound, bottomybound))
+    
+    print 'Time Point 1: dt = {0:.0f} s'.format(time.time() - t1)
+    #pdb.set_trace()
+
+    meanvx = np.nan_to_num(sumvx.sum(axis=2)/nstar)
+    meanvy = np.nan_to_num(sumvy.sum(axis=2)/nstar)
+    
+    py.figure(3)
+    py.clf()
+    
+    py.quiver(bins_vy[1][0:-1],bins_vx[0][0:-1],-1.*meanvy,meanvx,nstar)
+    #py.quiver(bins_vy[1][0:-1],bins_vx[0][0:-1],meanvy,meanvx,nstar)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Number of Stars')
+    py.xlabel('X (arcsec)')
+    py.ylabel('Y (arcsec)')
+    py.xlim(5,-5)
+    #py.xlim(-5,5)
+    py.ylim(-5,5)
+    py.axes().set_aspect('equal', 'datalim')
+    pdb.set_trace()
 
 def trimModel(input,nonaligned=True):
 
