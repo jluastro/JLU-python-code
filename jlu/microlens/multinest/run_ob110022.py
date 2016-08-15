@@ -75,7 +75,7 @@ if not os.path.exists(multiNest_saveto):
 
 
 # READ IN ASTROMETRIC DATA
-print 'run_ob110022_err_x2: Read in Astrometric Data'
+print 'run_ob110022: Read in Astrometric Data'
 if target == 'ob120169':
     pointsFile = rootdir + analysisdir + pointsdir + target+'_R' + '.points'
 else:
@@ -110,9 +110,9 @@ yerr_data = yerr*pixScale
 
        
 #SET ORIGIN OF COORD SYS
-print 'run_ob110022_err_x2: Set Origin of Coord Sys'
+print 'run_ob110022: Set Origin of Coord Sys'
 orig_x_pix, orig_y_pix  = np.mean(xpix), np.mean(ypix)
-print 'run_ob110022_err_x2:     ', orig_x_pix, orig_y_pix
+print 'run_ob110022:     ', orig_x_pix, orig_y_pix
 
 # SET REASONABLE BOUNDS ON UNCONSTRAINED PARAMETERS
 # 1. source position at t0 (xpix0, ypix0) will be confined to box dpix by dpix  

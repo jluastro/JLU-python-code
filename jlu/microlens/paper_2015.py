@@ -105,8 +105,8 @@ def publish():
     shutil.copyfile(plot_dir + 'tab_data_ob110022.tex', pub_dir + 'table2.tex')
     shutil.copyfile(plot_dir + 'tab_data_ob110125.tex', pub_dir + 'table3.tex')
     shutil.copyfile(plot_dir + 'tab_data_ob120169.tex', pub_dir + 'table4.tex')
-    shutil.copyfile(plot_dir + 'hist_chi2_final.pdf', pub_dir + 'f_new_6.pdf')
-    shutil.copyfile(plot_dir + 'velErr_vs_mag_all.pdf', pub_dir + 'f6.pdf')
+    shutil.copyfile(plot_dir + 'hist_chi2_final.pdf', pub_dir + 'f6.pdf')
+    shutil.copyfile(plot_dir + 'velErr_vs_mag_all.pdf', pub_dir + 'f7.pdf')
 
     print '**** FIX ****'
     print 'Change Numbers in Text with:'
@@ -118,9 +118,9 @@ def publish():
     compare_chi2("ob110125")    
     compare_chi2("ob120169")    
     
-    shutil.copyfile(plot_dir + 'plotStar_ob110022_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f7.pdf')
-    shutil.copyfile(plot_dir + 'plotStar_ob110125_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f8.pdf')
-    shutil.copyfile(plot_dir + 'plotStar_ob120169_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f9.pdf')
+    shutil.copyfile(plot_dir + 'plotStar_ob110022_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f8.pdf')
+    shutil.copyfile(plot_dir + 'plotStar_ob110125_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f9.pdf')
+    shutil.copyfile(plot_dir + 'plotStar_ob120169_all_pub_xcorr_Xinvert.pdf', pub_dir + 'f10.pdf')
     shutil.copyfile(plot_dir + 'plot_pos_on_sky_ob110022.pdf', pub_dir + 'f11a.pdf')
     shutil.copyfile(plot_dir + 'plot_pos_on_sky_ob110125.pdf', pub_dir + 'f11b.pdf')
     shutil.copyfile(plot_dir + 'plot_pos_on_sky_ob120169.pdf', pub_dir + 'f11c.pdf')
@@ -140,22 +140,22 @@ def publish():
     # Write Chi^2 values for lensing fits.
     print '**** FIX ****'
     print 'Change chi^2 values from'
-    print 'paper_2015.calc_chi2_lens_fit()'
+    print 'calc_chi2_lens_fit()'
     print ''
-    paper_2015.calc_chi2_lens_fit()
+    calc_chi2_lens_fit()
     
     # Copy over Mnest results plots
     file_ob110022 = analysis_dir + 'analysis_ob110022_2014_03_22' + final_flag[0] + '_MC100_omit_1/'
     file_ob110022 += '/multiNest/' + mnest_runs['ob110022'][final_order[0]][0] + '/plots/plot_OB110022_data_vs_model.pdf'
-    shutil.copyfile(file_ob110022, pub_dir + 'f13.pdf')
+    shutil.copyfile(file_ob110022, pub_dir + 'f16.pdf')
     
     file_ob120169_u0m = analysis_dir + 'analysis_ob120169_2014_03_22' + final_flag[2] + '_MC100_omit_1/'
-    file_ob120169_u0m += '/multiNest/' + mnest_runs['ob120169'][final_order[2]][0] + '/plots/plot_OB20169_data_vs_model.pdf'
-    shutil.copyfile(file_ob120169_u0m, pub_dir + 'f14.pdf')
+    file_ob120169_u0m += '/multiNest/' + mnest_runs['ob120169'][final_order[2]][0] + '/plots/plot_OB120169_data_vs_model_u0minus.pdf'
+    shutil.copyfile(file_ob120169_u0m, pub_dir + 'f13.pdf')
     
     file_ob120169_u0p = analysis_dir + 'analysis_ob120169_2014_03_22' + final_flag[2] + '_MC100_omit_1/'
-    file_ob120169_u0p += '/multiNest/' + mnest_runs['ob120169'][final_order[2]][1] + '/plots/plot_OB120169_data_vs_model.pdf'
-    shutil.copyfile(file_ob120169_u0p, pub_dir + 'f17.pdf')
+    file_ob120169_u0p += '/multiNest/' + mnest_runs['ob120169'][final_order[2]][1] + '/plots/plot_OB120169_data_vs_model_u0plus.pdf'
+    shutil.copyfile(file_ob120169_u0p, pub_dir + 'f14.pdf')
 
     
     # Write mass limits into text: abstract, results
@@ -164,8 +164,8 @@ def publish():
     print '    look for: paper_2015.mass_posterior_OB110022()'
     print '    look for: paper_2015.mass_posterior_OB120169()'
     print ''
-    paper_2015.mass_posterior_OB110022()
-    paper_2015.mass_posterior_OB120169()
+    mass_posterior_OB110022()
+    mass_posterior_OB120169()
 
     print '**** FIX ****'
     print 'Change Tables With Lens Fit Parameters: requires LOTS of manual modifications.'
@@ -176,7 +176,7 @@ def publish():
     print ''
     table_lens_parameters()
 
-    shutil.copyfile(plot_dir + 'ob110022_post_muRelxy.png', '')
+    # shutil.copyfile(plot_dir + 'ob110022_post_muRelxy.png', '')
     
     
 
@@ -3144,7 +3144,7 @@ def plot_OB120169(u0minus=True):
     mnest_root = mnest_run
     
     #Plot astrometric observations
-    pointsFile = root_dir + analysis_dir_tt + points_dir + target + '.points'
+    pointsFile = root_dir + analysis_dir_tt + points_dir + target + '_R.points'
     pointsTab = Table.read(pointsFile, format='ascii')
     tobs = pointsTab['col1']
     xpix = pointsTab['col2']
@@ -3250,8 +3250,8 @@ def plot_OB120169(u0minus=True):
     fontsize1 = 18
     fontsize2 = 14       
 
-    py.clf()
-    fig1 = py.figure(2, figsize=(10,8))
+    py.close(2)
+    fig1 = py.figure(2, figsize=(10,10))
     py.subplots_adjust(left=0.1, top=0.95, hspace=0.3, wspace=0.3)
     
     paxes = py.subplot(2, 2, 1)
@@ -3262,8 +3262,8 @@ def plot_OB120169(u0minus=True):
     py.errorbar(tobs-t0, thetaSx_data-originX, yerr=xerr_data, fmt='k.')
     py.ylabel(r'x$_E$ (mas)', fontsize=fontsize1)
     py.xlabel('t - t$_{\mathrm{o}}$ (yr)', fontsize=fontsize1)
-    py.ylim(-10, 2)
-    py.xlim(-0.1, 2.5)
+    py.ylim(-2, 4)
+    py.xlim(-0.1, 2)
     xticks = np.arange(0, 2.5, 1, dtype=int)
     py.xticks(xticks, fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
@@ -3274,8 +3274,8 @@ def plot_OB120169(u0minus=True):
     py.errorbar(tobs-t0, thetaSy_data-originY, yerr=yerr_data, fmt='k.')
     py.ylabel(r'x$_N$ (mas)', fontsize=fontsize1)
     py.xlabel('t - t$_{\mathrm{o}}$ (yr)', fontsize=fontsize1)  
-    py.ylim(-1, 7)
-    py.xlim(-0.1, 2.5)
+    py.ylim(-3, 3)
+    py.xlim(-0.1, 2)
     py.xticks(xticks, fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
         
@@ -3287,8 +3287,8 @@ def plot_OB120169(u0minus=True):
     py.ylabel(r'x$_N$ (mas)', fontsize=fontsize1)
     py.xlabel(r'x$_E$ (mas)', fontsize=fontsize1)
     py.axis('equal')
-    py.ylim(-1, 7)
-    py.xlim(-10, 2)
+    py.ylim(-3, 3)
+    py.xlim(-2, 4)
     py.xticks(fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
     py.xlim(py.xlim()[::-1])
@@ -3297,15 +3297,15 @@ def plot_OB120169(u0minus=True):
     # Make a histogram of the mass using the weights. This creates the 
     # marginalized 1D posteriors.
     paxes = py.subplot(2, 2, 4)
-    bins = 75
+    bins = np.arange(0, 21, 1)
     n, bins, patch = py.hist(tab['Mass'], normed=True,
                              histtype='step', weights=tab['weights'], bins=bins, linewidth=1.5)
     bin_centers = (bins[:-1] + bins[1:]) / 2
     py.xlabel('Mass')
     xtitle = r'Lens Mass (M$_{\odot}$)'
     py.xlabel(xtitle, fontsize=fontsize1, labelpad=10)
-    py.xlim(0, 2.0)
-    py.ylim(0, 1.4)
+    py.xlim(0, 20.0)
+    #py.ylim(0, 1.4)
     py.ylabel('Relative probability', fontsize=fontsize1, labelpad=10)
     py.xticks(fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
@@ -3439,29 +3439,21 @@ def table_lens_parameters():
     order = final_order[tt]
     flag = final_flag[tt]
     analysis_dir_tt = analysis_dir_fmt.format(target, flag)
-    phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob110022_mcmc.dat'
+    # phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob110022_mcmc.dat'
+    phot_file = '/Users/jlu/work/microlens/2015_evan/photometry/posteriors/ob110022_mcmc.dat'
     mnest_run = mnest_runs[target][order][0]
     mnest_dir = 'multiNest/' + mnest_run + '/'
     mnest_root = mnest_run
 
+    print ''
     print '##########'
     print '# OB110022'
     print '##########'
-    multinest_plot.summarize_results(root_dir = root_dir + analysis_dir_tt,
-                                     mnest_dir = mnest_dir,
-                                     mnest_root = mnest_root,
+    multinest_plot.summarize_results(root_dir=root_dir,
+                                     analysis_dir=analysis_dir_tt,
+                                     mnest_root=mnest_root,
                                      phot_file = phot_file,
                                      target = target)
-    multinest_plot.calc_chi2_lens_fit(root_dir=root_dir,
-                                      analysis_dir=analysis_dir_tt,
-                                      mnest_run=mnest_root,
-                                      target=target,
-                                      useMedian=False, verbose=True)
-    multinest_plot.calc_chi2_lens_fit(root_dir=root_dir,
-                                      analysis_dir=analysis_dir_tt,
-                                      mnest_run=mnest_root,
-                                      target=target,
-                                      useMedian=True, verbose=True)
         
 
     # OB120169
@@ -3471,33 +3463,38 @@ def table_lens_parameters():
     order = final_order[tt]
     flag = final_flag[tt]
     analysis_dir_tt = analysis_dir_fmt.format(target, flag)
-    phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob120169_mcmc_u0minus.dat'
+    # phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob120169_mcmc_u0minus.dat'
+    phot_file = '/Users/jlu/work/microlens/2015_evan/photometry/posteriors/ob120169_mcmc_u0minus.dat'
     mnest_run = mnest_runs[target][order][0]
     mnest_dir = 'multiNest/' + mnest_run + '/'
     mnest_root = mnest_run
 
+    print ''
     print '##########'
     print '# OB120169 u0-'
     print '##########'
-    multinest_plot.summarize_results(root_dir = root_dir + analysis_dir_tt,
-                                     mnest_dir = mnest_dir,
-                                     mnest_root = mnest_root,
+    multinest_plot.summarize_results(root_dir=root_dir,
+                                     analysis_dir=analysis_dir_tt,
+                                     mnest_root=mnest_root,
                                      phot_file = phot_file,
                                      target = target)
+        
 
     # OB120169
     # u0+
-    phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob120169_mcmc_u0plus.dat'
+    # phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob120169_mcmc_u0plus.dat'
+    phot_file = '/Users/jlu/work/microlens/2015_evan/photometry/posteriors/ob120169_mcmc_u0plus.dat'
     mnest_run = mnest_runs[target][order][1]
     mnest_dir = 'multiNest/' + mnest_run + '/'
     mnest_root = mnest_run
 
+    print ''
     print '##########'
     print '# OB120169 u0+'
     print '##########'
-    multinest_plot.summarize_results(root_dir = root_dir + analysis_dir_tt,
-                                     mnest_dir = mnest_dir,
-                                     mnest_root = mnest_root,
+    multinest_plot.summarize_results(root_dir=root_dir,
+                                     analysis_dir=analysis_dir_tt,
+                                     mnest_root=mnest_root,
                                      phot_file = phot_file,
                                      target = target)
 
@@ -3507,17 +3504,19 @@ def table_lens_parameters():
     order = final_order[tt]
     flag = final_flag[tt]
     analysis_dir_tt = analysis_dir_fmt.format(target, flag)
-    phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob110125_mcmc.dat'
+    # phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob110125_mcmc.dat'
+    phot_file = '/Users/jlu/work/microlens/2015_evan/photometry/posteriors/ob110125_mcmc.dat'
     mnest_run = None
     mnest_dir = None
     mnest_root = None
 
+    print ''
     print '##########'
     print '# OB110125'
     print '##########'
-    multinest_plot.summarize_results(root_dir = root_dir + analysis_dir_tt,
-                                     mnest_dir = mnest_dir,
-                                     mnest_root = mnest_root,
+    multinest_plot.summarize_results(root_dir=root_dir,
+                                     analysis_dir=analysis_dir_tt,
+                                     mnest_root=mnest_root,
                                      phot_file = phot_file,
                                      target = target)
     
@@ -3586,4 +3585,102 @@ def mass_posterior_OB120169():
     return
     
     
+def mmjd_to_year(t0_mmjd):
+    """
+    Input format is in
+        MJD - 50000
+    or
+        HJD - 2450000
+    Peculiar, but used by microlensing community.
 
+    Return Value
+    ------------
+    fractional year
+    
+    """
+    t_ref_yr = 2009.0
+    t_ref_mmjd = 4832.5
+    t_ref_mmjd_leap = 4833.0
+    
+    # # Convert HJD - 2450000 into calendar year using Jan 1 2009 as calibrator
+    # t0_yr = t_ref_yr + (t0_mmjd - t_ref_mmjd) / 365.24
+
+    # Convert HJD-245000 into calendar year using Jan 1 2009 as calibrator
+    t0_yr = 2009.0 + (t0_mmjd - 4832.5) / 365.0
+    leapYr = np.where((t0_mmjd > 5927.5) & (t0_mmjd < 6293.) )[0]
+    if (len(leapYr) > 0):
+        t0_yr[leapYr] =  2009. + (t0_mmjd[leapYr] - 4833.) / 366.
+    
+    
+    return t0_yr
+
+def year_to_mmjd(t0_yr):
+    t_ref_yr = 2009.0
+    t_ref_mmjd = 4832.5
+    t_ref_mmjd_leap = 4833.0
+
+    # # Convert HJD - 2450000 into calendar year using Jan 1 2009 as calibrator
+    # t0_mmjd = ((t0_yr - t_ref_yr) * 365.24) + t_ref_mmjd
+        
+    # Convert HJD-245000 into calendar year using Jan 1 2009 as calibrator
+    t0_mmjd = ((t0_yr - 2009.0) * 365.0) + 4832.5
+    leapYr = np.where((t0_mmjd > 5927.5) & (t0_mmjd < 6293.) )[0]
+    if (len(leapYr) > 0):
+        t0_mmjd[leapYr] =  ((t0_yr - 2009.0) * 366.0) + 4833.0
+    
+    return t0_mmjd
+            
+
+def check_t0(phot_posteriors_file, phot_priors_root, astro_posteriors_root):
+    # Photometric posteriors (format in MJD)
+    tab_phot_post = Table.read(phot_posteriors_file, format='ascii')
+    t0_ph_post_mmjd = tab_phot_post['t0']
+    t0_ph_post_year = mmjd_to_year(t0_ph_post_mmjd)
+    
+    # Photometric priors (format in year)
+    tab_phot_prior_hist = Table.read(phot_priors_root + '.txt', format='ascii')
+    tab_phot_prior_bins = Table.read(phot_priors_root + '_bins.txt', format='ascii')
+    t0_ph_prior_year_bins = tab_phot_prior_bins['col1']
+    t0_ph_prior_mmjd_bins = year_to_mmjd(t0_ph_prior_year_bins)
+    t0_ph_prior_hist, bin_edges = np.histogram(tab_phot_prior_hist['col3'],
+                                               weights=tab_phot_prior_hist['col1'],
+                                               bins=np.arange(len(tab_phot_prior_bins) + 1),
+                                               density=True)
+
+    # Astrometric posteriors (format in year)
+    tab_astro_post = load_mnest_results(root_dir='',
+                                     mnest_dir='',
+                                     mnest_root=astro_posteriors_root)
+    t0_as_post_year = tab_astro_post['t0']
+    t0_as_post_mmjd = year_to_mmjd(t0_as_post_year)
+
+    bins_mmjd = np.arange(6020, 6030, 0.1)
+    bins_year = np.arange(2012.25, 2012.28, 0.0005)
+
+    t0_ph_prior_year_hist = t0_ph_prior_hist / (bins_year[1] - bins_year[0])
+    t0_ph_prior_mmjd_hist = t0_ph_prior_hist / (bins_mmjd[1] - bins_mmjd[0])
+
+    py.figure(1)    
+    py.clf()
+    py.hist(t0_ph_post_year, bins=bins_year, histtype='step', label='Phot Post', normed=True)
+    py.step(t0_ph_prior_year_bins, t0_ph_prior_year_hist, label='Phot Prior')
+    py.hist(t0_as_post_year, bins=bins_year, histtype='step', label='Astr Post', normed=True)
+    py.legend()
+
+    py.figure(2)
+    py.clf()
+    py.hist(t0_ph_post_mmjd, bins=bins_mmjd, histtype='step', label='Phot Post', normed=True)
+    py.step(t0_ph_prior_mmjd_bins, t0_ph_prior_mmjd_hist, label='Phot Prior')
+    py.hist(t0_as_post_mmjd, bins=bins_mmjd, histtype='step', label='Astr Post', normed=True)
+    py.legend()
+    
+    return
+
+def check_t0_ob120169():
+    root = '/Users/jlu/work/microlens/2015_evan/'
+    phot_post_file = root + 'photometry/posteriors/ob120169_mcmc_u0minus.dat'
+    # phot_post_file = '/Users/jlu/Downloads/ob120169_mcmc_u0minus.dat'
+    phot_prior_root = root + 'photometry/posteriors/PhotPriors_MultiDim_ob120169_u0minus'
+    astro_post_file = root + 'analysis_ob120169_2014_03_22ax_MC100_omit_1/multiNest/bh/bh'
+
+    check_t0(phot_post_file, phot_prior_root, astro_post_file)
