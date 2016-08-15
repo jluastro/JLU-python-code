@@ -16,8 +16,10 @@ import atpy
 import voronoi_2d_binning as v2d
 
 datadir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
-
 cuberoot = 'm31_all_scalederr_cleanhdr'
+
+bhpos_hor = ppxf_m31.bhpos_hor
+bhpos_horpix = bhpos_hor*20.
 
 def createVoronoiInput():
     # makes a version of the median flux map that is all positive, and a
@@ -90,15 +92,17 @@ def tessellate(inputFile=datadir+cuberoot+'_vor.fits',targetSN=50):
     # divide by 20 to put in arcsec (0.05 arcsec per pixel)
     v2d._display_pixels(xx/20., np.flipud(yy)/20., rnd[binNum], pixSize/20., horflip=True)
     py.plot(xNode/20., yNode/20., '+w', scalex=False, scaley=False) # do not rescale after imshow()
+    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'kx', markeredgewidth=3)
+    py.axis('image')
     py.xlabel('R (arcsec)')
     py.ylabel('R (arcsec)')
     py.title('Map of Voronoi bins')
     
     py.subplot(212)
-    rad = np.sqrt(xBar**2 + yBar**2)  # Use centroids, NOT generators
+    rad = np.sqrt(np.abs(xBar-bhpos_horpix[0])**2 + np.abs(yBar-bhpos_horpix[1])**2)  # Use centroids, NOT generators
     w = nPixels == 1
     py.plot(rad[~w]/20., sn[~w], 'or', label='Voronoi bins')
-    py.xlabel('R (arcsec)')
+    py.xlabel('Distance from SMBH (arcsec)')
     py.ylabel('Bin S/N')
     py.axis([np.min(rad/20.), np.max(rad/20.), 0, np.max(sn)])  # x0, x1, y0, y1
     if np.sum(w) > 0:
@@ -130,17 +134,17 @@ def createVoronoiOutput(inputFile=datadir+cuberoot+'.fits',inputVoronoiFile=data
     newCube = np.zeros(cubeShape, dtype=float)
     newErr = np.zeros(cubeShape, dtype=float)
 
-    for nb in range(binnum.max()):
+    for nb in range(binnum.max()+1):
         idx = np.where(binnum == nb)
         nx = xx[idx]
         ny = yy[idx]
         nbins = len(idx[0])
         tmpCube = np.sum(cube[nx,ny,:],axis=0)/nbins
-        tmpErr = np.sqrt(np.sum(errors[nx,ny,:]**2,axis=0))
+        tmpErr = np.sqrt(np.sum(errors[nx,ny,:]**2,axis=0))/nbins
         newCube[nx,ny,:] = tmpCube
         newErr[nx,ny,:] = tmpErr
 
-    pdb.set_trace()
+    #pdb.set_trace()
     outfile = datadir + cuberoot + '_vorcube.fits'
     pyfits.writeto(outfile,newCube,header=hdr)
     pyfits.append(outfile,newErr)

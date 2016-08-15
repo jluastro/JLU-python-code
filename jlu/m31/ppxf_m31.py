@@ -1,7 +1,8 @@
 import numpy as np
 import pylab as py
-import pidly
-import pyfits, pickle
+# import pidly
+from astropy.io import fits as pyfits
+import pickle
 import time
 import math, glob
 import scipy
@@ -10,13 +11,15 @@ from scipy.optimize import curve_fit#, OptimizeWarning
 from scipy import signal,ndimage
 from gcwork import objects
 import pdb
-import ppxf
-import pp
+# import ppxf
+# import pp
 import itertools
 import pandas
 import astropy
 import os
 import warnings
+import matplotlib as mpl
+import colormaps as cmaps
 #from jlu.m31 import ifu
 
 
@@ -203,7 +206,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,twocomp=False,selectTemp=None):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -239,7 +242,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,tw
 
     # Load templates
     if newTemplates:
-        logWaveTemps, templates = load_templates(velScale,IDL=False)
+        logWaveTemps, templates = load_templates(velScale,IDL=False,selectTemp=selectTemp)
     else:
         logWaveTemps, templates = load_templates_old(velScale,IDL=False)
 
@@ -324,7 +327,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,tw
     allxxyy = np.array(allxxyylist)
     allxx, allyy = zip(*itertools.product(xx, yy))
 
-    #pdb.set_trace()
+    pdb.set_trace()
 
     # pp implementation
     job_server = pp.Server()
@@ -864,7 +867,8 @@ def plotResults(inputFile):
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -990,7 +994,8 @@ def plotResults2(inputFile):
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -1164,6 +1169,97 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         py.savefig(workdir + 'plots/kinematic_maps3.eps')
     py.show()
 
+def plotTempWeights(inputResults=workdir+'ppxf.dat'):
+    # Creates n/6 plots (6 plots per page), where n=# of templates used, colored by the weight
+
+    p = PPXFresults(inputResults)
+    tw = p.tweights
+
+    ntw = tw.shape[2]
+    nplot = np.ceil(ntw/6.)
+
+    goodtemp = np.zeros((tw.shape[0],tw.shape[1],tw.shape[2]),dtype=int)
+    good = np.where(tw != 0)
+    goodtemp[good] = 1
+    ntemp = np.sum(goodtemp,axis=2)
+
+    names, spectype = load_template_names()
+
+    xaxis = np.arange(tw.shape[1]) * 0.05
+    yaxis = np.arange(tw.shape[0]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    # discrete colormap
+    tmpcmap = py.get_cmap('jet',10)
+    
+    # plot the number of templates used at each bin
+    py.close(2)
+    py.figure(2, figsize=(7,4))
+    py.imshow(np.rot90(ntemp.T,3), extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]], cmap=tmpcmap)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical',cmap=tmpcmap)
+    cbar.set_label('Number of templates')
+
+    py.savefig(workdir + 'plots/tempweights_ntemp.png')
+    py.show()
+    pdb.set_trace()
+    
+    py.close(2)
+    py.figure(2, figsize=(15,13))
+    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+
+    # plot the weights of each template
+    for pagen in np.arange(nplot):
+        py.clf()
+        for plotn in np.arange(6):
+            py.subplot(3,2,plotn+1)
+            tmpn = (pagen*6) + plotn
+            tmpn = tmpn.astype('int')
+            if tmpn <= (ntw-1):
+                tmp = tw[:,:,tmpn]
+                tmpimg = np.rot90(tmp.T,3)
+                py.imshow(tmpimg, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],cmap=cmaps.inferno)
+                py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'cx', markeredgewidth=3)
+                py.ylabel('Y (arcsec)')
+                py.xlabel('X (arcsec)')
+                py.gca().get_xaxis().set_major_locator(xtickLoc)
+                py.axis('image')
+                cbar = py.colorbar(orientation='vertical')
+                lab = '%s (%s)'  % (names[tmpn], spectype[tmpn])
+                cbar.set_label(lab)
+        
+        filename = 'plots/tempweights_%1.0f.png' % pagen
+        py.savefig(workdir + filename)
+        py.show()
+
+def plotChi2(inputResults=workdir+'/ppxf.dat'):
+    p = PPXFresults(inputResults)
+
+    xaxis = np.arange(p.chi2red.shape[1]) * 0.05
+    yaxis = np.arange(p.chi2red.shape[0]) * 0.05
+    
+    xtickLoc = py.MultipleLocator(0.5)
+
+    py.close(2)
+    py.figure(2, figsize=(8,4))
+    py.subplots_adjust(left=0.1, right=0.96, top=0.95)
+    py.clf()
+
+    chi2 = np.rot90(p.chi2red.T,3)
+    py.imshow(chi2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
+    py.gca().get_xaxis().set_major_locator(xtickLoc)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Reduced $\chi^2$')
+    
 def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsim100.dat',inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     ### Plots error on velocity and velocity dispersion
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
@@ -1408,7 +1504,8 @@ def plotQuality():
     cbar.set_label('Flux (cts/sec)')
 
     # Make a compass rose
-    pa = 56.0
+    #pa = 56.0
+    pa = 34.0
     cosSin = np.array([ math.cos(math.radians(pa)), 
                         math.sin(math.radians(pa)) ])
     arr_base = np.array([ xaxis[-1]-0.2, yaxis[-1]-0.6 ])
@@ -2001,7 +2098,97 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.savefig(modelworkdir + 'plots/residuals_h4.eps')
     py.show()
 
+def plotQuiver(inputFile=None,nonaligned=True,binsize=0.25):
+    # makes a quiver plot (x and y motions on the sky) of the model velocities
+    # use binsize to specify bin size (in arcsec) for plotting
 
+    if inputFile:
+        model=modelResults(inputFile)
+    else:
+        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
+
+    # 1" = 3.73 pc
+    binpc = binsize*3.73
+    
+    # Setting the BH pixel phase to match that of the data
+    xfrac = bhpos[0]-np.floor(bhpos[0])
+    yfrac = bhpos[1]-np.floor(bhpos[1])
+    # correct for binsize != 0.05: divide by the ratio of the two pixel scales and
+    # calc the new pixel phase
+    xfrac = (xfrac*(.05/binsize))-np.floor(xfrac*(0.05/binsize))
+    yfrac = (yfrac*(.05/binsize))-np.floor(yfrac*(0.05/binsize))
+    # reposition BH (originally at origin in model) to the correct pixel phase
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
+
+    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    # positive and negative extent of the x axis
+    posxbin = np.ceil(np.max(model.x)/binpc)
+    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    nxbin = posxbin+negxbin
+    # and y axis
+    posybin = np.ceil(np.max(model.y)/binpc)
+    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    nybin = posybin + negybin
+
+    # new BH position: (0,0) + (xfrac,yfrac)
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
+    #print "Model BH is at ", modbhpos
+    #pdb.set_trace()
+
+    # initializing kinematic vectors
+    vx = np.zeros((nxbin,nybin))
+    vy = np.zeros((nxbin,nybin))
+
+    # left/bottom edges of each spaxel (in units of pc)
+    leftxbound = np.arange(-1.*negxbin*binpc, (posxbin*binpc) + (0.5*binpc), binpc)
+    bottomybound = np.arange(-1*negybin*binpc, (posybin*binpc) + (0.5*binpc), binpc)
+    # binning x and y velocity in bins of 5 km/s, with cuts at +/- 1000 km/s
+    vxbins = np.arange(-1000., 1005., 5.)
+    vybins = np.arange(-1000., 1005., 5.)
+
+    t1 = time.time()
+
+    # create the histogram and average the x velocities in each bin
+    binsx = (leftxbound, bottomybound, vxbins)
+    sumvx, bins_vx, bin_num = scipy.stats.binned_statistic_dd((model.x, model.y, model.vx),
+                                                               model.vx,
+                                                               statistic='sum',
+                                                               bins=binsx)
+
+    # create the histogram and average the y velocities in each bin
+    binsy = (leftxbound, bottomybound, vybins)
+    sumvy, bins_vy, bin_num2 = scipy.stats.binned_statistic_dd((model.x, model.y, model.vy),
+                                                               model.vy,
+                                                               statistic='sum',
+                                                               bins=binsy)
+
+    # create the histogram and count up the number of particles in each spatial bin
+    nstar, bins_count, bin_num3 = scipy.stats.binned_statistic_dd((model.x, model.y),
+                                                                  model.vx,
+                                                                  statistic='count',
+                                                                  bins=(leftxbound, bottomybound))
+    
+    print 'Time Point 1: dt = {0:.0f} s'.format(time.time() - t1)
+    #pdb.set_trace()
+
+    meanvx = np.nan_to_num(sumvx.sum(axis=2)/nstar)
+    meanvy = np.nan_to_num(sumvy.sum(axis=2)/nstar)
+    
+    py.figure(3)
+    py.clf()
+    
+    py.quiver(bins_vy[1][0:-1],bins_vx[0][0:-1],-1.*meanvy,meanvx,nstar)
+    #py.quiver(bins_vy[1][0:-1],bins_vx[0][0:-1],meanvy,meanvx,nstar)
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Number of Stars')
+    py.xlabel('X (arcsec)')
+    py.ylabel('Y (arcsec)')
+    py.xlim(5,-5)
+    #py.xlim(-5,5)
+    py.ylim(-5,5)
+    py.axes().set_aspect('equal', 'datalim')
+    pdb.set_trace()
 
 def trimModel(input,nonaligned=True):
 
@@ -2080,96 +2267,39 @@ def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     #pdb.set_trace()
 
     # initializing flux and kinematic arrays
-    nstar = np.zeros((nxbin,nybin))
     losv = np.zeros((nxbin,nybin))
     sigma = np.zeros((nxbin,nybin))
     h3 = np.zeros((nxbin,nybin))
     h4 = np.zeros((nxbin,nybin))
 
-    # left/bottom edges of each spaxel (in units of pc), to be used in where statement later
-    leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
-    bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
+    # left/bottom edges of each spaxel (in units of pc)
+    leftxbound = np.arange(-1.*negxbin*binpc, (posxbin*binpc) + (0.5*binpc), binpc)
+    bottomybound = np.arange(-1*negybin*binpc, (posybin*binpc) + (0.5*binpc), binpc)
+    # binning LOS velocity in bins of 5 km/s, with cuts at +/- 1000 km/s
+    vzbins = np.arange(-1000., 1005., 5.)
+    
+    # by definition, v_LOS = -v_z
+    modvLOS = -1.* model.vz
 
     t1 = time.time()
 
-    #bins = 
+    # create the histogram and count up the number of particles in each velocity bin
+    bins = (leftxbound, bottomybound, vzbins)
+    losvd, bins_new, bin_num = scipy.stats.binned_statistic_dd((model.x, model.y, modvLOS),
+                                                               modvLOS,
+                                                               statistic='count',
+                                                               bins=bins)
 
-    # create the irange array
+    # create the histogram and count up the number of particles in each spatial bin
+    nstar, bins_new2, bin_num2 = scipy.stats.binned_statistic_dd((model.x, model.y),
+                                                                  modvLOS,
+                                                                  statistic='count',
+                                                                  bins=(leftxbound, bottomybound))
     
-    # this array starts in the center then steps its way out, alternating sides
-    # the maximum number of particles are near the center, so this should speed up the where
-    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
-
-    # create the arrays to loop through (starting in center and stepping out)
-    for i in range(int(nxbin)):
-        # 0th entry is the center bin of the x axis
-        if i==0:
-            irangetmp = np.array([np.floor(nxbin/2)])
-        # after that, step outwards, alternating sides
-        else:
-            tmp = irangetmp[-1] + (((-1)**i)*i)
-            irangetmp = np.append(irangetmp,tmp)
-    # make sure no bad bins were grabbed
-    badilo = np.where(irangetmp < 0)
-    irangetmp2 = np.delete(irangetmp,badilo)
-    badihi = np.where(irangetmp2 > len(leftxbound))
-    irange = np.delete(irangetmp2,badihi)
-    # final array to loop through
-    irange = irange.astype(int)
-    # same thing but for y axis
-    for j in range(int(nybin)):
-        if j == 0:
-            jrangetmp = np.array([np.floor(nybin/2)])
-        else:
-            tmp = jrangetmp[-1] + (((-1)**j)*j)
-            jrangetmp = np.append(jrangetmp,tmp)
-    badjlo = np.where(jrangetmp < 0)
-    jrangetmp2 = np.delete(jrangetmp,badjlo)
-    badjhi = np.where(jrangetmp2 > len(bottomybound))
-    jrange = np.delete(jrangetmp2,badjhi)
-    jrange = jrange.astype(int)
-    
-    # this loop is solely for binning the particles and writing their locations/velocities
-    # to a separate file for each bin
-    # first, check to see if the files already exist (checking just the first one)
-    # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
-    if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
-        # make array copies 
-        modx = np.array(model.x)
-        mody = np.array(model.y)
-        modz = np.array(model.z)
-        modvx = np.array(model.vx)
-        modvy = np.array(model.vy)
-        modvz = np.array(model.vz)
-        # loop through the arrays created above
-        for i in irange:
-            for j in jrange:
-                # find the particles in the current bin
-                good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
-                # nstar is the number of star particles in the bin
-                ntmp = good[0].shape[0]
-                nstar[i,j] = ntmp
-                # write just these particles out to a file
-                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
-                tmpx = modx[good[0]]
-                tmpy = mody[good[0]]
-                tmpz = modz[good[0]]
-                tmpvx = modvx[good[0]]
-                tmpvy = modvy[good[0]]
-                tmpvz = modvz[good[0]]
-                np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
-                # remove the written out particles from the master arrays, to improve computational time
-                modx = np.delete(modx,good[0])
-                mody = np.delete(mody,good[0])
-                modz = np.delete(modz,good[0])
-                modvx = np.delete(modvx,good[0])
-                modvy = np.delete(modvy,good[0])
-                modvz = np.delete(modvz,good[0])
-                
-    print "Time elapsed for binning: ", time.time() - t1, "s"
+    print 'Time Point 1: dt = {0:.0f} s'.format(time.time() - t1)
+    pdb.set_trace()
+       
     t2 = time.time()
-
-    #pdb.set_trace()
 
     if clean:
         warnings.simplefilter("error", OptimizeWarning)            
@@ -2178,45 +2308,35 @@ def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
     for i in range(int(nxbin)):
         print "Starting column ", i
         for j in range(int(nybin)):
-            model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
-            # make sure that nstar is populated - if binning code and outputs were run separately
-            # previously, it will not yet have been filled in
-            if nstar[i,j] == 0.:
-                nstar[i,j] = model.x.shape[0]
-            # by definition, v_LOS = -v_z
-            modvLOS = -1.* model.vz
             # if there are no particles, set everything to zero
-            if model.x.shape[0] == 0:
+            if nstar[i,j] == 0:
                 losv[i,j] = 0.
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
             # if there are too few particles to perform a fit, hack something together 
-            elif model.x.shape[0] <= 6:
+            elif losvd[i,j,:].max() <= 5:
                 if clean:
                     losv[i,j] = 0.
                 else:
-                    losv[i,j] = np.mean(modvLOS)
+                    losv[i,j] = (losvd[i,j,:]*bins_new[2][0:-1]).sum()/nstar[i,j]
                 sigma[i,j] = 0.
                 h3[i,j] = 0.
                 h4[i,j] = 0.
             # for everything else, fit the LOSVD histogram
             else:
-                # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
-                #binsize = 5.
-                # can actually do widths of 1 km/s
-                binsize = 1.
-                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
                 # set the initial values
-                gamma0 = ny.sum()
-                v0 = np.mean(modvLOS)
-                s0 = np.std(modvLOS)
+                gamma0 = nstar[i,j]
+                # approximate the average velocity of the particles
+                v0 = (losvd[i,j,:]*bins_new[2][0:-1]).sum()/nstar[i,j]
+                # pull out the standard deviation directly from the histogram
+                s0 = np.sqrt(((bins_new[2][0:-1]-v0)**2.*losvd[i,j,:]).sum()/nstar[i,j])
                 h3_0 = 0.
                 h4_0 = 0.
                 guess = [gamma0, v0, s0, h3_0, h4_0]
                 if clean:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+                        popt, pcov = curve_fit(gaussHermite, bins_new[2][0:-1], losvd[i,j,:], p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -2230,7 +2350,7 @@ def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
                         h4[i,j] = 0.
                 else:
                     try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
+                        popt, pcov = curve_fit(gaussHermite, bins_new[2][0:-1], losvd[i,j,:], p0=guess)
                         # popt = [gamma, v, sigma, h3, h4]
                         losv[i,j] = popt[1]
                         sigma[i,j] = popt[2]
@@ -2238,11 +2358,11 @@ def modelBin(inputFile=None,nonaligned=True,clean=False,l98bin=False):
                         h4[i,j] = popt[4]
                     except (RuntimeError):
                         # if no fit is possible, take the mean
-                        losv[i,j] = np.mean(modvLOS)
+                        losv[i,j] = v0
                         sigma[i,j] = 0.
                         h3[i,j] = 0.
                         h4[i,j] = 0.                    
-                py.close()
+            #py.close()
         # code crashes after exiting this loop (why??), so setting output here for now
         # update: it shouldn't crash here anymore, but this is fine here
         if i == (nxbin-1):
@@ -2286,6 +2406,145 @@ class modelFitResults(object):
         self.h3 = pickle.load(input)
         self.h4 = pickle.load(input)
 
+def modelConvert2CSV(inputFile=None,smooth=False,l98bin=False,centerBH=None,reorient=True,normFlux=False):
+    # convert pickle file to flat file
+    # structure matches that of Hiranya's CSVs:
+    ### flux file: [bin_y, bin_x, flux (or, here, nstar)]
+    ### velocity file: [bin_y, bin_x, pos_y (in arcsec), pos_x, velocity, sigma, h3, h4]
+
+    # Keywords:
+    # smooth: smooth maps before flattening
+    # l98bin: when False (default), pixel scale=0.05" (OSIRIS scale), when True,
+    ### pixel scale=0.0228" (L98 pixel scale)
+    # centerBH: if BH coordinates are given ([x,y]), pos_x and pos_y place the BH
+    ### at [0.0, 0.0]
+    # reorient: if True (default), orientation is N is 56 degrees to the left of top, 
+    ###  E 90 degrees to the left of that
+    # fluxNorm: normalize flux so peak flux = 1
+
+    inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt'
+    
+    mod = modelFitResults(inputFile)
+    gridShape = mod.nstar.shape
+    bingrid = np.indices((gridShape[0],gridShape[1]))
+    rowgrid = bingrid[0,:,:]
+    colgrid = bingrid[1,:,:]
+    tmpbinx = colgrid.flatten()
+    tmpbiny = rowgrid.flatten()
+    tmpbinx = tmpbinx.astype(int)
+    tmpbiny = tmpbiny.astype(int)
+    PSFparams = readPSFparams(inputFile=inputPSF,twoGauss=False)
+    if l98bin:
+        pixscale = 0.0228
+        PSF = ifu.gauss_kernel(PSFparams.sig1[0]*2.19, PSFparams.amp1[0], half_box=50)
+    else:
+        pixscale = 0.05
+        PSF = ifu.gauss_kernel(PSFparams.sig1[0], PSFparams.amp1[0], half_box=50)
+    if centerBH:
+        tmpposx = (tmpbinx - centerBH[0])*pixscale
+        tmpposy = (tmpbiny - centerBH[1])*pixscale
+    else:
+        tmpposx = tmpbinx*pixscale
+        tmpposy = tmpbiny*pixscale
+    
+    if reorient:
+        tmpnstar = np.rot90(mod.nstar.T,3)
+        tmpv = np.rot90(mod.velocity.T,3)
+        tmpsig = np.rot90(mod.sigma.T,3)
+        tmph3 = np.rot90(mod.h3.T,3)
+        tmph4 = np.rot90(mod.h4.T,3)
+    else:
+        tmpnstar = mod.nstar
+        tmpv = mod.velocity
+        tmpsig = mod.sigma
+        tmph3 = mod.h3
+        tmph4 = mod.h4
+        
+    if smooth:
+        tmpnstar = signal.convolve(tmpnstar,PSF,mode='same')
+        tmpv = signal.convolve(tmpv,PSF,mode='same')
+        tmpsig = signal.convolve(tmpsig,PSF,mode='same')
+        tmph3 = signal.convolve(tmph3,PSF,mode='same')
+        tmph4 = signal.convolve(tmph4,PSF,mode='same')
+        
+    tmpnstar = tmpnstar.flatten()
+    if normFlux:
+        tmpnstar = tmpnstar/tmpnstar.max()
+    tmpv = tmpv.flatten()
+    tmpsig = tmpsig.flatten()
+    tmph3 = tmph3.flatten()
+    tmph4 = tmph4.flatten()
+    #pdb.set_trace()
+    outputFileFlux = inputFile.replace('.dat', '_fluxCSV.dat')
+    outputFileVel = inputFile.replace('.dat', '_velCSV.dat')
+    np.savetxt(outputFileFlux,np.c_[tmpbinx,tmpbiny,tmpnstar],fmt=('%d','%d','%8.6f'),delimiter='\t')
+    np.savetxt(outputFileVel,np.c_[tmpbinx,tmpbiny, tmpposx, tmpposy, tmpv,tmpsig,tmph3,tmph4],fmt=('%d','%d','%8.6f','%8.6f','%8.6f','%8.6f','%8.6f','%8.6f'),delimiter='\t')
+
+class modelReadCSV(object):
+    def __init__(self, inputFile=None, vel=False):
+        self.inputFile = inputFile
+        # read in the file created by modelConvert2CSV
+
+        if vel is False:
+            mod = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['y','x','f'])
+        else:
+            mod = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['y','x','posy','posx','v','sigma','h3','h4'])
+
+        imgShape = (mod.x.max()-mod.x.min()+1,mod.y.max()-mod.y.min()+1)
+
+        off = mod.x.min()
+
+        if vel:
+            tmpposx = np.zeros(imgShape,dtype=float)
+            tmpposy = np.zeros(imgShape,dtype=float)
+            tmpv = np.zeros(imgShape,dtype=float)
+            tmpsig = np.zeros(imgShape,dtype=float)
+            tmph3 = np.zeros(imgShape,dtype=float)
+            tmph4 = np.zeros(imgShape,dtype=float)
+
+            
+            for i in range(mod.y.shape[0]):
+                tmpposx[mod.x[i]-off,mod.y[i]-off] = mod.posx[i]
+                tmpposy[mod.x[i]-off,mod.y[i]-off] = mod.posy[i]
+                tmpv[mod.x[i]-off,mod.y[i]-off] = mod.v[i]
+                tmpsig[mod.x[i]-off,mod.y[i]-off] = mod.sigma[i]
+                tmph3[mod.x[i]-off,mod.y[i]-off] = mod.h3[i]
+                tmph4[mod.x[i]-off,mod.y[i]-off] = mod.h4[i]
+
+            # check the order of the sorting - if x is increasing faster, use 'f',
+            # if y is increasing faster, use 'c'
+            #if mod.x[0]==mod.y[1]:
+            #    sortorder = 'c'
+            #else:
+            #    sortorder = 'f'
+            #tmpposx = np.reshape(mod.posx,imgShape,order=sortorder)
+            #tmpposy = np.reshape(mod.posy,imgShape,order=sortorder)
+            #tmpv = np.reshape(mod.v,imgShape,order=sortorder)
+            #tmpsig = np.reshape(mod.sigma,imgShape,order=sortorder)
+            #tmph3 = np.reshape(mod.h3,imgShape,order=sortorder)
+            #tmph4 = np.reshape(mod.h4,imgShape,order=sortorder)
+            
+            self.posx = tmpposx
+            self.posy = tmpposy
+            self.v = tmpv
+            self.sigma = tmpsig
+            self.h3 = tmph3
+            self.h4 = tmph4
+            
+        else:
+            tmpnstar = np.zeros(imgShape,dtype=float)
+
+            for i in range(mod.y.shape[0]):
+                tmpnstar[mod.x[i]-off,mod.y[i]-off] = mod.f[i]
+
+            #if mod.x[0]==mod.y[1]:
+            #    sortorder = 'c'
+            #else:
+            #    sortorder = 'f'
+            #tmpnstar = np.reshape(mod.f,imgShape,order=sortorder)
+            
+            self.nstar = tmpnstar
+            
 def smoothModels(inputModel=modeldir+'nonaligned_OSIRIScoords_fits_full.dat', inputPSF=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt', twoGauss=False):
 
     model = modelFitResults(inputFile=inputModel)
@@ -2361,8 +2620,8 @@ def modelConvertCoordinates(nonaligned=True,test=False):
     if nonaligned:
         if test:
             thetaL = np.radians(0.)
-            thetaI = np.radians(10.)
-            thetaA = np.radians(45.)
+            thetaI = np.radians(-10.)
+            thetaA = np.radians(0.)
         else:
             thetaL = np.radians(-42.8)
             thetaI = np.radians(54.1)
@@ -2470,8 +2729,10 @@ def modelOSIRISrotation(inputFile=None,nonaligned=True):
 
     # counterclockwise rotation (from model skycoords to OSIRIS coords) is positive,
     # by definition of the rotation matrix
-    #cpa = -34.
-    cpa = -56.
+    cpa = -34.
+    #cpa = -56.
+    #testing a model rotation thing - reset to -56 when done
+    #cpa = -45.
     
     thetaCPA = np.radians(cpa)
 
@@ -2578,12 +2839,12 @@ class modelResults(object):
         self.vy = model.v_y
         self.vz = model.v_z
     
-def load_templates(velScale, resolution=3241, IDL=True):
+def load_templates(velScale, resolution=3241, IDL=True, selectTemp=None):
     # IDL and Python versions of pPXF require different formats for the input templates
     templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
 
     files = glob.glob(templateDir + '*.fits')
-    print 'Using %d templates' % len(files)
+    
 
     templates = None
     for ff in range(len(files)):
@@ -2600,7 +2861,39 @@ def load_templates(velScale, resolution=3241, IDL=True):
         else:
             templates[:,ff] = newSpec
 
+    if selectTemp:
+        print 'Using %d templates' % len(selectTemp)
+        if IDL:
+            newTemp = templates[selectTemp,:]
+            templates = newTemp
+        else:
+            newTemp = templates[:,selectTemp]
+            templates = newTemp
+    else:
+        print 'Using %d templates' % len(files)
+            
     return (newWave, templates)
+
+def load_template_names():
+    templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
+    nc = len(templateDir)
+    
+    files = glob.glob(templateDir + '*.fits')
+    nf = len(files)
+
+    specdict = {'hd113538': 'K8 V', 'hd173764': 'G4 IIa', 'hd1737': 'G5 III', 'hd20038': 'F7 IIIw', 'hd206067': 'K0 III', 'hd212320': 'G6 III', 'hd218594': 'K1 III', 'hd224533': 'G9 III', 'hd2490': 'M0 III', 'hd26965': 'K1 V(a)', 'hd32440': 'K6 III', 'hd34642': 'K0 IV', 'hd35369': 'G8 III', 'hd36079': 'G5 II', 'hd38392': 'K2 V', 'hd39425': 'K2 III', 'hd4188': 'K0 III', 'hd4730': 'K3 III', 'hd63425B': 'K7 III', 'hd64606': 'G8 V', 'hd6461': 'G3 V', 'hd720': 'K5 III', 'hd9138': 'K4 III'}
+    
+    names = []
+    spectype = []
+    for i in range(nf):
+        tmpname = files[i][nc:-1]
+        tmpname = tmpname.split('_')
+        tmpname = tmpname[0]
+        names.append(tmpname)
+        tmpspec = specdict[tmpname]
+        spectype.append(tmpspec)
+
+    return (names, spectype)
 
 def load_templates_old(velScale, IDL=False):
     templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/atlasSpectra/medresIR/K_band'
@@ -3016,266 +3309,3 @@ def test():
     # Test #2
     logWave3, specNew3 = log_rebin2(wavelength, cube[10,30,:])
 
-def modelBinTest(inputFile=None,nonaligned=True,clean=False,l98bin=False):
-    ### Copy of modelBin on 2016 06 14, for testing code optimization
-    ### to run:
-    #### 1. copy the model file (already transformed to sky-plane coordinates, with the
-    ####    OSIRIS rotation applied if desired) to your modeldir
-    #### 2. create a folder within modeldir called 'spax' (modeldir/spax) to hold the temporary
-    ####    bin files. These can be reused for recalculating the LOSVD, which means the
-    ####    folder needs to be manually emptied/moved if rebinning is desired.
-    #### 3. specify your path to modeldir either at the top of this file or below
-    #### running:
-    #### OSIRIS pixel scale (0.05"):
-    #### > ppxf_m31.modelBinTest('/path/to/model/file.dat')
-    #### L98 pixel scale (0.0228"):
-    #### > ppxf_m31.modelBinTest('/path/to/model/file.dat',l98bin=True)
-    #### output is written to modeldir
-    
-    ### Reads in model results from Peiris & Tremaine 2003 (coordinates transformed to
-    #### match OSIRIS observations), bins individual stellar particles to match the
-    #### spaxel size in observations, and fits LOSVDs to the resulting velocity
-    #### histograms.
-
-    ### clean: [update: shouldn't need to use this anymore]
-    #### keyword to control how LOSVD are fit. With clean=False, LOSVDs are fit
-    #### to all bins. If no fit is possible (e.g. if there are too few particles in the
-    #### bin), the mean velocity is taken as the ensemble velocity and 0 is recorded for
-    #### the higher moments (sigma, h3, h4). With clean=True, 0 is also recorded for the
-    #### ensemble velocity in these bins. In addition, marginal fits (where OptimizeWarning
-    #### is returned by the fitter) are also discarded and 0 recorded for all kinematic
-    #### parameters.
-
-    # set directory where the model file lives
-    modeldir = ''
-
-    if clean:
-        from scipy.optimize import OptimizeWarning
-
-    if inputFile:
-        model=modelResults(inputFile)
-    else:
-        model = modelResults(nonaligned=nonaligned,skycoords=True,OSIRIS=True)
-
-    # bin size = 0.05" = 0.1865 pc
-    # if matching L98 photometry, use 0.0228" = 0.08504 pc
-    if l98bin:
-        binpc = 0.08504
-    else:
-        binpc = 0.1865
-    
-    # Setting the BH pixel phase to match that of the data
-    xfrac = bhpos[0]-np.floor(bhpos[0])
-    yfrac = bhpos[1]-np.floor(bhpos[1])
-    # if L98 bin size, divide by the ratio of the two pixel scales and
-    # calc the new pixel phase
-    if l98bin:
-        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
-        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
-    # reposition BH (originally at origin in model) to the correct pixel phase
-    model.x += (binpc*xfrac)
-    model.y += (binpc*yfrac)
-
-    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
-    # positive and negative extent of the x axis
-    posxbin = np.ceil(np.max(model.x)/binpc)
-    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
-    nxbin = posxbin+negxbin
-    # and y axis
-    posybin = np.ceil(np.max(model.y)/binpc)
-    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
-    nybin = posybin + negybin
-
-    # new BH position: (0,0) + (xfrac,yfrac)
-    modbhpos = [negxbin+xfrac,negybin+yfrac]
-    print "Model BH is at ", modbhpos
-    #pdb.set_trace()
-
-    # initializing flux and kinematic arrays
-    nstar = np.zeros((nxbin,nybin))
-    losv = np.zeros((nxbin,nybin))
-    sigma = np.zeros((nxbin,nybin))
-    h3 = np.zeros((nxbin,nybin))
-    h4 = np.zeros((nxbin,nybin))
-
-    # left/bottom edges of each spaxel (in units of pc), to be used in where statement later
-    leftxbound = np.arange(-1.*negxbin*binpc,posxbin*binpc,binpc)
-    bottomybound = np.arange(-1*negybin*binpc,posybin*binpc,binpc)
-
-    t1 = time.time()
-
-    #bins = 
-
-    # create the irange array
-    
-    # this array starts in the center then steps its way out, alternating sides
-    # the maximum number of particles are near the center, so this should speed up the where
-    # statements (b/c when the loop hits the vast deserted outskirts, there's little left in the master array)
-
-    # create the arrays to loop through (starting in center and stepping out)
-    for i in range(int(nxbin)):
-        # 0th entry is the center bin of the x axis
-        if i==0:
-            irangetmp = np.array([np.floor(nxbin/2)])
-        # after that, step outwards, alternating sides
-        else:
-            tmp = irangetmp[-1] + (((-1)**i)*i)
-            irangetmp = np.append(irangetmp,tmp)
-    # make sure no bad bins were grabbed
-    badilo = np.where(irangetmp < 0)
-    irangetmp2 = np.delete(irangetmp,badilo)
-    badihi = np.where(irangetmp2 > len(leftxbound))
-    irange = np.delete(irangetmp2,badihi)
-    # final array to loop through
-    irange = irange.astype(int)
-    # same thing but for y axis
-    for j in range(int(nybin)):
-        if j == 0:
-            jrangetmp = np.array([np.floor(nybin/2)])
-        else:
-            tmp = jrangetmp[-1] + (((-1)**j)*j)
-            jrangetmp = np.append(jrangetmp,tmp)
-    badjlo = np.where(jrangetmp < 0)
-    jrangetmp2 = np.delete(jrangetmp,badjlo)
-    badjhi = np.where(jrangetmp2 > len(bottomybound))
-    jrange = np.delete(jrangetmp2,badjhi)
-    jrange = jrange.astype(int)
-    
-    # this loop is solely for binning the particles and writing their locations/velocities
-    # to a separate file for each bin
-    # first, check to see if the files already exist (checking just the first one)
-    # if the tmp bin files exist already, skips ahead to LOSVD fitting (so can re-run just that portion)
-    if os.path.isfile(modeldir + 'spax/spax_0_0.dat') is False:
-        # make array copies 
-        modx = np.array(model.x)
-        mody = np.array(model.y)
-        modz = np.array(model.z)
-        modvx = np.array(model.vx)
-        modvy = np.array(model.vy)
-        modvz = np.array(model.vz)
-        # loop through the arrays created above
-        for i in irange:
-            for j in jrange:
-                # find the particles in the current bin
-                good = np.where((modx >= leftxbound[i]) & (modx < leftxbound[i]+binpc) & (mody >= bottomybound[j]) & (mody < bottomybound[j]+binpc))
-                # nstar is the number of star particles in the bin
-                ntmp = good[0].shape[0]
-                nstar[i,j] = ntmp
-                # write just these particles out to a file
-                outputFile = modeldir + 'spax/spax_'+str(int(i))+'_'+str(int(j))+'.dat'
-                tmpx = modx[good[0]]
-                tmpy = mody[good[0]]
-                tmpz = modz[good[0]]
-                tmpvx = modvx[good[0]]
-                tmpvy = modvy[good[0]]
-                tmpvz = modvz[good[0]]
-                np.savetxt(outputFile,np.c_[tmpx,tmpy,tmpz,tmpvx,tmpvy,tmpvz],fmt='%8.6f',delimiter='\t')
-                # remove the written out particles from the master arrays, to improve computational time
-                modx = np.delete(modx,good[0])
-                mody = np.delete(mody,good[0])
-                modz = np.delete(modz,good[0])
-                modvx = np.delete(modvx,good[0])
-                modvy = np.delete(modvy,good[0])
-                modvz = np.delete(modvz,good[0])
-                
-    print "Time elapsed for binning: ", time.time() - t1, "s"
-    t2 = time.time()
-
-    #pdb.set_trace()
-
-    if clean:
-        warnings.simplefilter("error", OptimizeWarning)            
-    # this loop does the LOSVD fits for each bin, to get the kinematics
-    # using the normal bin order for this
-    for i in range(int(nxbin)):
-        print "Starting column ", i
-        for j in range(int(nybin)):
-            model = modelResults(inputFile = modeldir + 'spax/spax_'+str(i)+'_'+str(j)+'.dat')
-            # make sure that nstar is populated - if binning code and outputs were run separately
-            # previously, it will not yet have been filled in
-            if nstar[i,j] == 0.:
-                nstar[i,j] = model.x.shape[0]
-            # by definition, v_LOS = -v_z
-            modvLOS = -1.* model.vz
-            # if there are no particles, set everything to zero
-            if model.x.shape[0] == 0:
-                losv[i,j] = 0.
-                sigma[i,j] = 0.
-                h3[i,j] = 0.
-                h4[i,j] = 0.
-            # if there are too few particles to perform a fit, hack something together 
-            elif model.x.shape[0] <= 6:
-                if clean:
-                    losv[i,j] = 0.
-                else:
-                    losv[i,j] = np.mean(modvLOS)
-                sigma[i,j] = 0.
-                h3[i,j] = 0.
-                h4[i,j] = 0.
-            # for everything else, fit the LOSVD histogram
-            else:
-                # binning in widths of 5 km/s, as in Peiris & Tremaine 2003
-                #binsize = 5.
-                # can actually do widths of 1 km/s
-                binsize = 1.
-                ny, bins = py.histogram(modvLOS,bins=np.arange(min(modvLOS),max(modvLOS)+binsize,binsize))
-                # set the initial values
-                gamma0 = ny.sum()
-                v0 = np.mean(modvLOS)
-                s0 = np.std(modvLOS)
-                h3_0 = 0.
-                h4_0 = 0.
-                guess = [gamma0, v0, s0, h3_0, h4_0]
-                if clean:
-                    try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
-                        # popt = [gamma, v, sigma, h3, h4]
-                        losv[i,j] = popt[1]
-                        sigma[i,j] = popt[2]
-                        h3[i,j] = popt[3]
-                        h4[i,j] = popt[4]
-                    except (RuntimeError, OptimizeWarning):
-                        # if get an error on the fit, drop the bin
-                        losv[i,j] = 0.
-                        sigma[i,j] = 0.
-                        h3[i,j] = 0.
-                        h4[i,j] = 0.
-                else:
-                    try:
-                        popt, pcov = curve_fit(gaussHermite, bins[0:-1], ny, p0=guess)
-                        # popt = [gamma, v, sigma, h3, h4]
-                        losv[i,j] = popt[1]
-                        sigma[i,j] = popt[2]
-                        h3[i,j] = popt[3]
-                        h4[i,j] = popt[4]
-                    except (RuntimeError):
-                        # if no fit is possible, take the mean
-                        losv[i,j] = np.mean(modvLOS)
-                        sigma[i,j] = 0.
-                        h3[i,j] = 0.
-                        h4[i,j] = 0.                    
-                py.close()
-        # code crashes after exiting this loop (why??), so setting output here for now
-        # update: it shouldn't crash here anymore, but this is fine here
-        if i == (nxbin-1):
-            if nonaligned:
-                if clean:
-                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_clean.dat', 'w')
-                else:
-                    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_full.dat', 'w')
-            else:
-                if clean:
-                    output = open(modeldir + 'aligned_OSIRIScoords_fits_clean.dat', 'w')
-                else:
-                    output = open(modeldir + 'aligned_OSIRIScoords_fits_full.dat', 'w')                    
-        
-            pickle.dump(nstar, output)
-            pickle.dump(losv, output)
-            pickle.dump(sigma, output)
-            pickle.dump(h3, output)
-            pickle.dump(h4, output)
-            output.close()
-
-    print "Time elapsed for LOSVD fitting: ", time.time() - t2, "s"
-    #pdb.set_trace()
-    
