@@ -66,7 +66,7 @@ def test_PSPL():
 def test_pspl_fit():
     data = fake_data1()
 
-    
+    model_fitter.multinest_pspl(data, n_live_points=300, saveto='./mnest_pspl/', runcode='aa')
     
     return
 
