@@ -55,6 +55,12 @@ class PSPL(object):
         piRel = units.rad * units.au * inv_dist_diff
         self.piRel = piRel.to('mas').value
 
+        # Calculate the individual parallax
+        piS = (1.0 / self.dS) * (units.rad * units.au / units.pc)
+        piL = (1.0 / self.dL) * (units.rad * units.au / units.pc)
+        self.piS = piS.to('mas').value
+        self.piL = piL.to('mas').value
+
         # Calculate the relative velocity vector. Note that this will be in the
          # direction of theta_hat
         self.muRel = self.muS - self.muL
@@ -242,14 +248,23 @@ class PSPL_parallax(PSPL):
         # Get the parallax vector for each date.
         parallax_vec = parallax_in_direction(self.raL, self.decL, t_obs)
 
-        piS = (1.0 / self.dS) * (units.rad * units.au / units.pc)
-        piS = piS.to('mas').value
+        # Equation of motion for just the background source.
+        dt_in_years = (t_obs - self.t0) / days_per_year
+        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3
+        xS_unlensed += (self.piS * parallax_vec) * 1e-3 # arcsec
+
+        return xS_unlensed
+
+    def get_lens_astrometry(self, t_obs):
+        # Get the parallax vector for each date.
+        parallax_vec = parallax_in_direction(self.raL, self.decL, t_obs)
 
         # Equation of motion for just the background source.
         dt_in_years = (t_obs - self.t0) / days_per_year
-        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3 + (piS * parallax_vec) * 1e-3 # arcsec
+        xL_unlensed = self.xL0 + np.outer(dt_in_years, self.muL) * 1e-3
+        xL_unlensed += (self.piL * parallax_vec) * 1e-3 # arcsec
 
-        return xS_unlensed
+        return xL_unlensed
         
     def get_astrometry(self, t_obs):
 
@@ -259,23 +274,21 @@ class PSPL_parallax(PSPL):
         # Get the parallax vector for each date.
         parallax_vec = parallax_in_direction(self.raL, self.decL, t_obs)
 
-        # Parallax amplitude of the background source (as seen from Earth)
-        piS = (1.0 / self.dS) * (units.rad * units.au / units.pc)
-        piS = piS.to('mas').value
-
         # Equation of motion for just the background source.
-        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3 + (piS * parallax_vec) * 1e-3 # arcsec
+        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3
+        xS_unlensed += (self.piS * parallax_vec) * 1e-3 # arcsec
         
         # Equation of motion for the relative angular separation between the background source and lens.
-        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel) - (self.piRel * parallax_vec) # mas
-        u = thetaS / self.thetaE_amp
-        u_amp = np.linalg.norm(u, axis=1)
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel)  # mas
+        thetaS -= (self.piRel * parallax_vec)                      # mas
+        u_vec = thetaS / self.thetaE_amp
+        u_amp = np.linalg.norm(u_vec, axis=1)
 
-        shift = thetaS
-        shift[:, 0] /= (u_amp**2 + 2.0) # mas
-        shift[:, 1] /= (u_amp**2 + 2.0) # mas
+        denom = u_amp**2 + 2.0
+        
+        shift = thetaS / denom.reshape((len(u_amp), 1)) # mas
 
-        xS = xS_unlensed + shift * 1e-3 # arcsec
+        xS = xS_unlensed + (shift * 1e-3) # arcsec
 
         return xS
     
@@ -484,3 +497,4 @@ def sun_position(mjd, radians=False):
 
     return ra, dec, longmed, oblt
     
+
