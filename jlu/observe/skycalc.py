@@ -3,6 +3,10 @@ import pylab as py
 import math
 import ephem
 import os
+from astropy import units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
+import pdb
 
 def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
     """
@@ -15,18 +19,18 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
     """
-    from pyraf import iraf
+    # Setup the target
+    target = SkyCoord(ra, dec, unit=(u.hour, u.deg), frame='icrs')
 
-    iraf.noao()
-    iraf.noao.obsutil()
-
+    # Setup local time.
+    utc_offset = -10 * u.hour   # Hawaii Standard Time
+        
     month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-    pairmass = iraf.noao.obsutil.pairmass
-    
     # Observatory (for symbol)
-    obs = "keck"
+    obs = 'keck'
+    keck = EarthLocation.of_site('keck')
 
     # Labels and colors for different months.
     labels = []
@@ -38,92 +42,57 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
 
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
 
-    # Get sunset and sunrise times on the first day
-    scinName = 'skycalc.input'
-    scoutName = 'skycalc.output'
+    # Get sunset and sunrise times on the first specified day
+    midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[0], days[0])) - utc_offset
+    delta_midnight = np.arange(-12, 12, 0.01) * u.hour
+    times = midnight + delta_midnight
+    altaz_frame = AltAz(obstime=times, location=keck)
+    sun_altaz = get_sun(times).transform_to(altaz_frame)
 
-    scin = open(scinName, 'w')
-    scin.write('m\n')
-    scin.write('y %4d %2d %2d a' % (year, months[0], days[0]))
-    scin.write('Q\n')
-    scin.close()
+    sun_down = np.where(sun_altaz.alt < -0*u.deg)[0]
+    twilite = np.where(sun_altaz.alt < -12*u.deg)[0]
+    sunset = delta_midnight[sun_down[0]].value
+    sunrise = delta_midnight[sun_down[-1]].value
+    twilite1 = delta_midnight[twilite[0]].value
+    twilite2 = delta_midnight[twilite[-1]].value
 
-    # Spawn skycalc
-    os.system('skycalc < %s > %s' % (scinName, scoutName))
-
-    # Now read in skycalc data
-    scout = open(scoutName, 'r')
-    lines = scout.readlines()
-
-    for line in lines:
-        fields = line.split()
-
-        if (len(fields) < 3):
-            continue
-
-        if (fields[0] == 'Sunset'):
-            sunset = float(fields[5]) + float(fields[6]) / 60.0
-            sunset -= 24.0
-            sunrise = float(fields[9]) + float(fields[10]) / 60.0
-
-        if (fields[0] == '12-degr'):
-            twilite1 = float(fields[2]) + float(fields[3]) / 60.0
-            twilite1 -= 24.0
-            twilite2 = float(fields[6]) + float(fields[7]) / 60.0
-
-        if ((fields[0] == 'The') and (fields[1] == 'sun')):
-            darkTime = (twilite2 - twilite1) - 0.5 # 0.5=LGS checkout
-            splittime = twilite1 + 0.5 + darkTime/2
-            if (splittime > 24.0):
-                splittime -= 24.0
+    # Get the half-night split times
+    splittime = twilite1 + ((twilite2 - twilite1) / 2.0)
 
     print 'Sunrise %4.1f   Sunset %4.1f  (hours around midnight HST)' % (sunrise, sunset)
     print '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2)
-    
 
     py.close(3)
     py.figure(3, figsize=(10, 10))
     py.clf()
     py.subplots_adjust(left=0.1)
     for ii in range(len(days)):
-        foo = pairmass(ra=ra, dec=dec, observatory=obs, listout="yes",
-                       timesys="Standard", Stdout=1, resolution=2,
-                       year=year, month=months[ii], day=days[ii],
-                       wx1=-7, wx2=7)
+        midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[ii], days[ii])) - utc_offset
+        delta_midnight = np.arange(-7, 7, 0.2) * u.hour
+        times = delta_midnight.value
 
-        entries = foo[5:]
-        times = np.zeros(len(entries), dtype=float)
-        airmass = np.zeros(len(entries), dtype=float)
+        target_altaz = target.transform_to(AltAz(obstime=midnight + delta_midnight,
+                                                 location=keck))
+        
+        airmass = target_altaz.secz
 
-        for ee in range(len(entries)):
-            vals = entries[ee].split()
+        # Trim out junk where target is at "negative airmass"
+        good = np.where(airmass > 0)[0]
+        times = times[good]
+        airmass = airmass[good]
 
-            tt = vals[0].split(':')
-            hour = float(tt[0])
-            minu = float(tt[1])
-
-            times[ee] = hour + (minu / 60.0)
-            airmass[ee] = float(vals[1])
-
-
-        # Wrap the times around
-        idx = (np.where(times > 12))[0]
-        ndx = (np.where(times <= 12))[0]
-        times = np.concatenate((times[idx]-24, times[ndx]))
-        airmass = np.concatenate((airmass[idx], airmass[ndx]))
-
-        # Find the points beyond the Nasmyth deck
+        # Find the points beyond the Nasmyth deck. Also don't bother with anything above sec(z) = 3
         transitTime = times[airmass.argmin()]
-        belowDeck = (np.where((times > transitTime) & (airmass >= 1.8)))[0]
-        aboveDeck = (np.where(((times > transitTime) & (airmass < 1.8)) |
-                           (times < transitTime)))[0]
-
+        belowDeck = (np.where((times >= transitTime) & (airmass >= 1.8)))[0]
+        aboveDeck = (np.where(((times >= transitTime) & (airmass < 1.8)) |
+                           (times <= transitTime)))[0]
+            
         py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w')
         py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o')
         py.plot(times, airmass, colors[ii] + '-')
 
-        py.text(times[aboveDeck[3]] - 0.3,
-                airmass[aboveDeck[3]] + 0.4 + (ii*0.1),
+        py.text(times[aboveDeck[12]] - 0.3,
+                airmass[aboveDeck[12]] + 0.4 + (ii*0.1),
                 labels[ii], color=colors[ii])
             
 
@@ -148,13 +117,18 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     This will plot distance/illumination of moon
     for one specified month
     """
-    from pyraf import iraf
+    # Setup local time.
+    utc_offset = -10 * u.hour   # Hawaii Standard Time
+        
+    month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-    iraf.noao()
-    iraf.noao.obsutil()
-
-    obs = iraf.noao.observatory
-
+    # Observatory (for symbol)
+    keck_loc = EarthLocation.of_site('keck')
+    keck = ephem.Observer()
+    keck.long = keck_loc.longitude.value
+    keck.lat = keck_loc.latitude.value
+    
     # Setup Object
     obj = ephem.FixedBody()
     obj._ra = ephem.hours(ra)
@@ -177,12 +151,6 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
 
     daysInMonth = np.arange(1, 31)
 
-    # Setup the observatory info
-    obs(command="set", obsid="keck")
-    keck = ephem.Observer()
-    keck.long = -obs.longitude
-    keck.lat = obs.latitude
-
     moondist = np.zeros(len(daysInMonth), dtype=float)
     moonillum = np.zeros(len(daysInMonth), dtype=float)
 
@@ -198,7 +166,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
             # Set the date and time to midnight
             keck.date = '%d/%d/%d %d' % (year, months[mm],
                                          daysInMonth[dd],
-                                         obs.timezone)
+                                         utc_offset.value)
 
             moon.compute(keck)
             obj.compute(keck)
