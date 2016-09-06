@@ -8,13 +8,14 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import pdb
 
-def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
+def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png'):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
     dec = Dec. value of target (e.g. '-29:00:28.12')
     year = int value of year you want to observe
     months = array of months (integers) where each month will have a curve.
     days = array of days (integers), of same length as months.
+    observatory = Either 'keck1' or 'keck2'
 
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
@@ -83,16 +84,22 @@ def plot_airmass(ra, dec, year, months, days, outfile='plot_airmass.png'):
 
         # Find the points beyond the Nasmyth deck. Also don't bother with anything above sec(z) = 3
         transitTime = times[airmass.argmin()]
-        belowDeck = (np.where((times >= transitTime) & (airmass >= 1.8)))[0]
-        aboveDeck = (np.where(((times >= transitTime) & (airmass < 1.8)) |
-                           (times <= transitTime)))[0]
+
+        if observatory == 'keck2':
+            belowDeck = (np.where((times >= transitTime) & (airmass >= 1.8)))[0]
+            aboveDeck = (np.where(((times >= transitTime) & (airmass < 1.8)) |
+                            (times < transitTime)))[0]
+        else:
+            belowDeck = (np.where((times <= transitTime) & (airmass >= 1.8)))[0]
+            aboveDeck = (np.where(((times <= transitTime) & (airmass < 1.8)) |
+                            (times > transitTime)))[0]
             
-        py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w')
-        py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o')
+        py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w', mec=colors[ii])
+        py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii])
         py.plot(times, airmass, colors[ii] + '-')
 
-        py.text(times[aboveDeck[12]] - 0.3,
-                airmass[aboveDeck[12]] + 0.4 + (ii*0.1),
+        py.text(times[12] - 0.3,
+                airmass[12] + 0.4 + (ii*0.1),
                 labels[ii], color=colors[ii])
             
 

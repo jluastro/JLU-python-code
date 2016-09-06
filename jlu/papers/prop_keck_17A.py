@@ -108,7 +108,11 @@ def gc_plot_airmass_moon():
     days = np.array([10, 10, 10, 30])
     outdir = '/Users/jlu/doc/proposals/keck/uc/17A/'
 
-    skycalc.plot_airmass(ra, dec, 2017, months, days, outfile=outdir + 'gc_airmass.png')
+    # Keck 2
+    skycalc.plot_airmass(ra, dec, 2017, months, days, 'keck2', outfile=outdir + 'gc_airmass_keck2.png')
     skycalc.plot_moon(ra, dec, 2017, months, outfile=outdir + 'gc_moon.png')
 
+    # Keck 1
+    skycalc.plot_airmass(ra, dec, 2017, months, days, 'keck1', outfile=outdir + 'gc_airmass_keck1.png')
+    
     return
