@@ -166,7 +166,7 @@ class OB120169(analysis.Analysis):
                                      cleanList=cleanList)
         
         # Use the field to set the psf starlist
-        self.starlist = self.rootDir + 'source_list/ob120169_psf.txt'
+        self.starlist = self.rootDir + 'source_list/ob120169_psf.list'
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -183,13 +183,13 @@ class OB120169(analysis.Analysis):
 
         # Override some of the default parameters
         self.calFlags = '-f 1 -R -s 1 '
-        self.calFile = self.rootDir + 'source_list/ob120169_photo.txt'
+        self.calFile = self.rootDir + 'source_list/ob120169_photo.dat'
         
-        self.labellist = self.rootDir + 'source_list/ob120169_label.txt'
+        self.labellist = self.rootDir + 'source_list/ob120169_label.dat'
         self.orbitlist = None
 
         # Fix align flags. Otherwise, align is using too many faint stars.
-        self.alignFlags = '-R 3 -v -p -a 2 -d 3.0 ' + alignMagCut
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
 
         self.plotPosMagCut = 17.0
         

@@ -38,7 +38,7 @@ def mean(array, hsigma=None, lsigma=None, iter=0, verbose=False):
 
 def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
     if hsigma==None and lsigma==None:
-        return arr.mean()
+        return arr.std()
 
     # Make a copy of the array (flattened) since we are going
     # to modify it as we go.

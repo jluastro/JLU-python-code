@@ -3,8 +3,10 @@ import pylab as py
 import numpy as np
 import scipy
 import scipy.stats
-from jlu.gc.gcwork import starset
-from jlu.gc.gcwork import starTables
+# from jlu.gc.gcwork import starset
+# from jlu.gc.gcwork import starTables
+from gcwork import starset
+from gcwork import starTables
 from astropy.table import Table
 import sys
 import pdb

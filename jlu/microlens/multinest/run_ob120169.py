@@ -63,7 +63,7 @@ photPriorsSuffix = '_u0plus'
 runcode = 'ba'
 
 savedir = 'multiNest/' + runcode + '/' 
-MakePhotPriors = False
+MakePhotPriors = True
 MultiDimPriors = True
 Nbins = 40
 
@@ -223,7 +223,7 @@ def MultiDimPrior_Gen(intable):
     #print np.shape(cdf)
     #py.clf()
     #py.plot(range(len(cdf)), cdf)
-    py.savefig(rootdir + analysisdir + 'plots/testhist_Nbins'+ str(int(Nbins)) + '.pdf')
+    py.savefig(rootdir + analysisdir + savedir + 'plots/testhist_Nbins'+ str(int(Nbins)) + '.pdf')
     py.clf()
     
     savearr = indpdf[:,0].astype(int)

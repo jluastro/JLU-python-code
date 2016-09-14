@@ -7,10 +7,10 @@ from jlu.microlens import MCMC_LensModel
 from jlu.util import fileUtil
 import pandas
 
-def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_18/',
-                  analysis_dir='analysis_ob120169_2015_09_18_a4_m20_w4_MC100/',
-                  points_dir='points_d/', mnest_dir='mnest_evan_2015_08/ay/',
-                  mnest_root='ay'):
+def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2016_06_22/',
+                  analysis_dir='analysis_ob120169_2016_06_22_a4_m22_w4_MC100/',
+                  points_dir='points_d/', mnest_dir='multiNest/up/',
+                  mnest_root='up'):
         
     target = 'OB120169_R'
     display_name = 'OB120169'
@@ -31,7 +31,7 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     yerr_data = yerr * pixScale
 
     # Overplot Best-Fit Model
-    tab = load_mnest_results_OB120169(root_dir=root_dir,
+    tab = load_mnest_results_OB120169(root_dir=root_dir + analysis_dir,
                                       mnest_dir=mnest_dir,
                                       mnest_root=mnest_root)
     params = tab.keys()
@@ -134,8 +134,8 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     py.errorbar(tobs-t0, thetaSx_data-originX, yerr=xerr_data, fmt='k.')
     py.ylabel(r'$\Delta\alpha$ (mas)', fontsize=fontsize1)
     py.xlabel('t - t$_{\mathrm{o}}$ (yr)', fontsize=fontsize1)
-    py.ylim(-4, 8)
-    py.xlim(-0.5, 4.0)
+    py.ylim(-4, 12)
+    py.xlim(-0.5, 6.0)
     xticks = np.arange(0, 4.1, 1, dtype=int)
     py.xticks(xticks, fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
@@ -146,8 +146,8 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     py.errorbar(tobs-t0, thetaSy_data-originY, yerr=yerr_data, fmt='k.')
     py.ylabel(r'$\Delta\delta$ (mas)', fontsize=fontsize1)
     py.xlabel('t - t$_{\mathrm{o}}$ (yr)', fontsize=fontsize1)  
-    py.ylim(-2, 4)
-    py.xlim(-0.5, 4.0)
+    py.ylim(-2, 6)
+    py.xlim(-0.5, 6.0)
     py.xticks(xticks, fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
         
@@ -159,7 +159,7 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     py.ylabel(r'$\Delta\delta$ (mas)', fontsize=fontsize1)
     py.xlabel(r'$\Delta\alpha$ (mas)', fontsize=fontsize1)
     py.axis('equal')
-    py.ylim(-5, 5)
+    py.ylim(-5, 7)
     py.xlim(-4, 8)
     py.xticks(fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
@@ -169,7 +169,7 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     # Make a histogram of the mass using the weights. This creates the 
     # marginalized 1D posteriors.
     paxes = py.subplot(2, 2, 4)
-    bins = 75
+    bins = np.arange(0, 30, 0.25)
     n, bins, patch = py.hist(tab['Mass'], normed=True,
                              histtype='step', weights=tab['weights'], bins=bins, linewidth=1.5)
     bin_centers = (bins[:-1] + bins[1:]) / 2
@@ -183,7 +183,7 @@ def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_
     py.yticks(fontsize=fontsize2)
 
 
-    outdir = root_dir + mnest_dir + 'plots/'    
+    outdir = root_dir + analysis_dir + mnest_dir + 'plots/'    
     outfile =  outdir + 'plot_OB120169_data_vs_model.png'
     fileUtil.mkdir(outdir)
     print 'writing plot to file ' + outfile
@@ -665,11 +665,11 @@ def calc_chi2_lens_fit(root_dir='/Users/jlu/work/microlens/2015_evan/',
         print ''
         print ''
 
-    return chi2_tot, N_dif, chi2_red
+    return chi2_tot, N_dof, chi2_red
 
 
 def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
-                      mnest_dir='analysis_ob110022_2014_03_22al_MC100_omit_1/multiNest/bf/',
+                      analysis_dir='analysis_ob110022_2014_03_22al_MC100_omit_1/',
                       mnest_root='bf',
                       target='OB110022',
                       phot_file = '/Users/jlu/doc/papers/microlens/microlens_paper/Photometry/mcmc/ob110022_mcmc.dat'):
@@ -687,6 +687,8 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     
     fmts = {}
     tblvals = {}
+
+    dof_phot = {'OB110022': 8253, 'OB110125': 995, 'OB120169': 433}
 
     ##########
     # Photometry Fits: Subo's MCMC chains 
@@ -713,7 +715,7 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
 
         # If this is the chi^2 column, use the min chisq instead.
         if j == 'chisq':
-            tblvals[target, 'phot', j][0] = np.min(arr)
+            tblvals[target, 'phot', j] = [np.min(arr), 0, 0]
 
         # Switch from values to errors.
         tblvals[target, 'phot', j][1] = tblvals[target, 'phot', j][0] - tblvals[target, 'phot', j][1]
@@ -724,17 +726,23 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     arr = photdf['fblend'] / photdf['fsource'] 
     usepars_phot.append('fratio')
     tblvals[target, 'phot', 'fratio'] = np.percentile(arr, [50, sig1_lo*100, sig1_hi*100])
+    tblvals[target, 'phot', 'fratio'][1] = tblvals[target, 'phot', 'fratio'][0] - tblvals[target, 'phot', 'fratio'][1]
+    tblvals[target, 'phot', 'fratio'][2] = tblvals[target, 'phot', 'fratio'][2] - tblvals[target, 'phot', 'fratio'][0]
+
+    # Add the chi-squared DOF
+    tblvals[target, 'phot', 'dof'] = [dof_phot[target.upper()], 0, 0]
+    tblvals[target, 'phot', 'chisq'][1] = 0
+    tblvals[target, 'phot', 'chisq'][2] = 0
+    usepars_phot.append('dof')
     
-    # Switch from values to errors.
-    tblvals[target, 'phot', j][1] = tblvals[target, 'phot', j][0] - tblvals[target, 'phot', j][1]
-    tblvals[target, 'phot', j][2] = tblvals[target, 'phot', j][2] - tblvals[target, 'phot', j][0]
 
 
     ##########        
     # MultiNest Astrometry Fits
     ##########
     if mnest_root != None:  
-        mnestdf = pandas.io.parsers.read_table(root_dir + mnest_dir + mnest_root + '_.txt',
+        mnest_dir = root_dir + analysis_dir + 'multiNest/' + mnest_root + '/'
+        mnestdf = pandas.io.parsers.read_table(mnest_dir + mnest_root + '_.txt',
                                                header = None, sep = r"\s*")
     
         mnestdf.columns=['weights', 'logLike', 't0', 'u0', 'tE', 'piEN', 'piEE',
@@ -759,9 +767,7 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
             # Convert t0 to modified MJD (same as photometry)
             # See algorithm in calc_year.pro
             if n == 't0':
-                d_days = (arr - 1999.0) * 365.242
-                mjd = d_days + 51179.0
-                arr = mjd - 50000
+                arr = year_to_mmjd(arr)
         
             # Calculate median, 1 sigma lo, and 1 sigma hi credible interval.
             tblvals[target, 'multinest', n] = weighted_quantile(arr, [0.5, sig1_lo, sig1_hi],
@@ -769,11 +775,20 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
             # Switch from values to errors.
             tblvals[target, 'multinest', n][1] = tblvals[target, 'multinest', n][0] - tblvals[target, 'multinest', n][1]
             tblvals[target, 'multinest', n][2] = tblvals[target, 'multinest', n][2] - tblvals[target, 'multinest', n][0]
+
+        # Fetch the chi-sq value.
+        chi2_tot, N_dof, chi2_red = calc_chi2_lens_fit(root_dir=root_dir,
+                                                       analysis_dir=analysis_dir,
+                                                       mnest_run=mnest_root,
+                                                       target=target,
+                                                       useMedian=True, verbose=False)
+        tblvals[target, 'multinest', 'chisq'] = [chi2_tot, 0, 0]
+        tblvals[target, 'multinest', 'dof'] = [N_dof, 0, 0]
         
                 
     allpars = ['t0', 'u0', 'tE', 'piEE', 'piEN',
                'muSx', 'muSy', 'muRelx', 'muRely',
-               'thetaE', 'Mass', 's', 'q', 'alpha', 'omega', 'sdot/s', 'Isource', 'fratio']
+               'thetaE', 'Mass', 's', 'q', 'alpha', 'omega', 'sdot/s', 'Isource', 'fratio', 'chisq', 'dof']
 
     #Positive x direction should be East
     if tblvals.has_key((target, 'multinest', 'muSx')):
@@ -792,7 +807,8 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     fmts[(target,'phot', 'alpha')]='%12.3f'
     fmts[(target,'phot', 'omega')]='%12.3f'
     fmts[(target,'phot', 'sdot/s')]='%12.3f'
-    fmts[(target,'phot', 'chisq')]='%12.3f'
+    fmts[(target,'phot', 'chisq')]='%12.1f'
+    fmts[(target,'phot', 'dof')]='%12d'
     fmts[(target,'phot', 'fsource')]='%12.3f'
     fmts[(target,'phot', 'fblend')]='%12.3f'
     fmts[(target,'phot', 'thetaS0x')]='%12.3f'
@@ -816,7 +832,8 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     fmts[(target,'multinest', 'alpha')]='%12.3f'
     fmts[(target,'multinest', 'omega')]='%12.3f'
     fmts[(target,'multinest', 'sdot/s')]='%12.3f'
-    fmts[(target,'multinest', 'chisq')]='%12.3f'
+    fmts[(target,'multinest', 'chisq')]='%12.1f'
+    fmts[(target,'multinest', 'dof')]='%12d'
     fmts[(target,'multinest', 'fsource')]='%12.3f'
     fmts[(target,'multinest', 'fblend')]='%12.3f'
     fmts[(target,'multinest', 'thetaS0x')]='%12.3f'
@@ -842,7 +859,7 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
 
     #Names for LateX table
     printnames = {}
-    printnames['t0'] = '$t_0$ (yr)'
+    printnames['t0'] = '$t_0$ (HJD - 2450000)'
     printnames['u0'] = '$u_0$'
     printnames['tE'] = '$t_E$ (days)'
     printnames['piEN'] = '$\\pi_{E,N}$'
@@ -861,6 +878,7 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     printnames['omega'] = '$\\omega$'
     printnames['sdot/s'] = '$\\dot{s}/s$'
     printnames['chisq'] = '$\\chi^{2}$'
+    printnames['dof'] = 'N$_{\mathrm{dof}}$'
     printnames['Isource'] = '$I_{\mathrm{OGLE}}$'
     printnames['fratio'] = '$f_{b}/f_{s}$'
 
@@ -869,16 +887,17 @@ def summarize_results(root_dir='/Users/jlu/work/microlens/2015_evan/',
     for pp in allpars:
         if tblvals[(t, 'phot', pp)] == ['---','',''] and tblvals[(t, 'multinest', pp)] == ['---','','']:
             continue
-        
+
         cmd = '{0:45s}'.format(printnames[pp])
         cmd += ' & ' + fmts[(t, 'phot',  pp)] % (tblvals[(t, 'phot', pp)][0])
-        if tblvals[(t, 'phot', pp)] != ['---','','']:
+        if (tblvals[(t, 'phot', pp)][0] != '') and (tblvals[(t, 'phot', pp)][1] != 0):
             cmd += '$^{+' + fmts[(t,'phot', pp)] % (tblvals[(t, 'phot', pp)][1]) + '}'
             cmd += '_{-' + fmts[(t,'phot', pp)] % (tblvals[(t, 'phot', pp)][2]) + '}$'
         else:
             cmd += '{0:34s}'.format('')
+
         cmd += ' & ' + fmts[(t,'multinest', pp)] % (tblvals[(t, 'multinest', pp)][0])
-        if tblvals[(t, 'multinest', pp)] != ['---','','']:
+        if (tblvals[(t, 'multinest', pp)][0] != '') and (tblvals[(t, 'multinest', pp)][1] != 0):
             cmd += '$^{+' + fmts[(t,'multinest', pp)] % (tblvals[(t, 'multinest', pp)][1]) + '}'
             cmd += '_{-' + fmts[(t,'multinest', pp)] % (tblvals[(t, 'multinest', pp)][2]) + '}$'
         else:
@@ -921,3 +940,49 @@ def weighted_quantile(values, quantiles, sample_weight=None, values_sorted=False
         weighted_quantiles /= np.sum(sample_weight)
         
     return np.interp(quantiles, weighted_quantiles, values)            
+
+def mmjd_to_year(t0_mmjd):
+    """
+    Input format is in
+        MJD - 50000
+    or
+        HJD - 2450000
+    Peculiar, but used by microlensing community.
+
+    Return Value
+    ------------
+    fractional year
+    
+    """
+    t_ref_yr = 2009.0
+    t_ref_mmjd = 4832.5
+    t_ref_mmjd_leap = 4833.0
+    
+    # # Convert HJD - 2450000 into calendar year using Jan 1 2009 as calibrator
+    # t0_yr = t_ref_yr + (t0_mmjd - t_ref_mmjd) / 365.24
+
+    # Convert HJD-245000 into calendar year using Jan 1 2009 as calibrator
+    t0_yr = 2009.0 + (t0_mmjd - 4832.5) / 365.0
+    leapYr = np.where((t0_mmjd > 5927.5) & (t0_mmjd < 6293.) )[0]
+    if (len(leapYr) > 0):
+        t0_yr[leapYr] =  2009. + (t0_mmjd[leapYr] - 4833.) / 366.
+    
+    
+    return t0_yr
+
+def year_to_mmjd(t0_yr):
+    t_ref_yr = 2009.0
+    t_ref_mmjd = 4832.5
+    t_ref_mmjd_leap = 4833.0
+
+    # # Convert HJD - 2450000 into calendar year using Jan 1 2009 as calibrator
+    # t0_mmjd = ((t0_yr - t_ref_yr) * 365.24) + t_ref_mmjd
+        
+    # Convert HJD-245000 into calendar year using Jan 1 2009 as calibrator
+    t0_mmjd = ((t0_yr - 2009.0) * 365.0) + 4832.5
+    leapYr = np.where((t0_mmjd > 5927.5) & (t0_mmjd < 6293.) )[0]
+    if (len(leapYr) > 0):
+        t0_mmjd[leapYr] =  ((t0_yr - 2009.0) * 366.0) + 4833.0
+    
+    return t0_mmjd
+            

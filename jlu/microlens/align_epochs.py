@@ -13,10 +13,50 @@ from flystar import starlists
 from flystar import transforms
 import glob
 
+def make_align_list(root='/Users/jlu/work/microlens/OB120169/',
+                    prefix='analysis', date='2016_06_22', target='ob120169',
+                    refEpoch='13apr'):
+    an_dir = root + prefix + '_' + date + '/'
+    lis_dir = an_dir + prefix + '_' + target + '_' + date + '/lis/'
+    starlists = glob.glob(lis_dir + '*radTrim.lis')
+    dates = np.zeros(len(starlists), dtype=float)
+
+    # Open each starlist and get the first date entry.
+    # Store in the dates array.
+    for ss in range(len(starlists)):
+        _lis = open(starlists[ss], 'r')
+
+        for line in _lis:
+            fields = line.split()
+
+            if fields[0].startswith('#'):
+                continue
+
+            dates[ss] = float(fields[2])
+            break
+            
+    # Sort the dates
+    sdx = dates.argsort()
+
+    # Write out the InputAlign.list files
+    align_dir = an_dir + prefix + '_' + target + '_' + date + '/align/'
+    _align = open(align_dir + 'InputAlign.list', 'w')
+
+    fmt = '../lis/{0:s} {1:d} {2:s}\n'
+    for ss in sdx:
+        starlist_filename = starlists[ss].split('/')[-1]
+        if refEpoch in starlists[ss]:
+            _align.write(fmt.format(starlist_filename, 9, 'ref'))
+        else:
+            _align.write(fmt.format(starlist_filename, 9, ''))
+
+    _align.close()
+    
+
 def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', target='ob120169', 
-               date='2015_09_14', sourceDir='analysis_ob120169_2015_09_14',
-               transforms=[3,4,5], magCuts=[18,20,22], weightings=[1,2,3,4],
-               Nepochs='5', overwrite=False, nMC=1,
+               date='2016_06_22', 
+               transforms=[3,4,5], magCuts=[22], weightings=[4],
+               Nepochs='8', overwrite=False, nMC=100,
                makePlots=False, DoAlign=False, letterStart=0):
     """
     root -- The main directory for both the data and analysis sub-directories.
@@ -24,7 +64,6 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
     target -- Name of target used in sub directory and also assumed to have
               <target>_label.txt for label file input to align.
     date -- String representation of the date, added to sub-dir.
-    sourceDir -- The directory containing the label.dat file.
     transforms -- The align -a flags to iterate over.
     magCuts -- The align -m flags to iterate over.
     weightings -- The align -w flags to iterate over.
@@ -33,6 +72,9 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
     """
     
     # Read in the label.txt file. Target must be in first row of label.txt file.
+    analysisDir = prefix + '_' + date + '/'
+    root = root + analysisDir
+    sourceDir = prefix + '_' + target + '_' + date + '/'
     labelFile = target + '_label.txt'
     data = Table.read(root + sourceDir + '/source_list/'+ labelFile, format='ascii')
     transposed = zip(*data)
@@ -79,11 +121,10 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
                     data_tmp['use'][o[i]] = 0
                     data_tmp.write('source_list/' + labelFile, format='ascii.fixed_width_no_header', delimiter=' ', formats=labFmt)
                     
-                
-                os.system('cp ../' + sourceDir + '/align/*Input* align') 
+                os.system('cp ../' + sourceDir + '/align/*Input* align/align.list') 
                 os.chdir('align')
                 os.system('java align -a ' + str(a[n]) + ' -m ' + str(m[n]) + ' -w ' + str(w[n]) + ' -n ' +
-                           str(nMC) + ' -p -N ../source_list/' + target + '_label.txt InputAlign_' + target + '.list')
+                           str(nMC) + ' -p -N ../source_list/' + target + '_label.txt align.list')
                 os.system('java trim_align -e ' + Nepochs + ' -r align_t -N ../source_list/' + target +
                           '_label.txt -f ../points_d/ -p align')
                 os.system('polyfit -d 1 -linear -i align_t -points ../points_d/ -o ../polyfit_d/fit')
