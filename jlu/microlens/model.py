@@ -21,7 +21,8 @@ class PSPL(object):
     """ 
     DESCRIPTION:
     Point Source Point Lens model for microlensing. This model includes
-    proper motions of both the lens and source; but does not include any parallax.
+    proper motions of both the lens and source; but does not include any
+    parallax.
     """
 
     def __init__(self, mL, t0, xS0, beta, muL, muS, dL, dS, imag_base):
@@ -72,6 +73,9 @@ class PSPL(object):
         self.thetaE_hat = self.muRel / self.muRel_amp
         self.thetaE = self.thetaE_amp * self.thetaE_hat
 
+        # Calculate the microlensing parallax
+        self.piE = (self.piRel / self.thetaE_amp) * self.thetaE_hat
+
         # Calculate the closest approach vector. Define beta sign convention as Andy Gould
         # does with beta > 0 means u0_x < 0 (pass lens to the right side as seen from earth)?
         # This is a crappy definition.
@@ -91,10 +95,9 @@ class PSPL(object):
             else:
                 self.u0_hat[1] = np.abs(self.thetaE_hat[0])
                 
-        print self.u0_hat, self.thetaE_hat, np.cross(self.u0_hat, self.thetaE_hat)
 
-        self.u0_amp = np.abs(self.beta) / self.thetaE_amp  # in Einstein units
-        self.u0 = self.u0_amp * self.u0_hat
+        self.u0_amp = self.beta / self.thetaE_amp  # in Einstein units
+        self.u0 = np.abs(self.u0_amp) * self.u0_hat
         
         # Angular separation vector between source and lens (vector from lens to source)
         self.thetaS0 = self.u0 * self.thetaE_amp    # mas
@@ -121,12 +124,18 @@ class PSPL(object):
 
         tau = (t - self.t0) / self.tE
 
-        # Convert to matrices for more efficient operations
+        # Convert to matrices for more efficient operations.
+        # Matrix shapes below are:
+        #  u0, thetaE_hat: [1, 2]
+        #  tau:      [N_times, 1]
         u0 = self.u0.reshape(1, len(self.u0))
         thetaE_hat = self.thetaE_hat.reshape(1, len(self.thetaE_hat))
         tau = tau.reshape(len(tau), 1)
-        
+
+        # Shape of u: [N_times, 2]        
         u = u0 + tau * thetaE_hat
+
+        # Shape of u_amp: [N_times]
         u_amp = np.linalg.norm(u, axis=1)
 
         A = (u_amp**2 + 2) / (u_amp * np.sqrt(u_amp**2 + 4))
@@ -134,11 +143,17 @@ class PSPL(object):
         return A
 
     def get_centroid_shift(self, t):
-        """Get the centroid shift (in mas) for a list of observation times (in MJD)."""
+        """Get the centroid shift (in mas) for a list of
+        observation times (in MJD).
+        """
         
         dt_in_years = (t - self.t0) / days_per_year
         tau = (t - self.t0) / self.tE
 
+        # Shape of arrays:
+        # thetaS: [N_times, 2]
+        # u: [N_times, 2]
+        # u_amp: [N_times]
         thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel) # mas
         u = thetaS / self.thetaE_amp
         u_amp = np.linalg.norm(u, axis=1)
@@ -325,7 +340,6 @@ def parallax_in_direction(RA, Dec, mjd):
     # time3 = time.time()
     # print 'Second round took: ', time3 - time2
     epsilon = epsilon[0] # This is constant
-    print np.degrees(epsilon)
 
     cose = np.cos(epsilon)
     sine = np.sin(epsilon)

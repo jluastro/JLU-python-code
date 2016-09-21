@@ -1,5 +1,5 @@
 from jlu.microlens import model
-# from jlu.microlens import model_fitter
+from jlu.microlens import model_fitter
 import numpy as np
 import pylab as plt
 import pdb
@@ -121,12 +121,12 @@ def test_pspl_fit():
     best = model_fitter.get_best_fit('mnest_pspl/', 'aa')
 
     
-    pspl_out = model.PSPL(best['mL'], best['t0'], np.array([best['xS0_x'], best['xS0_y']]), best['beta'], 
-                          np.array([best['muL_x'], best['muL_y']]), np.array([best['muS_x'], best['muS_y']]),
+    pspl_out = model.PSPL(best['mL'], best['t0'], np.array([best['xS0_E'], best['xS0_N']]), best['beta'], 
+                          np.array([best['muL_E'], best['muL_N']]), np.array([best['muS_E'], best['muS_N']]),
                           best['dL'], best['dS'], best['imag_base'])
 
-    pspl_in = model.PSPL(p_in['mL'], p_in['t0'], np.array([p_in['xS0_x'], p_in['xS0_y']]), p_in['beta'], 
-                          np.array([p_in['muL_x'], p_in['muL_y']]), np.array([p_in['muS_x'], p_in['muS_y']]),
+    pspl_in = model.PSPL(p_in['mL'], p_in['t0'], np.array([p_in['xS0_E'], p_in['xS0_N']]), p_in['beta'], 
+                          np.array([p_in['muL_E'], p_in['muL_N']]), np.array([p_in['muS_E'], p_in['muS_N']]),
                           p_in['dL'], p_in['dS'], p_in['imag_base'])
     
     imag_out = pspl_out.get_photometry(data['t_phot'])
@@ -555,8 +555,8 @@ def test_pspl_parallax_paczynski1998(t0):
     plt.plot(thetaS_lensed[:, 0], thetaS_lensed[:, 1], 'b-', label='Lensed')
     plt.axvline(0, linestyle='--', color='k')
     plt.legend()
-    plt.xlabel('thetaS_x (")')
-    plt.ylabel('thetaS_y (")')
+    plt.xlabel('thetaS_E (")')
+    plt.ylabel('thetaS_N (")')
 
     print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
     print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
@@ -697,8 +697,8 @@ def test_pspl_parallax_boden1998(t0):
     plt.plot(thetaS_lensed[:, 0], thetaS_lensed[:, 1], 'b-', label='Lensed')
     plt.axvline(0, linestyle='--', color='k')
     plt.legend()
-    plt.xlabel('thetaS_x (")')
-    plt.ylabel('thetaS_y (")')
+    plt.xlabel('thetaS_E (")')
+    plt.ylabel('thetaS_N (")')
 
     print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
     print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
@@ -707,26 +707,32 @@ def test_pspl_parallax_boden1998(t0):
 
 
 def test_pspl_parallax_fit():    
-    data, p_in = fake_data1()
+    data, p_in = fake_data_parallax()
 
-    model_fitter.multinest_pspl(data, n_live_points=300, saveto='./mnest_pspl/', runcode='aa')
+#     model_fitter.multinest_pspl_parallax(data,
+# test                                         n_live_points=300,
+#                                          saveto='./mnest_pspl_par/',
+#                                          runcode='aa')
+# 
+    model_fitter.plot_posteriors('mnest_pspl_par/', 'aa')
 
-    model_fitter.plot_posteriors('mnest_pspl/', 'aa')
-
-    best = model_fitter.get_best_fit('mnest_pspl/', 'aa')
+    best = model_fitter.get_best_fit('mnest_pspl_par/', 'aa')
 
     
-    pspl_out = model.PSPL(best['mL'], best['t0'],
-                          np.array([best['xS0_x'], best['xS0_y']]), best['beta'], 
-                          np.array([best['muL_x'], best['muL_y']]),
-                          np.array([best['muS_x'], best['muS_y']]),
-                          best['dL'], best['dS'], best['imag_base'])
+    pspl_out = model.PSPL_parallax(p_in['raL'], p_in['decL'],
+                                   best['mL'], best['t0'],
+                                   np.array([best['xS0_E'], best['xS0_N']]),
+                                   best['beta'], 
+                                   np.array([best['muL_E'], best['muL_N']]),
+                                   np.array([best['muS_E'], best['muS_N']]),
+                                   best['dL'], best['dS'], best['imag_base'])
 
-    pspl_in = model.PSPL(p_in['mL'], p_in['t0'],
-                         np.array([p_in['xS0_x'], p_in['xS0_y']]), p_in['beta'], 
-                         np.array([p_in['muL_x'], p_in['muL_y']]),
-                         np.array([p_in['muS_x'], p_in['muS_y']]),
-                         p_in['dL'], p_in['dS'], p_in['imag_base'])
+    pspl_in = model.PSPL_parallax(p_in['raL'], p_in['decL'],
+                                  p_in['mL'], p_in['t0'],
+                                  np.array([p_in['xS0_E'], p_in['xS0_N']]), p_in['beta'], 
+                                  np.array([p_in['muL_E'], p_in['muL_N']]),
+                                  np.array([p_in['muS_E'], p_in['muS_N']]),
+                                  p_in['dL'], p_in['dS'], p_in['imag_base'])
     
     imag_out = pspl_out.get_photometry(data['t_phot'])
     pos_out = pspl_out.get_astrometry(data['t_ast'])
@@ -746,7 +752,8 @@ def test_pspl_parallax_fit():
     
     print 'lnL for input: ', lnL_in
     print 'lnL for output: ', lnL_out
-    pdb.set_trace()
+
+    outroot = 'mnest_pspl_par/plots/aa'
     
     plt.figure(1)
     plt.clf()
@@ -756,6 +763,7 @@ def test_pspl_parallax_fit():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('I (mag)')
     plt.title('Input Data and Output Model')
+    plt.savefig(outroot + '_phot.png')
 
     plt.figure(2)
     plt.clf()
@@ -766,6 +774,7 @@ def test_pspl_parallax_fit():
     plt.xlabel('X Pos (")')
     plt.ylabel('Y Pos (")')
     plt.title('Input Data and Output Model')
+    plt.savefig(outroot + '_ast.png')
 
     plt.figure(3)
     plt.clf()
@@ -775,6 +784,7 @@ def test_pspl_parallax_fit():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('X Pos (")')
     plt.title('Input Data and Output Model')
+    plt.savefig(outroot + '_t_vs_E.png')
 
     plt.figure(4)
     plt.clf()
@@ -784,6 +794,7 @@ def test_pspl_parallax_fit():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('Y Pos (")')
     plt.title('Input Data and Output Model')
+    plt.savefig(outroot + '_t_vs_N.png')
     
     return
 
@@ -804,6 +815,128 @@ def test_make_t0_gen():
     assert t0_rand.max() > 57000
 
     return
+
+def fake_data_parallax():
+    raL_in = 80.89375   # LMC R.A.
+    decL_in = -29.0 # LMC Dec. This is the sin \beta = -0.99 where \beta = ecliptic lat
+    mL_in = 10.0 # msun
+    t0_in = 57000.0
+    xS0_in = np.array([0.000, 0.088e-3]) # arcsec
+    beta_in = 2.0 # mas  same as p=0.4
+    # muS_in = np.array([-2.0, 1.5])
+    # muL_in = np.array([0.0, 0.0])
+    muS_in = np.array([-5.0, 0.0])
+    muL_in = np.array([0.0, 0.0])
+    dL_in = 4000.0  # pc
+    dS_in = 8000.0  # pc
+    imag_in = 19.0
+
+    pspl_in = model.PSPL_parallax(raL_in, decL_in, mL_in,
+                                  t0_in, xS0_in, beta_in,
+                                  muL_in, muS_in, dL_in, dS_in, imag_in)
+
+    # Simulate
+    # photometric observations every 1 day and
+    # astrometric observations every 14 days
+    # for the bulge observing window. Observations missed
+    # for 125 days out of 365 days for photometry and missed
+    # for 245 days out of 365 days for astrometry.
+    t_phot = np.array([], dtype=float)
+    t_ast = np.array([], dtype=float)
+    for year_start in np.arange(56000, 58000, 365.25):
+        phot_win = 240.0
+        phot_start = (365.25 - phot_win) / 2.0
+        t_phot_new = np.arange(year_start + phot_start, year_start + phot_start + phot_win, 1)
+        t_phot = np.concatenate([t_phot, t_phot_new])
+
+        ast_win = 120.0
+        ast_start = (365.25 - ast_win) / 2.0
+        t_ast_new = np.arange(year_start + ast_start, year_start + ast_start + ast_win, 14)
+        t_ast = np.concatenate([t_ast, t_ast_new])
+
+    
+    # Make the photometric observations.
+    # Assume 0.05 mag photoemtric errors at I=19.
+    # This means Signal = 400 e- at I=19.
+    flux0 = 4000.0
+    imag0 = 19.0
+    imag_obs = pspl_in.get_photometry(t_phot)
+    flux_obs = flux0 * 10**((imag_obs - imag0) / -2.5)
+    flux_obs_err = flux_obs**0.5
+    flux_obs += np.random.randn(len(t_phot)) * flux_obs_err
+    imag_obs = -2.5 * np.log10(flux_obs / flux0) + imag0
+    imag_obs_err = 1.087 / flux_obs_err
+
+    # Make the astrometric observations.
+    # Assume 0.15 milli-arcsec astrometric errors in each direction at all epochs. 
+    pos_obs_tmp = pspl_in.get_astrometry(t_ast)
+    pos_obs_err = np.ones((len(t_ast), 2), dtype=float) * 0.01 * 1e-3
+    pos_obs = pos_obs_tmp + pos_obs_err * np.random.randn(len(t_ast), 2)
+
+    plt.figure(1)
+    plt.clf()
+    plt.errorbar(t_phot, imag_obs, yerr=imag_obs_err, fmt='k.')
+    plt.xlabel('t - t0 (days)')
+    plt.ylabel('I (mag)')
+    plt.title('Input Data and Model')
+
+    plt.figure(2)
+    plt.clf()
+    plt.errorbar(pos_obs[:,0], pos_obs[:,1], xerr=pos_obs_err[:, 0], yerr=pos_obs_err[:, 1], fmt='k.')
+    plt.gca().invert_xaxis()
+    plt.xlabel('X Pos (")')
+    plt.ylabel('Y Pos (")')
+    plt.plot(pos_obs_tmp[:, 0], pos_obs_tmp[:, 1], 'r--')
+    plt.title('Input Data and Model')
+
+    plt.figure(3)
+    plt.clf()
+    plt.errorbar(t_ast, pos_obs[:, 0], yerr=pos_obs_err[:, 0], fmt='k.')
+    plt.plot(t_ast, pos_obs_tmp[:, 0], 'r--')
+    plt.xlabel('t - t0 (days)')
+    plt.ylabel('X Pos (")')
+    plt.title('Input Data and Model')
+
+    plt.figure(4)
+    plt.clf()
+    plt.errorbar(t_ast, pos_obs[:, 1], yerr=pos_obs_err[:, 1], fmt='k.')
+    plt.plot(t_ast, pos_obs_tmp[:, 1], 'r--')
+    plt.xlabel('t - t0 (days)')
+    plt.ylabel('Y Pos (")')
+    plt.title('Input Data and Model')
+
+    data = {}
+    data['t_phot'] = t_phot
+    data['imag'] = imag_obs
+    data['imag_err'] = imag_obs_err
+
+    data['t_ast'] = t_ast
+    data['xpos'] = pos_obs[:, 0]
+    data['ypos'] = pos_obs[:, 1]
+    data['xpos_err'] = pos_obs_err[:, 0]
+    data['ypos_err'] = pos_obs_err[:, 1]
+    data['raL'] = raL_in
+    data['decL'] = decL_in
+
+    params = {}
+    params['raL'] = raL_in
+    params['decL'] = decL_in
+    params['mL'] = mL_in
+    params['t0'] = t0_in
+    params['xS0_E'] = xS0_in[0]
+    params['xS0_N'] = xS0_in[1]
+    params['beta'] = beta_in
+    params['muS_E'] = muS_in[0]
+    params['muS_N'] = muS_in[1]
+    params['muL_E'] = muL_in[0]
+    params['muL_N'] = muL_in[1]
+    params['dL'] = dL_in
+    params['dS'] = dS_in
+    params['imag_base'] = imag_in
+    
+            
+    return data, params
+    
 
 def fake_data1():
     
@@ -923,13 +1056,13 @@ def fake_data1():
     params = {}
     params['mL'] = mL_in
     params['t0'] = t0_in
-    params['xS0_x'] = xS0_in[0]
-    params['xS0_y'] = xS0_in[1]
-    params['beta'] = -beta_in
-    params['muS_x'] = muS_in[0]
-    params['muS_y'] = muS_in[1]
-    params['muL_x'] = muL_in[0]
-    params['muL_y'] = muL_in[1]
+    params['xS0_E'] = xS0_in[0]
+    params['xS0_N'] = xS0_in[1]
+    params['beta'] = beta_in
+    params['muS_E'] = muS_in[0]
+    params['muS_N'] = muS_in[1]
+    params['muL_E'] = muL_in[0]
+    params['muL_N'] = muL_in[1]
     params['dL'] = dL_in
     params['dS'] = dS_in
     params['imag_base'] = imag_in
