@@ -5,7 +5,8 @@ import os
 
 def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120169_2014_03_22/lis/',   
                    TargetName = 'ob120169',
-                   epochs = ['12may', '12jun', '12jul', '13apr', '13jul', '15may', '15jun07']):
+                   epochs = ['12may', '12jun', '12jul', '13apr', '13jul', '15may', '15jun07'],
+                   radius_cut_in_mas=4000.0):
     
     Nepochs = len(epochs)
     for i in range(Nepochs):
@@ -30,7 +31,7 @@ def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120
         rad_pix = np.hypot(Xpix - center_x, Ypix - center_y)
         rad_mas = rad_pix * 10.0
 
-        indgood = np.where((rad_mas <= 4000.))[0]
+        indgood = np.where((rad_mas <= radius_cut_in_mas))[0]
         names = names[indgood]
         mags = mags[indgood]
         Xpix = Xpix[indgood]

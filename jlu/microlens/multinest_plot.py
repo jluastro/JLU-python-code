@@ -7,8 +7,8 @@ from jlu.microlens import MCMC_LensModel
 from jlu.util import fileUtil
 import pandas
 
-def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2016_06_22/',
-                  analysis_dir='analysis_ob120169_2016_06_22_a4_m22_w4_MC100/',
+def plot_OB120169(root_dir='/Users/jlu/work/microlens/OB120169/analysis_2016_09_14/',
+                  analysis_dir='analysis_ob120169_2016_09_14_a4_m22_w4_MC100/',
                   points_dir='points_d/', mnest_dir='multiNest/up/',
                   mnest_root='up'):
         
@@ -234,24 +234,32 @@ def mass_posterior_OB120169():
 
     #root_dir='/Users/jlu/work/microlens/OB120169/analysis_2015_09_18/'
     #analysis_dir='analysis_ob120169_2015_09_18_a4_m20_w4_MC100/'
+    
+    root_dir='/Users/jlu/work/microlens/OB120169/analysis_2016_09_14/'
+    analysis_dir='analysis_ob120169_2016_09_14_a4_m22_w4_MC100/'
 
-    root_dir = '/Users/jlu/work/microlens/2015_evan/'
-    analysis_dir = 'analysis_ob120169_2014_03_22'
+    #root_dir = '/Users/jlu/work/microlens/2015_evan/'
+    #analysis_dir = 'analysis_ob120169_2014_03_22'
     
     ##########
     # O=1 directory
     ##########
-    an_dir = analysis_dir + 'al_MC100_omit_1/'
+    #an_dir = analysis_dir + 'al_MC100_omit_1/'
+    an_dir = analysis_dir# + 'al_MC100/'
     
     # Load Model Posteriors for both
     #    u_o > 0 (p=plus) and
     #    u_o < 0 (m=minus).
-    mnest_dir = an_dir + 'multiNest/ay/'
-    mnest_root = 'ay'
+    # mnest_dir = an_dir + 'multiNest/ay/'
+    # mnest_root = 'ay'
+    mnest_dir = an_dir + 'multiNest/up/'
+    mnest_root = 'up'
     tab_p = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
     
-    mnest_dir = an_dir + 'multiNest/ax/'
-    mnest_root = 'ax'
+    # mnest_dir = an_dir + 'multiNest/ax/'
+    # mnest_root = 'ax'
+    mnest_dir = an_dir + 'multiNest/um/'
+    mnest_root = 'um'
     tab_m = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
 
     # Clean table and only keep valid results.
@@ -265,41 +273,42 @@ def mass_posterior_OB120169():
     tab = table.vstack(tab_p, tab_m)
 
     outdir = root_dir + an_dir + 'multiNest/plots/'    
-    outfile =  'plot_OB120169_mass_posterior_combo_O1.png'
+    # outfile =  'plot_OB120169_mass_posterior_combo_O1.png'
+    outfile =  'plot_OB120169_mass_posterior_combo.png'
 
-    mass_posterior(tab, outdir, outfile, bins=500)
+    mass_posterior(tab, outdir, outfile, bins=500, xlim=[0, 50])
 
-    ##########
-    # O=2 directory
-    ##########
-    an_dir = analysis_dir + 'ax_MC100_omit_1/'
+    # ##########
+    # # O=2 directory
+    # ##########
+    # an_dir = analysis_dir + 'ax_MC100_omit_1/'
     
-    # Load Model Posteriors for both
-    #    u_o > 0 (p=plus) and
-    #    u_o < 0 (m=minus).
-    mnest_dir = an_dir + 'multiNest/bh/'
-    mnest_root = 'bh'
-    tab_p = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
+    # # Load Model Posteriors for both
+    # #    u_o > 0 (p=plus) and
+    # #    u_o < 0 (m=minus).
+    # mnest_dir = an_dir + 'multiNest/bh/'
+    # mnest_root = 'bh'
+    # tab_p = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
     
-    mnest_dir = an_dir + 'multiNest/ba/'
-    mnest_root = 'ba'
-    tab_m = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
+    # mnest_dir = an_dir + 'multiNest/ba/'
+    # mnest_root = 'ba'
+    # tab_m = load_mnest_results(root_dir=root_dir, mnest_dir=mnest_dir, mnest_root=mnest_root)
 
-    # Clean table and only keep valid results.
-    Masslim = 0.0
-    ind_p = np.where((tab_p['Mass'] >= Masslim))[0]
-    ind_m = np.where((tab_m['Mass'] >= Masslim))[0]
-    tab_p = tab_p[ind_p]
-    tab_m = tab_m[ind_m]
+    # # Clean table and only keep valid results.
+    # Masslim = 0.0
+    # ind_p = np.where((tab_p['Mass'] >= Masslim))[0]
+    # ind_m = np.where((tab_m['Mass'] >= Masslim))[0]
+    # tab_p = tab_p[ind_p]
+    # tab_m = tab_m[ind_m]
 
-    # Combine the two tables together.
-    tab = table.vstack(tab_p, tab_m)
+    # # Combine the two tables together.
+    # tab = table.vstack(tab_p, tab_m)
 
-    outdir = root_dir + an_dir + 'multiNest/plots/'    
-    outfile =  'plot_OB120169_mass_posterior_combo_O2.png'
+    # outdir = root_dir + an_dir + 'multiNest/plots/'    
+    # outfile =  'plot_OB120169_mass_posterior_combo_O2.png'
 
-    mass_posterior(tab, outdir, outfile, bins=500)
-    
+    # mass_posterior(tab, outdir, outfile, bins=500)
+
 
 def mass_posterior_OB110022():
     root_dir = '/Users/jlu/work/microlens/2015_evan/'
@@ -353,7 +362,7 @@ def mass_posterior_OB110022_err_x2():
 
     
 
-def mass_posterior(tab, outdir, outfile, bins=50):
+def mass_posterior(tab, outdir, outfile, bins=50, xlim=None):
 
     # Make a histogram of the mass using the weights. This creates the 
     # marginalized 1D posteriors.
@@ -372,7 +381,10 @@ def mass_posterior(tab, outdir, outfile, bins=50):
     py.xlabel('Mass')
     xtitle = r'Lens Mass (M$_{\odot}$)'
     py.xlabel(xtitle, fontsize=fontsize1, labelpad=10)
-    py.xlim(0, np.ceil(tab['Mass'].max()))
+    if (xlim == None):
+        py.xlim(0, np.ceil(tab['Mass'].max()))
+    else:
+        py.xlim(xlim[0], xlim[1])
     py.ylabel('Relative probability', fontsize=fontsize1, labelpad=10)
     py.xticks(fontsize=fontsize2)
     py.yticks(fontsize=fontsize2)
@@ -381,12 +393,14 @@ def mass_posterior(tab, outdir, outfile, bins=50):
     # Calculate 3-sigma boundaries for mass limits.
     ##########
     sig1_hi = 0.682689
-    sig_med = 0.5
-    sig3_hi = 0.9973
     sig1_lo = 1.0 - sig1_hi
+    sig_med = 0.5
+    sig2_hi = 0.9545
+    sig2_lo = 1.0 - sig2_hi
+    sig3_hi = 0.9973
     sig3_lo = 1.0 - sig3_hi
 
-    quantiles = [sig3_lo, sig1_lo, sig_med, sig1_hi, sig3_hi]
+    quantiles = [sig3_lo, sig2_lo, sig1_lo, sig_med, sig1_hi, sig2_hi, sig3_hi]
 
     mass_quants = weighted_quantile(tab['Mass'], quantiles,
                                     sample_weight=tab['weights'])    

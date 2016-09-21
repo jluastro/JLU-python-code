@@ -72,6 +72,9 @@ class PSPL(object):
         self.thetaE_hat = self.muRel / self.muRel_amp
         self.thetaE = self.thetaE_amp * self.thetaE_hat
 
+        # Calculate the microlensing parallax
+        self.piE = (self.piRel / self.thetaE_amp) * self.thetaE_hat
+
         # Calculate the closest approach vector. Define beta sign convention as Andy Gould
         # does with beta > 0 means u0_x < 0 (pass lens to the right side as seen from earth)?
         # This is a crappy definition.
@@ -91,10 +94,9 @@ class PSPL(object):
             else:
                 self.u0_hat[1] = np.abs(self.thetaE_hat[0])
                 
-        print self.u0_hat, self.thetaE_hat, np.cross(self.u0_hat, self.thetaE_hat)
 
-        self.u0_amp = np.abs(self.beta) / self.thetaE_amp  # in Einstein units
-        self.u0 = self.u0_amp * self.u0_hat
+        self.u0_amp = self.beta / self.thetaE_amp  # in Einstein units
+        self.u0 = np.abs(self.u0_amp) * self.u0_hat
         
         # Angular separation vector between source and lens (vector from lens to source)
         self.thetaS0 = self.u0 * self.thetaE_amp    # mas
@@ -325,7 +327,6 @@ def parallax_in_direction(RA, Dec, mjd):
     # time3 = time.time()
     # print 'Second round took: ', time3 - time2
     epsilon = epsilon[0] # This is constant
-    print np.degrees(epsilon)
 
     cose = np.cos(epsilon)
     sine = np.sin(epsilon)
