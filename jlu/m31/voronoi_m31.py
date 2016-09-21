@@ -6,6 +6,9 @@ import scipy
 import asciidata
 from scipy import signal
 from pyraf import iraf as ir
+import time
+import pickle
+from scipy.optimize import curve_fit
 from jlu.osiris import cube as cube_code
 from jlu.osiris import spec
 from jlu.m31 import ppxf_m31
@@ -16,7 +19,8 @@ import atpy
 import voronoi_2d_binning as v2d
 
 datadir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
-cuberoot = 'm31_all_scalederr_cleanhdr'
+modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
+cuberoot = 'm31_all_scalederr_cleanhdr_bulgesub'
 
 bhpos_hor = ppxf_m31.bhpos_hor
 bhpos_horpix = bhpos_hor*20.
@@ -33,7 +37,8 @@ def createVoronoiInput():
     quality = cubefits[2].data
     nframes = cubefits[3].data
 
-    snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
+    #snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
+    snrimg = pyfits.getdata(datadir+'m31_all_scalederr_cleanhdr_snr.fits')
     
     xx = np.arange(cube.shape[0])
     yy = np.arange(cube.shape[1])
@@ -44,7 +49,7 @@ def createVoronoiInput():
 
     for nx in xx:
         for ny in yy:
-            tmpcube = cube[nx,ny]
+            tmpcube = cube[nx,ny,:]
             # add a constant to the spectrum to make it above 0
             #print "old cube mean is %f " % tmpcube.mean()
             minFlux = tmpcube.mean() - (1.0 * tmpcube.std())
@@ -52,13 +57,18 @@ def createVoronoiInput():
             tmpcube += np.abs(minFlux)
             #print "new cube mean is %f " % tmpcube.mean()
             tmpcubeavg = tmpcube.mean()
+            #tmpsnr = np.abs(snrimg[ny,nx])
             tmpsnr = np.abs(snrimg[nx,ny])
             # calc errors for tessellation based on the empirical
             # S/N already calculated
             tmperr = tmpcubeavg/tmpsnr
             cubeVor[nx,ny] = tmpcubeavg
             errVor[nx,ny] = tmperr
-
+            #if ny==71:
+            #    print 'ny = 71'
+            #    if nx==28:
+            #        pdb.set_trace()
+            
     # change NaN to 0
     errVor = np.nan_to_num(errVor)
     
@@ -77,7 +87,7 @@ def tessellate(inputFile=datadir+cuberoot+'_vor.fits',targetSN=50):
     #pdb.set_trace()
     #xx = np.arange(cube.shape[0])
     #yy = np.arange(cube.shape[1])
-    good = np.where((cube > 0) & (errors > 0) & ((cube/errors) >=2.))
+    good = np.where((cube > 0) & (errors > 0) & ((cube/errors) >= 2.))
     goodbad=np.zeros((cube.shape[0],cube.shape[1]),dtype=float)
     goodbad[good]=1.
     xx = good[1]
@@ -151,4 +161,180 @@ def createVoronoiOutput(inputFile=datadir+cuberoot+'.fits',inputVoronoiFile=data
     pyfits.append(outfile,quality)
     pyfits.append(outfile,nframes)
     
-        
+def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoronoiFile=datadir+'voronoi_2d_binning_output.txt',l98bin=False):
+    # read in the full model file (not fitted)
+    model = ppxf_m31.modelResults(inputFile=inputModel)
+
+    # this section is all taken from ppxf_m31.modelBin()
+    # bin size = 0.05" = 0.1865 pc
+    # if matching L98 photometry, use 0.0228" = 0.08504 pc
+    if l98bin:
+        binpc = 0.08504
+    else:
+        binpc = 0.1865
+    
+    # Setting the BH pixel phase to match that of the data
+    xfrac = ppxf_m31.bhpos[0]-np.floor(ppxf_m31.bhpos[0])
+    yfrac = ppxf_m31.bhpos[1]-np.floor(ppxf_m31.bhpos[1])
+    # if L98 bin size, divide by the ratio of the two pixel scales and
+    # calc the new pixel phase
+    if l98bin:
+        xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
+        yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
+    # reposition BH (originally at origin in model) to the correct pixel phase
+    model.x += (binpc*xfrac)
+    model.y += (binpc*yfrac)
+
+    # get the full size of the binned array, but making sure to leave bin boundaries on the axes
+    # positive and negative extent of the x axis
+    posxbin = np.ceil(np.max(model.x)/binpc)
+    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    nxbin = posxbin+negxbin
+    # and y axis
+    posybin = np.ceil(np.max(model.y)/binpc)
+    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    nybin = posybin + negybin
+
+    # new BH position: (0,0) + (xfrac,yfrac)
+    modbhpos = [negxbin+xfrac,negybin+yfrac]
+    print "Model BH is at ", modbhpos
+
+    # trim to only cover the OSIRIS FOV
+    newnegxbin = 0. - np.floor(ppxf_m31.bhpos[0]/0.05)
+    newnegybin = 0. - np.floor(ppxf_m31.bhpos[1]/0.05)
+
+    xlen = 41
+    ylen = 84
+    goodTrim = np.where((model.x/binpc >= newnegxbin) & (model.x/binpc <= (newnegxbin + xlen)) & (model.y/binpc >= newnegybin) & (model.y/binpc <= (newnegybin + ylen)))
+
+    xClip = model.x[goodTrim[0]] - newnegxbin*binpc
+    yClip = model.y[goodTrim[0]] - newnegybin*binpc
+    zClip = model.z[goodTrim[0]]
+    vxClip = model.vx[goodTrim[0]]
+    vyClip = model.vy[goodTrim[0]]
+    vzClip = model.vz[goodTrim[0]]
+
+    # convert x,y positions to bin numbers
+    xBin = np.floor(xClip/binpc)
+    yBin = np.floor(yClip/binpc)
+    xClippc = xClip/binpc
+    yClippc = yClip/binpc
+    xyBin = zip(xBin,yBin)
+
+    #pdb.set_trace()
+
+    # grab the Voronoi bins
+    yy, xx, binnum = np.loadtxt(inputVoronoiFile,unpack=True)
+    xx = xx.astype(int)
+    yy = yy.astype(int)
+    binnum = binnum.astype(int)
+
+    # initiate the output arrays
+    modShape = (xlen,ylen)
+
+    newNstar = np.zeros(modShape, dtype=float)
+    newVel = np.zeros(modShape, dtype=float)
+    newSigma = np.zeros(modShape, dtype=float)
+    newH3 = np.zeros(modShape, dtype=float)
+    newH4 = np.zeros(modShape, dtype=float)
+
+    #pdb.set_trace()
+    # binning LOS velocity in bins of 5 km/s, with cuts at +/- 1000 km/s
+    vzbins = np.arange(-1000., 1005., 5.)
+    
+    # by definition, v_LOS = -v_z
+    modvLOS = -1.* vzClip
+
+    xbins = np.arange(xlen+1)
+    ybins = np.arange(ylen+1)
+    # create the histogram and count up the number of particles in each velocity bin
+    bins = (xbins, ybins, vzbins)
+    losvd, bins_new, bin_num = scipy.stats.binned_statistic_dd((xClippc, yClippc, modvLOS),
+                                                               modvLOS,
+                                                               statistic='count',
+                                                               bins=bins)
+
+    # create the histogram and count up the number of particles in each spatial bin
+    nstar, bins_new2, bin_num2 = scipy.stats.binned_statistic_dd((xClippc, yClippc),
+                                                                  modvLOS,
+                                                                  statistic='count',
+                                                                  bins=(xbins, ybins))
+
+    # initiate the temporary arrays sorted by bin number
+    nstarnb = np.zeros(binnum.max()+1)
+    losvdnb = np.zeros((binnum.max()+1,len(vzbins)-1))
+    losv = np.zeros(binnum.max()+1)
+    sigma = np.zeros(binnum.max()+1)
+    h3 = np.zeros(binnum.max()+1)
+    h4 = np.zeros(binnum.max()+1)
+
+    pdb.set_trace()
+
+    # do the LOSVD fits, by bin number
+    for i in range(binnum.max()+1):
+        # sum up nstar and losvd for each bin
+        print "Starting bin ", i
+        idx = np.where(binnum == i)
+        nx = xx[idx]
+        ny = yy[idx]
+        tmpnstar = nstar[nx,ny].sum()
+        nstarnb[i] = tmpnstar
+        if len(nx) == 1:
+            tmplosvd = losvd[nx,ny,:].flatten()
+        else:
+            tmplosvd = losvd[nx,ny,:].sum(axis=0)
+        if len(tmplosvd) != len(vzbins)-1:
+            tmplosvd = tmplosvd.sum(axis=0)
+        losvdnb[i] = tmplosvd
+        # if there are no particles in the bin, set everything to 0
+        if tmpnstar == 0:
+            losv[i] = 0.
+            sigma[i] = 0.
+            h3[i] = 0.
+            h4[i] = 0.
+        # if there are too few particles to perform a fit, hack something together 
+        elif losvdnb[i].max() <= 5:
+            losv[i] = (losvdnb[i]*bins_new[2][0:-1]).sum()/tmpnstar
+            sigma[i] = 0.
+            h3[i] = 0.
+            h4[i] = 0.
+        # for everything else, fit the LOSVD histogram
+        else:
+            # set the initial values
+            gamma0 = tmpnstar
+            # approximate the average velocity of the particles
+            v0 = (losvdnb[i]*bins_new[2][0:-1]).sum()/tmpnstar
+            # pull out the standard deviation directly from the histogram
+            s0 = np.sqrt(((bins_new[2][0:-1]-v0)**2.*losvdnb[i]).sum()/tmpnstar)
+            h3_0 = 0.
+            h4_0 = 0.
+            guess = [gamma0, v0, s0, h3_0, h4_0]
+            popt, pcov = curve_fit(ppxf_m31.gaussHermite, bins_new[2][0:-1], losvdnb[i], p0=guess)
+            # popt = [gamma, v, sigma, h3, h4]
+            losv[i] = popt[1]
+            sigma[i] = popt[2]
+            h3[i] = popt[3]
+            h4[i] = popt[4]             
+    
+    for nb in range(binnum.max()+1):
+        print 'round 2, starting bin', nb
+        idx = np.where(binnum == nb)
+        nx = xx[idx]
+        ny = yy[idx]
+        nbins = len(idx[0])
+        newNstar[nx,ny] = nstarnb[nb]/nbins
+        newVel[nx,ny] = losv[nb]
+        newSigma[nx,ny] = sigma[nb]
+        newH3[nx,ny] = h3[nb]
+        newH4[nx,ny] = h4[nb]
+
+    pdb.set_trace()
+    
+    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_trim_tess.dat', 'w')
+    pickle.dump(newNstar, output)
+    pickle.dump(newVel, output)
+    pickle.dump(newSigma, output)
+    pickle.dump(newH3, output)
+    pickle.dump(newH4, output)
+    output.close()
+
