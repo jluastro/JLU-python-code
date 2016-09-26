@@ -87,7 +87,7 @@ def multinest_pspl(data, n_live_points=1000, saveto='./mnest_pspl/', runcode='aa
     muS_x_gen = make_muS_xy_gen(t_ast, xpos)
     muS_y_gen = make_muS_xy_gen(t_ast, ypos)
     dL_gen = make_gen(3000, 5000)
-    dS_gen = make_gen(6000, 10000)
+    dL_dS_gen = make_gen(0.01, 0.99)
     imag_base_gen = make_gen(18.5, 19.5)
 	
     def priors(cube, ndim, nparams):
@@ -101,7 +101,7 @@ def multinest_pspl(data, n_live_points=1000, saveto='./mnest_pspl/', runcode='aa
         cube[7] = muS_x_gen.ppf(cube[7])
         cube[8] = muS_y_gen.ppf(cube[8])
         cube[9] = dL_gen.ppf(cube[9])
-        cube[10] = dS_gen.ppf(cube[10])
+        cube[10] = dL_dS_gen.ppf(cube[10])
         cube[11] = imag_base_gen.ppf(cube[11])
         
         return 
@@ -114,10 +114,22 @@ def multinest_pspl(data, n_live_points=1000, saveto='./mnest_pspl/', runcode='aa
         muL = np.array([cube[5], cube[6]])
         muS = np.array([cube[7], cube[8]])
         dL = cube[9]
-        dS = cube[10]
+        dLdS = cube[10]
         imag_base = cube[11]
 
+        # Extra parameters
+        dS = (1.0 * dL) / dLdS
+        cube[12] = dS
+        
         pspl = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag_base)
+
+        cube[13] = pspl.tE
+        cube[14] = pspl.thetaE_amp
+        cube[15] = pspl.piE[0]
+        cube[16] = pspl.piE[1]
+        cube[17] = pspl.u0_amp
+        cube[18] = pspl.muRel[0]
+        cube[19] = pspl.muRel[1]
 
         lnL_phot = pspl.likely_photometry(t_phot, imag, imag_err)
         lnL_ast = pspl.likely_astrometry(t_ast, xpos, ypos, xpos_err, ypos_err)
@@ -134,7 +146,7 @@ def multinest_pspl(data, n_live_points=1000, saveto='./mnest_pspl/', runcode='aa
 
 
     num_dims = 12
-    num_params = 12  #cube will have this many dimensions
+    num_params = 20  #cube will have this many dimensions
     ev_tol = 0.3
     samp_eff = 0.8
     n_live_points = 100
@@ -179,19 +191,26 @@ def multinest_pspl_parallax(data, n_live_points=1000,
     raL = data['raL']
     decL = data['decL']
 
+    xmin = data['xpos'].min()
+    xmax = data['xpos'].max()
+    ymin = data['ypos'].min()
+    ymax = data['ypos'].max()
+    delta_x = (xmax - xmin) / 2.0
+    delta_y = (ymax - ymin) / 2.0
+
     # Model Parameters: mL, t0, xS0, beta, muL, muS, dL, dS, imag_base
     mL_gen = make_gen(0, 30)
     t0_gen = make_t0_gen(t_phot, imag)
-    xS0_x_gen = make_gen(data['xpos'].min(), data['xpos'].max())
-    xS0_y_gen = make_gen(data['ypos'].min(), data['ypos'].max())
+    xS0_x_gen = make_gen(xmin - delta_x, xmax + delta_x)
+    xS0_y_gen = make_gen(ymin - delta_y, ymax + delta_y)
     beta_gen = make_gen(-5, 5)
     muL_x_gen = make_gen(-20, 20)
     muL_y_gen = make_gen(-20, 20)
     muS_x_gen = make_muS_xy_gen(t_ast, xpos)
     muS_y_gen = make_muS_xy_gen(t_ast, ypos)
     dL_gen = make_gen(1000, 7000)
-    dL_dS_gen = make_gen(0.01, 0.99)
-    imag_base_gen = make_gen(19.0, 20.0)
+    dL_dS_gen = make_gen(0.10, 0.90)
+    imag_base_gen = make_gen(18.0, 20.0)
 	
     def priors(cube, ndim, nparams):
         cube[0] = mL_gen.ppf(cube[0])
@@ -317,6 +336,7 @@ def load_mnest_results(mnest_dir, mnest_root):
     
     return tab
 
+
 def get_best_fit(mnest_dir, mnest_root):
     # Identify best-fit model
     tab = load_mnest_results(mnest_dir, mnest_root)
@@ -332,7 +352,7 @@ def get_best_fit(mnest_dir, mnest_root):
     return tab_best
 
 
-def plot_posteriors(mnest_dir, mnest_root):
+def plot_posteriors(mnest_dir, mnest_root, priors=None, sim_vals=None):
     """
     Plots posteriors using pair_posterior code
     """
@@ -353,19 +373,26 @@ def plot_posteriors(mnest_dir, mnest_root):
         pass
     
     # Make the plots
-    pair_posterior(tab, weights,
+    pair_posterior(tab, weights, 
                    outfile=outdir+'plots/posteriors/' + mnest_root +'_posteriors.png',
-                   title=mnest_root)
+                   title=mnest_root,
+                   priors=priors, sim_vals=sim_vals)
 
     return
 
-def pair_posterior(atpy_table, weights, outfile=None, title=None):
+def pair_posterior(atpy_table, weights, outfile=None, title=None, priors=None, sim_vals=None):
     """
     pair_posterior(atpy_table)
 
     :Arguments:
     atpy_table:       Contains 1 column for each parameter with samples.
-
+    weights:          The weights from the MultiNest results. Should have been
+                      removed from the table.
+    outfile:          The root name of the output file.
+    title:
+    priors:           A dictionary of priors??
+    sim_vals:         A dictionary containing the input values. 
+    
     Produces a matrix of plots. On the diagonals are the marginal
     posteriors of the parameters. On the off-diagonals are the
     marginal pairwise posteriors of the parameters.
@@ -389,6 +416,9 @@ def pair_posterior(atpy_table, weights, outfile=None, title=None):
                                  histtype='step', weights=weights, bins=50)
         plt.xlabel(params[ii], size=fontsize)
         plt.ylim(0, n.max()*1.1)
+
+        if (sim_vals != None) and (params[ii] in sim_vals):
+            plt.axvline(sim_vals[params[ii]], color='red', linestyle='-')
         
         ax.get_xaxis().get_major_formatter().set_useOffset(False)        
         ax.get_xaxis().get_major_formatter().set_scientific(False)
@@ -417,6 +447,9 @@ def pair_posterior(atpy_table, weights, outfile=None, title=None):
             ycenter = y[:-1] + (np.diff(y) / 2.0)
 
             plt.contourf(xcenter, ycenter, H.T, cmap=plt.cm.gist_yarg)
+            
+            if (sim_vals != None) and (params[ii] in sim_vals) and (params[jj] in sim_vals):
+                plt.plot(sim_vals[params[jj]], sim_vals[params[ii]], 'r.')
 
             plt.xlabel(params[jj], size=fontsize)
             plt.ylabel(params[ii], size=fontsize)
