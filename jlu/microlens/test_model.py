@@ -6,17 +6,17 @@ import pdb
 import os
 
 def test_PSPL_other():
-    # mL = 10.0 # msun
-    # t0 = 57000.00
-    # xS0 = np.array([0.000, 0.000])
-    # # beta = -0.4 # mas
-    # beta = 1.4 # mas
-    # muS = np.array([8.0, 0.0])
-    # # muL = np.array([-7.0, 0.00])
-    # muL = np.array([0.00, 0.00])
-    # dL = 4000.0
-    # dS = 8000.0
-    # imag = 19.0
+    mL = 10.0 # msun
+    t0 = 57000.00
+    xS0 = np.array([0.000, 0.000])
+    # beta = -0.4 # mas
+    beta = 1.4 # mas
+    muS = np.array([8.0, 0.0])
+    # muL = np.array([-7.0, 0.00])
+    muL = np.array([0.00, 0.00])
+    dL = 4000.0
+    dS = 8000.0
+    imag = 19.0
 
     test_PSPL(mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir='./test_pspl_other/')
 
@@ -121,8 +121,8 @@ def test_PSPL(mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir=''):
     ax3.set_ylim(0, 0.4)
     plt.savefig(outdir + 'shift_v_t.png')
 
-    print 'Einstein radius: ', pspl.thetaE_amp
-    print 'Einstein crossing time: ', pspl.tE
+    print('Einstein radius: ', pspl.thetaE_amp)
+    print('Einstein crossing time: ', pspl.tE)
 
     return pspl    
 
@@ -170,8 +170,8 @@ def test_pspl_fit():
                                              data['xpos_err'], data['ypos_err'])
     lnL_in = lnL_phot_in.mean() + lnL_ast_in.mean()
     
-    print 'lnL for input: ', lnL_in
-    print 'lnL for output: ', lnL_out
+    print('lnL for input: ', lnL_in)
+    print('lnL for output: ', lnL_out)
     
     plt.figure(1)
     plt.clf()
@@ -266,10 +266,10 @@ def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, out
 
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
@@ -302,7 +302,7 @@ def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, out
     plt.xlabel('t - t0 (MJD)')
 
     plt.savefig(outdir + 'amp_v_time.png')
-    print "save to " + outdir
+    print("save to " + outdir)
     
 
     
@@ -364,8 +364,8 @@ def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, out
     plt.savefig(outdir + 'shift_on_sky.png')
     
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
@@ -395,10 +395,10 @@ def test_pspl_parallax_paczynski1998(t0):
     
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
@@ -512,8 +512,8 @@ def test_pspl_parallax_paczynski1998(t0):
     plt.xlabel('thetaS_E (")')
     plt.ylabel('thetaS_N (")')
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
@@ -537,10 +537,10 @@ def test_pspl_parallax_boden1998(t0):
     
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
@@ -654,8 +654,8 @@ def test_pspl_parallax_boden1998(t0):
     plt.xlabel('thetaS_E (")')
     plt.ylabel('thetaS_N (")')
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
@@ -713,8 +713,8 @@ def test_pspl_parallax_fit():
                                              data['xpos_err'], data['ypos_err'])
     lnL_in = lnL_phot_in.mean() + lnL_ast_in.mean()
     
-    print 'lnL for input: ', lnL_in
-    print 'lnL for output: ', lnL_out
+    print('lnL for input: ', lnL_in)
+    print('lnL for output: ', lnL_out)
 
     outroot = 'mnest_pspl_par/plots/aa'
 
@@ -778,7 +778,7 @@ def test_make_t0_gen():
     plt.plot(data['t_phot'], data['imag'], 'k.')
     plt.axvline(t0_rand.min())
     plt.axvline(t0_rand.max())
-    print 't0 between: ', t0_rand.min(), t0_rand.max()
+    print('t0 between: ', t0_rand.min(), t0_rand.max())
 
     assert t0_rand.min() < 56990
     assert t0_rand.max() > 57000

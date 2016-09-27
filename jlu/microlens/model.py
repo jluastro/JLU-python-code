@@ -7,7 +7,6 @@ import math
 from astropy import constants as const
 from astropy import units
 import pdb
-import ephem
 from astropy.time import Time
 import time
 
