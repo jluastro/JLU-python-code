@@ -3,7 +3,7 @@ import os
 import pdb
 import sys
 import string
-import residuals
+from jlu.microlens import residuals
 from astropy.table import Table
 import pylab as py
 import scipy.stats
@@ -108,7 +108,7 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
                 except: 
                     os.system('rm -r ' + DirNames[n])
                     os.mkdir(DirNames[n])
-                print 'Creating new directory: ' + NewDirPath
+                print( 'Creating new directory: ' + NewDirPath)
 
                 os.chdir(DirNames[n])
                 os.system('mkdir align lis plots points_d polyfit_d scripts source_list')
@@ -131,12 +131,14 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
 
             else:       
                 if os.path.isdir(NewDirPath) == 1: 
-                    print 'Directory ' + NewDirPath + ' already exists.  Did not overwrite.'
+                    print( 'Directory ' + NewDirPath + ' already exists.  Did not overwrite.' )
 
     os.chdir(root)
     if makePlots == True:
-		print 'Plotting...'
-		AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m)
+        print( 'Plotting...')
+        AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m)
+
+    return
     
 
 
@@ -150,7 +152,7 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut):
         
         for j in range(NjackKnifes + 1):
             n += 1
-            print DirNames[n]
+            print( DirNames[n] )
             os.chdir(root + DirNames[n])
             makeResPlot(root=root, DirName=DirNames[n])  # Comment these out as needed
             makeVectorPlot(root=root, DirName=DirNames[n], magCut=magCut[n]) # Comment these out as needed
@@ -171,9 +173,9 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut):
     # velSigXlist = []
     # velSigYlist = []
     # for i in range(Ndirs/2):
-    #     print DirNames[2*i+1]
+    #     print( DirNames[2*i+1] )
     #     velXarr, velYarr = GetVel(root, DirNames[2*i+1])
-    #     print len(velXarr)
+    #     print( len(velXarr) )
     #     velSigXarr, velSigYarr, Nstars = GetVelSigDist(root, DirNames[2*i+1])
     #     velXlist.append(velXarr)
     #     velYlist.append(velYarr)
@@ -181,12 +183,12 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut):
     #     velSigYlist.append(velSigYarr)
     # relErrX = []
     # relErrY = []
-    # # print len(velXlist), Nstars
-    # # print velXlist
+    # # print( len(velXlist), Nstars )
+    # # print( velXlist )
     # for i in range(Ndirs/2):
     #     for j in range(Ndirs/2):
     #         for k in range (Nstars):
-    #             print i, j, k
+    #             print( i, j, k )
     #             if i != j:
     #                 deltaVx = velXlist[i][k] - velXlist[j][k]
     #                 sigVx = np.sqrt(velSigXlist[i][k]**2. + velSigXlist[j][k]**2.)
@@ -195,7 +197,7 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut):
     #                 sigVy = np.sqrt(velSigYlist[i][k]**2. + velSigYlist[j][k]**2.)
     #                 relErrY.append(deltaVy/sigVy)
     # PlotVelSigDist(root + DirNames[0], relErrX, relErrY)
-    # print 'plotting Velocity error distribution (sigma) in directory: ' + root + DirNames[0]
+    # print( 'plotting Velocity error distribution (sigma) in directory: ' + root + DirNames[0] )
 
 
 def TrialPars(Nomit, transforms, magCuts, weightings):
@@ -368,7 +370,7 @@ def PlotVelSigDist(plotDir, relErrX, relErrY):
     py.clf()
     fontsize1 = 10
     bins = np.arange(-7, 7, 1)
-    print relErrX
+    print( relErrX )
     paxes = py.subplot(1, 2, 1)
     (n, b, p) = py.hist(relErrX, bins, color='b')
     py.axis([-5, 5, 0, 180], fontsize=10)
@@ -399,13 +401,13 @@ def make_matched_catalog(root='/Users/jlu/work/microlens/OB110022/', prefix='ana
 
     # Find the starlists.
     lis_dir = root + prefix + '_' + date + '/' + sourceDir + '/lis/'
-    print lis_dir
+    print( lis_dir )
     star_lists = glob.glob(lis_dir + 'mag*_radTrim.lis')
 
     # Use the middle starlist as a reference... this will be arbitrary in the end.
     ref = int(len(star_lists) / 2)
-    print ref
-    print star_lists
+    print( ref )
+    print( star_lists )
     ref_list = starlists.read_starlist(star_lists[ref], error=True)
 
     N_loops = 2
@@ -446,7 +448,7 @@ def make_matched_catalog(root='/Users/jlu/work/microlens/OB110022/', prefix='ana
             idx1, idx2, dm, dr = match.match(star_list_T['x'], star_list_T['y'], star_list_T['m'],
                                             ref_list['x'], ref_list['y'], ref_list['m'],
                                             dr_tol=5, dm_tol=1)
-            print 'In Loop ', nn, ' found ', len(idx1), ' matches'
+            print( 'In Loop ', nn, ' found ', len(idx1), ' matches' )
             
     
             # Calculate transform based on the matched stars    

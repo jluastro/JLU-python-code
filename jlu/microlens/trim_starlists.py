@@ -19,12 +19,17 @@ def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120
         Xpix = PSFtab[PSFtab.colnames[3]]
         Ypix = PSFtab[PSFtab.colnames[4]]
 
-        fitsPath = '/g/lu/data/microlens/' + epochs[i] + '/combo/'
-        fitsFile = fitsPath + 'mag' + epochs[i] + '_' + TargetName.lower() + '_kp.fits'
-        fitsData = fits.getdata(fitsFile)
-        center = np.array(fitsData.shape) / 2.0
-        center_x = center[0]
-        center_y = center[1]
+        # Find target and set its coordinates as the "center"
+        tdx = np.where(names == TargetName)[0][0]
+        center_x = Xpix[tdx]
+        center_y = Ypix[tdx]
+
+        # fitsPath = '/g/lu/data/microlens/' + epochs[i] + '/combo/'
+        # fitsFile = fitsPath + 'mag' + epochs[i] + '_' + TargetName.lower() + '_kp.fits'
+        # fitsData = fits.getdata(fitsFile)
+        # center = np.array(fitsData.shape) / 2.0
+        # center_x = center[0]
+        # center_y = center[1]
         
         Nstars = len(Xpix)
         
@@ -47,7 +52,7 @@ def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120
         f.close()
 
         msg = 'Keeping {0} of {1} stars within 4" in {2}'
-        print msg.format(len(indgood), Nstars, Starlist)
+        print( msg.format(len(indgood), Nstars, Starlist) )
         
         str1, str2 = Starlist.split('.lis')
         newName = str1 + '_radTrim.lis'
