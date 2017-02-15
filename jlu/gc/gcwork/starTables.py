@@ -1,6 +1,6 @@
 import os, sys
 import math, copy
-import asciidata
+from astropy.table import Table # asciidata
 import numpy as np
 from jlu.gc.gcwork import objects
 #from pysqlite2 import dbapi2 as sqlite
@@ -35,7 +35,7 @@ class StarTable(object):
             objType = type(obj)
 
             # Check that this is a listable object (numpy or list)
-            if ((objType is 'numpy.ndarray' or objType is 'list') and 
+            if ((objType is 'numpy.ndarray' or objType is 'list') and
                 (len(obj) is origNameCnt)):
                 # Trim this numpy list.
                 obj = obj[indices]
@@ -53,7 +53,7 @@ class StarfinderList(StarTable):
             self.epoch = np.array([], dtype=float)
             self.x = np.array([], dtype=float)
             self.y = np.array([], dtype=float)
-            
+
             if self.hasErrors:
                 self.xerr = np.array([], dtype=float)
                 self.yerr = np.array([], dtype=float)
@@ -64,7 +64,7 @@ class StarfinderList(StarTable):
             self.counts = np.array([], dtype=float)
 
         else:
-            tab = asciidata.open(self.file)
+            tab = Table.read(self.file)
 
             self.name = tab[0].tonumpy()
             for rr in range(len(self.name)):
@@ -73,7 +73,7 @@ class StarfinderList(StarTable):
             self.epoch = tab[2].tonumpy()
             self.x = tab[3].tonumpy()
             self.y = tab[4].tonumpy()
-            
+
             tabIdx = 5
             if self.hasErrors == True:
                 self.xerr = tab[tabIdx+0].tonumpy()
@@ -85,7 +85,7 @@ class StarfinderList(StarTable):
             self.nframes = tab[tabIdx+2].tonumpy()
             self.counts = tab[tabIdx+3].tonumpy()
 
-    def append(self, name, mag, x, y, epoch=None, xerr=0, yerr=0, 
+    def append(self, name, mag, x, y, epoch=None, xerr=0, yerr=0,
                snr=0, corr=1, nframes=1, counts=0):
         if epoch == None:
             epoch = self.epoch[0]
@@ -95,7 +95,7 @@ class StarfinderList(StarTable):
         self.epoch = np.append(self.epoch, epoch)
         self.x = np.append(self.x, x)
         self.y = np.append(self.y, y)
-        
+
         if self.hasErrors:
             self.xerr = np.append(self.xerr, xerr)
             self.yerr = np.append(self.yerr, yerr)
@@ -104,7 +104,7 @@ class StarfinderList(StarTable):
         self.corr = np.append(self.corr, corr)
         self.nframes = np.append(self.nframes, nframes)
         self.counts = np.append(self.counts, counts)
-        
+
 
     def saveToFile(self, outfile):
         _out = open(outfile, 'w')
@@ -128,8 +128,8 @@ class StarfinderList(StarTable):
 class Genzel2000(StarTable):
     def __init__(self):
 	self.file = tablesDir + 'ucla_genzel2000.dat'
-	tab = asciidata.open(self.file)
-	
+	tab = Table.read(self.file)
+
 	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
 	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
 	self.r = tab[2].tonumpy()
@@ -155,7 +155,7 @@ class Genzel2000(StarTable):
 class Paumard2001(StarTable):
     def __init__(self):
 	self.file = tablesDir + 'ucla_paumard2001.dat'
-	tab = asciidata.open(self.file)
+	tab = Table.read(self.file)
 
 	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
 	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
@@ -163,7 +163,7 @@ class Paumard2001(StarTable):
 	self.y = tab[3].tonumpy()
 	self.vz = tab[4].tonumpy()
 	self.vzerr = tab[5].tonumpy()
-	
+
 	x = self.x
 	y = self.y
 	self.r = np.sqrt(x**2 + y**2)
@@ -211,7 +211,7 @@ class UCLAstars(StarTable):
         self.vz = loadColumnFromDB('vz', 'stars', cur)
         self.vzerr = loadColumnFromDB('vz_err', 'stars', cur)
         self.t0_spectra = loadColumnFromDB('vz_ddate', 'stars', cur)
-        
+
 
 class Bartko2009(StarTable):
     def __init__(self):
@@ -234,7 +234,7 @@ class Bartko2009(StarTable):
         self.t0_spectra = loadColumnFromDB('t0_spectra', 'bartko2009', cur)
         self.vz = loadColumnFromDB('vz', 'bartko2009', cur)
         self.vzerr = loadColumnFromDB('vz_err', 'bartko2009', cur)
-        
+
 
 class Paumard2006(StarTable):
     def __init__(self):
@@ -268,7 +268,7 @@ class Paumard2006(StarTable):
         self.MKerr = loadColumnFromDB('MK_err', 'paumard2006', cur)
         self.t0_astrom = loadColumnFromDB('t0_astrometry', 'paumard2006', cur)
         self.t0_spectra = loadColumnFromDB('t0_spectra', 'paumard2006', cur)
-        
+
 	self.fixNames()
 
     def matchNames(self, labelFile=tablesDir+'label.dat'):
@@ -306,7 +306,7 @@ class Paumard2006(StarTable):
 
             print ''
             print 'Match %10s at [%5.2f, %5.2f] and mag = %5.2f (ourName = %s)' % \
-                (self.name[ii], xPaum[ii], yPaum[ii], self.Kmag[ii], 
+                (self.name[ii], xPaum[ii], yPaum[ii], self.Kmag[ii],
                  self.ourName[ii])
             print '   Closest Star:'
             print '      %10s at [%5.2f, %5.2f] and mag = %5.2f' % \
@@ -319,7 +319,7 @@ class Paumard2006(StarTable):
 class Ott2003(StarTable):
     def __init__(self):
 	self.file = tablesDir + 'ucla_ott2003.dat'
-	tab = asciidata.open(self.file)
+	tab = Table.read(self.file)
 
 	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
 	self.id = [tab[1][d].strip() for d in range(tab.nrows)]
@@ -346,7 +346,7 @@ class Ott2003(StarTable):
 class Tanner2006(StarTable):
     def __init__(self):
 	self.file = tablesDir + 'ucla_tanner2006.dat'
-	tab = asciidata.open(self.file)
+	tab = Table.read(self.file)
 
 	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
 	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
@@ -407,7 +407,7 @@ class Orbits(StarTable):
     """
     def __init__(self, orbitFile='orbits.dat'):
 	self.file = tablesDir + orbitFile
-	tab = asciidata.open(self.file)
+	tab = Table.read(self.file)
 
 	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
 	self.name = [tab[0][d].strip() for d in range(tab.nrows)]
@@ -432,7 +432,7 @@ class Labels(StarTable):
         self.file = labelFile
 
         if labelFile != None:
-            tab = asciidata.open(self.file)
+            tab = Table.read(self.file)
 
             self.headerString = str(tab.header)
 
@@ -471,7 +471,7 @@ class Labels(StarTable):
         _out = open(outfile, 'w')
 
         _out.write(self.headerString)
-        
+
         for ii in range(len(self.x)):
             _out.write('%-11s  ' % self.name[ii])
             _out.write('%4.1f    ' % self.mag[ii])
@@ -497,7 +497,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
     root: The root of align analysis (e.g. './' or '07_05_18.')
     align: The root filename of the align output.
     poly: The root filename of the polyfit output.
-    stars: A starset.StarSet() object with polyfit already loaded. 
+    stars: A starset.StarSet() object with polyfit already loaded.
            This overrides align/poly/root values and is useful for
            custom cuts that trim_align can't handle such as magnitude
            dependent velocity error cuts. BEWARE: stars may be modified.
@@ -506,16 +506,16 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
     source_list/label_new.dat
 
     Dependencies:
-    Polyfit and align must contain the same numbers/names of stars. Also, 
+    Polyfit and align must contain the same numbers/names of stars. Also,
     making the label.dat file depends on having the absolute astrometry
     done correctly. See gcwork.starset to learn about how the absolute
     astrometry is loaded (it depends on a specific reference epoch in align).
 
-    You MUST run this on something that has already been run through 
+    You MUST run this on something that has already been run through
     java align_absolute.
     """
     from gcwork import starset
-    
+
     if stars == None:
         s = starset.StarSet(root + align, relErr=0)
 
@@ -537,7 +537,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
     radius = s.getArray('r2d')
     ridx = radius.argsort()
     s.stars = [s.stars[ss] for ss in ridx]
-    
+
 
     # Get info for all the stars.
     names = np.array(s.getArray('name'))
@@ -682,7 +682,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
         alnLabels.t0 = np.delete(alnLabels.t0, idx)
         alnLabels.r = np.delete(alnLabels.r, idx)
 
-        
+
     nn = 0
     while nn < len(oldLabels.name):
         #
@@ -710,7 +710,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
         # Now look for this star in the new align info
         #
         idx = np.where(alnLabels.name == oldLabels.name[nn])[0]
-            
+
         if len(idx) > 0:
             # Found the star
 
@@ -720,7 +720,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
             else:
                 # Don't update with align info
                 addStarFromOldLabels(oldLabels, nn)
-                
+
             deleteFromAlign(alnLabels, idx[0])
 
         elif keepOldStars:
@@ -746,7 +746,7 @@ def calcNewNumbers(oldNames, newNames):
         substring = 'S%d-' % rr
         rNameOld = filter(lambda x: x.find(substring) != -1, oldNames)
         rNameNew = filter(lambda x: x.find(substring) != -1, newNames)
-            
+
         if (len(rNameOld) == 0):
             newNumber[rr] = 1
         else:
@@ -755,7 +755,7 @@ def calcNewNumbers(oldNames, newNames):
                 tmp = rNameOld[nn].split('-')
                 rNumberOld[nn] = int(tmp[-1])
             rNumberOld.sort()
-            
+
             if (len(rNameNew) != 0):
                 rNumberNew = np.zeros(len(rNameNew))
                 for nn in range(len(rNameNew)):
@@ -764,7 +764,7 @@ def calcNewNumbers(oldNames, newNames):
                 rNumberNew.sort()
             else:
                 rNumberNew = np.array([1])
-                
+
             newNumber[rr] = max([rNumberOld[-1], rNumberNew[-1]]) + 1
 
         print 'First New Number is S%d-%d' % (rRange[rr], newNumber[rr])
@@ -788,7 +788,7 @@ def makeOrbitsDat(root='./', efit='efit3_d/output/efit3.log',
     Only sources in the central arcsecond with significant accelerations
     are included in our list of stellar orbits. To determine which stars
     these are, we run
-    
+
     gcwork.polyfit.accel.highSigSrcs(0.5, 4)
 
     and then use all the named sources in the resulting list.
@@ -796,7 +796,7 @@ def makeOrbitsDat(root='./', efit='efit3_d/output/efit3.log',
     from gcwork.polyfit import accel
 
     # Now read in the efit3.log file
-    tab = asciidata.open(root + efit)
+    tab = Table.read(root + efit)
 
     name = tab[0]._data
     dist = tab[1].tonumpy()  # pc
@@ -821,7 +821,7 @@ def makeOrbitsDat(root='./', efit='efit3_d/output/efit3.log',
     _out.write('%-10s  %7s  %7s  %8s  %7s  %7s  %7s  %7s  %7s\n' % \
 	       ('#Star', 'P', 'A', 't0', 'e', 'i', 'Omega', 'omega', 'search'))
     _out.write('%-10s  %7s  %7s  %8s  %7s  %7s  %7s  %7s  %7s\n' % \
-	       ('#Name', '(yrs)', '(mas)', '(yrs)', '()', 
+	       ('#Name', '(yrs)', '(mas)', '(yrs)', '()',
 		'(deg)', '(deg)', '(deg)', '(pix)'))
 
 
@@ -944,7 +944,7 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
     # detected in.
     names = s.getArray('name')
     velCnt = s.getArray('velCnt')
-    
+
     numStars = len(names)
     numEpochs = len(s.stars[0].years)
 
@@ -1010,12 +1010,12 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
                     else:
                         # AO only
                         use = '8'
-                        
+
         except ValueError:
             # Don't change anything if we didn't find it.
             # Reformat to string for ease of use
             use = str(labels.useToAlign[i])
-            
+
 
 	_out.write('%-10s  %5.1f   ' % (labels.name[i], labels.mag[i]))
 	_out.write('%7.3f %7.3f ' % (labels.x[i], labels.y[i]))
@@ -1030,9 +1030,9 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
 
     print 'Final:   Nstars Speckle = %4d  AO = %4d' % \
           (spNumStars, aoNumStars)
-    
 
-    
+
+
 
 def updateLabelInfoWithAbsRefs(oldLabelFile, newLabelFile, outputFile,
                                newUse=1, oldUse=0, appendNew=False):
@@ -1064,7 +1064,7 @@ def updateLabelInfoWithAbsRefs(oldLabelFile, newLabelFile, outputFile,
 
     updateCount = 0
     newCount = 0
-    
+
     for nn in range(len(new.name)):
         idx = np.where(old.name == new.name[nn])[0]
 
@@ -1151,12 +1151,12 @@ def checkLabelsForDuplicates(labels='/u/ghezgroup/data/gc/source_list/label.dat'
 
             for rr in rdx:
                 print '    %-13s  %5.2f  %7.3f %7.3f   %7.3f %7.3f' % \
-                    (lab.name[rr], lab.mag[rr], lab.x[rr], lab.y[rr], 
+                    (lab.name[rr], lab.mag[rr], lab.x[rr], lab.y[rr],
                      lab.vx[rr], lab.vy[rr])
-    
+
     print ''
     print 'Found %d duplicates' % duplicateCnt
-    
+
 def updateLabelInfoWithDeepMosaic(oldLabelFile, dpMscAlignDir, outputFile,
                                   alignRoot='align/align_d_rms_100_abs_t',
                                   polyRoot = 'polyfit_100/fit'):
@@ -1176,5 +1176,5 @@ def updateLabelInfoWithDeepMosaic(oldLabelFile, dpMscAlignDir, outputFile,
     s = starset.StarSet(dpMscAlign + alignRoot)
     s.loadPolyfit(dpMscAlign + polyRoot, accel=0)
 
-    
+
     ### NOT DONE YET ###

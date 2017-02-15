@@ -32,9 +32,50 @@ class OB150211(analysis.Analysis):
 
         # Override some of the default parameters
         self.calFlags = '-f 1 -R -s 1 '
-        self.calFile = '/u/jlu/data/microlens/source_list/ob150211_photo.dat'
+        self.calFile = rootDir + 'source_list/ob150211_photo.dat'
 
-        self.labellist = '/u/jlu/data/microlens/source_list/ob150211_label.dat'
+        self.labellist = rootDir + 'source_list/ob150211_label.dat'
+        self.orbitlist = None
+
+        # Fix align flags for all the W51 fields.
+        # Otherwise, align is using too many faint stars.
+        self.alignFlags += ' -m 18 '
+
+class OB150029(analysis.Analysis):
+    def __init__(self, epoch, filt, rootDir='/Users/nijaid/Microlens/data/microlens/',
+                 epochDirSuffix=None, cleanList='c.lis'):
+        # Setup some W51a specific parameters
+        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+
+        filt_field = 'ob150029_' + filt
+
+        # Initialize the Analysis object
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
+                                     rootDir=rootDir,
+                                     epochDirSuffix=epochDirSuffix,
+                                     cleanList=cleanList)
+
+        # Use the field to set the psf starlist
+        self.starlist = rootDir + 'source_list/ob150029_psf.list'
+
+        ##########
+        # Setup the appropriate calibration stuff.
+        ##########
+        # Use the default stars
+        self.calStars = None
+
+        # Choose the column based on the filter
+        self.calColumn = self.mapFilter2Cal[filt]
+
+        # Set the coo star
+        self.cooStar = 'psf_000'
+        self.calCooStar = self.cooStar
+
+        # Override some of the default parameters
+        self.calFlags = '-f 1 -R -s 1 '
+        self.calFile = rootDir + 'source_list/ob150029_photo.dat'
+
+        self.labellist = rootDir + 'source_list/ob150029_label.dat'
         self.orbitlist = None
 
         # Fix align flags for all the W51 fields.
