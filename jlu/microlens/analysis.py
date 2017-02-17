@@ -2,7 +2,7 @@ from nirc2.reduce import analysis
 
 <<<<<<< HEAD
 class OB150211(analysis.Analysis):
-    def __init__(self, epoch, filt, rootDir='/Users/nijaid/Microlens/data/microlens/',
+    def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
                  epochDirSuffix=None, cleanList='c.lis'):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
