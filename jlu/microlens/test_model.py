@@ -283,6 +283,7 @@ def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, out
     xS_n = pspl_n.get_astrometry(t)
     xS_p_unlens = pspl_p.get_astrometry_unlensed(t)
     xS_p_lensed = pspl_p.get_astrometry(t)
+    xL_p = pspl_p.get_lens_astrometry(t)
 
     # Plot the amplification
     fig1 = plt.figure(1)
@@ -309,20 +310,23 @@ def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, out
     # Plot the positions of everything
     fig2 = plt.figure(2)
     plt.clf()
-    plt.plot(xS_n[:, 0] * 1e3, xS_n[:, 1] * 1e3, 'r--', mfc='none', mec='red', label='No parallax model')
-    plt.plot(xS_p_unlens[:, 0] * 1e3, xS_p_unlens[:, 1] * 1e3, 'b--', mfc='none', mec='blue',
-             label='Parallax model, unlensed')
-    plt.plot(xS_p_lensed[:, 0] * 1e3, xS_p_lensed[:, 1] * 1e3, 'b-', label='Parallax model, lensed')
+    plt.plot(xS_n[:, 0] * 1e3, xS_n[:, 1] * 1e3, 'r--',
+                 mfc='none', mec='red', label='Src, No parallax model')
+    plt.plot(xS_p_unlens[:, 0] * 1e3, xS_p_unlens[:, 1] * 1e3, 'b--',
+                 mfc='none', mec='blue',
+             label='Src, Parallax model, unlensed')
+    plt.plot(xL_p[:, 0] * 1e3, xL_p[:, 1] * 1e3, 'k--',
+                 mfc='none', mec='grey', label='Lens')
+    plt.plot(xS_p_lensed[:, 0] * 1e3, xS_p_lensed[:, 1] * 1e3, 'b-', label='Src, Parallax model, lensed')
     plt.legend(fontsize=10)
-    # plt.gca().invert_xaxis()
-    # lim = 0.05
-    # plt.xlim(lim, -lim) # arcsec
-    # plt.ylim(-lim, lim)
-    # plt.xlim(0.006, -0.006) # arcsec
-    # plt.ylim(-0.02, 0.02)
-    plt.axis('equal')
+    plt.gca().invert_xaxis()
     plt.xlabel('R.A. (mas)')
     plt.ylabel('Dec. (mas)')
+    plt.axis('equal')
+    lim = 10
+    print('LIM = ', lim)
+    plt.xlim(lim, -lim) # arcsec
+    plt.ylim(-lim, lim)
     plt.savefig(outdir + 'on_sky.png')
 
     # Check just the astrometric shift part.

@@ -51,8 +51,8 @@ def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120
                 lines.append(line)
         f.close()
 
-        msg = 'Keeping {0} of {1} stars within 4" in {2}'
-        print( msg.format(len(indgood), Nstars, Starlist) )
+        msg = 'Keeping {0} of {1} stars within {2:3.1f}" in {3}'
+        print( msg.format(len(indgood), Nstars, radius_cut_in_mas*1e-3, Starlist) )
         
         str1, str2 = Starlist.split('.lis')
         newName = str1 + '_radTrim.lis'

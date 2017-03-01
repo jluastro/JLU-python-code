@@ -1,7 +1,7 @@
 import pylab as py
 import numpy as np
 from astropy.table import Table
-from astropy.modeling imoprt models
+from astropy.modeling import models
 import matplotlib.pyplot as plt
 from scipy import interpolate
 import scipy
@@ -29,8 +29,7 @@ def mcmc_run(catalog, outdir, trans_order):
     poly2d = models.Polynomial2D(trans_order)
     N_par_trans_per_epoch = 2.0 * poly2d.get_num-coeff(2)  # one poly2d for each dimension (X, Y)
     N_par_trans = N_par_trans_per_epoch * N_epochs
-    
-    
+
     def priors(cube, ndim, nparams):
         return   
 	
@@ -38,12 +37,9 @@ def mcmc_run(catalog, outdir, trans_order):
         # Make the polynomial transforms
         poly2d_x = []
         poly2d_y = []
+
         for ee in range(N_epochs):
-            
-        trans_coeffs = params[0:N_par_trans]
-        
-        
-        
+            trans_coeffs = params[ee*N_par_trans:N_par_trans]
 
         return lnlike
 		

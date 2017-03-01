@@ -168,6 +168,11 @@ class OB120169(analysis.Analysis):
         # Use the field to set the psf starlist
         self.starlist = self.rootDir + 'source_list/ob120169_psf.list'
 
+        # Set up some extra starfinder keywords to optimize PSF handling.
+        self.stf_extra_args = ', psfSize=2.0, trimfake=0' # 2 arcsec
+        self.corrMain = 0.7
+        self.corrSub = 0.5
+
         ##########
         # Setup the appropriate calibration stuff.
         ##########
