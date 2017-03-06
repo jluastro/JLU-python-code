@@ -40,7 +40,7 @@ def setup_phot(imageRoot, silent=False,
         ir.datapars.datamax = max
 
         if not silent:
-            print 'Set ir.datapars.datamax = %d' % max
+            print( 'Set ir.datapars.datamax = %d' % max)
 
     # Pull gain from the header
     ir.datapars.gain = 'GAIN'
@@ -141,7 +141,7 @@ def get_phot_output(output, silent=False):
 
         if (int(pierFields[rr]) != 0 or magFields[rr] == 'INDEF' or
             merrFields[rr] == 'INDEF'):
-            print 'Problem in image: ' + output
+            print( 'Problem in image: ' + output)
 
             # Error
             flux[rr] = 0
@@ -153,10 +153,10 @@ def get_phot_output(output, silent=False):
             merr[rr] = float(merrFields[rr])
 
     if not silent:
-        print '%6s  %10s  %6s  %6s' % ('Radius', 'Flux', 'Mag', 'MagErr')
+        print( '%6s  %10s  %6s  %6s' % ('Radius', 'Flux', 'Mag', 'MagErr'))
         for ii in range(count):
-            print '%8.1f  %10d  %6.3f  %6.3f' % \
-                (radius[ii], flux[ii], mag[ii], merr[ii])
+            print( '%8.1f  %10d  %6.3f  %6.3f' % \
+                (radius[ii], flux[ii], mag[ii], merr[ii]))
     
     return (radius, flux, mag, merr)
 
@@ -179,8 +179,8 @@ def get_filter_profile(filter):
                'Hcont', 'Brgamma', 'FeII']
 
     if filter not in filters:
-        print 'Could not find profile for filter %s.' % filter
-        print 'Choices are: ', filters
+        print( 'Could not find profile for filter %s.' % filter)
+        print( 'Choices are: ', filters)
         return
 
     table = atpy.Table(rootDir + filter + '.dat', type='ascii')
@@ -214,7 +214,7 @@ def test_filter_profile_interp():
     Lp_wave, Lp_trans = get_filter_profile('Lp')
 
     # We will need to resample these transmission curves.
-    print 'Creating interp object'
+    print( 'Creating interp object')
     K_interp = interpolate.splrep(K_wave, K_trans, k=1, s=0)
     Kp_interp = interpolate.splrep(Kp_wave, Kp_trans, k=1, s=0)
     Ks_interp = interpolate.splrep(Ks_wave, Ks_trans, k=1, s=0)
@@ -229,7 +229,7 @@ def test_filter_profile_interp():
     H_wave_new = np.arange(H_wave.min(), H_wave.max(), 0.0005)
     Lp_wave_new = np.arange(Lp_wave.min(), Lp_wave.max(), 0.0005)
 
-    print 'Interpolating'
+    print( 'Interpolating')
     K_trans_new = interpolate.splev(K_wave_new, K_interp)
     Kp_trans_new = interpolate.splev(Kp_wave_new, Kp_interp)
     Ks_trans_new = interpolate.splev(Ks_wave_new, Ks_interp)
@@ -237,7 +237,7 @@ def test_filter_profile_interp():
     H_trans_new = interpolate.splev(H_wave_new, H_interp)
     Lp_trans_new = interpolate.splev(Lp_wave_new, Lp_interp)
 
-    print 'Plotting'
+    print( 'Plotting')
 #     py.figure(2, figsize=(4,4))
 #     py.subplots_adjust(left=0.2, bottom=0.14, top=0.95, right=0.94)
     py.clf()
