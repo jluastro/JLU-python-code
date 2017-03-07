@@ -52,11 +52,11 @@ def cardelli(wavelength, Rv):
     
     # check for applicability
     if (x < 0.3):
-        print 'wavelength is longer than applicable range for Cardelli law'
+        print( 'wavelength is longer than applicable range for Cardelli law')
         return None
 
     if (x > 8.0):
-        print 'wavelength is shorter than applicable range for Cardelli law'
+        print( 'wavelength is shorter than applicable range for Cardelli law')
         return None
 
     y = x - 1.82
