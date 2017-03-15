@@ -380,13 +380,13 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
                  epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
         """
-        For MB980006 reduction:
+        For MB960005 reduction:
 
         epoch -- '11may' for example
         filt -- 'kp', 'lp', or 'h'
         """
         # Setup some MB960005 specific parameters
-        self.mapFilter2Cal = {'kp': 3, 'h': 2, 'j': 1}
+        self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
 
         filt_field = 'mb960005_' + filt
 
