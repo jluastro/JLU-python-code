@@ -1,4 +1,5 @@
 from nirc2.reduce import analysis
+import pdb
 
 class OB140613(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
@@ -331,11 +332,8 @@ class MB980006(analysis.Analysis): # Made using OB120169 as reference
         For MB980006 reduction:
 
         epoch -- '11may' for example
-        filt -- 'kp', 'lp', or 'h'
+        filt -- 'kp'  or 'h'
         """
-        # Setup some W51a specific parameters
-        self.mapFilter2Cal = {'kp': 3, 'h': 2, 'j': 1}
-
         filt_field = 'mb980006_' + filt
 
         # Initialize the Analysis object
@@ -343,6 +341,9 @@ class MB980006(analysis.Analysis): # Made using OB120169 as reference
                                      rootDir=rootDir,
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
+        
+        # Setup some MB980006 specific parameters.
+        self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
 
         # Use the field to set the psf starlist
         self.starlist = self.rootDir + 'source_list/mb980006_psf.list'
@@ -355,6 +356,7 @@ class MB980006(analysis.Analysis): # Made using OB120169 as reference
 
         # Choose the column based on the filter
         self.calColumn = self.mapFilter2Cal[filt]
+        print(filt, self.calColumn)
 
         # Set the coo star
         self.cooStar = 'MB980006'
@@ -383,7 +385,7 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
         epoch -- '11may' for example
         filt -- 'kp', 'lp', or 'h'
         """
-        # Setup some W51a specific parameters
+        # Setup some MB960005 specific parameters
         self.mapFilter2Cal = {'kp': 3, 'h': 2, 'j': 1}
 
         filt_field = 'mb960005_' + filt
