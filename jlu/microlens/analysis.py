@@ -334,7 +334,7 @@ class MB980006(analysis.Analysis): # Made using OB120169 as reference
         filt -- 'kp', 'lp', or 'h'
         """
         # Setup some W51a specific parameters
-        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+        self.mapFilter2Cal = {'kp': 3, 'h': 2, 'j': 1}
 
         filt_field = 'mb980006_' + filt
 
@@ -384,7 +384,7 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
         filt -- 'kp', 'lp', or 'h'
         """
         # Setup some W51a specific parameters
-        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+        self.mapFilter2Cal = {'kp': 3, 'h': 2, 'j': 1}
 
         filt_field = 'mb960005_' + filt
 
