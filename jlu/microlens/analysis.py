@@ -388,7 +388,7 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
         # Setup some MB960005 specific parameters
         self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
 
-        filt_field = 'MB960005_' + filt
+        filt_field = 'mb960005_' + filt
 
         # Initialize the Analysis object
         analysis.Analysis.__init__(self, epoch, filt=filt_field,
