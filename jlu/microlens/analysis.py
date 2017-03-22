@@ -2,7 +2,7 @@ from nirc2.reduce import analysis
 
 class OB140613(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
-                 epochDirSuffix=None, cleanList='c.lis'):
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
 
@@ -37,13 +37,17 @@ class OB140613(analysis.Analysis):
         self.labellist = rootDir + 'source_list/ob140613_label.dat'
         self.orbitlist = None
 
-        # Fix align flags for all the W51 fields.
-        # Otherwise, align is using too many faint stars.
-        self.alignFlags += ' -m 18 '
+        # Fix align flags for all the W51 fields. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
+
+        self.plotPosMagCut = 17.0
+
+        return
+
 
 class OB150211(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
-                 epochDirSuffix=None, cleanList='c.lis'):
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
 
@@ -78,13 +82,17 @@ class OB150211(analysis.Analysis):
         self.labellist = rootDir + 'source_list/ob150211_label.dat'
         self.orbitlist = None
 
-        # Fix align flags for all the W51 fields.
-        # Otherwise, align is using too many faint stars.
-        self.alignFlags += ' -m 18 '
+        # Fix align flags for all the W51 fields. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
+
+        self.plotPosMagCut = 17.0
+
+        return
+
 
 class OB150029(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
-                 epochDirSuffix=None, cleanList='c.lis'):
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
 
@@ -119,10 +127,12 @@ class OB150029(analysis.Analysis):
         self.labellist = rootDir + 'source_list/ob150029_label.dat'
         self.orbitlist = None
 
-        # Fix align flags for all the W51 fields.
-        # Otherwise, align is using too many faint stars.
-        self.alignFlags += ' -m 18 '
+        # Fix align flags for all the W51 fields. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
 
+        self.plotPosMagCut = 17.0
+
+        return
 
 class OB110061(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
