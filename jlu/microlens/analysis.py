@@ -409,7 +409,7 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
         self.calColumn = self.mapFilter2Cal[filt]
 
         # Set the coo star
-        self.cooStar = 'MB960005'
+        self.cooStar = 'S04_12_3.4'
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
