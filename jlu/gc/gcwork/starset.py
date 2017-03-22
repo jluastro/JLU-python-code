@@ -36,7 +36,7 @@ class StarSet(object):
             self.t = trans
 
         # Load up tables
-        _date = Table.read(root + '.date')
+        _date = open(root + '.date', 'r')
         f_pos = open(root + '.pos', 'r')
         f_err = open(root + '.err', 'r')
         f_mag = open(root + '.mag', 'r')
@@ -46,13 +46,14 @@ class StarSet(object):
         f_opos = open(root + '.origpos', 'r')
         f_b0 = open(root + '.b0', 'r')
 
-        numEpochs = _date.ncols
+        dates = _date.readline().split()
+        numEpochs = len(dates)
 
         # Make an infinity float to compare against
         Inf = float('inf')
 
         # Read epochs
-        years = [_date[i][0] for i in range(numEpochs)]
+        years = [float(dates[i]) for i in range(numEpochs)]
         dates = ['%4d' % math.floor(year) for year in years]
 
         objects.Star.years = years
