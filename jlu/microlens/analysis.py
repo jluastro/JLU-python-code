@@ -395,8 +395,6 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
         epoch -- '11may' for example
         filt -- 'kp', 'lp', or 'h'
         """
-        # Setup some MB960005 specific parameters
-        self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
 
         filt_field = 'mb960005_' + filt
 
@@ -405,6 +403,9 @@ class MB960005(analysis.Analysis): # Made using OB120169 as reference
                                      rootDir=rootDir,
                                      epochDirSuffix=epochDirSuffix,
                                      cleanList=cleanList)
+
+        # Setup some MB960005 specific parameters
+        self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
 
         # Use the field to set the psf starlist
         self.starlist = self.rootDir + 'source_list/mb960005_psf.list'
