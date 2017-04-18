@@ -1,5 +1,5 @@
 import os, sys
-import asciidata
+from astropy.table import Table # in place of asciidata
 import math
 import numpy as np
 import objects
@@ -36,7 +36,7 @@ class StarSet(object):
             self.t = trans
 
         # Load up tables
-        _date = asciidata.open(root + '.date')
+        _date = open(root + '.date', 'r')
         f_pos = open(root + '.pos', 'r')
         f_err = open(root + '.err', 'r')
         f_mag = open(root + '.mag', 'r')
@@ -46,21 +46,22 @@ class StarSet(object):
         f_opos = open(root + '.origpos', 'r')
         f_b0 = open(root + '.b0', 'r')
 
-        numEpochs = _date.ncols
+        dates = _date.readline().split()
+        numEpochs = len(dates)
 
         # Make an infinity float to compare against
         Inf = float('inf')
 
         # Read epochs
-        years = [_date[i][0] for i in range(numEpochs)]
+        years = [float(dates[i]) for i in range(numEpochs)]
         dates = ['%4d' % math.floor(year) for year in years]
 
         objects.Star.years = years
 
         self.years = np.array(years)
         self.dates = np.array(dates)
-    
-        self.stars = []    
+
+        self.stars = []
         for line in f_pos:
             _pos = line.split()
             _err = f_err.readline().split()
@@ -92,7 +93,7 @@ class StarSet(object):
             (star.x, star.y) = \
                 util.rPix2Arc(star.x, star.y, self.t, relErr=self.relErr)
             (star.vx, star.vy, star.vxerr, star.vyerr) = \
-                util.verrPix2Arc(star.vx, star.vy, star.vxerr, star.vyerr, 
+                util.verrPix2Arc(star.vx, star.vy, star.vxerr, star.vyerr,
                                  self.t, relErr=self.relErr)
             (star.v2d, star.v2derr) = \
                 util.errPix2Arc(star.v2d, star.v2derr, self.t,
@@ -113,9 +114,9 @@ class StarSet(object):
             star.setFitpXalign(t0, x0, x0err, vx, vxerr)
             star.setFitpYalign(t0, y0, y0err, vy, vyerr)
 
-            (x0, y0, x0err, y0err) = util.rerrPix2Arc(x0, y0, x0err, y0err, 
+            (x0, y0, x0err, y0err) = util.rerrPix2Arc(x0, y0, x0err, y0err,
                                                       self.t, relErr=self.relErr)
-            (vx, vy, vxerr, vyerr) = util.verrPix2Arc(vx, vy, vxerr, vyerr, 
+            (vx, vy, vxerr, vyerr) = util.verrPix2Arc(vx, vy, vxerr, vyerr,
                                                       self.t, relErr=self.relErr)
             star.setFitXalign(t0, x0, x0err, vx, vxerr)
             star.setFitYalign(t0, y0, y0err, vy, vyerr)
@@ -157,11 +158,11 @@ class StarSet(object):
 
                 # Convert stuff into arcseconds
                 (ep.x, ep.y, ep.xerr_p, ep.yerr_p) = \
-                    util.rerrPix2Arc(ep.xpix, ep.ypix, ep.xpixerr_p, ep.ypixerr_p, 
+                    util.rerrPix2Arc(ep.xpix, ep.ypix, ep.xpixerr_p, ep.ypixerr_p,
                                      self.t, relErr=self.relErr)
 
                 (ep.x, ep.y, ep.xerr_a, ep.yerr_a) = \
-                    util.rerrPix2Arc(ep.xpix, ep.ypix, ep.xpixerr_a, ep.ypixerr_a, 
+                    util.rerrPix2Arc(ep.xpix, ep.ypix, ep.xpixerr_a, ep.ypixerr_a,
                                      self.t, relErr=self.relErr)
 
     def loadList(self, suffix='.list'):
@@ -173,10 +174,10 @@ class StarSet(object):
 
         for line in _list:
             parts = line.split()
-            
+
             fileName.append(parts[0])
             dataType.append(int(parts[1]))
-            
+
             if len(parts) > 2 and parts[-1] == 'ref':
                 isRef.append(True)
             else:
@@ -197,7 +198,7 @@ class StarSet(object):
         self.datatype = dataType
         self.starlist_is_ref = isRef
 
-        
+
     def loadStarsUsed(self):
         _used = open(self.root + '.starsUsed', 'r')
 
@@ -220,7 +221,7 @@ class StarSet(object):
             for ee in range(len(parts)):
                 if parts[ee] == '---':
                     continue
-                
+
                 try:
                     ss = names.index(parts[ee])
                     self.stars[ss].e[ee].isUsed = True
@@ -228,16 +229,16 @@ class StarSet(object):
                     pass
 
         return
-    
+
     def loadPoints(self, pointsDir):
         """
-        Loads .points and .phot files. The following variables are 
+        Loads .points and .phot files. The following variables are
         created for each star:
 
         star.pointsCnt - the number of rows in the points file
         star.e[ee].pnt_x
         star.e[ee].pnt_y
-        star.e[ee].pnt_xe 
+        star.e[ee].pnt_xe
         star.e[ee].pnt_ye
 
         star.e[ee].phot_r
@@ -259,14 +260,14 @@ class StarSet(object):
 
         for ss in range(len(self.stars)):
             star = self.stars[ss]
-        
+
             # Number of Epochs Detected should be corrected
             # for epochs trimmed out of the *.points files.
             pntsFile = '%s%s.points' % (pointsDir, star.name)
-            _pnts = asciidata.open(pntsFile)
+            _pnts = Table.read(pntsFile)
 
             photFile = '%s%s.phot' % (pointsDir, star.name)
-            _phot = asciidata.open(photFile)
+            _phot = Table.read(photFile)
 
             star.pointsCnt = _pnts.nrows
             if star.pointsCnt == 0:
@@ -305,7 +306,7 @@ class StarSet(object):
             for ee in range(len(star.years)):
                 ttPnts = (np.where(abs(pntDate - star.years[ee]) < 0.001))[0]
                 ttPhot = (np.where(abs(photDate - star.years[ee]) < 0.001))[0]
-                
+
 
                 if (len(ttPnts) == 0):
                     star.e[ee].pnt_x = -1000.0
@@ -351,7 +352,7 @@ class StarSet(object):
 
         # Get the align names array, since we will index out of it a lot.
         names = np.array([star.name for star in self.stars])
-        
+
         alignIdx = 0
         trimIdx = []
 
@@ -362,7 +363,7 @@ class StarSet(object):
             # First line should be a header line with "#" as the first letter
             if _fit[0].startswith("#"):
                 # Determine the number of coefficients in this file.
-                # Columns are 1 starname, 2*2 for chiSq and Q (x and y), 
+                # Columns are 1 starname, 2*2 for chiSq and Q (x and y),
                 # and 2*2*(N) for x and y coefficients and their
                 # associated errors for each order of the polynomial
                 # where N is the number of coefficients.
@@ -371,7 +372,7 @@ class StarSet(object):
                 continue
 
             # Assume that the stars loaded from align are in the same
-            # order as the polyfit output. 
+            # order as the polyfit output.
             if names[alignIdx] != _fit[0]:
                 if silent == False:
                     print '%-13s: Mis-match in align and polyfit...' % _fit[0]
@@ -382,15 +383,15 @@ class StarSet(object):
                         trimIdx.append(alignIdx)
                     else:
                         msg = '\t skipping '
-    
+
                     if silent == False:
                         print '%s %s' % (msg, names[alignIdx])
                     alignIdx += 1
-                    
+
 
             star = self.stars[alignIdx]
             alignIdx += 1
-            
+
             t0x = float(_t0[1])
             t0y = float(_t0[2])
 
@@ -457,17 +458,17 @@ class StarSet(object):
 
             if (arcsec):
                 (fitx.p, fity.p, fitx.perr, fity.perr) = \
-                         util.rerrPix2Arc(fitx.p, fity.p, fitx.perr, fity.perr, 
+                         util.rerrPix2Arc(fitx.p, fity.p, fitx.perr, fity.perr,
                       self.t, relErr=self.relErr)
 
 
                 (fitx.v, fity.v, fitx.verr, fity.verr) = \
-                         util.verrPix2Arc(fitx.v, fity.v, fitx.verr, fity.verr, 
+                         util.verrPix2Arc(fitx.v, fity.v, fitx.verr, fity.verr,
                       self.t, relErr=self.relErr)
 
                 if (accel == 1):
                     (fitx.a, fity.a, fitx.aerr, fity.aerr) = \
-                             util.aerrPix2Arc(fitx.a, fity.a, fitx.aerr, 
+                             util.aerrPix2Arc(fitx.a, fity.a, fitx.aerr,
                           fity.aerr,
                           self.t, relErr = self.relErr)
 
@@ -487,23 +488,23 @@ class StarSet(object):
     def loadEfitResults(self, efitRoot, trimStars=0, orbitsOnly=0):
         accelFile = efitRoot + '.acclim'
         orbitsFile = efitRoot + '.orbits'
- 
+
         # Load up acceleration limits for the young stars
         if (orbitsOnly == 1):
             efits = objects.Efit.loadOrbits(orbitsFile)
         else:
             efits = objects.Efit.loadAcclim(accelFile)
             efits = objects.Efit.loadOrbits(orbitsFile, efitSet=efits)
- 
+
         efitNames = [efit.name for efit in efits]
- 
+
         names = [star.name for star in self.stars]
-    
+
         # Keep list of stars with efit matches
         newStars = []
         # Keep list of star names with multiple efit matches
-        dupNames = [] 
- 
+        dupNames = []
+
         # Loop through efit objects and find name matches
         for efit in efits:
             try:
@@ -513,16 +514,16 @@ class StarSet(object):
 
                 print 'Failed to find efit data for %s' % efit.name
                 continue
- 
+
             # Select for the first one.
             try:
                 type(star.efit)
                 dupNames.append(star.name)
-     
+
                 # We are interested in the highest acceleration limit.
                 if (efit.at_hi > star.efit.at_hi):
                     star.efit.at_hi = efit.at_hi
-                    
+
                 # Modify orbital elements' limits to take the highest
                 # and lowest
                 if (efit.omega_lo < star.efit.omega_lo):
@@ -551,15 +552,15 @@ class StarSet(object):
                     star.efit.phase_hi = efit.phase_hi
             except AttributeError, e:
                 star.efit = efit
-        
-            if (trimStars == 1): 
+
+            if (trimStars == 1):
                 newStars.append(star)
- 
+
         # Are we keeping only those stars with efit matches?
         if (trimStars == 1):
             self.stars = newStars
- 
- 
+
+
     def onlyYoungDisk(self):
         """
         Trim the starlist down to only those known young stars
@@ -578,7 +579,7 @@ class StarSet(object):
             try:
                 idx = names.index(name)
                 star = self.stars[idx]
-        
+
                 if (star.r2d >= 0.8):
                     stars.append(star)
 
@@ -597,54 +598,54 @@ class StarSet(object):
     def getArray(self, varName):
         """Turn an attribute hanging off the list of stars into
         an array.
-        
+
         @param varName A string of the requested variable name (e.g. 'x')
         @type varName String
-    
+
         @return objArray
         @rtype Either list or Numarray array
         """
         objNames = varName.split('.')
-    
+
         objList = self.stars
         for name in objNames:
             #objList = [obj.__getattribute__(name) for obj in objList]
             # returns NaN by default if the attribute doesn't exist
             objList = [getattr(obj,name,np.nan) for obj in objList]
-    
+
             if (type(objList[0]) == type('')):
                 # Strings shouldn't be numpy arrays
                 objArray = objList
             else:
                 objArray = np.array(objList)
-    
+
         return objArray
 
 
     def getArrayFromEpoch(self, epochIndex, varName):
         """Turn an attribute hanging off the list of stars' epochs
         list into an array. Only select froma specific epoch.
-        
+
         @type epochIndex integer
         @param epochIndex the zero-based index for the epoch to select from.
         @type varName String
         @param varName A string of the requested variable name (e.g. 'x')
-    
+
         @return objArray
         @rtype Either list or Numarray array
         """
         objNames = varName.split('.')
-    
+
         objList = [star.e[epochIndex] for star in self.stars]
         for name in objNames:
             objList = [obj.__getattribute__(name) for obj in objList]
-    
+
             if (type(objList[0]) == type('')):
                 # Strings shouldn't be numpy arrays
                 objArray = objList
             else:
                 objArray = np.array(objList)
-    
+
         return objArray
 
     def getArrayFromAllEpochs(self, varName):
@@ -672,5 +673,3 @@ class StarSet(object):
         objArray = np.array(objList)
 
         return objArray
-
-

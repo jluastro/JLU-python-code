@@ -7,7 +7,6 @@ import math
 from astropy import constants as const
 from astropy import units
 import pdb
-import ephem
 from astropy.time import Time
 import time
 
@@ -210,6 +209,8 @@ class PSPL_parallax(PSPL):
         """
         INPUTS:
         ###############################################################################
+        raL: Right ascension of the lens in decimal hours.
+        decL: Declination of the lens in decimal degrees. 
         t0: Time of photometric peak, as seen from Earth (MJD.DDD)
         mL: Mass of the lens (Msun)
         xS0: vector [RA, Dec] Source position on sky at t = t0 (arcsec) in an arbitrary ref. frame.
@@ -260,6 +261,13 @@ class PSPL_parallax(PSPL):
         return shift
 
     def get_astrometry_unlensed(self, t_obs):
+        """Get the astrometry of the source if the lens didn't exist.
+
+        Return
+        -------
+        xS_unlensed : numpy array, dtype=float, shape = len(t_obs) x 2
+            The unlensed positions of the source in arcseconds. 
+        """
         # Get the parallax vector for each date.
         parallax_vec = parallax_in_direction(self.raL, self.decL, t_obs)
 
@@ -358,8 +366,8 @@ def parallax_in_direction(RA, Dec, mjd):
     cosd = np.cos(np.radians(Dec))
     sind = np.sin(np.radians(Dec))
 
-    par_E = (cose*cosa*sinl - sina*cosl) * R_e_s
-    par_N = ((sine*cosd - cose*sina*sind) * sinl - cosa*sind*cosl) * R_e_s
+    par_E = (cose*cosa*sinl - sina*cosl) * -R_e_s   # Check this sign.
+    par_N = ((sine*cosd - cose*sina*sind) * sinl - cosa*sind*cosl) * -R_e_s
 
     parallax_vec = np.array([par_E, par_N]).T
 

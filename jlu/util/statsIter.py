@@ -14,7 +14,7 @@ def mean(array, hsigma=None, lsigma=None, iter=0, verbose=False):
     cnt = len(arr)
 
     if verbose:
-        print '    Original: mean = %.3g' % (arr.mean())
+        print( '    Original: mean = %.3g' % (arr.mean()) )
 
     for ii in range(iter):
         mean = arr.mean()
@@ -31,8 +31,8 @@ def mean(array, hsigma=None, lsigma=None, iter=0, verbose=False):
         new_mean = arr.mean()
 
         if verbose:
-            print 'Iteration %2d: mean = %.3g (cut %d of %d)' % \
-                (ii, new_mean, cnt-len(arr), cnt)
+            print( 'Iteration %2d: mean = %.3g (cut %d of %d)' % \
+                (ii, new_mean, cnt-len(arr), cnt) )
 
     return new_mean
 
@@ -49,7 +49,7 @@ def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
     cnt = len(arr)
 
     if verbose:
-        print '    Original: std = %.3g' % (arr.std())
+        print( '    Original: std = %.3g' % (arr.std()) )
 
     for ii in range(iter):
         mean = arr.mean()
@@ -65,8 +65,8 @@ def std(array, hsigma=None, lsigma=None, iter=0, verbose=False):
         new_std = arr.std()
 
         if verbose:
-            print 'Iteration %2d: std = %.3g (cut %d of %d)' % \
-                (ii, new_std, cnt-len(arr), cnt)
+            print( 'Iteration %2d: std = %.3g (cut %d of %d)' % \
+                (ii, new_std, cnt-len(arr), cnt) )
 
     return new_std
 
@@ -141,10 +141,10 @@ def mean_std_clip(indata, clipsig=3.0, maxiter=5, converge_num=0.02,
 
     if verbose:
         prf = 'MEANCLIP:'
-        print '%s %.1f-sigma clipped mean' % (prf, clipsig)
-        print '%s Mean computed in %i iterations' % (prf, iter)
-        print '%s Clipped %i of %i stars' % (prf, indata.size - len(skpix), indata.size)
-        print '%s Mean = %.6f, sigma = %.6f' % (prf, mean, sigma)
+        print( '%s %.1f-sigma clipped mean' % (prf, clipsig) )
+        print( '%s Mean computed in %i iterations' % (prf, iter) )
+        print( '%s Clipped %i of %i stars' % (prf, indata.size - len(skpix), indata.size) )
+        print( '%s Mean = %.6f, sigma = %.6f' % (prf, mean, sigma) )
 
     if return_nclip:
         return mean, sigma, len(skpix)

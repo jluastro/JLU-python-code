@@ -1,6 +1,5 @@
 import numpy as np
 import pylab as py
-import pyfits
 import os
 import math
 import urllib
@@ -29,8 +28,8 @@ def get_geneva_isochrone(metallicity=0.02, logAge=8.0):
 
     
     if not os.path.exists(genevaFile):
-        print 'Geneva isochrone file does not exist:'
-        print '  ' + genevaFile
+        print( 'Geneva isochrone file does not exist:')
+        print( '  ' + genevaFile)
         return None
 
     table = Table.read(genevaFile, format='ascii')
@@ -74,7 +73,7 @@ def get_meynetmaeder_isochrone(logAge, metallicity=0.02, rotation=True):
     isoFile += 'iso_%.2f.dat' % logAge
     if not os.path.exists(isoFile):
         # Make an isochrone file.
-        print 'Generating new isochrone!!'
+        print( 'Generating new isochrone!!')
         make_isochrone_meynetmaeder(logAge, 
                                     metallicity=metallicity, 
                                     rotation=rotation)
@@ -149,7 +148,7 @@ def fetch_meynet_maeder_2003():
             contents = _file.read()
             _file.close()
     
-            print 'Saving %s' % file
+            print( 'Saving %s' % file)
 
             root = models_dir + 'geneva/meynetMaeder2003/'
             outfile = open(root + file, 'w')
@@ -185,7 +184,7 @@ def fetch_meynet_maeder_2005():
             contents = _file.read()
             _file.close()
     
-            print 'Saving %s' % file
+            print( 'Saving %s' % file)
 
             root = models_dir + 'geneva/meynetMaeder2005/'
             outfile = open(root + file, 'w')
@@ -220,7 +219,7 @@ def get_padova_isochrone(logAge, metallicity=0.02):
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
     if not os.path.exists(mod_dir + metSuffix):
-        print 'Failed to find Padova models for metallicity = ' + metSuffix
+        print( 'Failed to find Padova models for metallicity = ' + metSuffix)
         
     mod_dir += metSuffix + '/'
         
@@ -250,7 +249,7 @@ def get_siess_isochrone(logAge, metallicity=0.02):
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
     if not os.path.exists(pms_dir + metSuffix):
-        print 'Failed to find Siess PMS models for metallicity = ' + metSuffix
+        print( 'Failed to find Siess PMS models for metallicity = ' + metSuffix)
         
     pms_dir += metSuffix + '/'
         
@@ -260,7 +259,7 @@ def get_siess_isochrone(logAge, metallicity=0.02):
     isoFile += 'iso_%.2f.dat' % logAge
     if not os.path.exists(isoFile):
         # Make an isochrone file.
-        print 'Generating new isochrone!!'
+        print( 'Generating new isochrone!!')
         make_isochrone_siess(logAge, metallicity=metallicity)
 
     data = Table.read(isoFile, format='ascii')
@@ -296,13 +295,13 @@ def make_isochrone_siess(log_age, metallicity=0.02,
     outSuffix = '_%.2f' % (log_age)
 
     if not os.path.exists(rootDir):
-        print 'Failed to find Siess PMS models for metallicity = ' + metSuffix
+        print( 'Failed to find Siess PMS models for metallicity = ' + metSuffix)
 
-    print '*** Generating SIESS isochrone for log t = %.2f and Z = %.2f' % \
-        (log_age, metallicity)
+    print( '*** Generating SIESS isochrone for log t = %.2f and Z = %.2f' % \
+        (log_age, metallicity))
 
     if tracks is None:
-        print time.asctime(), 'Getting tracks.'
+        print( time.asctime(), 'Getting tracks.')
         t = get_siess_tracks()
     else:
         t = tracks
@@ -317,7 +316,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
     # highest mass vs. time and pull out the new highest mass at the
     # specified age. This is only necessary if the age we are interested
     # in is larger than the lifetimes of the stars in this model.
-    print time.asctime(), 'Getting highest mass.'
+    print( time.asctime(), 'Getting highest mass.')
     log_M_hi = highest_mass_at_age(log_age, t, test=test)
     log_M_lo = log_M.min()
     M_lo = 10**log_M_lo
@@ -326,7 +325,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
     # First we construct isochrones composed of only points
     # from the masses given in the tracks. Values along the 
     # track for each star are interpolated linearly with age.
-    print time.asctime(), 'Interpolate tracks to different age.'
+    print( time.asctime(), 'Interpolate tracks to different age.')
     iso = Isochrone(log_age)
     iso.M_init = t.masses
     iso.log_Teff = np.zeros(numStars, dtype=float)
@@ -358,7 +357,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
             # We have hit the end of the road. Add the last data point
             # for this too-massive star just to prevent the next round
             # of interpolations from failing.
-            print 'Adding too-massive track at %.2f' % t.masses[ss]
+            print( 'Adding too-massive track at %.2f' % t.masses[ss])
             iso.log_Teff[ss] = track.log_Teff[-1]
             iso.log_L[ss] = track.log_L[-1]
             iso.log_g[ss] = track.log_g[-1]
@@ -391,7 +390,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
     # Now we take these isochrones and interpolate to a more finely
     # sampled mass distribution. Values are interpolated linearly in
     # log M.
-    print time.asctime(), 'Interpolate across tracks to different masses.'
+    print( time.asctime(), 'Interpolate across tracks to different masses.')
     f_log_Teff = interpolate.interp1d(log_M, iso.log_Teff, kind='linear')
     f_log_L = interpolate.interp1d(log_M, iso.log_L, kind='linear')
     f_log_g = interpolate.interp1d(log_M, iso.log_g, kind='linear')
@@ -418,7 +417,7 @@ def make_isochrone_siess(log_age, metallicity=0.02,
         py.title('Siess+ 2000 Isochrone at log t = %.2f' % log_age)
         py.savefig(outDir + 'plots/hr_isochrone_at' + outSuffix + '.png')
 
-    print time.asctime(), 'Finished.'
+    print( time.asctime(), 'Finished.')
 
     # Write output to file
     _out = open(isoFile, 'w')
@@ -486,44 +485,44 @@ def test_merged_isochrones(logAge):
     py.savefig(models_dir + 'test/merged_iso_%.2f.eps' % logAge)
 
     # Print out information about the intersection points
-    print '##########'
-    print '# logAge = ' + str(logAge)
-    print '##########'
-    print 'Siess Intersection with Geneva'
-    print '%10s  %10s  %10s' % ('', 'Geneva', 'Siess')
-    print '%10s  %10.2f  %10.2f' % \
-        ('Mass', geneva.mass[genevaLowIdx], siess.mass[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logT', geneva.logT[genevaLowIdx], siess.logT[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logg', geneva.logg[genevaLowIdx], siess.logg[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logL', geneva.logL[genevaLowIdx], siess.logL[siessHighIdx])
-    print ''
+    print( '##########')
+    print( '# logAge = ' + str(logAge))
+    print( '##########')
+    print( 'Siess Intersection with Geneva')
+    print( '%10s  %10s  %10s' % ('', 'Geneva', 'Siess'))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('Mass', geneva.mass[genevaLowIdx], siess.mass[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logT', geneva.logT[genevaLowIdx], siess.logT[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logg', geneva.logg[genevaLowIdx], siess.logg[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logL', geneva.logL[genevaLowIdx], siess.logL[siessHighIdx]))
+    print( '')
 
-    print 'Meynet & Maeder Intersection with Geneva'
-    print '%10s  %10s  %10s' % ('', 'Geneva', 'MeynetMaed')
-    print '%10s  %10.2f  %10.2f' % \
-        ('Mass', geneva.mass[genevaHighIdx], mm.mass[mmLowIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logT', geneva.logT[genevaHighIdx], mm.logT[mmLowIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logg', geneva.logg[genevaHighIdx], mm.logg[mmLowIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logL', geneva.logL[genevaHighIdx], mm.logL[mmLowIdx])
-    print ''
+    print( 'Meynet & Maeder Intersection with Geneva')
+    print( '%10s  %10s  %10s' % ('', 'Geneva', 'MeynetMaed'))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('Mass', geneva.mass[genevaHighIdx], mm.mass[mmLowIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logT', geneva.logT[genevaHighIdx], mm.logT[mmLowIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logg', geneva.logg[genevaHighIdx], mm.logg[mmLowIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logL', geneva.logL[genevaHighIdx], mm.logL[mmLowIdx]))
+    print( '')
 
-    print 'Padova Intersection with Siess'
-    print '%10s  %10s  %10s' % ('', 'Padova', 'Siess')
-    print '%10s  %10.2f  %10.2f' % \
-        ('Mass', padova.mass[padovaLowIdx], siess.mass[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logT', padova.logT[padovaLowIdx], siess.logT[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logg', padova.logg[padovaLowIdx], siess.logg[siessHighIdx])
-    print '%10s  %10.2f  %10.2f' % \
-        ('logL', padova.logL[padovaLowIdx], siess.logL[siessHighIdx])
-    print ''
+    print( 'Padova Intersection with Siess')
+    print( '%10s  %10s  %10s' % ('', 'Padova', 'Siess'))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('Mass', padova.mass[padovaLowIdx], siess.mass[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logT', padova.logT[padovaLowIdx], siess.logT[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logg', padova.logg[padovaLowIdx], siess.logg[siessHighIdx]))
+    print( '%10s  %10.2f  %10.2f' % \
+        ('logL', padova.logL[padovaLowIdx], siess.logL[siessHighIdx]))
+    print( '')
 
 
 def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
@@ -585,18 +584,18 @@ def merge_all_isochrones_siess_mm_padova(metallicity=0.02, rotation=True):
         # Case where logAge <= 7.4, we merge with Meynet & Maeder
         if logAge <= 7.4:
             if isoFileS not in isoFilesMM:
-                print 'Skipping isochrones from ', isoFileS
+                print( 'Skipping isochrones from ', isoFileS)
                 continue
 
-            print 'Merging isochrones Siess+Meynet from ', isoFileS
+            print( 'Merging isochrones Siess+Meynet from ', isoFileS)
             iso = merge_isochrone_siess_mm(logAge, metallicity=metallicity,
                                            rotation=rotation)
         else:
             if isoFileS not in isoFilesP:
-                print 'Skipping isochrones from ', isoFileS
+                print( 'Skipping isochrones from ', isoFileS)
                 continue
                 
-            print 'Merging isochrones Siess+Padova from ', isoFileS
+            print( 'Merging isochrones Siess+Padova from ', isoFileS)
             iso = merge_isochrone_siess_padova(logAge, metallicity=metallicity)
             
         _out = open(outDir + isoFileS, 'w')
@@ -671,7 +670,7 @@ def merge_isochrone_siess_padova(logAge, metallicity=0.02):
     # Interpolate the Padvoa isochrone over a more finely sampled
     # mass distribution. Values are interpolated linearly in log M.
     isoP.logM = np.log10(isoP.mass)
-    print time.asctime(), 'Interpolate across track to different masses.'
+    print( time.asctime(), 'Interpolate across track to different masses.')
     f_logT = interpolate.interp1d(isoP.logM, isoP.logT, kind='linear')
     f_logL = interpolate.interp1d(isoP.logM, isoP.logL, kind='linear')
     f_logg = interpolate.interp1d(isoP.logM, isoP.logg, kind='linear')
@@ -702,8 +701,8 @@ def merge_isochrone_siess_padova(logAge, metallicity=0.02):
     idxP = np.where(isoP.mass > hiMassS)[0]
 
     if len(idxP) == 0:
-        print 'merge_isochrone_siess_padova: No valid Padvoa masses (log_age = %.2f, Z = %.2f)' % \
-            (logAge, metallicity)
+        print( 'merge_isochrone_siess_padova: No valid Padvoa masses (log_age = %.2f, Z = %.2f)' % \
+            (logAge, metallicity))
 
     # Combine the arrays
     M = np.append(isoS.mass, isoP.mass[idxP])
@@ -747,8 +746,8 @@ def get_merged_isochrone_PEP(logAge, metallicity=0.015):
     logAge must be between 6.0 - 8.0 in increments of 0.01
     """
     if metallicity != 0.015:
-        print 'Non-solar metallicities not supported yet!'
-        print 'Quitting'
+        print( 'Non-solar metallicities not supported yet!')
+        print( 'Quitting')
         return
 
     # Pre-calculated merged isochrones
@@ -757,8 +756,8 @@ def get_merged_isochrone_PEP(logAge, metallicity=0.015):
     isoFile += 'iso_%.2f.dat' % logAge
 
     if not os.path.exists(isoFile):
-        print 'Merged isochrone at logAge {0:3.2f} not created yet'.format(logAge)
-        print 'ERROR!!!!!'
+        print( 'Merged isochrone at logAge {0:3.2f} not created yet'.format(logAge))
+        print( 'ERROR!!!!!')
         return
 
     data = Table.read(isoFile, format='ascii')
@@ -775,7 +774,7 @@ def get_merged_isochrone_PEP(logAge, metallicity=0.015):
                      
 class StarTrack(object):
     def __init__(self, mass_init):
-	self.M_init = mass_init
+        self.M_init = mass_init
 
 class Isochrone(object):
     def __init__(self, log_age):
@@ -787,7 +786,7 @@ def get_siess_tracks(metallicity=0.02):
     metSuffix = 'z' + str(metallicity).split('.')[-1]
 
     if not os.path.exists(pms_dir + metSuffix):
-        print 'Failed to find Siess PMS models for metallicity = ' + metSuffix
+        print( 'Failed to find Siess PMS models for metallicity = ' + metSuffix)
         
     pms_dir += metSuffix + '/'
         
@@ -862,7 +861,7 @@ def highest_mass_at_age(log_age, t, test=False):
             test_log_age = np.arange(log_age_hi.min(), log_age_hi.max(), 0.05)
             py.plot(test_log_age, func_log_M(test_log_age), 'b-')
 
-    print 'Highest Mass at log(t) = %.2f is %.2f Msun' % (log_age, 10**log_M_hi)
+    print( 'Highest Mass at log(t) = %.2f is %.2f Msun' % (log_age, 10**log_M_hi))
 
     return log_M_hi
 
@@ -873,8 +872,8 @@ def old_meynetmaeder_code():
     files = glob.glob(rootDir + 'D*' + metalPart + rotPart + '*.dat')
 
     if len(files) == 0:
-        print 'Failed to find Meynet & Maeder models for metallicity = ' + \
-            metalPart
+        print( 'Failed to find Meynet & Maeder models for metallicity = ' + \
+            metalPart)
         return
         
 
@@ -975,7 +974,7 @@ def get_pisa_tracks(metallicity=0.015):
     pms_dir += metSuffix + '/'
 
     if not os.path.exists(pms_dir):
-        print 'Failed to find Siess PMS models for metallicity = ' + metSuffix
+        print( 'Failed to find Siess PMS models for metallicity = ' + metSuffix)
 
     # Collect the tracks 
     files = glob.glob(pms_dir + '*.DAT')
@@ -1038,7 +1037,7 @@ def get_orig_pisa_isochrones(metallicity=0.015):
     pms_dir += metSuffix + '/'
 
     if not os.path.exists(pms_dir):
-        print 'Failed to find Siess PMS isochrones for metallicity = ' + metSuffix
+        print( 'Failed to find Siess PMS isochrones for metallicity = ' + metSuffix)
         return
     
     # Collect the isochrones
@@ -1148,7 +1147,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
     ' isochrones is not as accurate. Do you wish to continue? (\'y\', \'n\', need quotes):')
 
     if cont == 'n':
-        print 'Code stopped'
+        print( 'Code stopped')
         return
     
     age = 10**log_age
@@ -1161,14 +1160,14 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
     outSuffix = '_%.2f' % (log_age)
 
     if not os.path.exists(rootDir):
-        print 'Failed to find Pisa PMS tracks for metallicity = ' + metSuffix
+        print( 'Failed to find Pisa PMS tracks for metallicity = ' + metSuffix)
         return
 
-    print '*** Generating Pisa isochrone for log t = %.2f and Z = %.3f' % \
-        (log_age, metallicity)
+    print( '*** Generating Pisa isochrone for log t = %.2f and Z = %.3f' % \
+        (log_age, metallicity))
 
     if tracks is None:
-        print time.asctime(), 'Getting tracks.'
+        print( time.asctime(), 'Getting tracks.')
         t = get_pisa_tracks()
     else:
         t = tracks
@@ -1183,7 +1182,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
     # highest mass vs. time and pull out the new highest mass at the
     # specified age. This is only necessary if the age we are interested
     # in is larger than the lifetimes of the stars in this model.
-    print time.asctime(), 'Getting highest mass.'
+    print( time.asctime(), 'Getting highest mass.')
     log_M_hi = highest_mass_at_age(log_age, t, test=test)
     log_M_lo = log_M.min()
     M_lo = 10**log_M_lo
@@ -1192,7 +1191,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
     # First we construct isochrones composed of only points
     # from the masses given in the tracks. Values along the 
     # track for each star are interpolated linearly with age.
-    print time.asctime(), 'Interpolate tracks to different age.'
+    print( time.asctime(), 'Interpolate tracks to different age.')
     iso = Isochrone(log_age)
     iso.M_init = t.masses
     iso.log_Teff = np.zeros(numStars, dtype=float)
@@ -1224,7 +1223,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
             # We have hit the end of the road. Add the last data point
             # for this too-massive star just to prevent the next round
             # of interpolations from failing.
-            print 'Adding too-massive track at %.2f' % t.masses[ss]
+            print( 'Adding too-massive track at %.2f' % t.masses[ss])
             iso.log_Teff[ss] = track.log_Teff[-1]
             iso.log_L[ss] = track.log_L[-1]
             iso.log_g[ss] = track.log_g[-1]
@@ -1257,7 +1256,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
     # Now we take these isochrones and interpolate to a more finely
     # sampled mass distribution. Values are interpolated linearly in
     # log M.
-    print time.asctime(), 'Interpolate across tracks to different masses.'
+    print( time.asctime(), 'Interpolate across tracks to different masses.')
     f_log_Teff = interpolate.interp1d(log_M, iso.log_Teff, kind='linear')
     f_log_L = interpolate.interp1d(log_M, iso.log_L, kind='linear')
     f_log_g = interpolate.interp1d(log_M, iso.log_g, kind='linear')
@@ -1284,7 +1283,7 @@ def make_isochrone_pisa_tracks(log_age, metallicity=0.015,
         py.title('Pisa 2011 Isochrone at log t = %.2f' % log_age)
         py.savefig(rootDir + 'plots/hr_isochrone_at' + outSuffix + '.png')
 
-    print time.asctime(), 'Finished.'
+    print( time.asctime(), 'Finished.')
 
     # Write output to file
     _out = open(isoFile, 'w')
@@ -1313,7 +1312,7 @@ def make_isochrone_pisa_iso(log_age, metallicity=0.015,
     """
     # If logage > 8.0, quit immediately...grid doesn't go that high
     if log_age > 8.0:
-        print 'Age too high for Pisa grid (max logAge = 8.0)'
+        print( 'Age too high for Pisa grid (max logAge = 8.0)')
         return
 
     # Directory with where the isochrones will go (both downloaded and interpolated)
@@ -1323,22 +1322,22 @@ def make_isochrone_pisa_iso(log_age, metallicity=0.015,
 
     # Can we find the isochrone directory?
     if not os.path.exists(rootDir):
-        print 'Failed to find Pisa PMS isochrones for metallicity = ' + metSuffix
+        print( 'Failed to find Pisa PMS isochrones for metallicity = ' + metSuffix)
         return
 
     # Check to see if isochrone at given age already exists. If so, quit
     if os.path.exists(rootDir+'iso_{0:3.2f}.dat'.format(log_age)):
-        print 'Isochrone at logAge = {0:3.2f} already exists'.format(log_age)
+        print( 'Isochrone at logAge = {0:3.2f} already exists'.format(log_age))
         return
     
     # Name/directory for interpolated isochrone
     isoFile = rootDir+'iso_%3.2f.dat' % log_age
     outSuffix = '_%.2f' % (log_age)
 
-    print '*** Generating Pisa isochrone for log t = %3.2f and Z = %.3f' % \
-        (log_age, metallicity)
+    print( '*** Generating Pisa isochrone for log t = %3.2f and Z = %.3f' % \
+        (log_age, metallicity))
 
-    print time.asctime(), 'Getting original Pisa isochrones.'
+    print( time.asctime(), 'Getting original Pisa isochrones.')
     iso = get_orig_pisa_isochrones()
 
     # First thing is to find the isochrones immediately above and below desired
@@ -1417,7 +1416,7 @@ def make_isochrone_pisa_iso(log_age, metallicity=0.015,
         py.title('Pisa 2011 Isochrone at log t = %.2f' % log_age)
         py.savefig(rootDir + 'plots/interp_isochrone_at' + outSuffix + '.png')
     
-    print time.asctime(), 'Finished.'
+    print( time.asctime(), 'Finished.')
 
     # Write output to file, MUST BE IN SAME ORDER AS ORIG FILES
     _out = open(isoFile, 'w')
@@ -1452,7 +1451,7 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     rootDir = models_dir + 'Ekstrom2012/iso/'
     metSuffix = 'z014/'
     if metallicity != 'solar':
-        print 'Non-solar Ekstrom+12 metallicities not supported yet'
+        print( 'Non-solar Ekstrom+12 metallicities not supported yet')
         return
     rotSuffix = 'rot/'
     if not rotation:
@@ -1463,8 +1462,8 @@ def get_Ekstrom_isochrone(logAge, metallicity='solar', rotation=True):
     # Check to see if isochrone exists
     isoFile = rootDir + 'iso_%.2f.dat' % logAge
     if not os.path.exists(isoFile):
-        print 'Ekstrom isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge)
-        print 'Quitting'
+        print( 'Ekstrom isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge))
+        print( 'Quitting')
         return
         
     data = Table.read(isoFile, format='ascii')
@@ -1531,15 +1530,15 @@ def get_parsec_isochrone(logAge, metallicity='solar'):
     rootDir = models_dir + 'ParsecV1.2s/iso/'
     metSuffix = 'z015/'
     if metallicity != 'solar':
-        print 'Non-solar Parsec 2011 metallicities not supported yet'
+        print( 'Non-solar Parsec 2011 metallicities not supported yet')
         return
     rootDir += metSuffix
 
     # Check to see if isochrone exists
     isoFile = rootDir + 'iso_%.2f.dat' % logAge
     if not os.path.exists(isoFile):
-        print 'Parsec isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge)
-        print 'Quitting'
+        print( 'Parsec isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge))
+        print( 'Quitting')
         return
         
     data = Table.read(isoFile, format='ascii')
@@ -1572,14 +1571,14 @@ def get_Baraffe15_isochrone(logAge, metallicity='solar'):
     """
     rootDir = models_dir + 'Baraffe15/iso/'
     if metallicity != 'solar':
-        print 'Non-solar Baraffe+15 metallicities not supported yet'
+        print( 'Non-solar Baraffe+15 metallicities not supported yet')
         return
 
     # Check to see if isochrone exists
     isoFile = rootDir + 'iso_%.2f.fits' % logAge
     if not os.path.exists(isoFile):
-        print 'Baraffe+15 isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge)
-        print 'Quitting'
+        print( 'Baraffe+15 isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge))
+        print( 'Quitting')
         return
         
     data = Table.read(isoFile, format='fits')
@@ -1661,15 +1660,15 @@ def get_pisa_isochrone(logAge, metallicity='solar'):
     rootDir = models_dir + 'Pisa2011/iso/'
     metSuffix = 'z015/'
     if metallicity != 'solar':
-        print 'Non-solar Pisa 2011 metallicities not supported yet'
+        print( 'Non-solar Pisa 2011 metallicities not supported yet')
         return
     rootDir += metSuffix
 
     # Check to see if isochrone exists
     isoFile = rootDir + 'iso_%.2f.dat' % logAge
     if not os.path.exists(isoFile):
-        print 'Pisa isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge)
-        print 'Quitting'
+        print( 'Pisa isochrone for logAge = {0:3.2f} does\'t exist'.format(logAge))
+        print( 'Quitting')
         return
         
     data = Table.read(isoFile, format='ascii')
@@ -1697,7 +1696,7 @@ def merge_isochrone_baraffe_pisa(logAge, metallicity='solar'):
     logAge = 6.0 - 8.0, delta logAge = 0.01
     """
     if metallicity != 'solar':
-        print 'Non-solar metallicity not supported yet'
+        print( 'Non-solar metallicity not supported yet')
         return
 
     # Get individual Baraffe and Pisa isochrones at desired age. Note
@@ -1726,8 +1725,7 @@ def merge_isochrone_baraffe_pisa(logAge, metallicity='solar'):
         # Quality control check: we won't let the difference between model mass and
         # chosen mass to be >= 0.01 M_sun
         if ((isoPisa.mass[idx_p] - mass) >= 0.02) | ((isoBaraffe.mass[idx_b] - mass) >= 0.02):
-            print 'WARNING: Baraffe or Pisa model interpolation between 0.4 - 0.5 M_sun may \
-            be inaccurate. Check this!'
+            print( 'WARNING: Baraffe or Pisa model interpolation between 0.4 - 0.5 M_sun may be inaccurate. Check this!')
             pdb.set_trace()
     
         # Now, do the linear combo of models at this mass, weighted by distance from
@@ -1735,7 +1733,7 @@ def merge_isochrone_baraffe_pisa(logAge, metallicity='solar'):
         diff = 0.5 - 0.4
         weight_b = (0.5 - mass) / diff
         weight_p = 1.0 - weight_b
-        print 'Baraffe {0} and Pisa {1} at mass {2}'.format(weight_b, weight_p, mass)
+        print( 'Baraffe {0} and Pisa {1} at mass {2}'.format(weight_b, weight_p, mass))
 
         # Now, do the merge IN LINEAR SPACE!
         Teff = (10**isoBaraffe.logT[idx_b] * weight_b) + \
@@ -1896,12 +1894,12 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
     rootDirE = models_dir + 'Ekstrom2012/iso'
     metalPart = '/z014'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return
     rotPart = '/rot'
     if not rotation:
         rotPart = '/rot'
-        print 'Ekstrom+12 non-rotation models not supported yet'
+        print( 'Ekstrom+12 non-rotation models not supported yet')
         return
     rootDirE += metalPart+rotPart+'/'
 
@@ -1909,7 +1907,7 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
     rootDirPisa = models_dir + 'Pisa2011/iso'
     metSuffix = '/z015'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return
     rootDirPisa += metSuffix + '/'
 
@@ -1917,7 +1915,7 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
     rootDirParsec = models_dir + 'ParsecV1.2s/iso'
     metalSuffix = '/z015'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return        
     rootDirParsec += metalSuffix + '/'
 
@@ -1952,18 +1950,18 @@ def merge_all_isochrones_pisa_ekstrom_parsec(metallicity='solar', rotation=True,
         # which parsec
         if logAge <= 7.4:
             if isoFilePi not in isoFilesE:
-                print 'Skipping isochrones from ', isoFilePi
+                print( 'Skipping isochrones from ', isoFilePi)
                 continue
 
-            print 'Merging isochrones Pisa+Ekstrom from ', isoFilePi
+            print( 'Merging isochrones Pisa+Ekstrom from ', isoFilePi)
             iso = merge_isochrone_pisa_Ekstrom(logAge, metallicity=metallicity,
                                                rotation=rotation)
         else:
             if isoFilePi not in isoFilesPa:
-                print 'Skipping isochrones from ', isoFilePi
+                print( 'Skipping isochrones from ', isoFilePi)
                 continue
                 
-            print 'Merging isochrones Pisa+Parsec from ', isoFilePi
+            print( 'Merging isochrones Pisa+Parsec from ', isoFilePi)
             iso = merge_isochrone_pisa_parsec(logAge, metallicity=metallicity)
 
 
@@ -2026,7 +2024,7 @@ def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotati
     rootDirE = models_dir + 'Ekstrom2012/iso/'
     metalPart = 'z014/'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return
     rotPart = 'rot/'
     if not rotation:
@@ -2040,7 +2038,7 @@ def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotati
     rootDirPisa = models_dir + 'Pisa2011/iso/'
     metSuffix = 'z015/'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return
     rootDirPisa += metSuffix
 
@@ -2048,7 +2046,7 @@ def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotati
     rootDirParsec = models_dir + 'ParsecV1.2s/iso/'
     metalSuffix = 'z015/'
     if metallicity != 'solar':
-        print 'Non-solar metallicities not supported yet'
+        print( 'Non-solar metallicities not supported yet')
         return        
     rootDirParsec += metalSuffix
 
@@ -2092,7 +2090,7 @@ def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotati
         # transition region between 0.4 - 0.5 M_sun in which we shift
         # from 100% Baraffe to 100% Pisa
 
-        print 'Merging isochrones Pisa + Baraffe from ', isoFilePi
+        print( 'Merging isochrones Pisa + Baraffe from ', isoFilePi)
         isoPMS = merge_isochrone_baraffe_pisa(logAge, metallicity=metallicity)
 
         #--------MAIN SEQUENCE-------#
@@ -2100,20 +2098,20 @@ def merge_all_isochrones_baraffe_pisa_ekstrom_parsec(metallicity='solar', rotati
         # which parsec
         if logAge <= 7.4:
             if isoFilePi not in isoFilesE:
-                print 'Skipping isochrones from ', isoFilePi
-                print 'PROBLEM WITH PISA OR EKSTROM'
+                print( 'Skipping isochrones from ', isoFilePi)
+                print( 'PROBLEM WITH PISA OR EKSTROM')
                 pdb.set_trace()
 
-            print 'Merging isochrones Pisa+Ekstrom from ', isoFilePi
+            print( 'Merging isochrones Pisa+Ekstrom from ', isoFilePi)
             iso = merge_isochrone_pisa_Ekstrom(logAge, metallicity=metallicity,
                                                rotation=rotation, iso_in=isoPMS)
         else:
             if isoFilePi not in isoFilesPa:
-                print 'Skipping isochrones from ', isoFilePi
-                print 'PROBLEM WITH PISA OR PARSEC'
+                print( 'Skipping isochrones from ', isoFilePi)
+                print( 'PROBLEM WITH PISA OR PARSEC')
                 pdb.set_trace()
                 
-            print 'Merging isochrones Pisa+Parsec from ', isoFilePi
+            print( 'Merging isochrones Pisa+Parsec from ', isoFilePi)
             iso = merge_isochrone_pisa_parsec(logAge, metallicity=metallicity,
                                               iso_in=isoPMS)
 

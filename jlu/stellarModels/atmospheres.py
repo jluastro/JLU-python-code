@@ -2,7 +2,6 @@ import numpy as np
 import pylab as py
 #import atpy
 from astropy.table import Table
-import pyfits
 import pysynphot
 
 def get_kurucz_atmosphere(metallicity=0, temperature=20000, gravity=4):
@@ -27,10 +26,10 @@ def get_kurucz_atmosphere(metallicity=0, temperature=20000, gravity=4):
     # Do some error checking
     idx = np.where(sp.flux != 0)[0]
     if len(idx) == 0:
-        print 'Could not find Kurucz 1993 atmosphere model for'
-        print '  temperature = %d' % temperature
-        print '  metallicity = %.1f' % metallicity
-        print '  log gravity = %.1f' % gravity
+        print( 'Could not find Kurucz 1993 atmosphere model for')
+        print( '  temperature = %d' % temperature)
+        print( '  metallicity = %.1f' % metallicity)
+        print( '  log gravity = %.1f' % gravity)
 
     return sp
 
@@ -53,10 +52,10 @@ def get_castelli_atmosphere(metallicity=0, temperature=20000, gravity=4):
     # Do some error checking
     idx = np.where(sp.flux != 0)[0]
     if len(idx) == 0:
-        print 'Could not find Castelli and Kurucz 2004 atmosphere model for'
-        print '  temperature = %d' % temperature
-        print '  metallicity = %.1f' % metallicity
-        print '  log gravity = %.1f' % gravity
+        print( 'Could not find Castelli and Kurucz 2004 atmosphere model for')
+        print( '  temperature = %d' % temperature)
+        print( '  metallicity = %.1f' % metallicity)
+        print( '  log gravity = %.1f' % gravity)
 
     return sp
 
@@ -71,10 +70,10 @@ def get_nextgen_atmosphere(metallicity=0, temperature=5000, gravity=4):
     # Do some error checking
     idx = np.where(sp.flux != 0)[0]
     if len(idx) == 0:
-        print 'Could not find NextGen atmosphere model for'
-        print '  temperature = %d' % temperature
-        print '  metallicity = %.1f' % metallicity
-        print '  log gravity = %.1f' % gravity
+        print( 'Could not find NextGen atmosphere model for')
+        print( '  temperature = %d' % temperature)
+        print( '  metallicity = %.1f' % metallicity)
+        print( '  log gravity = %.1f' % gravity)
 
     return sp
 
@@ -89,10 +88,10 @@ def get_amesdusty_atmosphere(metallicity=0, temperature=5000, gravity=4):
     # Do some error checking
     idx = np.where(sp.flux != 0)[0]
     if len(idx) == 0:
-        print 'Could not find AMESdusty Allard+ 2000 atmosphere model for'
-        print '  temperature = %d' % temperature
-        print '  metallicity = %.1f' % metallicity
-        print '  log gravity = %.1f' % gravity
+        print( 'Could not find AMESdusty Allard+ 2000 atmosphere model for')
+        print( '  temperature = %d' % temperature)
+        print( '  metallicity = %.1f' % metallicity)
+        print( '  log gravity = %.1f' % gravity)
 
     return sp
 
@@ -107,10 +106,10 @@ def get_phoenix_atmosphere(metallicity=0, temperature=5000, gravity=4):
     # Do some error checking
     idx = np.where(sp.flux != 0)[0]
     if len(idx) == 0:
-        print 'Could not find PHOENIX BT-Settl (Allard+ 2011 atmosphere model for'
-        print '  temperature = %d' % temperature
-        print '  metallicity = %.1f' % metallicity
-        print '  log gravity = %.1f' % gravity
+        print( 'Could not find PHOENIX BT-Settl (Allard+ 2011 atmosphere model for')
+        print( '  temperature = %d' % temperature)
+        print( '  metallicity = %.1f' % metallicity)
+        print( '  log gravity = %.1f' % gravity)
 
     return sp
 
@@ -161,7 +160,7 @@ def test_merged_atmospheres(metallicity=0, gravity=4):
 
 def get_merged_atmosphere(metallicity=0, temperature=20000, gravity=4):
     if temperature < 4000 or (temperature < 7000 and gravity < 4.0):
-        print 'Phoenix Model Atmosphere Used'
+        print( 'Phoenix Model Atmosphere Used')
         return get_phoenix_atmosphere(metallicity=metallicity,
                                       temperature=temperature,
                                       gravity=gravity)
@@ -172,7 +171,7 @@ def get_merged_atmosphere(metallicity=0, temperature=20000, gravity=4):
     #                                     gravity=gravity)
 
     if temperature >= 4000 and temperature < 7000 and gravity >= 4.0:
-        print 'Nextgen atmosphere used'
+        print( 'Nextgen atmosphere used')
         return get_nextgen_atmosphere(metallicity=metallicity,
                                       temperature=temperature,
                                       gravity=gravity)

@@ -8,14 +8,16 @@ import scipy.stats
 from gcwork import starset
 from gcwork import starTables
 from astropy.table import Table
+from jlu.util import fileUtil
 import sys
 import pdb
+import scipy.stats
 
 def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
              poly='polyfit_d/fit', points='points_d/', radial=False, NcolMax=3, figsize=(15,15)):
 
-    print 'Creating residuals plots for star(s):'
-    print starNames
+    print( 'Creating residuals plots for star(s):' )
+    print( starNames )
     
     s = starset.StarSet(rootDir + align)
     s.loadPolyfit(rootDir + poly, accel=0, arcsec=0)
@@ -34,11 +36,6 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     x = s.getArray('x')
     y = s.getArray('y')
     r = np.hypot(x,y)
-#     idx = np.where((mag < 22.5) & (r <= 4.0))[0]
-#     newstars = []
-#     for i in idx:
-#         newstars.append(s.stars[i])
-#     s.stars = newstars
     
     for i in range(Nstars):
     
@@ -126,26 +123,34 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             idxY = np.where(abs(sigY) > 4)
             idx = np.where(abs(sig) > 4)
         
-            print 'Star:        ', starName
-            print '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % \
-                  (fitx.chi2red, fitx.chi2, fitx.chi2/fitx.chi2red)
-            print '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % \
-                  (fity.chi2red, fity.chi2, fity.chi2/fity.chi2red)
-            # print 'X  Outliers: ', time[idxX]
-            # print 'Y  Outliers: ', time[idxY]
+            print( 'Star:        ', starName )
+            print( '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % 
+                  (fitx.chi2red, fitx.chi2, fitx.chi2/fitx.chi2red))
+            print( '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % 
+                  (fity.chi2red, fity.chi2, fity.chi2/fity.chi2red))
+            # print( 'X  Outliers: ', time[idxX] )
+            # print( 'Y  Outliers: ', time[idxY] )
             # if (radial):
-            #     print 'R  Outliers: ', time[idxX]
-            #     print 'T  Outliers: ', time[idxY]
-            # print 'XY Outliers: ', time[idx]
+            #     print( 'R  Outliers: ', time[idxX] )
+            #     print( 'T  Outliers: ', time[idxY] )
+            # print( 'XY Outliers: ', time[idx] )
         
             # close(2)
-#             figure(2, figsize=(7, 8))
-#             clf()
+            #             figure(2, figsize=(7, 8))
+            #             clf()
             
             dateTicLoc = py.MultipleLocator(3)
-            dateTicRng = [2006, 2010]
-            dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016])
-    	    DateTicsLabel = dateTics-2000
+            dateTicRng = [2006, 2017]
+            dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
+            DateTicsLabel = dateTics-2000
+
+            # See if we are using MJD instead.
+            if time[0] > 50000:
+                dateTicLoc = py.MultipleLocator(1000)
+                dateTicRng = [56000, 58000]
+                dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
+                DateTicsLabel = dateTics
+                
     	    
             maxErr = np.array([xerr, yerr]).max()
             resTicRng = [-1.1*maxErr, 1.1*maxErr]
@@ -175,8 +180,9 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             rng = py.axis()
             py.ylim(np.min(x-xerr-0.1),np.max(x+xerr+0.1)) 
             py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+            if time[0] > 50000:
+                py.xlabel('Date (MJD)', fontsize=fontsize1)
             py.ylabel('X (pix)', fontsize=fontsize1)
-            #paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.xaxis.set_major_formatter(fmtX)
             paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.yaxis.set_major_formatter(fmtY)
@@ -201,6 +207,8 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             rng = py.axis()
             py.axis(dateTicRng + [rng[2], rng[3]], fontsize=fontsize1)
             py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+            if time[0] > 50000:
+                py.xlabel('Date (MJD)', fontsize=fontsize1)
             py.ylabel('Y (pix)', fontsize=fontsize1)
             #paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.xaxis.set_major_formatter(fmtX)
@@ -225,6 +233,8 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             py.errorbar(time, x - fitLineX, yerr=xerr, fmt='k.')
             py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
             py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+            if time[0] > 50000:
+                py.xlabel('Date (MJD)', fontsize=fontsize1)
             py.ylabel('X Residuals (pix)', fontsize=fontsize1)
             paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.xaxis.set_major_formatter(fmtX)
@@ -245,6 +255,8 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             py.errorbar(time, y - fitLineY, yerr=yerr, fmt='k.')
             py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
             py.xlabel('Date -2000 (yrs)', fontsize=fontsize1)
+            if time[0] > 50000:
+                py.xlabel('Date (MJD)', fontsize=fontsize1)
             py.ylabel('Y Residuals (pix)', fontsize=fontsize1)
             paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.xaxis.set_major_formatter(fmtX)
@@ -268,46 +280,13 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
             py.xlabel('X (pix)', fontsize=fontsize1)
             py.ylabel('Y (pix)', fontsize=fontsize1)
-           #  names_fit = np.genfromtxt('polyfit_d/fit.linearFormal', 
-#                                                            usecols=(0), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1) 
-#             Xint = np.genfromtxt('polyfit_d/fit.linearFormal', 
-#                                                            usecols=(1), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)
-#             mX = np.genfromtxt('polyfit_d/fit.linearFormal', 
-#                                                            usecols=(2), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)
-#             Yint = np.genfromtxt('polyfit_d/fit.linearFormal', 
-#                                                            usecols=(7), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)
-#             mY = np.genfromtxt('polyfit_d/fit.linearFormal', 
-#                                                            usecols=(8), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)                                               
-#            
-#             t0X = np.genfromtxt('polyfit_d/fit.lt0', 
-#                                                            usecols=(1), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)
-#             t0Y = np.genfromtxt('polyfit_d/fit.lt0', 
-#                                                            usecols=(2), comments=None, 
-#                                                            unpack=True, dtype=None, skip_header=1)
-#                                                             
-            
-           #  ind = np.where(names_fit == starName)[0][0]
-    
- #            xyfit_X = [] 
-#             xyfit_Y = []
-#             for n in range(len(x)):
-#                 xyfit_X.append(Xint[ind] + mX[ind]*(time[n]-t0X[ind]))
-#                 xyfit_Y.append(Yint[ind] + mY[ind]*(time[n]-t0Y[ind]))
             py.plot(fitLineX, fitLineY, 'b-')    
             
             col = col + 1
-    	    ind = (row-1)*Ncols + col
+            ind = (row-1)*Ncols + col
 
             bins = np.arange(-7, 7, 1)
-#             py.subplot2grid((3,2*Nstars),(2, 2*i))
             paxes = py.subplot(Nrows, Ncols, ind)
-#             subplot(3, 2, 5)
             id = np.where(diffY < 0)[0]
             sig[id] = -1.*sig[id] 
             (n, b, p) = py.hist(sigX, bins, histtype='stepfilled', color='b')
@@ -317,32 +296,6 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             py.xlabel('X Residuals (sigma)', fontsize=fontsize1)
             py.ylabel('Number of Epochs', fontsize=fontsize1)
 
-
-#             bins = np.arange(-7, 7, 1)
-# #             subplot2grid((3,2*Nstars),(2, 2*i))
-#             paxes = subplot(Nrows, Ncols, ind)
-# #             subplot(3, 2, 5)
-#             (n, b, p) = hist(sigX, bins)
-#             setp(p, 'facecolor', 'k')
-#             axis([-5, 5, 0, 20], fontsize=10)
-#             xlabel('X Residuals (sigma)', fontsize=fontsize1)
-#             ylabel('Number of Epochs', fontsize=fontsize1)
-# #         	show()
-#     	    
-#     	    col = col + 1
-#     	    ind = row*np.min([NcolMax,i+1]) + col
-#     	    ind = (row-1)*Ncols + col
-#     
-# #         	subplot2grid((3,2*Nstars),(2, 2*i+1))
-#             paxes = subplot(Nrows, Ncols, ind)
-# #             subplot(3, 2, 6)
-#             (n, b, p) = hist(sigY, bins)
-#             axis([-5, 5, 0, 20], fontsize=10)
-#             setp(p, 'facecolor', 'k')
-#             xlabel('Y Residuals (sigma)', fontsize=fontsize1)
-#             ylabel('Number of Epochs', fontsize=fontsize1)
-# #             show()
-        
             ##########
             #
             # Also plot radial/tangential
@@ -422,17 +375,13 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
                 py.ylabel('Number of Epochs')
                 
                 py.subplots_adjust(wspace=0.4, hspace=0.4, right=0.95, top=0.95)
+                py.show()
                 py.savefig(rootDir+'plots/plotStarRadial_' + starName + '.png')
     
-            # suptitle(starNames, fontsize=12)
-#             subplots_adjust(wspace=0.4, hspace=0.4, right=0.95, top=0.95)
-#             savefig(rootDir+'plots/plotStar_' + 'all2' + '.eps')
-#             savefig(rootDir+'plots/plotStar_' + 'all2' + '.png')
         except Exception as e:
-            print 'Star ' + starName + ' not in list'
-            print e
+            print( 'Star ' + starName + ' not in list' )
+            print( e )
            
-#     suptitle(starNames, fontsize=12)
     title = rootDir.split('/')[-2]
     py.suptitle(title, x=0.5, y=0.97)
 
@@ -441,7 +390,10 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
         py.savefig(rootDir+'plots/plotStar_' + starName + '.png')
     else:
         py.subplots_adjust(wspace=0.6, hspace=0.6, left = 0.08, bottom = 0.05, right=0.95, top=0.90)
-        py.savefig(rootDir+'plots/plotStar_' + 'all' + '.png')
+        py.show()
+        py.savefig(rootDir+'plots/plotStar_all.png')
+
+    py.show()
         
         
         
@@ -485,14 +437,17 @@ def CompareTarget(TargetName, root='./', align='align/align_d_rms_1000_abs_t',
 
 def ResVectorPlot(root='./', align='align/align_t',
                  poly='polyfit_d/fit', points='points_d/', useAccFits=False,
-                 numEpochs=7, TargetName='OB120169_R',
+                 TargetName='OB120169',
                  radCut_pix = 10000, magCut = 22):
 	
 	
-    print 'Creating quiver plot of residuals...'
+    print( 'Creating quiver plot of residuals...' )
 
     s = starset.StarSet(root + align)
-    s.loadPolyfit(root + poly, accel=0, arcsec=0)             
+    s.loadStarsUsed()
+    s.loadPolyfit(root + poly, accel=0, arcsec=0)
+
+    numEpochs = len(s.years)
     
     try: 
         pointsFile = root + points + TargetName + '.points'
@@ -503,26 +458,28 @@ def ResVectorPlot(root='./', align='align/align_t',
             
         times = pointsTab[pointsTab.colnames[0]]
     except:
-        print 'Star ' + TargetName + ' not in list'
+        print( 'Star ' + TargetName + ' not in list' )
     
     py.clf()
-    # for ee in range(1):
     py.close(1)
     py.figure(1, figsize=(10, 10))
     for ee in range(numEpochs):
-        
         # Observed data
         x = s.getArrayFromEpoch(ee, 'xpix')
         y = s.getArrayFromEpoch(ee, 'ypix')
         m = s.getArrayFromEpoch(ee, 'mag')
-    	rad = np.hypot(x - 512,y - 512)
+        isUsed = s.getArrayFromEpoch(ee, 'isUsed')
+        rad = np.hypot(x - 512, y - 512)
 
-        good = (rad < radCut_pix) & (m < magCut)
-        idx = np.where(good)[0]
-        stars = [s.stars[i] for i in idx]
-        x = x[idx]
-        y = y[idx]
-        rad = rad[idx]
+        good = np.where(isUsed == True)
+        stars = s.stars
+        
+        # good = (rad < radCut_pix) & (m < magCut)
+        # idx = np.where(good)[0]
+        # stars = [s.stars[i] for i in idx]
+        # x = x[idx]
+        # y = y[idx]
+        # rad = rad[idx]
               
     	
         Nstars = len(x)
@@ -550,12 +507,16 @@ def ResVectorPlot(root='./', align='align/align_t',
             residsY[i] = y[i] - fitLineY
         
         idx = np.where((np.abs(residsX) < 10.0) & (np.abs(residsY) < 10.0))[0]
+        print ("Trimmed {0:d} stars with too-large residuals (>10 pix)".format(len(idx)))
         py.subplot(3, 3, ee+1)
         py.ylim(0, 1100)
         py.xlim(0, 1100)
         py.yticks(fontsize=10)
         py.xticks([200,400,600,800,1000], fontsize=10)
-        q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5)
+        # q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5)
+        q = py.quiver(x_fit, y_fit, residsX, residsY, scale_units='width', scale=0.5, color='gray')
+        q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5, color='black')
+        q = py.quiver(x_fit[good], y_fit[good], residsX[good], residsY[good], scale_units='width', scale=0.5, color='red')
         py.quiver([850, 0], [100, 0], [0.05, 0.05], [0, 0], color='red', scale=0.5, scale_units='width')
         py.text(600, 100, '0.5 mas', color='red', fontsize=8)
         # py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontsize=6)
@@ -565,6 +526,7 @@ def ResVectorPlot(root='./', align='align/align_t',
     py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     if os.path.exists(root + 'plots/' + fname):
         os.remove(root + 'plots/' + fname)
+    py.show()
     py.savefig(root + 'plots/' + fname)
             
     return
@@ -724,7 +686,7 @@ def sum_all_stars(root='./', align='align/align_t',
     mag = s.getArray('mag')
     x = s.getArray('x')
     y = s.getArray('y')
-    r = hypot(x, y)
+    r = np.hypot(x, y)
 
     # Trim out stars.
     idx = np.where((mag < magCut) & (r < radCut))[0]
@@ -737,7 +699,7 @@ def sum_all_stars(root='./', align='align/align_t',
     mag = s.getArray('mag')
     x = s.getArray('x')
     y = s.getArray('y')
-    r = hypot(x, y)
+    r = np.hypot(x, y)
     chi2red_x = s.getArray('fitXv.chi2red')
     chi2red_y = s.getArray('fitYv.chi2red')
     chi2_x = s.getArray('fitXv.chi2')
@@ -756,8 +718,8 @@ def sum_all_stars(root='./', align='align/align_t',
     markersize = 3.0 
     xmin = 12
     xmax = 22
-    ymin = 6e-2
-    ymax = 1e0
+    ymin = 0.06
+    ymax = 1.0
 
     py.close(1)
     fig1 = py.figure(1)
@@ -770,7 +732,7 @@ def sum_all_stars(root='./', align='align/align_t',
     py.legend(loc='upper left')
     py.yticks(fontsize=16)
     py.xticks(fontsize=16)
-    py.savefig(root + 'plots/velErr_vs_mag_xy.eps')
+    py.show()
     py.savefig(root + 'plots/velErr_vs_mag_xy.png')
 
     py.clf()
@@ -781,7 +743,7 @@ def sum_all_stars(root='./', align='align/align_t',
     py.xlabel('K magnitude', fontsize=16)
     py.yticks(fontsize=16)
     py.xticks(fontsize=16)
-    py.savefig(root + 'plots/velErr_vs_mag.eps')
+    py.show()
     py.savefig(root + 'plots/velErr_vs_mag.png')
 	
     #####
@@ -800,7 +762,7 @@ def sum_all_stars(root='./', align='align/align_t',
     py.yticks(fontsize=16)
     py.xticks(fontsize=16)
     py.legend(loc='upper left')
-    py.savefig(root+'plots/velErr_vs_rad.eps')
+    py.show()
     py.savefig(root+'plots/velErr_vs_rad.png')
 
 
@@ -809,12 +771,12 @@ def sum_all_stars(root='./', align='align/align_t',
     #####	
     py.clf()
     bins = np.arange(0, 30, 1.0)
-    (nx, bx, px) = py.hist(chi2red_x, bins, label='X', histtype='step')
-    (ny, by, py) = py.hist(chi2red_y, bins, label='Y', histtype='step')
+    (nx, bx, pntx) = py.hist(chi2red_x, bins, label='X', histtype='step')
+    (ny, by, pnty) = py.hist(chi2red_y, bins, label='Y', histtype='step')
     py.xlabel(r'$\chi^2_{reduced}$')
     py.ylabel('Number of Stars')
     py.legend(loc='upper left')
-    py.savefig(root+'plots/chi2red_xy_hist.eps')
+    py.show()
     py.savefig(root+'plots/chi2red_xy_hist.png')
 
     #####	
@@ -829,11 +791,11 @@ def sum_all_stars(root='./', align='align/align_t',
     xarr = np.linspace(0, 100, 1000)
     df = 4
     dist = scipy.stats.chi2(df, 0)
-    chiplot = chi2.pdf(xarr, dist.pdf(xarr))
+    chiplot = scipy.stats.chi2.pdf(xarr, dist.pdf(xarr))
     chiplot = 7 * chiplot / np.max(chiplot)
     py.plot(xarr, chiplot, '--', label='Model')
     py.legend()
-    py.savefig(root+'plots/chi2_xy_hist.eps')
+    py.show()
     py.savefig(root+'plots/chi2_xy_hist.png')
 
     #####
@@ -846,13 +808,13 @@ def sum_all_stars(root='./', align='align/align_t',
     df = 30
     xarr = np.linspace(0.1, 100, 1000)
     dist = scipy.stats.chi2(df, 0)
-    chiplot = chi2.pdf(xarr, dist.pdf(xarr))
+    chiplot = scipy.stats.chi2.pdf(xarr, dist.pdf(xarr))
     chiplot = 10 * chiplot / np.max(chiplot)
     py.plot(xarr, chiplot, '--r')
     py.ylabel('Number of Stars', fontsize=16)
     py.xlim(0, np.round(np.max(chi2_y) * 1.2))
     py.ylim(0, np.max(nx) + 3)
-    py.savefig(root+'plots/chi2_hist.eps')
+    py.show()
     py.savefig(root+'plots/chi2_hist.png')
 
 
@@ -877,16 +839,16 @@ def sum_all_stars(root='./', align='align/align_t',
         
         pointsFile = root + points + starName + '.points'
         if os.path.exists(pointsFile + '.orig'):
-            pointsTab = asciidata.open(pointsFile + '.orig')
+            pointsTab = np.genfromtxt(pointsFile + '.orig')
         else:
-            pointsTab = asciidata.open(pointsFile)
+            pointsTab = np.genfromtxt(pointsFile)
 
         # Observed Data
-        t = pointsTab[0].tonumpy()
-        x = pointsTab[1].tonumpy()
-        y = pointsTab[2].tonumpy()
-        xerr = pointsTab[3].tonumpy()
-        yerr = pointsTab[4].tonumpy()
+        t = pointsTab[:, 0]
+        x = pointsTab[:, 1]
+        y = pointsTab[:, 2]
+        xerr = pointsTab[:, 3]
+        yerr = pointsTab[:, 4]
 
         # Best fit velocity model
         fitx = star.fitXv
@@ -902,8 +864,8 @@ def sum_all_stars(root='./', align='align/align_t',
         # Residuals
         diffX = x - fitLineX
         diffY = y - fitLineY
-        diff = hypot(diffX, diffY)
-        rerr = sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
+        diff = np.hypot(diffX, diffY)
+        rerr = np.sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
         sigX = diffX / xerr
         sigY = diffY / yerr
         sig = diff / rerr
@@ -922,104 +884,109 @@ def sum_all_stars(root='./', align='align/align_t',
             pointsTab.writeto(pointsFile)
 
         # Combine this stars information with all other stars.
-        sigmaX = concatenate((sigmaX, sigX))
-        sigmaY = concatenate((sigmaY, sigY))
-        sigma = concatenate((sigma, sig))
-        diffX_all = concatenate((diffX_all,diffX))
-        diffY_all = concatenate((diffY_all,diffY))
-        xerr_all = concatenate((xerr_all,xerr))
-        yerr_all = concatenate((yerr_all,yerr))
-        chisq_all = concatenate((chisq_all, np.array([sum((diffX/xerr)**2.) + sum((diffY/yerr)**2.)])))
+        sigmaX = np.concatenate((sigmaX, sigX))
+        sigmaY = np.concatenate((sigmaY, sigY))
+        sigma = np.concatenate((sigma, sig))
+        diffX_all = np.concatenate((diffX_all,diffX))
+        diffY_all = np.concatenate((diffY_all,diffY))
+        xerr_all = np.concatenate((xerr_all,xerr))
+        yerr_all = np.concatenate((yerr_all,yerr))
+        chisq_all = np.concatenate((chisq_all, np.array([sum((diffX/xerr)**2.) + np.sum((diffY/yerr)**2.)])))
 
-    for i in range(len(chisq_all)):
-        print mag_all[i], chisq_all[i]
+    # for i in range(len(chisq_all)):
+    #     print( chisq_all[i] )
 
-    diff_all = concatenate((diffX_all, diffY_all))
-    err_all = concatenate((xerr_all, yerr_all))
-    sigma_all = concatenate((sigmaX, sigmaY))   
-    errorbar(range(len(diff_all)), diff_all, err_all, fmt='o')
-    savefig(root+'plots/TEST_resids.pdf', bbox_inches='tight', pad_inches=0.1)
-    clf()
-    plot(range(len(diff_all)), sigma_all, 'o')
-    savefig(root+'plots/TEST_resids_sigma.pdf', bbox_inches='tight', pad_inches=0.1)
-    clf()
-    plot(range(len(chisq_all)), chisq_all, 'o')
-    savefig(root+'plots/TEST_resids_chisq.pdf', bbox_inches='tight', pad_inches=0.1)
-    clf()
+    diff_all = np.concatenate((diffX_all, diffY_all))
+    err_all = np.concatenate((xerr_all, yerr_all))
+    sigma_all = np.concatenate((sigmaX, sigmaY))   
+    py.errorbar(range(len(diff_all)), diff_all, err_all, fmt='o')
+    py.show()
+    py.savefig(root+'plots/TEST_resids.pdf', bbox_inches='tight', pad_inches=0.1)
+    py.clf()
+    py.plot(range(len(diff_all)), sigma_all, 'o')
+    py.show()
+    py.savefig(root+'plots/TEST_resids_sigma.pdf', bbox_inches='tight', pad_inches=0.1)
+    py.clf()
+    py.plot(range(len(chisq_all)), chisq_all, 'o')
+    py.show()
+    py.savefig(root+'plots/TEST_resids_chisq.pdf', bbox_inches='tight', pad_inches=0.1)
+    py.clf()
     
 
     rmsDiffXY = (diffX_all.std() + diffY_all.std()) / 2.0 * 1000.0
     aveDiffR = np.sqrt(diffX_all**2 + diffY_all**2).mean()
     medDiffR = np.median(np.sqrt(diffX_all**2 + diffY_all**2))
 
-    print diffX_all.mean(), diffY_all.mean()
-    print diffX_all.std(), diffY_all.std()
-    print rmsDiffXY, aveDiffR, medDiffR
-    print np.median(xerr_all)
+    print('mean(diffX) = {0:7.3f} mas    mean(diffY) = {1:7.3f} mas'.format(diffX_all.mean()*1e3, diffY_all.mean()*1e3) )
+    print('stdv(diffX) = {0:7.3f} mas    stdv(diffY) = {1:7.3f} mas'.format(diffX_all.std()*1e3, diffY_all.std()*1e3) )
+    print(' RMS diffXY = {0:7.3f} mas      AVE diffR = {1:7.3f} mas     MED diffR = {2:7.3f} mas'.format(rmsDiffXY * 1e3, aveDiffR*1e3, medDiffR*1e3 ))
+    print('   MED xerr = {0:7.3f} mas       MED yerr = {1:7.3f} mas'.format( np.median(xerr_all)*1e3, np.median(yerr_all)*1e3 ))
 
     # Residuals should have a gaussian probability distribution
     # with a mean of 0 and a sigma of 1. Overplot this to be sure.
     ggx = np.arange(-7, 7, 0.25)
-    ggy = normpdf(ggx, 0, 1)
+    ggy = scipy.stats.norm.pdf(ggx, 0, 1)
 
-    print 'Mean   RMS residual: %5.2f sigma' % (sigma.mean())
-    print 'Stddev RMS residual: %5.2f sigma' % (sigma.std())
-    print 'Median RMS residual: %5.2f sigma' % (median(sigma))
-    print
-    print 'Mean X centroiding error: %5.4f mas (median %5.4f mas)' % \
-        ((xerr_all*1000.0).mean(), np.median(xerr_all)*10**3)
-    print 'Mean Y centroiding error: %5.4f mas (median %5.4f mas)' % \
-        ((yerr_all*1000.0).mean(), np.median(yerr_all)*10**3)
-    print 'Mean distance from velocity fit: %5.4f mas (median %5.4f mas)' % \
-        (aveDiffR*10**3, medDiffR*10**3)
+    print( 'Mean   RMS residual: %5.2f sigma' % (sigma.mean()) )
+    print( 'Stddev RMS residual: %5.2f sigma' % (sigma.std()) )
+    print( 'Median RMS residual: %5.2f sigma' % (np.median(sigma)) )
+    print( '' )
+    print( 'Mean X centroiding error: %5.4f mas (median %5.4f mas)' % 
+            ((xerr_all*1000.0).mean(), np.median(xerr_all)*10**3))
+    print( 'Mean Y centroiding error: %5.4f mas (median %5.4f mas)' % 
+            ((yerr_all*1000.0).mean(), np.median(yerr_all)*10**3))
+    print( 'Mean distance from velocity fit: %5.4f mas (median %5.4f mas)' % 
+            ((aveDiffR*10**3, medDiffR*10**3)))
 
     ##########
     # Plot
     ##########
     bins = np.arange(-7, 7, 1.0)
-    fig4 = figure(figsize=figsize)
+    figsize = (10, 10)
+    fig4 = py.figure(figsize=figsize)
     ax = fig4.add_subplot(3, 1, 1)
     (nx, bx, px) = ax.hist(sigmaX, bins)
-    ggamp = ((sort(nx))[-2:]).sum() / (2.0 * ggy.max())
+    ggamp = ((np.sort(nx))[-2:]).sum() / (2.0 * ggy.max())
     ax.plot(ggx, ggy*ggamp, 'k-')
-    xlabel('X Residuals (sigma)')
+    py.xlabel('X Residuals (sigma)')
 
     ax2 = fig4.add_subplot(3, 1, 2)
-    (ny, by, py) = ax2.hist(sigmaY, bins)
-    ggamp = ((sort(ny))[-2:]).sum() / (2.0 * ggy.max())
+    (ny, by, pnty) = ax2.hist(sigmaY, bins)
+    ggamp = ((np.sort(ny))[-2:]).sum() / (2.0 * ggy.max())
     ax2.plot(ggx, ggy*ggamp, 'k-')
-    xlabel('Y Residuals (sigma)')
+    py.xlabel('Y Residuals (sigma)')
 
     ax3 = fig4.add_subplot(3, 1, 3)
-    (ny, by, py) = ax3.hist(sigma, np.arange(0, 7, 0.5))
-    xlabel('Total Residuals (sigma)')
+    (ny, by, pnty) = ax3.hist(sigma, np.arange(0, 7, 0.5))
+    py.xlabel('Total Residuals (sigma)')
 
-    subplots_adjust(wspace=0.34, hspace=0.33, right=0.95, top=0.97)
-    savefig(root+'plots/residualsDistribution_pub.pdf')
-    savefig(root+'plots/residualsDistribution_pub.png')
-    clf()
+    py.subplots_adjust(wspace=0.34, hspace=0.33, right=0.95, top=0.97)
+    py.show()
+    py.savefig(root+'plots/residualsDistribution_pub.pdf')
+    py.savefig(root+'plots/residualsDistribution_pub.png')
+    py.clf()
     
     # Put all residuals together in one histogram
-    fig5 = figure(figsize=[6,6])
+    fig5 = py.figure(figsize=[6,6])
     ax = fig5.add_subplot(1,1,1)
     sigmaA = []
     for ss in range(len(sigmaX)):
         sigmaA = np.concatenate([sigmaA,[sigmaX[ss]]])
         sigmaA = np.concatenate([sigmaA,[sigmaY[ss]]])
     (na, ba, pa) = ax.hist(sigmaA, bins, color='b')
-    ggamp = ((sort(na))[-2:]).sum() / (2.0 * ggy.max())
+    ggamp = ((np.sort(na))[-2:]).sum() / (2.0 * ggy.max())
     ax.plot(ggx, ggy*ggamp, 'k-')
-    xlabel('Residuals ($\sigma$)')
-    ylabel('Frequency')
-    xlim(-6,6)
-    print 'hi'
-    savefig(root+'plots/residualsAll_pub.eps')
-    savefig(root+'plots/residualsAll_pub.png')
-    clf()
+    py.xlabel('Residuals ($\sigma$)')
+    py.ylabel('Frequency')
+    py.xlim(-6,6)
+    py.show()
+    py.savefig(root+'plots/residualsAll_pub.png')
+    print( 'Saved ' + root + 'plots/residualsAll_pub.png')
+    py.clf()
 
 
 def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
-                         only_stars_in_fit=False, plotfile=None):
+                         points_dir = 'points_d/', only_stars_in_fit=False):
     """
     Plot the complete chi^2 distribution of all stars
     positions at all epochs. Restrict down to just those
@@ -1032,6 +999,7 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     # Load up the list of stars used in the transformation.	
     s = starset.StarSet(root_dir + align_root)
     s.loadPolyfit(root_dir + poly_root, accel=0, arcsec=0)
+    s.loadPoints(root_dir + points_dir)
     s.loadStarsUsed()
 
     trans = Table.read(root_dir + align_root + '.trans', format='ascii')
@@ -1054,7 +1022,7 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
         
     newstars = [s.stars[i] for i in idx]
     s.stars = newstars
-    print msg.format(len(idx))
+    print( msg.format(len(idx)) )
 
     # Now that we have are final list of stars, fetch all the
     # relevant variables.     
@@ -1128,10 +1096,10 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     N_free = 4.0
     N_dof = N_data - N_free
     N_dof_1 = N_dof / 2.0
-    print N_data, N_free, N_dof
+    print( 'N_data = {0:.0f}  N_free = {1:.0f}  N_dof = {2:.0f}'.format(N_data, N_free, N_dof))
 
     # Setup some bins for making chi2 and residuals histograms
-    chi2_lim = int(np.ceil(chi2.max()))
+    chi2_lim = int(np.ceil(chi2[np.isfinite(chi2)].max()))
     if chi2_lim > (N_dof * 20):
         chi2_lim = N_dof * 20
     chi2_bin = chi2_lim / 20.0
@@ -1165,70 +1133,73 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     sig_plot_1 = scipy.stats.norm.pdf(sig_mod_bins)
     sig_plot_1 *= N_stars * N_epochs / (sig_plot_1 * sig_mod_bin).sum()
 
-    if plotfile != None:    
-        ##########
-        # Plot Chi^2 Distribution
-        ##########
-        py.clf()
-        fig = py.gcf()
-        fig.set_size_inches(12, 12, forward=True)
-        py.subplots_adjust(bottom=0.08, left=0.08, top=0.95, wspace=0.28, hspace=0.32)
+    ##########
+    # Plot Chi^2 Distribution
+    ##########
+    py.clf()
+    fig = py.gcf()
+    fig.set_size_inches(12, 12, forward=True)
+    py.subplots_adjust(bottom=0.08, left=0.08, top=0.95, wspace=0.28, hspace=0.32)
 
-        ax_chi2 = py.subplot(3, 3, 1)
-        py.hist(chi2x, bins=chi2_bins, color='blue')
-        py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
-        py.xlabel(r'$\chi^2$')
-        py.ylabel(r'N$_{obs}$')
-        py.title('X')
+    ax_chi2 = py.subplot(3, 3, 1)
+    py.hist(chi2x, bins=chi2_bins, color='blue')
+    py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
+    py.xlabel(r'$\chi^2$')
+    py.ylabel(r'N$_{obs}$')
+    py.title('X')
 
-        py.subplot(3, 3, 2, sharex=ax_chi2, sharey=ax_chi2)
-        py.hist(chi2y, bins=chi2_bins, color='green')
-        py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
-        py.xlabel(r'$\chi^2$')
-        py.title('Y')
+    py.subplot(3, 3, 2, sharex=ax_chi2, sharey=ax_chi2)
+    py.hist(chi2y, bins=chi2_bins, color='green')
+    py.plot(chi2_mod_bins, chi2_plot_1, 'k--')
+    py.xlabel(r'$\chi^2$')
+    py.title('Y')
 
-        py.subplot(3, 3, 3, sharex=ax_chi2, sharey=ax_chi2)
-        py.hist(chi2.flatten(), bins=chi2_bins, color='red')
-        py.plot(chi2_mod_bins, chi2_plot_a, 'k--')
-        py.xlabel(r'$\chi^2$')
-        py.title('X and Y')
+    py.subplot(3, 3, 3, sharex=ax_chi2, sharey=ax_chi2)
+    py.hist(chi2.flatten(), bins=chi2_bins, color='red')
+    py.plot(chi2_mod_bins, chi2_plot_a, 'k--')
+    py.xlabel(r'$\chi^2$')
+    py.title('X and Y')
 
-        ax_res = py.subplot(3, 3, 4)
-        py.hist(xresid.flatten(), bins=res_bins, color='blue')
-        py.xlabel('X Residuals (mas)')
-        py.ylabel(r'N$_{obs}$')
+    ax_res = py.subplot(3, 3, 4)
+    py.hist(xresid.flatten(), bins=res_bins, color='blue')
+    py.xlabel('X Residuals (mas)')
+    py.ylabel(r'N$_{obs}$')
 
-        py.subplot(3, 3, 5, sharex=ax_res, sharey=ax_res)
-        py.hist(yresid.flatten(), bins=res_bins, color='green')
-        py.xlabel('Y Residuals (mas)')
+    py.subplot(3, 3, 5, sharex=ax_res, sharey=ax_res)
+    py.hist(yresid.flatten(), bins=res_bins, color='green')
+    py.xlabel('Y Residuals (mas)')
 
-        py.subplot(3, 3, 6, sharey=ax_res)
-        py.hist(resid.flatten(), bins=res_bins, color='red')
-        py.xlim(0, res_lim)
-        py.xlabel('Total Residuals (mas)')
+    py.subplot(3, 3, 6, sharey=ax_res)
+    py.hist(resid.flatten(), bins=res_bins, color='red')
+    py.xlim(0, res_lim)
+    py.xlabel('Total Residuals (mas)')
 
-        ax_nres = py.subplot(3, 3, 7)
-        py.hist((xresid / xe_p).flatten(), bins=sig_bins, color='blue')
-        py.plot(sig_mod_bins, sig_plot_1, 'k--')
-        py.xlabel('Normalized X Res.')
+    ax_nres = py.subplot(3, 3, 7)
+    py.hist((xresid / xe_p).flatten(), bins=sig_bins, color='blue')
+    py.plot(sig_mod_bins, sig_plot_1, 'k--')
+    py.xlabel('Normalized X Res.')
 
-        py.subplot(3, 3, 8, sharex=ax_nres, sharey=ax_nres)
-        py.hist((yresid / ye_p).flatten(), bins=sig_bins, color='green')
-        py.plot(sig_mod_bins, sig_plot_1, 'k--')
-        py.xlabel('Normalized Y Res.')
+    py.subplot(3, 3, 8, sharex=ax_nres, sharey=ax_nres)
+    py.hist((yresid / ye_p).flatten(), bins=sig_bins, color='green')
+    py.plot(sig_mod_bins, sig_plot_1, 'k--')
+    py.xlabel('Normalized Y Res.')
 
-        py.subplot(3, 3, 9, sharey=ax_nres)
-        py.hist((resid / xye_p).flatten(), bins=sig_bins, color='red')
-        py.xlim(0, sig_lim)
-        py.xlabel('Normalized Total Res.')
+    py.subplot(3, 3, 9, sharey=ax_nres)
+    py.hist((resid / xye_p).flatten(), bins=sig_bins, color='red')
+    py.xlim(0, sig_lim)
+    py.xlabel('Normalized Total Res.')
 
-        outfile = root_dir + '../plots/'
-        outfile += 'chi2_dist_all_epochs'
-        if only_stars_in_fit:
-            outfile += '_infit'
-        outfile += '.png'
+    fileUtil.mkdir(root_dir + 'plots/')
 
-        py.savefig(plotfile)
+    outfile = root_dir + 'plots/'
+    outfile += 'chi2_dist_all_epochs'
+    if only_stars_in_fit:
+        outfile += '_infit'
+    outfile += '.png'
+    print( outfile)
+
+    py.show()
+    py.savefig(outfile)
 
 
     return_val = {'chi2x': chi2x, 'chi2y': chi2y, 'chi2': chi2,

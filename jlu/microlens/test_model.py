@@ -5,34 +5,45 @@ import pylab as plt
 import pdb
 import os
 
-def test_PSPL():
-    # mL = 10.0 # msun
-    # t0 = 57000.00
-    # xS0 = np.array([0.000, 0.000])
-    # # beta = -0.4 # mas
-    # beta = 1.4 # mas
-    # muS = np.array([8.0, 0.0])
-    # # muL = np.array([-7.0, 0.00])
-    # muL = np.array([0.00, 0.00])
-    # dL = 4000.0
-    # dS = 8000.0
-    # imag = 19.0
-
-    # Scenario from Belokurov and Evans 2002 (Figure 1)
-    mL = 0.5 # msun
+def test_PSPL_other():
+    mL = 10.0 # msun
     t0 = 57000.00
     xS0 = np.array([0.000, 0.000])
-    beta = 7.41 # mas
-    muS = np.array([-7.0, 1.0])
-    muL = np.array([-100.0, 0.00])
+    # beta = -0.4 # mas
+    beta = 1.4 # mas
+    muS = np.array([8.0, 0.0])
+    # muL = np.array([-7.0, 0.00])
+    muL = np.array([0.00, 0.00])
+    dL = 4000.0
+    dS = 8000.0
+    imag = 19.0
+
+    test_PSPL(mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir='./test_pspl_other/')
+
+    return
+
+def test_PSPL_belokurov():
+    # Scenario from Belokurov and Evans 2002 (Figure 1)
+    mL = 0.5 # msun
+    t0 = 57160.00
+    xS0 = np.array([0.000, 0.000])
+    beta = -7.41 # mas
+    muS = np.array([-2.0, 7.0])
+    muL = np.array([90.00, -24.71])
     dL = 150.0
     dS = 1500.0
     imag = 19.0
     
-    
+    test_PSPL(mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir='./test_pspl_belokurov/')
+
+    return
+
+
+def test_PSPL(mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir=''):
+
     pspl = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
 
-    t = np.arange(54000, 60000, 1)
+    t = np.arange(t0 - 3000, t0 + 3000, 1)
     dt = t - pspl.t0
 
     A = pspl.get_amplification(t)
@@ -45,6 +56,7 @@ def test_PSPL():
     plt.plot(dt, 2.5 * np.log10(A), 'k.')
     plt.xlabel('t - t0 (MJD)')
     plt.ylabel('2.5 * log(A)')
+    plt.savefig(outdir + 'amp_v_time.png')
 
     # Plot the positions of everything
     lens_pos = pspl.xL0 + np.outer(dt / model.days_per_year, pspl.muL) * 1e-3
@@ -62,6 +74,7 @@ def test_PSPL():
     plt.xlabel('dRA (arcsec)')
     plt.ylabel('dDec (arcsec)')
     plt.title('Zoomed-in')
+    plt.savefig(outdir + 'on_sky_zoomed.png')
 
     plt.figure(3)
     plt.clf()
@@ -74,12 +87,14 @@ def test_PSPL():
     plt.xlabel('dRA (arcsec)')
     plt.ylabel('dDec (arcsec)')
     plt.title('Zoomed-out')
+    plt.savefig(outdir + 'on_sky.png')
     
     plt.figure(4)
     plt.clf()
     plt.plot(dt, shift_amp)
     plt.xlabel('t - t0 (MJD)')
     plt.ylabel('Astrometric Shift (mas)')
+    plt.savefig(outdir + 'shift_amp_v_t.png')
 
     plt.figure(5)
     plt.clf()
@@ -87,6 +102,9 @@ def test_PSPL():
     plt.gca().invert_xaxis()
     plt.xlabel('RA Shift (mas)')
     plt.ylabel('Dec Shift (mas)')
+    plt.xlim(1.5, -1.5)
+    plt.ylim(-0.5, 2.5)
+    plt.savefig(outdir + 'shift_on_sky.png')
     
     plt.close(6)
     f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
@@ -99,14 +117,12 @@ def test_PSPL():
     ax2.set_ylabel(r'dY / $\theta_E$')
     ax3.set_ylabel(r'dT / $\theta_E$')
     ax1.set_ylim(-0.4, 0.4)
-    if shift[0, 1] > 0:
-        ax2.set_ylim(0, 0.4)
-    else:
-        ax2.set_ylim(-0.4, 0)
+    ax2.set_ylim(-0.4, 0.4)
     ax3.set_ylim(0, 0.4)
+    plt.savefig(outdir + 'shift_v_t.png')
 
-    print 'Einstein radius: ', pspl.thetaE_amp
-    print 'Einstein crossing time: ', pspl.tE
+    print('Einstein radius: ', pspl.thetaE_amp)
+    print('Einstein crossing time: ', pspl.tE)
 
     return pspl    
 
@@ -114,9 +130,7 @@ def test_PSPL():
 def test_pspl_fit():
     data, p_in = fake_data1()
 
-    model_fitter.multinest_pspl(data, n_live_points=300, saveto='./mnest_pspl/', runcode='aa')
-
-    model_fitter.plot_posteriors('mnest_pspl/', 'aa')
+    # model_fitter.multinest_pspl(data, n_live_points=300, saveto='./mnest_pspl/', runcode='aa')
 
     best = model_fitter.get_best_fit('mnest_pspl/', 'aa')
 
@@ -128,6 +142,17 @@ def test_pspl_fit():
     pspl_in = model.PSPL(p_in['mL'], p_in['t0'], np.array([p_in['xS0_E'], p_in['xS0_N']]), p_in['beta'], 
                           np.array([p_in['muL_E'], p_in['muL_N']]), np.array([p_in['muS_E'], p_in['muS_N']]),
                           p_in['dL'], p_in['dS'], p_in['imag_base'])
+
+    p_in['tE'] = pspl_in.tE
+    p_in['thetaE'] = pspl_in.thetaE_amp
+    p_in['piE_E'] = pspl_in.piE[0]
+    p_in['piE_N'] = pspl_in.piE[1]
+    p_in['u0_amp'] = pspl_in.u0_amp
+    p_in['muRel_E'] = pspl_in.muRel[0]
+    p_in['muRel_N'] = pspl_in.muRel[1]
+    
+    model_fitter.plot_posteriors('mnest_pspl/', 'aa', sim_vals=p_in)
+
     
     imag_out = pspl_out.get_photometry(data['t_phot'])
     pos_out = pspl_out.get_astrometry(data['t_ast'])
@@ -145,9 +170,8 @@ def test_pspl_fit():
                                              data['xpos_err'], data['ypos_err'])
     lnL_in = lnL_phot_in.mean() + lnL_ast_in.mean()
     
-    print 'lnL for input: ', lnL_in
-    print 'lnL for output: ', lnL_out
-    pdb.set_trace()
+    print('lnL for input: ', lnL_in)
+    print('lnL for output: ', lnL_out)
     
     plt.figure(1)
     plt.clf()
@@ -189,7 +213,7 @@ def test_pspl_fit():
     return
 
 
-def test_pspl_parallax():
+def test_pspl_parallax_belokurov():
     # raL = (17.0 + (45.0 / 60.) + (40.0 / 3600.0)) * 15.0   # degrees
     # decL = -29 + (1.0 / 60.0) + (28.0 / 3600.0)
     # mL = 10.0 # msun
@@ -204,135 +228,53 @@ def test_pspl_parallax():
 
     # Scenario from Belokurov and Evans 2002 (Figure 1)
     raL = 17.5
-    decL = +65.0
+    decL = -30.0
     mL = 0.5 # msun
-    t0 = 57000.00
+    t0 = 57160.00
     xS0 = np.array([0.000, 0.000])
     beta = -7.41 # mas
     muS = np.array([-2.0, 7.0])
-    muL = np.array([95.4, 0.00])
+    muL = np.array([90.00, -24.71])
     dL = 150.0
     dS = 1500.0
     imag = 19.0
-    
-    # No parallax
-    pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
-    
-    # With parallax
-    pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
 
-    t = np.arange(56000, 58000, 1)
-    dt = t - pspl_n.t0
-
-    A_n = pspl_n.get_amplification(t)
-    A_p = pspl_p.get_amplification(t)
-
-    xS_n = pspl_n.get_astrometry(t)
-    xS_p_unlens = pspl_p.get_astrometry_unlensed(t)
-    xS_p_lensed = pspl_p.get_astrometry(t)
-
-    # Plot the amplification
-    fig1 = plt.figure(1)
-    plt.clf()
-    f1_1 = fig1.add_axes((0.1, 0.3, 0.8, 0.6))
-    plt.plot(dt, 2.5 * np.log10(A_n), 'b-', label='No parallax')
-    plt.plot(dt, 2.5 * np.log10(A_p), 'r-', label='Parallax')
-    plt.legend()
-    plt.ylabel('2.5 * log(A)')
-    f1_1.set_xticklabels([])
-
-    f2_1 = fig1.add_axes((0.1, 0.1, 0.8, 0.2))
-    plt.plot(dt, 2.5 * (np.log10(A_p) - np.log10(A_n)), 'k-', label='Par - No par')
-    plt.axhline(0, linestyle='--', color='k')
-    plt.legend()
-    plt.ylabel('Diff')
-    plt.xlabel('t - t0 (MJD)')
-
-    
-    # Plot the positions of everything
-    fig2 = plt.figure(2)
-    plt.clf()
-    plt.plot(xS_n[:, 0], xS_n[:, 1], 'r--', mfc='none', mec='red', label='No parallax model')
-    plt.plot(xS_p_unlens[:, 0], xS_p_unlens[:, 1], 'b--', mfc='none', mec='blue',
-             label='Parallax model, unlensed')
-    plt.plot(xS_p_lensed[:, 0], xS_p_lensed[:, 1], 'b-', label='Parallax model, lensed')
-    plt.legend()
-    # plt.gca().invert_xaxis()
-    # lim = 0.05
-    # plt.xlim(lim, -lim) # arcsec
-    # plt.ylim(-lim, lim)
-    plt.xlim(0.006, -0.006) # arcsec
-    plt.ylim(-0.02, 0.02)
-    plt.xlabel('R.A. (")')
-    plt.ylabel('Dec. (")')
-
-    # Check just the astrometric shift part.
-    shift_n = pspl_n.get_centroid_shift(t) # mas
-    shift_p = (xS_p_lensed - xS_p_unlens) * 1e3 # mas
-    shift_n_amp = np.linalg.norm(shift_n, axis=1)
-    shift_p_amp = np.linalg.norm(shift_p, axis=1)
-    
-    fig3 = plt.figure(3)
-    plt.clf()
-    f1_3 = fig3.add_axes((0.15, 0.3, 0.8, 0.6))
-    plt.plot(dt, shift_n_amp, 'r--', label='No parallax model')
-    plt.plot(dt, shift_p_amp, 'b--', label='Parallax model')
-    plt.legend()
-    f1_3.set_xticklabels([])
-
-    f2_3 = fig3.add_axes((0.15, 0.1, 0.8, 0.2))
-    plt.plot(dt, shift_p_amp - shift_n_amp, 'k-', label='Par - No par')
-    plt.legend()
-    plt.axhline(0, linestyle='--', color='k')
-    plt.xlabel('t - t0 (MJD)')
-    plt.ylabel('Astrometric Shift (mas)')
-
-    fig4 = plt.figure(4)
-    plt.clf()
-    plt.plot(shift_n[:, 0], shift_n[:, 1], 'r-', label='No parallax')
-    plt.plot(shift_p[:, 0], shift_p[:, 1], 'b-', label='Parallax')
-    plt.axhline(0, linestyle='--')
-    plt.axvline(0, linestyle='--')
-    plt.gca().invert_xaxis()
-    plt.legend()
-    plt.xlabel('Shift RA (mas)')
-    plt.ylabel('Shift Dec (mas)')
-    plt.axis('equal')
-
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir='test_pspl_parallax_belokurov/')
 
     return
 
-def test_pspl_parallax_belokurov():
+def test_pspl_parallax_bulge1():
     # Scenario from Belokurov and Evans 2002 (Figure 1)
     raL = 17.5
-    decL = +65.0
-    mL = 0.5 # msun
-    t0 = 57000.00
+    decL = -30.0
+    mL = 10.0 # msun
+    t0 = 57650.0
     xS0 = np.array([0.000, 0.000])
-    beta = -7.41 # mas
-    muS = np.array([-2.0, 7.0])
-    muL = np.array([95.4, 0.00])
-    dL = 150.0
-    dS = 1500.0
+    beta = 3.0 # mas
+    muS = np.array([-4.0, -4.0])
+    muL = np.array([-6.0, -10.0])
+    dL = 3000.0
+    dS = 6000.0
     imag = 19.0
-    
+
+    test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir='test_pspl_par_bulge1/')
+
+    return
+
+
+def test_pspl_parallax(raL, decL, mL, t0, xS0, beta, muS, muL, dL, dS, imag, outdir=''):
+
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
 
-    t = np.arange(56000, 58000, 1)
+    t = np.arange(t0 - 500, t0 + 500, 1)
     dt = t - pspl_n.t0
 
     A_n = pspl_n.get_amplification(t)
@@ -341,41 +283,51 @@ def test_pspl_parallax_belokurov():
     xS_n = pspl_n.get_astrometry(t)
     xS_p_unlens = pspl_p.get_astrometry_unlensed(t)
     xS_p_lensed = pspl_p.get_astrometry(t)
+    xL_p = pspl_p.get_lens_astrometry(t)
 
     # Plot the amplification
     fig1 = plt.figure(1)
     plt.clf()
-    f1_1 = fig1.add_axes((0.1, 0.3, 0.8, 0.6))
+    f1_1 = fig1.add_axes((0.20, 0.3, 0.75, 0.6))
     plt.plot(dt, 2.5 * np.log10(A_n), 'b-', label='No parallax')
     plt.plot(dt, 2.5 * np.log10(A_p), 'r-', label='Parallax')
-    plt.legend()
+    plt.legend(fontsize=10)
     plt.ylabel('2.5 * log(A)')
     f1_1.set_xticklabels([])
 
-    f2_1 = fig1.add_axes((0.1, 0.1, 0.8, 0.2))
+    f2_1 = fig1.add_axes((0.20, 0.1, 0.75, 0.2))
     plt.plot(dt, 2.5 * (np.log10(A_p) - np.log10(A_n)), 'k-', label='Par - No par')
     plt.axhline(0, linestyle='--', color='k')
-    plt.legend()
+    plt.legend(fontsize=10)
     plt.ylabel('Diff')
     plt.xlabel('t - t0 (MJD)')
+
+    plt.savefig(outdir + 'amp_v_time.png')
+    print("save to " + outdir)
+    
 
     
     # Plot the positions of everything
     fig2 = plt.figure(2)
     plt.clf()
-    plt.plot(xS_n[:, 0], xS_n[:, 1], 'r--', mfc='none', mec='red', label='No parallax model')
-    plt.plot(xS_p_unlens[:, 0], xS_p_unlens[:, 1], 'b--', mfc='none', mec='blue',
-             label='Parallax model, unlensed')
-    plt.plot(xS_p_lensed[:, 0], xS_p_lensed[:, 1], 'b-', label='Parallax model, lensed')
-    plt.legend()
-    # plt.gca().invert_xaxis()
-    # lim = 0.05
-    # plt.xlim(lim, -lim) # arcsec
-    # plt.ylim(-lim, lim)
-    plt.xlim(0.006, -0.006) # arcsec
-    plt.ylim(-0.02, 0.02)
-    plt.xlabel('R.A. (")')
-    plt.ylabel('Dec. (")')
+    plt.plot(xS_n[:, 0] * 1e3, xS_n[:, 1] * 1e3, 'r--',
+                 mfc='none', mec='red', label='Src, No parallax model')
+    plt.plot(xS_p_unlens[:, 0] * 1e3, xS_p_unlens[:, 1] * 1e3, 'b--',
+                 mfc='none', mec='blue',
+             label='Src, Parallax model, unlensed')
+    plt.plot(xL_p[:, 0] * 1e3, xL_p[:, 1] * 1e3, 'k--',
+                 mfc='none', mec='grey', label='Lens')
+    plt.plot(xS_p_lensed[:, 0] * 1e3, xS_p_lensed[:, 1] * 1e3, 'b-', label='Src, Parallax model, lensed')
+    plt.legend(fontsize=10)
+    plt.gca().invert_xaxis()
+    plt.xlabel('R.A. (mas)')
+    plt.ylabel('Dec. (mas)')
+    plt.axis('equal')
+    lim = 10
+    print('LIM = ', lim)
+    plt.xlim(lim, -lim) # arcsec
+    plt.ylim(-lim, lim)
+    plt.savefig(outdir + 'on_sky.png')
 
     # Check just the astrometric shift part.
     shift_n = pspl_n.get_centroid_shift(t) # mas
@@ -385,18 +337,22 @@ def test_pspl_parallax_belokurov():
     
     fig3 = plt.figure(3)
     plt.clf()
-    f1_3 = fig3.add_axes((0.15, 0.3, 0.8, 0.6))
+    f1_3 = fig3.add_axes((0.20, 0.3, 0.75, 0.6))
     plt.plot(dt, shift_n_amp, 'r--', label='No parallax model')
     plt.plot(dt, shift_p_amp, 'b--', label='Parallax model')
-    plt.legend()
+    plt.ylabel('Astrometric Shift (mas)')
+    plt.legend(fontsize=10)
     f1_3.set_xticklabels([])
 
-    f2_3 = fig3.add_axes((0.15, 0.1, 0.8, 0.2))
+    f2_3 = fig3.add_axes((0.20, 0.1, 0.75, 0.2))
     plt.plot(dt, shift_p_amp - shift_n_amp, 'k-', label='Par - No par')
-    plt.legend()
+    plt.legend(fontsize=10)
     plt.axhline(0, linestyle='--', color='k')
+    plt.ylabel('Diff (mas)')
     plt.xlabel('t - t0 (MJD)')
-    plt.ylabel('Astrometric Shift (mas)')
+    
+    plt.savefig(outdir + 'shift_amp_v_t.png')
+    
 
     fig4 = plt.figure(4)
     plt.clf()
@@ -405,13 +361,15 @@ def test_pspl_parallax_belokurov():
     plt.axhline(0, linestyle='--')
     plt.axvline(0, linestyle='--')
     plt.gca().invert_xaxis()
-    plt.legend()
+    plt.legend(fontsize=10)
     plt.xlabel('Shift RA (mas)')
     plt.ylabel('Shift Dec (mas)')
     plt.axis('equal')
+    plt.savefig(outdir + 'shift_on_sky.png')
+    
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
@@ -441,10 +399,10 @@ def test_pspl_parallax_paczynski1998(t0):
     
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
@@ -558,8 +516,8 @@ def test_pspl_parallax_paczynski1998(t0):
     plt.xlabel('thetaS_E (")')
     plt.ylabel('thetaS_N (")')
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
@@ -583,10 +541,10 @@ def test_pspl_parallax_boden1998(t0):
     
     # No parallax
     pspl_n = model.PSPL(mL, t0, xS0, beta, muL, muS, dL, dS, imag)
-    print 'pspl_n.u0', pspl_n.u0
-    print 'pspl_n.muS', pspl_n.muS
-    print 'pspl_n.u0_hat', pspl_n.u0_hat
-    print 'pspl_n.thetaE_hat', pspl_n.thetaE_hat
+    print('pspl_n.u0', pspl_n.u0)
+    print('pspl_n.muS', pspl_n.muS)
+    print('pspl_n.u0_hat', pspl_n.u0_hat)
+    print('pspl_n.thetaE_hat', pspl_n.thetaE_hat)
     
     # With parallax
     pspl_p = model.PSPL_parallax(raL, decL, mL, t0, xS0, beta, muL, muS, dL, dS, imag)
@@ -700,21 +658,19 @@ def test_pspl_parallax_boden1998(t0):
     plt.xlabel('thetaS_E (")')
     plt.ylabel('thetaS_N (")')
 
-    print 'Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp
-    print 'Einstein crossing time: ', pspl_n.tE, pspl_n.tE
+    print('Einstein radius: ', pspl_n.thetaE_amp, pspl_p.thetaE_amp)
+    print('Einstein crossing time: ', pspl_n.tE, pspl_n.tE)
 
     return
 
 
 def test_pspl_parallax_fit():    
-    data, p_in = fake_data_parallax()
+    data, p_in = fake_data_parallax_lmc()
 
-#     model_fitter.multinest_pspl_parallax(data,
-# test                                         n_live_points=300,
-#                                          saveto='./mnest_pspl_par/',
-#                                          runcode='aa')
-# 
-    model_fitter.plot_posteriors('mnest_pspl_par/', 'aa')
+    model_fitter.multinest_pspl_parallax(data,
+                                         n_live_points=300,
+                                         saveto='./mnest_pspl_par_lmc/',
+                                         runcode='aa')
 
     best = model_fitter.get_best_fit('mnest_pspl_par/', 'aa')
 
@@ -733,6 +689,17 @@ def test_pspl_parallax_fit():
                                   np.array([p_in['muL_E'], p_in['muL_N']]),
                                   np.array([p_in['muS_E'], p_in['muS_N']]),
                                   p_in['dL'], p_in['dS'], p_in['imag_base'])
+
+    p_in['tE'] = pspl_in.tE
+    p_in['thetaE'] = pspl_in.thetaE_amp
+    p_in['piE_E'] = pspl_in.piE[0]
+    p_in['piE_N'] = pspl_in.piE[1]
+    p_in['u0_amp'] = pspl_in.u0_amp
+    p_in['muRel_E'] = pspl_in.muRel[0]
+    p_in['muRel_N'] = pspl_in.muRel[1]
+    
+    model_fitter.plot_posteriors('mnest_pspl_par/', 'aa', sim_vals=p_in)
+    
     
     imag_out = pspl_out.get_photometry(data['t_phot'])
     pos_out = pspl_out.get_astrometry(data['t_ast'])
@@ -750,11 +717,17 @@ def test_pspl_parallax_fit():
                                              data['xpos_err'], data['ypos_err'])
     lnL_in = lnL_phot_in.mean() + lnL_ast_in.mean()
     
-    print 'lnL for input: ', lnL_in
-    print 'lnL for output: ', lnL_out
+    print('lnL for input: ', lnL_in)
+    print('lnL for output: ', lnL_out)
 
     outroot = 'mnest_pspl_par/plots/aa'
+
+    plot_mnest_test(data, imag_in, imag_out, pos_in, pos_out, outroot)
+
+    return
+
     
+def plot_mnest_test(data, imag_in, imag_out, pos_in, pos_out, outroot):
     plt.figure(1)
     plt.clf()
     plt.errorbar(data['t_phot'], data['imag'], yerr=data['imag_err'], fmt='k.')
@@ -809,14 +782,14 @@ def test_make_t0_gen():
     plt.plot(data['t_phot'], data['imag'], 'k.')
     plt.axvline(t0_rand.min())
     plt.axvline(t0_rand.max())
-    print 't0 between: ', t0_rand.min(), t0_rand.max()
+    print('t0 between: ', t0_rand.min(), t0_rand.max())
 
     assert t0_rand.min() < 56990
     assert t0_rand.max() > 57000
 
     return
 
-def fake_data_parallax():
+def fake_data_parallax_lmc():
     raL_in = 80.89375   # LMC R.A.
     decL_in = -29.0 # LMC Dec. This is the sin \beta = -0.99 where \beta = ecliptic lat
     mL_in = 10.0 # msun
@@ -831,6 +804,14 @@ def fake_data_parallax():
     dS_in = 8000.0  # pc
     imag_in = 19.0
 
+    data, params = fake_data_parallax(raL_in, decL_in, mL_in, t0_in, xs0_in, beta_in,
+                                      muS_in, muL_in, dL_in, dS_in, imag_in, outdir='test_mnest_lmc/')
+
+    return data, params
+
+def fake_data_parallax(raL_in, decL_in, mL_in, t0_in, xs0_in, beta_in,
+                       muS_in, muL_in, dL_in, dS_in, imag_in, outdir=''):
+    
     pspl_in = model.PSPL_parallax(raL_in, decL_in, mL_in,
                                   t0_in, xS0_in, beta_in,
                                   muL_in, muS_in, dL_in, dS_in, imag_in)
@@ -879,6 +860,7 @@ def fake_data_parallax():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('I (mag)')
     plt.title('Input Data and Model')
+    plt.savefig(outdir + 'fake_data_phot.png')
 
     plt.figure(2)
     plt.clf()
@@ -888,6 +870,7 @@ def fake_data_parallax():
     plt.ylabel('Y Pos (")')
     plt.plot(pos_obs_tmp[:, 0], pos_obs_tmp[:, 1], 'r--')
     plt.title('Input Data and Model')
+    plt.savefig(outdir + 'fake_data_ast.png')
 
     plt.figure(3)
     plt.clf()
@@ -896,6 +879,7 @@ def fake_data_parallax():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('X Pos (")')
     plt.title('Input Data and Model')
+    plt.savefig(outdir + 'fake_data_t_vs_E.png')
 
     plt.figure(4)
     plt.clf()
@@ -904,6 +888,7 @@ def fake_data_parallax():
     plt.xlabel('t - t0 (days)')
     plt.ylabel('Y Pos (")')
     plt.title('Input Data and Model')
+    plt.savefig(outdir + 'fake_data_t_vs_N.png')
 
     data = {}
     data['t_phot'] = t_phot
