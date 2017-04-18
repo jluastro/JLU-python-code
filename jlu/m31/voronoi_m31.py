@@ -25,20 +25,27 @@ cuberoot = 'm31_all_scalederr_cleanhdr_bulgesub'
 bhpos_hor = ppxf_m31.bhpos_hor
 bhpos_horpix = bhpos_hor*20.
 
-def createVoronoiInput():
+def createVoronoiInput(cubeFile=None):
     # makes a version of the median flux map that is all positive, and a
     # version of the error array that is directly scaled from this new
     # flux map and the SNR map created empirically (via ifu.map_snr)
-    cubefits = pyfits.open(datadir + cuberoot + '.fits')
+    if cubeFile:
+        cubefits = pyfits.open(cubeFile)
+    else:
+        cubefits = pyfits.open(datadir + cuberoot + '.fits')
     
     cube = cubefits[0].data
     hdr = cubefits[0].header
     errors = cubefits[1].data
     quality = cubefits[2].data
-    nframes = cubefits[3].data
+    #nframes = cubefits[3].data
 
     #snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
-    snrimg = pyfits.getdata(datadir+'m31_all_scalederr_cleanhdr_snr.fits')
+    if cubeFile:
+        snrimg = pyfits.getdata(cubeFile.replace('_bulgesub.fits','_snr.fits'))
+        #snrimg = pyfits.getdata(cubeFile.replace('.fits','_snr.fits'))
+    else:
+        snrimg = pyfits.getdata(datadir+'m31_all_scalederr_cleanhdr_snr.fits')
     
     xx = np.arange(cube.shape[0])
     yy = np.arange(cube.shape[1])
@@ -52,13 +59,14 @@ def createVoronoiInput():
             tmpcube = cube[nx,ny,:]
             # add a constant to the spectrum to make it above 0
             #print "old cube mean is %f " % tmpcube.mean()
-            minFlux = tmpcube.mean() - (1.0 * tmpcube.std())
+            #minFlux = tmpcube.mean() - (1.0 * tmpcube.std())
             #print "minflux is %f" % minFlux
-            tmpcube += np.abs(minFlux)
+            #tmpcube += np.abs(minFlux)
             #print "new cube mean is %f " % tmpcube.mean()
             tmpcubeavg = tmpcube.mean()
-            #tmpsnr = np.abs(snrimg[ny,nx])
-            tmpsnr = np.abs(snrimg[nx,ny])
+            tmpcubeavg = np.median(tmpcube)
+            tmpsnr = np.abs(snrimg[ny,nx])
+            #tmpsnr = np.abs(snrimg[nx,ny])
             # calc errors for tessellation based on the empirical
             # S/N already calculated
             tmperr = tmpcubeavg/tmpsnr
@@ -71,8 +79,11 @@ def createVoronoiInput():
             
     # change NaN to 0
     errVor = np.nan_to_num(errVor)
-    
-    outfile = datadir + cuberoot + '_vor.fits'
+
+    if cubeFile:
+        outfile = cubeFile.replace('.fits','_vor.fits')
+    else:
+        outfile = datadir + cuberoot + '_vor.fits'
     pyfits.writeto(outfile, cubeVor, header=hdr)
     pyfits.append(outfile, errVor)
             
@@ -122,8 +133,11 @@ def tessellate(inputFile=datadir+cuberoot+'_vor.fits',targetSN=50):
     py.pause(0.01)  # allow plot to appear in certain cases
 
     pdb.set_trace()
-    np.savetxt(datadir+'voronoi_2d_binning_output.txt', np.column_stack([xx, yy, binNum]),
+    outfile = os.path.dirname(inputFile)+'/voronoi_2d_binning_output.txt'
+    np.savetxt(outfile, np.column_stack([xx, yy, binNum]),
                fmt=b'%10.6f %10.6f %8i')
+    #np.savetxt(datadir+'voronoi_2d_binning_output.txt', np.column_stack([xx, yy, binNum]),
+    #           fmt=b'%10.6f %10.6f %8i')
 
 def createVoronoiOutput(inputFile=datadir+cuberoot+'.fits',inputVoronoiFile=datadir+'voronoi_2d_binning_output.txt'):
     cubefits = pyfits.open(inputFile)
@@ -155,15 +169,30 @@ def createVoronoiOutput(inputFile=datadir+cuberoot+'.fits',inputVoronoiFile=data
         newErr[nx,ny,:] = tmpErr
 
     #pdb.set_trace()
-    outfile = datadir + cuberoot + '_vorcube.fits'
+    outfile = inputFile.replace('.fits','_vorcube.fits')
     pyfits.writeto(outfile,newCube,header=hdr)
     pyfits.append(outfile,newErr)
     pyfits.append(outfile,quality)
     pyfits.append(outfile,nframes)
     
-def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoronoiFile=datadir+'voronoi_2d_binning_output.txt',l98bin=False):
+def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputModelArr=None,inputVoronoiFile=datadir+'voronoi_2d_binning_output.txt',l98bin=False,outFile=None):
+    
     # read in the full model file (not fitted)
+    #if not inputModelArr[0,0]:
     model = ppxf_m31.modelResults(inputFile=inputModel)
+    X = model.x
+    Y = model.y
+    Z = model.z
+    VX = model.vx
+    VY = model.vy
+    VZ = model.vz
+    #else:
+    #    X = inputModelArr[:,0]
+    #    Y = inputModelArr[:,1]
+    #    Z = inputModelArr[:,2]
+    #    VX = inputModelArr[:,3]
+    #    VY = inputModelArr[:,4]
+    #    VZ = inputModelArr[:,5]
 
     # this section is all taken from ppxf_m31.modelBin()
     # bin size = 0.05" = 0.1865 pc
@@ -174,25 +203,25 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoro
         binpc = 0.1865
     
     # Setting the BH pixel phase to match that of the data
-    xfrac = ppxf_m31.bhpos[0]-np.floor(ppxf_m31.bhpos[0])
-    yfrac = ppxf_m31.bhpos[1]-np.floor(ppxf_m31.bhpos[1])
+    xfrac = (ppxf_m31.bhpos[0]/0.05)-np.floor(ppxf_m31.bhpos[0]/0.05)
+    yfrac = (ppxf_m31.bhpos[1]/0.05)-np.floor(ppxf_m31.bhpos[1]/0.05)
     # if L98 bin size, divide by the ratio of the two pixel scales and
     # calc the new pixel phase
     if l98bin:
         xfrac = (xfrac*(.05/.0228))-np.floor(xfrac*(0.05/0.0228))
         yfrac = (yfrac*(.05/.0228))-np.floor(yfrac*(0.05/0.0228))
     # reposition BH (originally at origin in model) to the correct pixel phase
-    model.x += (binpc*xfrac)
-    model.y += (binpc*yfrac)
+    X += (binpc*xfrac)
+    Y += (binpc*yfrac)
 
     # get the full size of the binned array, but making sure to leave bin boundaries on the axes
     # positive and negative extent of the x axis
-    posxbin = np.ceil(np.max(model.x)/binpc)
-    negxbin = np.ceil(np.abs(np.min(model.x)/binpc))
+    posxbin = np.ceil(np.max(X)/binpc)
+    negxbin = np.ceil(np.abs(np.min(X)/binpc))
     nxbin = posxbin+negxbin
     # and y axis
-    posybin = np.ceil(np.max(model.y)/binpc)
-    negybin = np.ceil(np.abs(np.min(model.y)/binpc))
+    posybin = np.ceil(np.max(Y)/binpc)
+    negybin = np.ceil(np.abs(np.min(Y)/binpc))
     nybin = posybin + negybin
 
     # new BH position: (0,0) + (xfrac,yfrac)
@@ -204,15 +233,15 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoro
     newnegybin = 0. - np.floor(ppxf_m31.bhpos[1]/0.05)
 
     xlen = 41
-    ylen = 84
-    goodTrim = np.where((model.x/binpc >= newnegxbin) & (model.x/binpc <= (newnegxbin + xlen)) & (model.y/binpc >= newnegybin) & (model.y/binpc <= (newnegybin + ylen)))
+    ylen = 83
+    goodTrim = np.where((X/binpc >= newnegxbin) & (X/binpc <= (newnegxbin + xlen)) & (Y/binpc >= newnegybin) & (Y/binpc <= (newnegybin + ylen)))
 
-    xClip = model.x[goodTrim[0]] - newnegxbin*binpc
-    yClip = model.y[goodTrim[0]] - newnegybin*binpc
-    zClip = model.z[goodTrim[0]]
-    vxClip = model.vx[goodTrim[0]]
-    vyClip = model.vy[goodTrim[0]]
-    vzClip = model.vz[goodTrim[0]]
+    xClip = X[goodTrim[0]] - newnegxbin*binpc
+    yClip = Y[goodTrim[0]] - newnegybin*binpc
+    zClip = Z[goodTrim[0]]
+    vxClip = VX[goodTrim[0]]
+    vyClip = VY[goodTrim[0]]
+    vzClip = VZ[goodTrim[0]]
 
     # convert x,y positions to bin numbers
     xBin = np.floor(xClip/binpc)
@@ -268,12 +297,12 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoro
     h3 = np.zeros(binnum.max()+1)
     h4 = np.zeros(binnum.max()+1)
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
     # do the LOSVD fits, by bin number
     for i in range(binnum.max()+1):
         # sum up nstar and losvd for each bin
-        print "Starting bin ", i
+        #print "Starting bin ", i
         idx = np.where(binnum == i)
         nx = xx[idx]
         ny = yy[idx]
@@ -317,7 +346,7 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoro
             h4[i] = popt[4]             
     
     for nb in range(binnum.max()+1):
-        print 'round 2, starting bin', nb
+        #print 'round 2, starting bin', nb
         idx = np.where(binnum == nb)
         nx = xx[idx]
         ny = yy[idx]
@@ -328,9 +357,13 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputVoro
         newH3[nx,ny] = h3[nb]
         newH4[nx,ny] = h4[nb]
 
-    pdb.set_trace()
-    
-    output = open(modeldir + 'nonaligned_OSIRIScoords_fits_trim_tess.dat', 'w')
+    #pdb.set_trace()
+
+    if outFile:
+        outputFile = outFile
+    else:
+        outFile = inputModel.replace('.dat','_fits_trim_tess.dat')
+    output = open(outputFile, 'w')
     pickle.dump(newNstar, output)
     pickle.dump(newVel, output)
     pickle.dump(newSigma, output)

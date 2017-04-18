@@ -545,7 +545,16 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     #pdb.set_trace()
 
     #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_osiris_rot_scale.fits')
-    nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_maxpsf2.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_numclip15.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_allnewshifts.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_telshift.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_100815.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_100828.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_combshift.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_comb2shift.fits')
+    nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_comb3shift.fits')
+    
     nirc2scale = nirc2scalefits[0].data
     # convert to e-/s
     #nirc2flux = nirc2scale*4./60.
@@ -590,6 +599,17 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     litI = np.rot90(litI.T,3)
     # take ratio of bulge_lit to observed to get SB ratio map
     sbratiomap = litI/nirc2sb
+
+    # plot the SB ratio map
+    py.close(2)
+    py.figure(2,figsize=(9,5))
+    xaxis = (np.arange(sbratiomap.shape[1], dtype=float))*0.05
+    yaxis = (np.arange(sbratiomap.shape[0], dtype=float))*0.05
+    py.imshow(sbratiomap,extent=[xaxis[0],xaxis[-1],yaxis[0],yaxis[-1]])
+    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'kx',markeredgewidth=2)
+    py.axis('image')
+    cbar = py.colorbar(orientation='vertical')
+    cbar.set_label('Surface brightness ratio')
     
     pdb.set_trace()
     
@@ -608,7 +628,7 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     # (may implement a mean across several spaxels later)
     modSpec = modSpecCube[20,10,:]
 
-    pdb.set_trace()
+    #pdb.set_trace()
     # set the velocity
     # have two choices - systemic velocity, or scaled w/ distance from SMBH (probably same, within errors)
     # going w/ systemic velocity for now
@@ -657,10 +677,10 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     mask0 = np.where(cube[:,:,500] == 0.)
     newCube[mask0[0],mask0[1],:] = 0.
 
-    pdb.set_trace()
+    #pdb.set_trace()
     # how to do the errors?
     outFile = inputFile.replace('.fits', '_bulgesub.fits')
-    pyfits.writeto(outFile, newCube, header=hdr, clobber=True,output_verify='ignore')
+    pyfits.writeto(outFile, newCube, header=hdr, clobber=True,output_verify='warn')
     pyfits.append(outFile,errors)
     pyfits.append(outFile,quality)
     pyfits.append(outFile,nframes)

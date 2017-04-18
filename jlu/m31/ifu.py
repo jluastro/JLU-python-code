@@ -8,22 +8,31 @@ from scipy import signal
 from pyraf import iraf as ir
 from jlu.osiris import cube as cube_code
 from jlu.osiris import spec
+from jlu.m31 import ppxf_m31
 import glob
 import os
 import pdb
 import atpy
 
-datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
-datadir2010 = '/u/jlu/data/m31/10aug/mosaic/'
+#datadir = '/u/jlu/data/m31/08oct/081021/SPEC/reduce/m31/ss/'
+datadir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
+datadir2010 = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
+#datadir2010 = '/u/jlu/data/m31/10aug/mosaic/'
 
 #workdir = '/u/jlu/work/m31/nucleus/ifu_09_02_24/'
-workdir = '/u/jlu/work/m31/nucleus/ifu_11_11_30/'
+#workdir = '/u/jlu/work/m31/nucleus/ifu_11_11_30/'
+workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 
 #cuberoot = 'm31_08oct_Kbb_050'
-cuberoot = 'm31_Kbb_050'
+#cuberoot = 'm31_Kbb_050'
+#cuberoot = 'm31_all_scalederr_cleanhdr'
+#cuberoot = 'm31_all_scalederr_cleanhdr_vorcube'
+#cuberoot = 'm31_all_scalederr_cleanhdr_bulgesub'
+cuberoot = 'm31_all_scalederr_cleanhdr_bulgesub_vorcube_20160825'
 
 #m31pos = np.array([9.0, 38.0])
-m31pos = np.array([22.5, 37.5])
+#m31pos = np.array([22.5, 37.5])
+m31pos = ppxf_m31.bhpos/0.05
 paSpec = 56.0
 
 lineList = {2.107: 'Mg I',
@@ -70,27 +79,25 @@ def make_cube_image(cubefile, rootdir=datadir, clobber=False):
     if clobber or not os.path.isfile(rootdir+cubefile.replace('.fits', '_img.fits')):
         return cube_code.collapse_to_image(rootdir + cubefile)
 
+def tweakShifts(rootdir=datadir, frameimgdir=datadir, inCubeImg=None, frameShift=True, plot=False):
+    """
+    Default (frameShift=True): Given an input shifts file (shifts of each OSIRIS frame w.r.t. the NIRC2 frame),
+    first shift the frame by the given amount then perform small shifts to
+    tweak the shifts. Performing a least squares optimization for now.
 
-def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
+    frameShift=False: Instead takes the final OSIRIS mosaic and finds the shift between
+    it and the NIRC2 frame and writes it out to a file
     """
-    Determine the spatial resolution of an OSIRIS data cube image by
-    comparing with a NIRC2 image. The NIRC2 image is convolved with a
-    gaussian, rebinned to the OSIRIS plate scale and differenced until
-    the optimal gaussian width is determined. 
-    """
+    
     # Read in the cube... assume it is K-band
-    cube, cubehdr = pyfits.getdata(rootdir + cubefile, header=True)
+    if inCubeImg is None:
+        cube, cubehdr = pyfits.getdata(rootdir + cuberoot + '.fits', header=True)
+    else:
+        cube, cubehdr = pyfits.getdata(inCubeImg, header=True)
 
-    cubeimg = make_cube_image(cubefile, rootdir=rootdir)
-    if cubeimg == None:
-        print 'Opening previosly existing cube image.'
-        cubeimg = pyfits.getdata(rootdir + cubefile.replace(".fits", '_img.fits'))
-
-    ### Register the NIRC2 image to the OSIRIS image.
     # Read in the NIRC2 image (scale = 10 mas/pixel)
-    #nirc2file = '/u/jlu/data/m31/05jul/combo/m31_05jul_kp.fits'
     nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/m31_05jul_kp.fits'
-    img, imghdr = pyfits.getdata(nirc2file, header=True)
+    imgorg, imghdr = pyfits.getdata(nirc2file, header=True)
 
     # Get the PA of the OSIRIS spectrograph image
     specPA = cubehdr['PA_SPEC']
@@ -100,189 +107,565 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir):
 
     # Rotate the NIRC2 image
     angle = specPA - imagPA
-    imgrot = scipy.misc.imrotate(img, angle, interp='bicubic')
+    imgrot = scipy.misc.imrotate(imgorg, angle, interp='bicubic')
 
     # Get the shifts constructed manually
     xshift = 0
     yshift = 0
-    #shiftsTable = asciidata.open(rootdir + 'shifts.txt')
-    shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/analysis_old/ifu_11_11_30/data/shifts.txt')
-    for rr in range(shiftsTable.nrows):
-        if rr == 0:
-            xshift0 = float(shiftsTable[1][rr])
-            yshift0 = float(shiftsTable[2][rr])
 
-        if shiftsTable[0][rr] == cubefile:
-            xshift = float(shiftsTable[1][rr])
-            yshift = float(shiftsTable[2][rr])
-            print 'Shifting image: '
-            print shiftsTable[0][rr], shiftsTable[1][rr], shiftsTable[2][rr]
-            print ''
-            break
+    def shift2nirc2(osirisimg,nirc2imgorg,nirc2imgrot,inxshift,inyshift,plot=plot):
+        # NIRC2 image
+        img = imgorg
+        # Trim down the NIRC2 image to the same size as the OSIRIS image.
+        # Still bigger than OSIRIS FOV
+        # the -3/+1 offsets are to account for the difference between the 0th OSIRIS
+        # frame and the NIRC2 frame - all other OSIRIS frame offsets are w.r.t. the 0th frame
+        ycent = int(round((img.shape[0] / 2.0)  - (3.*5) + (inyshift*5.0) ))
+        xcent = int(round((img.shape[1] / 2.0)  + (1.*5) + (inxshift*5.0) ))
+        print ''
+        print 'Comparing OSIRIS with NIRC2 Image:'
+        print '  NIRC2 xcent = ', xcent, '  ycent = ', ycent
 
-    # Calculate the SNR for the OSIRIS data between 2.160 and 2.175 microns.
-    # This is done for the same position in each of the combo + subset mosaics.
-    # We need to remove the continuum first before we calculate the SNR.
-    xpixSNR = 11 + (xshift - xshift0)
-    ypixSNR = 47 + (yshift - yshift0)
+        yhalf = (osirisimg.shape[0] / 2.) * 5 # Make the image the same size
+        xhalf = (osirisimg.shape[1] / 2.) * 5 # as the OSIRIS cube image
 
-    # if (xpixSNR < 0 or xpixSNR >= cube.shape[0] or
-    #     ypixSNR < 0 or ypixSNR >= cube.shape[1]):
-    tmp = np.unravel_index(cubeimg.argmax(), cubeimg.shape)
-    xpixSNR = tmp[1]
-    ypixSNR = tmp[0]
-    
-    # Get the wavelength solution so we can specify range:
-    w0 = cubehdr['CRVAL1']
-    dw = cubehdr['CDELT1']
-    wavelength = w0 + dw * np.arange(cube.shape[2], dtype=float)
-    wavelength /= 1000.0   # Convert to microns
+        img = imgrot[ycent-yhalf:ycent+yhalf, xcent-xhalf:xcent+xhalf]
+        img = img.astype(float)
 
-    widx = np.where((wavelength > 2.160) & (wavelength < 2.175))
-    waveCrop = wavelength[widx]
-    specCrop = cube[xpixSNR, ypixSNR, widx].flatten()
-    coeffs = scipy.polyfit(waveCrop, specCrop, 1)
-    residuals = specCrop / scipy.polyval(coeffs, waveCrop)
-    specSNR = (residuals.mean() / residuals.std())
-
-    print 'OSIRIS Signal-to-Noise:'
-    print '   X = %d  Y = %d' % (xpixSNR, ypixSNR)
-    print '   wavelength = [%5.3f - %5.3f]' % (2.160, 2.175)
-    print '   SNR = %f' % specSNR
-
-    # Trim down the NIRC2 image to the same size as the OSIRIS image.
-    # Still bigger than OSIRIS FOV
-    ycent = int(round((img.shape[0] / 2.0) + (yshift*5.0)))
-    xcent = int(round((img.shape[1] / 2.0) - (xshift*5.0)))
-    print ''
-    print 'Comparing OSIRIS with NIRC2 Image:'
-    print '  NIRC2 xcent = ', xcent, '  ycent = ', ycent
-
-    yhalf = int(cubeimg.shape[0] / 2) * 5 # Make the image the same size
-    xhalf = int(cubeimg.shape[1] / 2) * 5 # as the OSIRIS cube image.
-
-    img = imgrot[ycent-yhalf:ycent+yhalf, xcent-xhalf:xcent+xhalf]
-
-    # Rebin the NIRC2 image to the same 50 mas plate scale as the
-    # OSIRIS image.
-    img = scipy.misc.imresize(img, 0.2) # rebin to 50 mas/pixel.
-
-    # Save the modified NIRC2 image.
-    nirc2_file = rootdir + 'nirc2_ref.fits'
-    ir.imdelete(nirc2_file)
-    pyfits.writeto(nirc2_file, img, header=imghdr, output_verify='silentfix')
-
-    # Clean up the cube image to get rid of very very low flux values 
-    # (on the edges).
-    cidx = np.where(cubeimg < cubeimg.max()*0.05)
-    cubeimg[cidx] = 0
-
-    def fitfunction(params, plot=False, verbose=True):
-        amp1 = abs(params[0])
-        #amp2 = abs(params[1])
-        #sigma1 = abs(params[2])
-        sigma1 = abs(params[1])
-        #sigma2 = abs(params[3])
-
-        # Actually amp1 should be fixed to 1.0
-        amp1 = 1.0
-        #sigma2 = 8.0
-
-        # Convolve the NIRC2 image with a gaussian
-        boxsize = min(cubeimg.shape) / 2
-        #psf = twogauss_kernel(sigma1, sigma2, amp1, amp2, half_box=50)
-        psf = gauss_kernel(sigma1, amp1, half_box=50)
-        newimg = signal.convolve(img, psf, mode='full')
+        # Rebin the NIRC2 image to the same 50 mas plate scale as the
+        # OSIRIS image.
+        img = scipy.misc.imresize(img, 0.2) # rebin to 50 mas/pixel.
+        img = img.astype(float)
         
-        xlo = (psf.shape[1] / 2)
-        xhi = xlo + cubeimg.shape[1]
-        ylo = (psf.shape[0] / 2)
-        yhi = ylo + cubeimg.shape[0]
+        # Save the modified NIRC2 image.
+        #nirc2_file = datadir + 'data/osiris_perf/nirc2_ref_'+str(rr)+'.fits'
+        #ir.imdelete(nirc2_file)
+        #pyfits.writeto(nirc2_file, img, header=imghdr, output_verify='silentfix')
 
-        newimg = newimg[ylo:yhi, xlo:xhi]
+        # Clean up the cube image to get rid of very very low flux values 
+        # (on the edges).
+        cidx = np.where(osirisimg < osirisimg.max()*0.05)
+        osirisimg[cidx] = 0
 
-        if verbose:
-            print 'fitfunc shapes:',
-            print ' cubeimg = ', cubeimg.shape, 
-            print ' psf = ', psf.shape,
-            print ' newimg = ', newimg.shape
+        # mask out the edges of the frame
+        mask = maskOSIRIS(osirisimg)
+        midx = np.where(mask == 0)
+        osirisimg[midx] = 0
 
+        osirisimg_norm = osirisimg / osirisimg.sum()
+        img_norm = img / img.sum()
+
+        img_norm[cidx] = 0
+        img_norm[midx] = 0
+
+        # get a refererence correlation
+        testcorr_img = scipy.signal.fftconvolve(osirisimg_norm, osirisimg_norm[::-1,::-1], mode='same')
+        testcorr = np.unravel_index(np.argmax(testcorr_img), testcorr_img.shape)
+        # get the real correlation
+        corr_img = scipy.signal.fftconvolve(osirisimg_norm, img_norm[::-1,::-1], mode='same')
+        corr = np.unravel_index(np.argmax(corr_img), corr_img.shape)
+
+        # take the difference to get the shift
+        dx = testcorr[1] - corr[1]
+        dy = testcorr[0] - corr[0]
+        
+        
+        print "dx = ", dx,
+        print "dy = ", dy
+
+        # testing the new shift
+        ycentnew = int(round((imgorg.shape[0] / 2.0)  - (3.*5) + ((yshift+dy)*5.0) ))
+        xcentnew = int(round((imgorg.shape[1] / 2.0)  + (1.*5) + ((xshift+dx)*5.0) ))
+        newimg = imgrot[ycentnew-yhalf:ycentnew+yhalf, xcentnew-xhalf:xcentnew+xhalf]
+        newimg = scipy.misc.imresize(newimg, 0.2) # rebin to 50 mas/pixel.
+        newimg = newimg.astype(float)
         newimg[cidx] = 0
+        newimg[midx] = 0
         
-        cubeimg_norm = cubeimg / cubeimg.sum()
-        newimg_norm = newimg / newimg.sum()
-        
-        residuals = (cubeimg_norm - newimg_norm) / np.sqrt(cubeimg_norm)
-        residuals[cidx] = 0
-
-        if verbose:
-            #print 'Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2),
-            #print ' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2)
-            print 'Parameters: sig1 = %5.2f ' % (sigma1),
-            print ' amp1 = %9.2e ' % (amp1)
-            print 'Residuals:  ', math.sqrt((residuals*residuals).sum())
-            print '' 
-
         if plot:
-            py.figure(1)
-            py.clf()
-            py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
+                py.figure(1)
+                py.clf()
+                py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
             
-            py.subplot(1, 3, 1)
-            py.imshow(cubeimg)
-            py.title('OSIRIS')
+                py.subplot(1, 3, 1)
+                py.imshow(osirisimg_norm)
+                py.title('OSIRIS')
+                
+                py.subplot(1, 3, 2)
+                py.imshow(img_norm)
+                py.title('NIRC2+')
             
-            py.subplot(1, 3, 2)
-            py.imshow(newimg)
-            py.title('NIRC2+')
+                py.subplot(1, 3, 3)
+                py.imshow(newimg)
+                py.title('Test new shifts')
+
+                #py.savefig(datadir + 'data/osiris_shift/osir_shift_' + 
+                #        filerr.replace('.fits', '.png'))
+                py.show()
+
+        #pdb.set_trace()
+
+        return dx,dy
+    
+    if frameShift:
+        # get the preliminary shifts of each frame
+        shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/shifts_all_wfilename.txt')
+
+        xshiftnew = []
+        yshiftnew = []
+        filelist = []
+    
+        for rr in range(shiftsTable.nrows):
+            if (rr == 0):
+                xshift0 = float(shiftsTable[1][rr])
+                yshift0 = float(shiftsTable[0][rr])
+                xshift = float(shiftsTable[1][rr])
+                yshift = float(shiftsTable[0][rr])
+                filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+            else:
+                xshift = float(shiftsTable[1][rr])
+                yshift = float(shiftsTable[0][rr])
+                filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+
+            filelist.append(shiftsTable[2][rr])
+            frameimg = pyfits.getdata(frameimgdir + filerr.replace(".fits", '_img.fits'))
+
+            dx, dy = shift2nirc2(frameimg,imgorg,imgrot,xshift,yshift)
+
+            totx = xshift+dx
+            toty = yshift+dy
+
+            xshiftnew.append(totx)
+            yshiftnew.append(toty)
+
+            _out = open(datadir + 'data/osiris_shift/osir_shift_' + filerr.replace('.fits', '_params.txt'), 'w')
+            _out.write('dx: %4.1f dy: %4.1f ' % (dx, dy))
+            _out.write('totx: %4.1f toty: %4.1f ' % (totx, toty))
+            _out.close()
+
+        np.savetxt(datadir + 'data/osiris_shift/shifts_all_wfilename.txt', np.c_[yshiftnew, xshiftnew, filelist],
+                fmt='%s %s %s',delimiter='\t')
+    else:
+        dx, dy = shift2nirc2(cube,imgorg,imgrot,xshift,yshift)
+
+        _out = open(inCubeImg.replace('.fits','_shift2nirc2.txt'), 'w')
+        _out.write('%4.1f %4.1f %s ' % (dy, dx, os.path.basename(inCubeImg.replace('.fits',''))))
+        _out.close()
+        
+def getDtotoffShifts(inFolder=None,inFile=None,outPath=None):
+    if inFolder is not None:
+        files = glob.glob(inFolder + '/*_Kbb_050.fits')
+    else:
+        files = inFile
+
+    dtotoff1 = []
+    dtotoff2 = []
+    outfiles = []
+    for ff in files:
+        cube, hdr = pyfits.getdata(ff,header=True)
+        dtotoff1.append(hdr['DTOTOFF1'])
+        dtotoff2.append(hdr['DTOTOFF2'])
+        outfiles.append(ff.split('/')[-1])
+
+    np.savetxt(outPath+'/shifts_DTOTOFF_wfilename.txt', np.c_[dtotoff1,dtotoff2,outfiles],
+                fmt='%s %s %s',delimiter='\t')
+        
+def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=datadir, frameimgdir=datadir, shiftFile=None, frameQuality=False, twoGauss=False):
+    """
+    Determine the spatial resolution of an OSIRIS data cube image by
+    comparing with a NIRC2 image. The NIRC2 image is convolved with a
+    gaussian, rebinned to the OSIRIS plate scale and differenced until
+    the optimal gaussian width is determined. 
+    """
+    
+    # Read in the cube... assume it is K-band
+    #cube, cubehdr = pyfits.getdata(rootdir + cubefile, header=True)
+    cube, cubehdr = pyfits.getdata(cubefile, header=True)
+
+    #cubeimg = make_cube_image(cubefile, rootdir=rootdir)
+    #if cubeimg == None:
+    print 'Opening previosly existing cube image.'
+    #cubeimg = pyfits.getdata(rootdir + cubefile.replace(".fits", '_img.fits'))
+    cubeimg, cubeimghdr = pyfits.getdata(cubefile.replace(".fits", '_img.fits'), header=True)
+        #cubeimg = pyfits.getdata(cubeimgfile)
+    
+    
+    ### Register the NIRC2 image to the OSIRIS image.
+    # Read in the NIRC2 image (scale = 10 mas/pixel)
+    #nirc2file = '/u/jlu/data/m31/05jul/combo/m31_05jul_kp.fits'
+    nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/m31_05jul_kp.fits'
+    imgorg, imghdr = pyfits.getdata(nirc2file, header=True)
+
+    # Get the PA of the OSIRIS spectrograph image
+    specPA = cubehdr['PA_SPEC']
+    
+    # Get the PA of the NIRC2 image
+    imagPA = imghdr['ROTPOSN'] - imghdr['INSTANGL']
+
+    # Rotate the NIRC2 image
+    angle = specPA - imagPA
+    imgrot = scipy.misc.imrotate(imgorg, angle, interp='bicubic')
+
+    # Get the shifts constructed manually
+    xshift = 0
+    yshift = 0
+    if frameQuality is False:
+        #shiftsTable = asciidata.open(rootdir + 'shifts.txt')
+        #shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/analysis_old/ifu_11_11_30/data/shifts.txt')
+        #shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/shifts_081021_cc.txt')
+        if shiftFile is None:
+            shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/shifts_m31mos_to_nirc2_cc.txt')
+        else:
+            shiftsTable = asciidata.open(shiftFile)
+    else:
+        #shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/shifts_all_tonirc2_wfilename.txt')
+        #shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/shifts_all_wfilename.txt')
+        # tweaked shifts
+        if shiftFile is None:
+            shiftsTable = asciidata.open('/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/data/osiris_shift/shifts_all_wfilename.txt')
+        else:
+            shiftsTable = asciidata.open(shiftFile)
+        
+    for rr in range(shiftsTable.nrows):
+        if (rr == 0):
+    #        xshift0 = float(shiftsTable[1][rr])
+    #        yshift0 = float(shiftsTable[2][rr])
+            xshift0 = float(shiftsTable[1][rr])
+            yshift0 = float(shiftsTable[0][rr])
+            xshift = float(shiftsTable[1][rr])
+            yshift = float(shiftsTable[0][rr])
+            filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+        else:
+            xshift = float(shiftsTable[1][rr])
+            yshift = float(shiftsTable[0][rr])
+            filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+        
+        #    if shiftsTable[0][rr] == cubefile:
+        #        xshift = float(shiftsTable[1][rr])
+        #        yshift = float(shiftsTable[2][rr])
+        #        print 'Shifting image: '
+        #        print shiftsTable[0][rr], shiftsTable[1][rr], shiftsTable[2][rr]
+        #        print ''
+        #        break
+
+        # Calculate the SNR for the OSIRIS data between 2.160 and 2.175 microns.
+        # This is done for the same position in each of the combo + subset mosaics.
+        # We need to remove the continuum first before we calculate the SNR.
+        #xpixSNR = 11 + (xshift - xshift0)
+        #ypixSNR = 47 + (yshift - yshift0)
+
+        if frameQuality:
+            frame, framehdr = pyfits.getdata(framedir + filerr, header=True)
+
+            frameimg = make_cube_image(filerr, rootdir=frameimgdir)
+            if frameimg == None:
+                print 'Opening previosly existing cube image.'
+                frameimg = pyfits.getdata(frameimgdir + filerr.replace(".fits", '_img.fits'))
+        else:
+            frameimg = cubeimg
+            framehdr = cubeimghdr
+            frame = cube
+                
+        # if (xpixSNR < 0 or xpixSNR >= cube.shape[0] or
+        #     ypixSNR < 0 or ypixSNR >= cube.shape[1]):
+        tmp = np.unravel_index(frameimg.argmax(), frameimg.shape)
+        xpixSNR = tmp[1]
+        ypixSNR = tmp[0]
+    
+        # Get the wavelength solution so we can specify range:
+        w0 = framehdr['CRVAL1']
+        dw = framehdr['CDELT1']
+        wavelength = w0 + dw * np.arange(frame.shape[2], dtype=float)
+        wavelength /= 1000.0   # Convert to microns
+
+        widx = np.where((wavelength > 2.160) & (wavelength < 2.175))
+        waveCrop = wavelength[widx]
+        specCrop = frame[xpixSNR, ypixSNR, widx].flatten()
+        coeffs = scipy.polyfit(waveCrop, specCrop, 1)
+        residuals = specCrop / scipy.polyval(coeffs, waveCrop)
+        specSNR = (residuals.mean() / residuals.std())
+
+        print 'OSIRIS Signal-to-Noise:'
+        print '   X = %d  Y = %d' % (xpixSNR, ypixSNR)
+        print '   wavelength = [%5.3f - %5.3f]' % (2.160, 2.175)
+        print '   SNR = %f' % specSNR
+
+        img = imgorg
+        # Trim down the NIRC2 image to the same size as the OSIRIS image.
+        # Still bigger than OSIRIS FOV
+        #ycent = int(round((img.shape[0] / 2.0)  + (yshift*5.0) ))
+        #xcent = int(round((img.shape[1] / 2.0)  + (xshift*5.0) ))
+        # the -3/+1 offsets are to account for the difference between the 0th OSIRIS
+        # frame and the NIRC2 frame - all other OSIRIS frame offsets are w.r.t. the 0th frame
+        ycent = int(round((img.shape[0] / 2.0)  - (3.*5) + (yshift*5.0) ))
+        xcent = int(round((img.shape[1] / 2.0)  + (1.*5) + (xshift*5.0) ))
+        print ''
+        print 'Comparing OSIRIS with NIRC2 Image:'
+        print '  NIRC2 xcent = ', xcent, '  ycent = ', ycent
+
+        #yhalf = int(frameimg.shape[0] / 2.) * 5 # Make the image the same size
+        #xhalf = int(frameimg.shape[1] / 2.) * 5 # as the OSIRIS cube image.
+        #yhalf = int((frameimg.shape[0] / 2.) * 5) # Make the image the same size
+        #xhalf = int((frameimg.shape[1] / 2.) * 5) # as the OSIRIS cube image.
+        yhalf = (frameimg.shape[0] / 2.) * 5 # Make the image the same size
+        xhalf = (frameimg.shape[1] / 2.) * 5 # as the OSIRIS cube image.
+
+        img = imgrot[ycent-yhalf:ycent+yhalf, xcent-xhalf:xcent+xhalf]
+
+        # Rebin the NIRC2 image to the same 50 mas plate scale as the
+        # OSIRIS image.
+        img = scipy.misc.imresize(img, 0.2) # rebin to 50 mas/pixel.
+
+        #pdb.set_trace()
+        
+        # Save the modified NIRC2 image.
+        nirc2_file = rootdir + 'data/osiris_perf/nirc2_ref_'+str(rr)+'.fits'
+        ir.imdelete(nirc2_file)
+        pyfits.writeto(nirc2_file, img, header=imghdr, output_verify='silentfix')
+
+        # Clean up the cube image to get rid of very very low flux values 
+        # (on the edges).
+        cidx = np.where(frameimg < frameimg.max()*0.05)
+        frameimg[cidx] = 0
+
+        # mask out the bad edges of the frame
+        mask = maskOSIRIS(frameimg)
+        midx = np.where(mask == 0)
+        frameimg[midx] = 0
+
+        def fitfunction(params, plot=False, verbose=True, twoGauss=twoGauss):
+            if twoGauss:
+                amp1 = abs(params[0])
+                # Actually amp1 should be fixed to 1.0
+                amp1 = 1.0
+                amp2 = abs(params[1])
+                sigma1 = abs(params[2])
+                sigma2 = abs(params[3])
+                psf = twogauss_kernel(sigma1, sigma2, amp1, amp2, half_box=50)
+            else:
+                amp1 = abs(params[0])
+                # Actually amp1 should be fixed to 1.0
+                amp1 = 1.0
+                sigma1 = abs(params[1])
+                psf = gauss_kernel(sigma1, amp1, half_box=50)
+                
             
-            py.subplot(1, 3, 3)
-            py.imshow(residuals)
-            py.title('Residuals')
 
-            py.savefig(plotdir + 'osir_perf_' + 
-                       cubefile.replace('.fits', '.png'))
-            py.show()
+            # Convolve the NIRC2 image with a gaussian
+            boxsize = min(frameimg.shape) / 2
+            newimg = signal.convolve(img, psf, mode='same')
+
+            if verbose:
+                print 'fitfunc shapes:',
+                print ' cubeimg = ', frameimg.shape, 
+                print ' psf = ', psf.shape,
+                print ' newimg = ', newimg.shape
+                print ' img = ', img.shape
+
+            newimg[cidx] = 0
+            newimg[midx] = 0
+        
+            frameimg_norm = frameimg / frameimg.sum()
+            newimg_norm = newimg / newimg.sum()
+        
+            residuals = (frameimg_norm - newimg_norm) / np.sqrt(frameimg_norm)
+            residuals[cidx] = 0
+            residuals[midx] = 0
+
+            if verbose:
+                if twoGauss:
+                    print 'Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2),
+                    print ' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2)
+                else:
+                    print 'Parameters: sig1 = %5.2f ' % (sigma1),
+                    print ' amp1 = %9.2e ' % (amp1)
+                print 'Residuals:  ', math.sqrt((residuals*residuals).sum())
+                print '' 
+
+            if plot:
+                py.figure(1)
+                py.clf()
+                py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
             
-        return residuals.flatten()
+                py.subplot(1, 3, 1)
+                py.imshow(frameimg)
+                py.title('OSIRIS')
+                
+                py.subplot(1, 3, 2)
+                py.imshow(newimg)
+                py.title('NIRC2+')
+            
+                py.subplot(1, 3, 3)
+                py.imshow(residuals)
+                py.title('Residuals')
 
-    #params = np.zeros(4, dtype=float)
-    params = np.zeros(2, dtype=float)
-    params[0] = 1.0 # amp1
-    #params[1] = 0.000001 # amp2
-    params[1] = 0.9 #sigma1
-    #params[2] = 0.9 # sigma1 (near-diffraction-limit)
-    #params[3] = 6.0 # sigma2 (seeing halo)
+                py.savefig(rootdir + 'data/osiris_perf/osir_perf_' + 
+                        filerr.replace('.fits', '.png'))
+                py.show()
+            
+            return residuals.flatten()
 
-    print 'Fitting PSF: '
-    print ''
-    print 'Initial: '
-    fitfunction(params, plot=True, verbose=True)
+        if twoGauss:
+            params = np.zeros(4, dtype=float)
+            params[0] = 1.0 # amp1
+            params[1] = 0.000001 # amp2
+            params[2] = 0.6 # sigma1 (near-diffraction-limit)
+            params[3] = 0.9 # sigma2 (seeing halo)
+        else:
+            params = np.zeros(2, dtype=float)
+            params[0] = 1.0 # amp1
+            params[1] = 0.6 # sigma1 (near-diffraction-limit)
+       
 
-    p, cov, infodict, errmsg, success = scipy.optimize.leastsq(fitfunction, 
+        print 'Fitting PSF: '
+        print ''
+        print 'Initial: '
+        fitfunction(params, plot=True, verbose=True)
+
+        p, cov, infodict, errmsg, success = scipy.optimize.leastsq(fitfunction, 
                                                                params, 
                                                                full_output=1,
                                                                maxfev=100)
-    print ''
-    print 'Results:'
-    residuals = fitfunction(p, plot=True, verbose=True)
+        print ''
+        print 'Results:'
+        residuals = fitfunction(p, plot=True, verbose=True)
 
-    amp1 = abs(p[0])
-    #amp2 = abs(p[1])
-    sigma1 = abs(p[1])
-    #sigma1 = abs(p[2])
-    #sigma2 = abs(p[3])
+        if twoGauss:
+            amp1 = abs(p[0])
+            amp2 = abs(p[1])
+            sigma1 = abs(p[2])
+            sigma2 = abs(p[3])
+        else:
+            amp1 = abs(p[0])
+            sigma1 = abs(p[1])
     
+        #pdb.set_trace()
+    
+        _out = open(rootdir + 'data/osiris_perf/osir_perf_' + filerr.replace('.fits', '_params.txt'), 'w')
+        if twoGauss:
+            _out.write('sig1: %5.2f  sig2: %5.2f  amp1: %9.2e  amp2: %9.2e  res: %7.5f  ' %
+                        (sigma1, sigma2, amp1, amp2, math.sqrt((residuals**2).sum())))
+        else:
+            _out.write('sig1: %5.2f  amp1: %9.2e  res: %7.5f  ' %
+                        (sigma1, amp1, math.sqrt((residuals**2).sum())))
+        _out.write('xpixSNR: %2d  ypixSNR: %2d  SNR: %5.1f\n' % (xpixSNR, ypixSNR, specSNR))
+        _out.close()
+
+def clipFramesMosaic(inPSFpath=datadir+'data/osiris_perf/',twoGauss=False,numFrameCut=None,maxPSF=None,outpath=datadir):
+    # reads in PSF parameter files, flags bad frames based on either
+    # a maximum allowable PSF (in pixels, maxPSF) or flags a given number of frames with
+    # highest PSF (numFrameCut)
+    # creates a shifts file (txt and fits) using only the good frames
+    # creates a DRF with only the good frames
+
+    # input shifts file - from the tweaked shifts
+    inShiftsFile = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/data/osiris_shift/shifts_all_wfilename.txt'
+
+    shiftsTable = asciidata.open(inShiftsFile)
+    xshift = []
+    yshift = []
+    stemlist = []
+    filelist = []
+    drflist = []
+    sig1list = []
+    for rr in range(shiftsTable.nrows):
+        # read in the input shifts
+        xshiftrr = float(shiftsTable[1][rr])
+        yshiftrr = float(shiftsTable[0][rr])
+        stemrr = str(shiftsTable[2][rr]).strip()
+        filerr = stemrr + '.fits'
+        xshift.append(xshiftrr)
+        yshift.append(yshiftrr)
+        stemlist.append(stemrr)
+        filelist.append(filerr)
+        drflist.append('    <fits FileName="'+filerr+'" />')
+        # grab the PSF size 
+        psffile = 'osir_perf_' + stemrr + '_params.txt'
+        tmppsf = ppxf_m31.readPSFparams(inPSFpath+psffile,twoGauss=twoGauss)
+        sig1list.append(tmppsf.sig1[0])
+
+    sig1list = np.array(sig1list)
+    xshift = np.array(xshift)
+    yshift = np.array(yshift)
+    filelist = np.array(filelist)
+    drflist = np.array(drflist)
+
+    if numFrameCut is not None:
+        sortpsf = np.sort(sig1list)
+        sortidx = -1*numFrameCut
+        tmpmax = sortpsf[sortidx]
+        #pdb.set_trace()
+        idx = np.where(sig1list <= tmpmax)
+        outxshift = xshift[idx]
+        outyshift = yshift[idx]
+        outfilelist = filelist[idx]
+        outdrflist = drflist[idx]
+        outpsf = sig1list[idx]
+        
+    if maxPSF is not None:
+        idx = np.where(sig1list <= maxPSF)
+        outxshift = xshift[idx]
+        outyshift = yshift[idx]
+        outfilelist = filelist[idx]
+        outdrflist = drflist[idx]
+        outpsf = sig1list[idx]
+
+    outyx = np.array([outyshift,outxshift])
+    outyx = outyx.T
+    
+    np.savetxt(datadir + 'data/shifts_clip_wfilename.txt', np.c_[outyshift, outxshift, outfilelist],
+               fmt='%s %s %s',delimiter='\t')
+    
+    pyfits.writeto(datadir + 'data/shifts_clip_wfilename.fits', outyx)
+
+    np.savetxt(datadir + 'data/filelist.txt',np.c_[outdrflist],
+               fmt = '%s')
+
+
+def compPSF(inPSFpath=datadir+'data/osiris_perf/',twoGauss=False,toTxt=False,numclip=None):
+    # compare individual frame PSFs from fitting routine
+
+    PSFfiles = glob.glob(inPSFpath + '*_params.txt')
+
+    filename = []
+    sigall = []
+    sigas = []
+    fwhm = []
+    for ff in range(len(PSFfiles)):
+        filename.append(os.path.basename(PSFfiles[ff]))
+        tmp = ppxf_m31.readPSFparams(PSFfiles[ff],twoGauss=twoGauss)
+        sigall.append(tmp.sig1[0])
+        sigas.append(0.05*tmp.sig1[0])
+        fwhm.append(2.35*0.05*tmp.sig1[0])
+
+    if numclip is not None:
+        sigall = np.array(sigall)
+        sigas = np.array(sigas)
+        fwhm = np.array(fwhm)
+        sortpsf = np.sort(sigall)
+        sortidx = -1*numclip
+        tmpmax = sortpsf[sortidx]
+        #pdb.set_trace()
+        idx = np.where(sigall <= tmpmax)
+        sigas = sigas[idx]
+        fwhm = fwhm[idx]
+        
+    fwhmmed = np.median(fwhm)
+    print 'Median FWHM is ', fwhmmed
+
+    if toTxt:
+        np.savetxt(datadir + 'data/osiris_perf/sig1_all_wfilename.txt', np.c_[sigall, filename],
+               fmt='%s %s',delimiter='\t')
+    
+    # files are in units of pixels, convert to arcsec
+    py.close(3)
+    py.figure(3)
+    py.hist(fwhm,bins=20)
+    py.xlabel('PSF FWHM (arcsec)')
+    py.ylabel('Number')
+    py.annotate('Median FWHM = '+str(fwhmmed),xy=(.6,.9), xycoords='axes fraction')
+
     pdb.set_trace()
-    
-    _out = open(plotdir + 'osir_perf_' + cubefile.replace('.fits', '_params.txt'), 'w')
-    #_out.write('sig1: %5.2f  sig2: %5.2f  amp1: %9.2e  amp2: %9.2e  res: %7.5f  ' %
-    #           (sigma1, sigma2, amp1, amp2, math.sqrt((residuals**2).sum())))
-    _out.write('sig1: %5.2f  amp1: %9.2e  res: %7.5f  ' %
-                (sigma1, amp1, math.sqrt((residuals**2).sum())))
-    _out.write('xpixSNR: %2d  ypixSNR: %2d  SNR: %5.1f\n' % (xpixSNR, ypixSNR, specSNR))
-    _out.close()
-
 
 def twogauss_kernel(sigma1, sigma2, amplitude1, amplitude2, half_box=50):
     """
@@ -326,8 +709,48 @@ def gauss_kernel(sigma1, amplitude1, half_box=50):
 
     return psf
 
+def gauss_kernel1D(sigma1, amplitude1, half_box=50):
 
-    
+    if (half_box < 3*sigma1):
+        print 'PSF width is too big (%5.2f pixels) for the ' % sigma1
+        print 'box size (%3d pixels). Change sigma1.'  % (2*half_box)
+        return
+
+    # Create an x array
+    #dx = sigma1/10.
+    x = np.arange(-half_box,half_box+1,1)
+
+    # Create the  gaussian
+    g1 = amplitude1 * np.exp( -(x**2)/(2.*(sigma1**2)))
+
+    # Sum and normalize the gaussians
+    psf = g1
+    psf /= psf.sum()
+
+    #pdb.set_trace()
+    return psf
+
+def maskOSIRIS(img=None):
+    # returns a mask for a single OSIRIS frame
+    # default method is to just clip off some columns on either side
+    # to be added: more sophisticated method that clips along the slanted sides
+
+    imgshape = img.shape
+    mask = np.ones(imgshape,dtype=int)
+
+    mask[0:4,:] = 0
+    mask[-1,:] = 0
+    mask[-2,:] = 0
+    mask[-3,:] = 0
+    mask[-4,:] = 0
+    mask[:,0:4] = 0
+    mask[:,-1] = 0
+    mask[:,-2] = 0
+    mask[:,-3] = 0
+    mask[:,-4] = 0
+
+    return mask
+
 def integrated_spectrum():
     """
     Make an integrated spectrum of the whole cube. Restrict to only 
@@ -395,15 +818,24 @@ def integrated_spectrum():
     py.savefig(workdir + 'plots/integrated_spectrum.png')
 
 
-def map_snr(waveLo=2.160, waveHi=2.175, datadir=datadir):
+def map_snr(inCubeRoot=None,waveLo=2.160, waveHi=2.175, datadir=datadir, errext=False):
     """
     Make SNR maps for the combo and sub-maps.
+
+    Uses an empirical estimate of the errors (e.g. from the noisiness of the continuum)
+    unless otherwise specified by setting errext=True, in which case S/N is calculated
+    by taking the ratio of the median signal to the median noise, taken as extension 1
+    of the input cube.
     """
 
-    fitsfiles = [datadir + cuberoot,
-                 datadir + cuberoot + '_1', 
-                 datadir + cuberoot + '_2',
-                 datadir + cuberoot + '_3']
+    if inCubeRoot is None:
+        fitsfiles = [datadir+cuberoot]
+    else:
+        fitsfiles = [inCubeRoot]
+    #[datadir + cuberoot,
+                 #datadir + cuberoot + '_1', 
+                 #datadir + cuberoot + '_2',
+                 #datadir + cuberoot + '_3']
     
     for ff in range(len(fitsfiles)):
         # Read in cube and cube image. 
@@ -412,34 +844,56 @@ def map_snr(waveLo=2.160, waveHi=2.175, datadir=datadir):
         cubefits = pyfits.open(fitsfiles[ff] + '.fits')
         cube = cubefits[0].data
         hdr = cubefits[0].header
+        err = cubefits[1].data
 
         cubeimg, imghdr = pyfits.getdata(fitsfiles[ff] + '_img.fits', 
                                          header=True) 
 
-        # Calculate the SNR for the OSIRIS data between 2.160 and 2.175 microns.
-        # Get the wavelength solution so we can specify range:
-        w0 = hdr['CRVAL1']
-        dw = hdr['CDELT1']
-        wavelength = w0 + dw * np.arange(cube.shape[2], dtype=float)
-        wavelength /= 1000.0   # Convert to microns
+        if errext is False:
+            # Calculate the SNR for the OSIRIS data between 2.160 and 2.175 microns.
+            # Get the wavelength solution so we can specify range:
+            w0 = hdr['CRVAL1']
+            dw = hdr['CDELT1']
+            wavelength = w0 + dw * np.arange(cube.shape[2], dtype=float)
+            wavelength /= 1000.0   # Convert to microns
         
-        # We need to remove the continuum first before we calculate the SNR.
-        widx = np.where((wavelength > 2.160) & (wavelength < 2.175))
-        waveCrop = wavelength[widx]
+            # We need to remove the continuum first before we calculate the SNR.
+            #widx = np.where((wavelength > 2.160) & (wavelength < 2.175))
+            widx = np.where((wavelength > waveLo) & (wavelength < waveHi))
+            waveCrop = wavelength[widx]
 
-        snrMap = np.zeros(cubeimg.shape, dtype=float)
+            snrMap = np.zeros(cubeimg.shape, dtype=float)
 
-        # Loop through each spaxel and determine the SNR:
-        for xx in range(cubeimg.shape[0]):
-            for yy in range(cubeimg.shape[1]):
-                specCrop = cube[yy, xx, widx].flatten()
-                coeffs = scipy.polyfit(waveCrop, specCrop, 1)
-                residuals = specCrop / scipy.polyval(coeffs, waveCrop)
-                snrMap[xx, yy] = residuals.mean() / residuals.std()
+            # Loop through each spaxel and determine the SNR:
+            for xx in range(cubeimg.shape[0]):
+                for yy in range(cubeimg.shape[1]):
+                    specCrop = cube[yy, xx, widx].flatten()
+                    #specCrop = cube[xx, yy, widx].flatten()
+                    coeffs = scipy.polyfit(waveCrop, specCrop, 1)
+                    residuals = specCrop / scipy.polyval(coeffs, waveCrop)
+                    snrMap[xx, yy] = residuals.mean() / residuals.std()
 
-        snrFile = fitsfiles[ff] + '_snr.fits'
-        ir.imdelete(snrFile)
-        pyfits.writeto(snrFile, snrMap, header=imghdr)
+            snrFile = fitsfiles[ff] + '_snr.fits'
+            ir.imdelete(snrFile)
+            pyfits.writeto(snrFile, snrMap, header=imghdr, output_verify='ignore')
+
+        else:
+            # take the median along the wavelength direction (will be the longest dimension)
+            waveaxis = np.argmax(cube.shape)
+            sig = np.median(cube,axis=waveaxis)
+            noise = np.median(err,axis=waveaxis)
+            
+            snrMap = sig/noise
+
+            badidx = np.where(np.isnan == 1)
+            snrMap[badidx] = 0.
+
+            # put into the more usual shape
+            snrMap = snrMap.T
+            
+            snrFile = fitsfiles[ff] + '_errext_snr.fits'
+            ir.imdelete(snrFile)
+            pyfits.writeto(snrFile, snrMap, header=imghdr, output_verify='ignore')
 
 def plot_map_snr(datadir=workdir):
     """
@@ -477,11 +931,11 @@ def plot_map_snr(datadir=workdir):
     ##########
     py.subplot(1, 2, 2)
     imshow_cube_image(snrMasked, cmap=py.cm.jet,
-                      compass=False, blackhole=False)
+                      compass=False, blackhole=False, vmin=0.,vmax=65.)
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Signal-to-Noise')
 
-    py.savefig(workdir + 'plots/map_snr.png')
+    py.savefig(datadir + 'plots/map_snr.png')
     py.show()
 
 def map_co_eqw():
@@ -672,7 +1126,7 @@ def extract_spec2():
 
 
 def imshow_cube_image(image, header=None, compass=True, blackhole=True, 
-                      cmap=None):
+                      cmap=None, vmin=None, vmax=None):
     """
     Call imshow() to plot a cube image. Make sure it is already 
     masked. Also pass in the header to do the compass rose calculations.
@@ -688,7 +1142,7 @@ def imshow_cube_image(image, header=None, compass=True, blackhole=True,
     # Plot the image.
     py.imshow(image, 
               extent=[xcube[0], xcube[-1], ycube[0], ycube[-1]],
-              cmap=cmap)
+              cmap=cmap, vmin=vmin, vmax=vmax)
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     
     py.xlabel('X (arcsec)')
@@ -697,10 +1151,10 @@ def imshow_cube_image(image, header=None, compass=True, blackhole=True,
     # Get the spectrograph position angle for compass rose
     if compass is True:
         if header is None:
-            pa = paSpec
+            pa = 90.-paSpec
         else:
-            pa = header['PA_SPEC']
-
+            pa = 90.-header['PA_SPEC']
+        #pdb.set_trace()
 
         # Make a compass rose
         cosSin = np.array([ math.cos(math.radians(pa)), 
@@ -722,9 +1176,10 @@ def imshow_cube_image(image, header=None, compass=True, blackhole=True,
     if blackhole is True:
         py.plot([0], [0], 'ko')
 
+    py.axis('image')
 
-    py.xlim([-0.5, 0.6])
-    py.ylim([-2.0, 1.8])
+    #py.xlim([-0.5, 0.6])
+    #py.ylim([-2.0, 1.8])
 
 
     

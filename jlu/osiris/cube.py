@@ -2,6 +2,8 @@ import pyfits
 import math
 import pylab as py
 import numpy as np
+from PyAstronomy import pyasl
+import pdb
 
 def extract1d(cube, center, boxsize=5, combine='sum', header=None):
     """
@@ -121,10 +123,10 @@ def extract1d(cube, center, boxsize=5, combine='sum', header=None):
     else:
         # Cube is already a cube (3D array)
         hdr = header
-        if header == None:
-            print 'ERROR in extract1d: A header must be passed in when ' + \
-                'passing in a cube as a 3d array.'
-            return
+        #if header == None:
+        #    print 'ERROR in extract1d: A header must be passed in when ' + \
+        #        'passing in a cube as a 3d array.'
+        #    return
     
     # Check for a sensible combine method
     if (combine != 'sum' and combine != 'median' and combine != 'average'):
@@ -198,6 +200,7 @@ def collapse_to_image(cubefile, combine='sum'):
     badpix = cubefits[2].data
     
     cube = np.ma.masked_where(badpix != 9, cube)
+    cube = np.nan_to_num(cube)
 
     # Check for a sensible combine method
     if (combine != 'sum' and combine != 'median' and combine != 'average'):
@@ -224,7 +227,7 @@ def collapse_to_image(cubefile, combine='sum'):
 
     # Save the cube image to a file
     cubeimg_file = cubefile.replace('.fits', '_img.fits')
-    pyfits.writeto(cubeimg_file, image.data, header=hdr, clobber=True)
+    pyfits.writeto(cubeimg_file, image.data, header=hdr, clobber=True,output_verify='warn')
     
     return image
 
@@ -246,7 +249,7 @@ def extractTelluric(cubefile, savefile=None, boxsize=5):
 
     # Save to a file
     if savefile != None and savefile != '':
-        pyfits.writeto(savefile, s, hdr)
+        pyfits.writeto(savefile, s, hdr, output_verify='warn')
 
     return w, s
 
@@ -262,4 +265,71 @@ def testTelluricAperture(cubefile):
     py.clf()
     py.plot(apertureSize, snr)
     
+def cubeDopplerShift(cubeFile=None,dv=None):
+    # shifts spectra by a given velocity (dv, in km/s)
+    # positive velocity: redshifts spectrum
+    # negative velocity: blueshifts spectrum
+    
+    cubefits = pyfits.open(cubeFile)
 
+    cube = cubefits[0].data
+    hdr = cubefits[0].header
+    errors = cubefits[1].data
+    quality = cubefits[2].data
+
+    w0 = hdr['CRVAL1']
+    dw = hdr['CDELT1']
+    wavelength = w0 + dw * np.arange(cube.shape[2], dtype=float)
+
+    newCube = np.zeros(cube.shape, dtype=float)
+    for ii in range(cube.shape[0]):
+        for jj in range(cube.shape[1]):
+            if cube[ii,jj,:].mean() != 0:
+                nflux, nwave = pyasl.dopplerShift(wavelength, cube[ii,jj,:], dv, edgeHandling="firstlast")
+                newCube[ii,jj,:] = nflux
+
+    outFile = cubeFile.replace('.fits', '_vlsrcorr.fits')
+    try:
+        pyfits.writeto(outFile, newCube, header=hdr, clobber=True,output_verify='ignore')
+    except:
+        pass
+        #pdb.set_trace()
+    pyfits.append(outFile,errors)
+    pyfits.append(outFile,quality)
+    #pyfits.append(outFile,nframes)
+
+def cubeEdgeMask(cubeFile=None):
+    # set the bad pixel mask (ext 2) for the edge spaxels to 0 (=bad, vs. 9=good)
+    # edge spaxel coordinates are hard coded for the broadband filters
+    # masks just the outermost spaxel along all edges
+
+    cubefits = pyfits.open(cubeFile)
+
+    cube = cubefits[0].data
+    hdr = cubefits[0].header
+    err = cubefits[1].data
+    quality = cubefits[2].data
+
+    newqual = quality
+
+    # outermost edges first
+    newqual[:,0,:] = 0
+    newqual[:,62,:] = 0
+    newqual[0,:,:] = 0
+    newqual[17,:,:] = 0
+    # short edges
+    newqual[0:3,1,:] = 0
+    newqual[10:18,61,:] = 0
+    # bottom edge, long axis
+    newqual[1,16:-1,:] = 0
+    newqual[2,32:-1,:] = 0
+    newqual[3,48:-1,:] = 0
+    # top edge, long axis
+    newqual[14,0:16,:] = 0
+    newqual[15,0:32,:] = 0
+    newqual[16,0:48,:] = 0
+
+    outFile = cubeFile.replace('.fits', '_mask.fits')
+    pyfits.writeto(outFile, cube, header=hdr, clobber=True,output_verify='ignore')
+    pyfits.append(outFile,err)
+    pyfits.append(outFile,newqual)

@@ -41,7 +41,7 @@ bhpos = ppxf_m31.bhpos
 bhpos_pix = bhpos/0.05
 bhpos_hor = ppxf_m31.bhpos_hor
 
-def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess=True,pathstem=modeldir+'nonaligned_grid_rotate/'):
+def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess=True,pathstem=modeldir+'nonaligned_grid_rotate/',inVorTxt=None,precess=None,outPrecessFile=None):
     # results similar to running all three of ppxf_m31.modelConvertCoordinates,
     # ppxf_m31.modelOSIRISrotation, and ppxf_m31.modelBin. In that set of routines,
     # model stellar particles with positions and velocities in disk-plane coordinates
@@ -60,6 +60,8 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     # l98bin=True to bin to match Lauer 1998 data (=0.0228")
 
     # smoothing has been added before binning, so no need to do it after
+
+    # added option to add a precession speed (in units of km/s/pc) to the disk-plane velocities (x and y)
 
     t1 = time.time()
     
@@ -81,6 +83,20 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         thetaA = np.radians(-34.5)
         thetaCPA = np.radians(-56.)
 
+    # stack positions to begin the coordinate transform
+    xyz = np.column_stack((model.x,model.y,model.z))
+    
+    # add precession to v_x and v_y, if requested
+    if precess is not None:
+        vxp, vyp = velPrecess(model.x, model.y, model.v_x, model.v_y, precess)
+        # stack velocities, using the modified v_x and v_y
+        vxyz = np.column_stack((vxp, vyp, model.v_z))
+        if outPrecessFile is not None:
+            np.savetxt(outPrecessFile, np.c_[model.x, model.y, model.z, vxp, vyp, model.z],fmt=('%8.6f','%8.6f','%8.6f','%8.6f','%8.6f','%8.6f'),delimiter='\t')
+    else:
+        # if no precession, stack velocities 
+        vxyz = np.column_stack((model.v_x,model.v_y,model.v_z))
+
     # matrices to rotate from disk plane to sky plane (P&T 2003, eq 4)
     matL = np.matrix([[np.cos(thetaL),-np.sin(thetaL),0.],[np.sin(thetaL),np.cos(thetaL),0.],[0.,0.,1.]])
     matI = np.matrix([[1.,0.,0.],[0.,np.cos(thetaI),-np.sin(thetaI)],[0.,np.sin(thetaI),np.cos(thetaI)]])
@@ -88,10 +104,6 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
 
     # these are rotation matrices, so can do the constant part of the dot product separately
     matLIA = matL.dot(matI).dot(matA)
-
-    # stack positions, velocities to begin the coordinate transform
-    xyz = np.column_stack((model.x,model.y,model.z))
-    vxyz = np.column_stack((model.v_x,model.v_y,model.v_z))
 
     # transform coordinates from disk plane to sky plane
     bigXYZ = np.tensordot(matLIA, xyz, axes=([1], [1]))
@@ -164,11 +176,15 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
             print "Tessellating and binning models"
         # use the smoothed version of X and Y as inputs to the binning
         posvel = np.column_stack((smX,smY,Z,V_X,V_Y,outV_Z))
+        #outFile = 
         if testAngles:
             outFile=pathstem+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (testAngles[0],testAngles[1],testAngles[2],testAngles[3])
         if testSMBH:
             outFile=pathstem+'nonaligned_OSIRIScoords_fit_full_smooth_SMBH_x%+.1f_y%+.1f.dat' % (testSMBH[0],testSMBH[1])
-        voronoi_m31.tessModels(inputModelArr=posvel,inputVoronoiFile=datadir+'voronoi_2d_binning_output_20160825.txt',l98bin=l98bin,outFile=outFile)
+        if inVorTxt is None:
+            voronoi_m31.tessModels(inputModelArr=posvel,inputVoronoiFile=datadir+'voronoi_2d_binning_output_20160825.txt',l98bin=l98bin,outFile=outFile)
+        else:
+            voronoi_m31.tessModels(inputModelArr=posvel,inputVoronoiFile=inVorTxt,l98bin=l98bin,outFile=outFile)
 
     else:
         # preparing to do the model binning
@@ -214,7 +230,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         newnegybin = 0. - np.floor(bhpos_pix[1])
 
         xlen = 41
-        ylen = 84
+        ylen = 83
         goodTrim = np.where((X/binpc >= newnegxbin) & (X/binpc <= (newnegxbin + xlen)) & (Y/binpc >= newnegybin) & (Y/binpc <= (newnegybin + ylen)))
 
         xClip = X[goodTrim[0]] - newnegxbin*binpc
@@ -269,7 +285,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
                     h3[i,j] = 0.
                     h4[i,j] = 0.
                 # if there are too few particles to perform a fit, hack something together 
-                elif losvd[i,j,:].max() <= 5:
+                elif losvd[i,j,:].max() <= 6:
                     fitlosv[i,j] = (losvd[i,j,:]*bins_new[2][0:-1]).sum()/nstar[i,j]
                     sigma[i,j] = 0.
                     h3[i,j] = 0.
@@ -285,12 +301,19 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
                     h3_0 = 0.
                     h4_0 = 0.
                     guess = [gamma0, v0, s0, h3_0, h4_0]
-                    popt, pcov = curve_fit(ppxf_m31.gaussHermite, bins_new[2][0:-1], losvd[i,j,:], p0=guess)
-                    # popt = [gamma, v, sigma, h3, h4]
-                    fitlosv[i,j] = popt[1]
-                    sigma[i,j] = popt[2]
-                    h3[i,j] = popt[3]
-                    h4[i,j] = popt[4]                                    
+                    try:
+                        popt, pcov = curve_fit(ppxf_m31.gaussHermite, bins_new[2][0:-1], losvd[i,j,:], p0=guess)
+                        # popt = [gamma, v, sigma, h3, h4]
+                        fitlosv[i,j] = popt[1]
+                        sigma[i,j] = popt[2]
+                        h3[i,j] = popt[3]
+                        h4[i,j] = popt[4]
+                    except (RuntimeError):
+                        # if no fit is possible, take the mean
+                        fitlosv[i,j] = v0
+                        sigma[i,j] = 0.
+                        h3[i,j] = 0.
+                        h4[i,j] = 0.    
     
         # smooth
         # this section hasn't been tested...
@@ -307,7 +330,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         if testAngles:
             outFile = pathstem + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (testAngles[0],testAngles[1],testAngles[2],testAngles[3])
         else:
-            outFile = modeldir + 'nonaligned_OSIRIScoords_fits_full_smooth_test.dat'
+            outFile = pathstem + 'nonaligned_OSIRIScoords_fits_full_smooth_test.dat'
             
         output = open(outFile, 'w')
         pickle.dump(nstar, output)
@@ -320,15 +343,48 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     if verbose:
         print "Time elapsed: ", time.time() - t1, "s"
 
-def modelCompRes(inModel=modeldir+'nonaligned_OSIRIScoords_test_fits_trim_tess.dat',toPlot=False):
+def velPrecess(xpos=None, ypos=None, invx=None, invy=None, precess=None):
+    # takes an input precession speed (in km/s/pc), disk plane positions,
+    # and disk plane velocities (x and y) and adds the precession to the
+    # velocities. Outputs the modified velocities
+    
+    # xpos and ypos in pc, invx and invy in km/s, rotation axis at the origin
+    # positive precession assumed to be counterclockwise (right handed)
+
+    # find the angle of the vector orthogonal to the position vector
+    # to take the right handed orthogonal vector, x' = -y, y' = x
+    theta = np.abs(np.arctan((-1.*ypos)/xpos))
+
+    # get the precession at each radius
+    # first get the radius (in pc)
+    r = np.sqrt(xpos**2 + ypos**2)
+    # then the precession at the radius (km/s) (=tangential velocity)
+    vtan = precess*r
+
+    # find the x and y components of the tangential velocity
+    # make sure the sign matches that of the original vector, e.g. vtanx has the same sign as -ypos
+    # and vtany has the same sign as +xpos. Leave 0 as 0
+    vtanx = vtan * np.sin(theta) * ((-1.*((-1.*ypos)<0)) + (1.*((-1.*ypos)>0)))
+    vtany = vtan * np.cos(theta) * ((-1*(xpos<0)) + (1.*(xpos>0)))
+
+    # add to the original velocity
+    outvx = invx + vtanx
+    outvy = invy + vtany
+
+    pdb.set_trace()
+
+    return outvx, outvy
+
+def modelCompRes(inModel=modeldir+'nonaligned_OSIRIScoords_test_fits_trim_tess.dat',toPlot=False,inData=None,incubeimg=None):
     # routine to compare model outputs to data
     # uses existing routines to read in fitted models
     # and takes the residuals. Plotting is done if requested
 
     #ppxf_m31.smoothModels(inModel)
     #inSmooth = inModel.replace('.dat','_smooth.dat')
-    inData = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/ppxf_tess_bs_2_20160825.dat'
-    ppxf_m31.modelResiduals(inModel,inData,trimTess=True)
+    if inData is None:
+        inData = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/ppxf_tess_bs_2_20160825.dat'
+    ppxf_m31.modelResiduals(inModel,inData,trimTess=True,incubeimg=incubeimg)
 
     inRes = inModel.replace('.dat','_residuals.dat')
 
@@ -338,11 +394,14 @@ def modelCompRes(inModel=modeldir+'nonaligned_OSIRIScoords_test_fits_trim_tess.d
         ppxf_m31.plotDataModelResiduals(inData,inModel,inRes,trimTess=True,outStem=outplotfile)
     
         
-def modelMorphFitGrid(inFolder=None,plotOnly=False):
+def modelMorphFitGrid(inFolder=None,plotOnly=False,incubeimg=None,inVorTxt=None,inDataFile=None):
     # routine to conduct a grid search over the coordinate transformation angles
     # (angles in Peiris & Tremaine 2003 eq 4)
 
-    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    if incubeimg is None:
+        cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    else:
+        cubeimg = pyfits.getdata(incubeimg)
     xaxis = np.arange(cubeimg.shape[0]) * 0.05
     yaxis = np.arange(cubeimg.shape[1]) * 0.05
 
@@ -376,8 +435,8 @@ def modelMorphFitGrid(inFolder=None,plotOnly=False):
             for II in Igrid:
                 for AA in Agrid:
                     testAng = [LL,II,AA,CPA]
-                    modelConvertBin(testAngles=testAng,l98bin=False,verbose=False,tess=True,pathstem=newfolder)
-                    modelCompRes(inModel=newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (testAng[0],testAng[1],testAng[2],testAng[3]),toPlot=False)
+                    modelConvertBin(testAngles=testAng,l98bin=False,verbose=False,tess=True,pathstem=newfolder,inVorTxt=inVorTxt)
+                    modelCompRes(inModel=newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (testAng[0],testAng[1],testAng[2],testAng[3]),toPlot=False,inData=inDataFile,incubeimg=incubeimg)
 
     # plotting
     py.close(2)
@@ -474,10 +533,13 @@ def modelMorphFitGrid(inFolder=None,plotOnly=False):
             figname=newfolder + 'residuals_sigma_thetaA_%.1f.png' %(AA)
         py.savefig(figname)
 
-def modelBHFitGrid(inFolder=None,plotOnly=False):
+def modelBHFitGrid(inFolder=None,plotOnly=False,incubeimg=None):
     # routine to conduct a grid search over SMBH positions
 
-    cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    if incubeimg is None:
+        cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    else:
+        cubeimg = pyfits.getdata(incubeimg)
     xaxis = np.arange(cubeimg.shape[0]) * 0.05
     yaxis = np.arange(cubeimg.shape[1]) * 0.05
 
