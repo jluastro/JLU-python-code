@@ -78,10 +78,18 @@ cc = objects.Constants()
 #bhpos_hor = np.array([(87-44.9), 23.]) * 0.05
 #bhpos_pix = np.array([(87-44.9), 23.])
 # 081021
+#bhpos = np.array([15.0,33.0])*0.05
+#bhpos_hor = np.array([(76-33.0),15.0])*0.05
+#bhpos_pix = np.array([(76-33.0),15.0])
+#bhpos_pix = np.array([(76-37.0),9.0]) # by eye, because the analysis.registerOSIRIStoNIRC2 clearly wasn't right
 # 100815
 #bhpos = np.array([16.3,34.5])*0.05
 #bhpos_hor = np.array([(76-34.5),16.3])*0.05
-#bhpos_pix = np.array([(76-34.5),16.3])
+#bhpos_pix = np.array([(76-34.5),15.6])
+# 100828
+#bhpos = np.array([24.,42.])*0.05
+#bhpos_hor = np.array([(79-42.),24.])*0.05
+#bhpos_pix = np.array([(79-42.),24.])
 # 100829
 #bhpos = np.array([23.5,35.2])*0.05
 #bhpos_hor = np.array([(78-35.2),23.5])*0.05
@@ -95,9 +103,53 @@ cc = objects.Constants()
 #bhpos_hor = np.array([(82-37.6),23.9])*0.05
 #bhpos_pix = np.array([(82-37.6),23.9])
 # comb 3 shift
-bhpos = np.array([20.1,37.5])*0.05
-bhpos_hor = np.array([(82-37.5),20.1])*0.05
-bhpos_pix = np.array([(82-37.5),20.1])
+#bhpos = np.array([20.1,37.5])*0.05
+#bhpos_hor = np.array([(82-37.5),20.1])*0.05
+#bhpos_pix = np.array([(82-37.5),20.1])
+# NIRC2 DTOTOFF
+#bhpos = np.array([40.1,18.0])*0.05
+#bhpos_hor = np.array([(85-40.1),18.])*0.05
+#bhpos_pix = np.array([(85-40.1),18.])
+# CC mos DTOTOFF
+#bhpos = np.array([39.4,15.7])*0.05
+#bhpos_hor = np.array([(84-39.4),15.7])*0.05
+#bhpos_pix = np.array([(84-39.4),15.7])
+# NIRC2 DTOTOFF 2
+#bhpos = np.array([38.7,20.2])*0.05
+#bhpos_hor = np.array([(83-38.7),20.2])*0.05
+#bhpos_pix = np.array([(83-38.7),20.2])
+# CC mos DTOTOFF 2
+#bhpos = np.array([38.4,19.1])*0.05
+#bhpos_hor = np.array([(82-38.4),19.1])*0.05
+#bhpos_pix = np.array([(82-38.4),19.1])
+# NIRC2 DTOTOFF 2 - no 100828, 100829
+#bhpos = np.array([38.8,15.2])*0.05
+#bhpos_hor = np.array([(82-38.8),15.2])*0.05
+#bhpos_pix = np.array([(82-38.8),15.2])
+# CC mos DTOTOFF 2 - no 100828
+#bhpos = np.array([38.3,18.8])*0.05
+#bhpos_hor = np.array([(81-38.3),18.8])*0.05
+#bhpos_pix = np.array([(81-38.3),18.8])
+# CC mos DTOTOFF 2 - no 100828, 100829
+#bhpos = np.array([38.4,15.2])*0.05
+#bhpos_hor = np.array([(81-38.4),15.2])*0.05
+#bhpos_pix = np.array([(81-38.4),15.2])
+# NIRC2 DTOTOFF 2 - no 100828
+bhpos = np.array([38.7,20.0])*0.05
+bhpos_hor = np.array([(82-38.7),20.0])*0.05
+bhpos_pix = np.array([(82-38.7),20.0])
+# NIRC2 DTOTOFF 2 - no 100828, x+1,y-1
+#bhpos = np.array([37.7,19.0])*0.05
+#bhpos_hor = np.array([(82-37.7),19.0])*0.05
+#bhpos_pix = np.array([(82-37.7),19.0])
+# NIRC2 DTOTOFF 2 - no 100828, x+1
+#bhpos = np.array([37.7,20.0])*0.05
+#bhpos_hor = np.array([(82-37.7),20.0])*0.05
+#bhpos_pix = np.array([(82-37.7),20.0])
+# NIRC2 DTOTOFF 2 - no 100828, y-1
+#bhpos = np.array([38.7,19.0])*0.05
+#bhpos_hor = np.array([(82-38.7),19.0])*0.05
+#bhpos_pix = np.array([(82-38.7),19.0])
 
 vsys = 340.
 
@@ -252,7 +304,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mid=False,twocomp=False,selectTemp=None,flagWave=True):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mid=False,twocomp=False,selectTemp=None,flagWave=False):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -524,7 +576,7 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,al
     else:
         #outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
         outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, vsyst=vsyst)
-    
+
 
     #pdb.set_trace()
     return outppxf
@@ -1024,7 +1076,7 @@ def plotResults(inputFile):
     py.imshow(np.rot90(py.ma.masked_where(cubeimg<-10000, cubeimg),3), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1068,7 +1120,7 @@ def plotResults(inputFile):
     py.imshow(py.ma.masked_invalid(snrimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1085,7 +1137,7 @@ def plotResults(inputFile):
     velimg = p.velocity.transpose()+vsys
     py.imshow(np.rot90(py.ma.masked_where(velimg==vsys,velimg),3), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1101,7 +1153,7 @@ def plotResults(inputFile):
     py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx')
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1153,7 +1205,7 @@ def plotResults2(inputFile):
     py.imshow(np.rot90(py.ma.masked_where(cubeimg<-10000, cubeimg),3), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.hot)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1192,7 +1244,7 @@ def plotResults2(inputFile):
     velimg = p.velocity.transpose()+vsys
     py.imshow(np.rot90(py.ma.masked_where(velimg==vsys,velimg),3), vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1207,7 +1259,7 @@ def plotResults2(inputFile):
     py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1238,10 +1290,12 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
     yaxis = (np.arange(len(p.velocity)) - bhpos_pix[1]) * 0.05
 
     if zoom:
-        x0 = np.abs(xaxis-(bhpos_hor[0]-0.5)).argmin()
-        x1 = np.abs(xaxis-(bhpos_hor[0]+0.5)).argmin()
-        y0 = np.abs(yaxis-(bhpos_hor[1]-0.5)).argmin()
-        y1 = np.abs(yaxis-(bhpos_hor[1]+0.5)).argmin()
+        xaxistmp = np.arange(len(p.velocity[0])) * 0.05
+        yaxistmp = np.arange(len(p.velocity)) * 0.05
+        x0 = np.abs(xaxistmp-(bhpos_hor[0]-0.5)).argmin()
+        x1 = np.abs(xaxistmp-(bhpos_hor[0]+0.5)).argmin()
+        y0 = np.abs(yaxistmp-(bhpos_hor[1]-0.5)).argmin()
+        y1 = np.abs(yaxistmp-(bhpos_hor[1]+0.5)).argmin()
     else:
         x0 = 0
         x1 = -1
@@ -1252,10 +1306,10 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
 
     py.close(2)
     if zoom:
-        py.figure(2, figsize=(9,7))
+        py.figure(2, figsize=(10,7))
     else:
         py.figure(2, figsize=(15,7))
-    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+    py.subplots_adjust(left=0.07, right=0.94, top=0.95)
     py.clf()
 
     ##########
@@ -1266,13 +1320,14 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         velimg = p.velocity2.transpose()+vsys
     else:
         velimg = p.velocity.transpose()+vsys
-    py.imshow(np.rot90(py.ma.masked_where(velimg[x0:x1,y0:y1]==vsys,velimg[x0:x1,y0:y1]),3), vmin=-250., vmax=250.,
+    plvel = np.rot90(velimg,3)
+    py.imshow(py.ma.masked_where(plvel[y0:y1,x0:x1]==vsys,plvel[y0:y1,x0:x1]), vmin=-250., vmax=250.,
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     #py.imshow(np.rot90(py.ma.masked_where(velimg==vsys,velimg),3), vmin=-250., vmax=250.)
-    #py.plot([bhpos_pix[0]],[bhpos_pix[1]],'kx')
+    #py.plot([bhpos_pix[0]],[bhpos_pix[1]],'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
-    py.xlabel('X (arcsec)')
+    #py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
     cbar = py.colorbar(orientation='vertical')
@@ -1286,11 +1341,12 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         sigimg = p.sigma2.transpose()
     else:
        sigimg = p.sigma.transpose()
-    py.imshow(np.rot90(py.ma.masked_where(sigimg[x0:x1,y0:y1]==0.,sigimg[x0:x1,y0:y1]),3), vmin=0., vmax=300.,
+    plsig = np.rot90(sigimg,3)
+    py.imshow(py.ma.masked_where(plsig[y0:y1,x0:x1]==0.,plsig[y0:y1,x0:x1]), vmin=0., vmax=300.,
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]],
               cmap=py.cm.jet)
-    py.plot([0], 'kx', markeredgewidth=3)
-    py.xlabel('X (arcsec)')
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
+    #py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
     cbar = py.colorbar(orientation='vertical')
@@ -1304,9 +1360,10 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         h3img = p.h3_2.transpose()
     else:
         h3img = p.h3.transpose()
-    py.imshow(np.rot90(py.ma.masked_where(h3img[x0:x1,y0:y1]==0, h3img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
+    plh3 = np.rot90(h3img,3)
+    py.imshow(py.ma.masked_where(plh3[y0:y1,x0:x1]==0, plh3[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1322,16 +1379,17 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
         h4img = p.h4_2.transpose()
     else:
         h4img = p.h4.transpose()
-    py.imshow(np.rot90(py.ma.masked_where(h4img[x0:x1,y0:y1]==0, h4img[x0:x1,y0:y1]),3),vmin=-.2,vmax=.2, 
+    plh4 = np.rot90(h4img,3)
+    py.imshow(py.ma.masked_where(plh4[y0:y1,x0:x1]==0, plh4[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
               extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('h4')
 
-    py.tight_layout()
+    #py.tight_layout()
     pdb.set_trace()
 
     if zoom:
@@ -1478,7 +1536,7 @@ def plotFluxKin(inputResults=workdir+'ppxf.dat'):
     py.close(2)
     py.figure(2)
     py.imshow(cubeimg)
-    py.plot([bhpos_pix[0]],[bhpos_pix[1]],'kx',markeredgewidth=2)
+    py.plot([bhpos_pix[0]],[bhpos_pix[1]],'ko', markeredgewidth=2,markerfacecolor='None')
     cs = py.contour(vel,[-340,-308])
     py.clabel(cs)
     py.title('OSIRIS flux map w/ systemic velocity contours')
@@ -1488,7 +1546,7 @@ def plotFluxKin(inputResults=workdir+'ppxf.dat'):
     py.close(2)
     py.figure(2)
     py.imshow(cubeimg)
-    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'kx',markeredgewidth=2)
+    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'ko', markeredgewidth=2,markerfacecolor='None')
     cs = py.contour(sig,[100,200])
     py.clabel(cs)
     py.title('OSIRIS flux map w/ dispersion contours')
@@ -1523,7 +1581,7 @@ def plotTempWeights(inputResults=workdir+'ppxf.dat'):
     py.close(2)
     py.figure(2, figsize=(7,4))
     py.imshow(np.rot90(ntemp.T,3), extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]], cmap=tmpcmap)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1579,7 +1637,7 @@ def plotChi2(inputResults=workdir+'/ppxf.dat'):
 
     chi2 = np.rot90(p.chi2red.T,3)
     py.imshow(chi2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]], vmin=0.,vmax=5.)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1901,7 +1959,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     velimg = p.velocity.transpose()+vsys
     py.imshow(np.rot90(py.ma.masked_where(velimg==vsys,velimg),3), vmin=-250., vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1915,7 +1973,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     velavg = a.velocity.transpose()+vsys
     py.imshow(np.rot90(py.ma.masked_where(velavg==vsys,velavg),3), vmin=-250., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1927,7 +1985,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     velerr = e.velocity.transpose()
     py.imshow(np.rot90(py.ma.masked_where(velerr==0.,velerr),3), vmin=0., vmax=40.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -1943,7 +2001,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(sigimg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1955,7 +2013,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(sigavg==0.,sigimg),3), vmin=0., vmax=250.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -1967,7 +2025,7 @@ def plotErr1(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(sigerr==0.,sigerr),3), vmin=0., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2005,7 +2063,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     h3img = p.h3.transpose()
     py.imshow(np.rot90(py.ma.masked_where(h3img == 0.,h3img),3), vmin=-.2, vmax=.2, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2019,7 +2077,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     h3avg = a.h3.transpose()
     py.imshow(np.rot90(py.ma.masked_where(h3avg==0.,h3avg),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2031,7 +2089,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     h3err = e.h3.transpose()
     py.imshow(np.rot90(py.ma.masked_where(h3err==0.,h3err),3), vmin=0., vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2047,7 +2105,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(h4img==0.,h4img),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2059,7 +2117,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(h4avg==0.,h4avg),3), vmin=-.2, vmax=.2,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2071,7 +2129,7 @@ def plotErr2(inputResults=workdir+'/ppxf.dat',inputAvg=workdir+'/ppxf_avg_mc_nsi
     py.imshow(np.rot90(py.ma.masked_where(h4err==0.,h4err),3), vmin=0., vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'kx', markeredgewidth=3)
+    py.plot([bhpos_hor[0]], [bhpos_hor[1]], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2108,7 +2166,7 @@ def plotErr3(inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     velerr = e.velocity.transpose()
     py.imshow(np.rot90(py.ma.masked_where(velerr==0.,velerr),3), vmin=0., vmax=40.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2124,7 +2182,7 @@ def plotErr3(inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     py.imshow(np.rot90(py.ma.masked_where(sigerr==0.,sigerr),3), vmin=0., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2138,7 +2196,7 @@ def plotErr3(inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     h3err = e.h3.transpose()
     py.imshow(np.rot90(py.ma.masked_where(h3err==0.,h3err),3),vmin=0.,vmax=.05, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2153,7 +2211,7 @@ def plotErr3(inputErr=workdir+'/ppxf_errors_mc_nsim100.dat'):
     h4err = e.h4.transpose()
     py.imshow(np.rot90(py.ma.masked_where(h4err==0.,h4err),3),vmin=0.,vmax=.05, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2281,7 +2339,7 @@ def plotQuality(datadir=datadir,cuberoot=cuberoot,workdir=workdir,saveFC=False,e
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               #cmap=py.cm.hot_r,norm=LogNorm(vmin=13.,vmax=9.5))
               cmap=py.cm.hot_r,vmin=13.,vmax=9.5)
-    py.plot([0], 'kx')
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2326,7 +2384,7 @@ def plotQuality(datadir=datadir,cuberoot=cuberoot,workdir=workdir,saveFC=False,e
     py.imshow(py.ma.masked_invalid(snrimg), 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([0], 'kx')
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2343,7 +2401,7 @@ def plotQuality(datadir=datadir,cuberoot=cuberoot,workdir=workdir,saveFC=False,e
     expimg=expimg.transpose()
     py.imshow(np.rot90(expimg,3),
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx')
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
     py.axis('image')
@@ -2595,7 +2653,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     py.imshow(np.rot90(velimg.transpose(),3), vmin=-250., vmax=250.,
     #py.imshow(velimg.transpose(), vmin=-50., vmax=50.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.axis('image')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -2616,7 +2674,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     py.imshow(np.rot90(sigimg.transpose(),3), vmin=0., vmax=250.,
                 extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
                 cmap=py.cm.jet)
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.axis('image')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2635,7 +2693,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.2, vmax=.2,
     #py.imshow(py.ma.masked_where(h3img == 0.,h3img), vmin=-.05, vmax=.05, 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.axis('image')
     py.ylabel('Y (arcsec)')
     py.xlabel('X (arcsec)')
@@ -2656,7 +2714,7 @@ def plotModelKinematics(inputFile=None,nonaligned=True,clean=False,trim=False):
     #py.imshow(py.ma.masked_where(h4img==0.,h4img), vmin=-.05, vmax=.05,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
               cmap=py.cm.jet)
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     py.axis('image')
     py.xlabel('X (arcsec)')
     py.gca().get_xaxis().set_major_locator(xtickLoc)
@@ -2738,7 +2796,7 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0], [0], 'kx', markeredgewidth=2)
+    py.plot([0], [0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('OSIRIS flux, norm')
 
@@ -2747,7 +2805,7 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0],[0], 'kx', markeredgewidth=2)
+    py.plot([0],[0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('L98 flux, norm')
 
@@ -2756,7 +2814,7 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0], [0], 'kx', markeredgewidth=2)
+    py.plot([0], [0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Residuals (OSIRIS - L98)')
 
@@ -2771,7 +2829,7 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0],[0], 'kx', markeredgewidth=2)
+    py.plot([0],[0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('NIRC2 flux, norm')
 
@@ -2780,7 +2838,7 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0],[0], 'kx', markeredgewidth=2)
+    py.plot([0],[0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('L98 flux, norm')
 
@@ -2789,21 +2847,24 @@ def plotL98():
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.plot([0],[0], 'kx', markeredgewidth=2)
+    py.plot([0],[0], 'ko', markeredgewidth=2,markerfacecolor='None')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Residuals (NIRC2 - L98)')
 
     #pdb.set_trace()
     py.savefig(workdir + 'plots/L98_vs_NIRC2.png')
 
-def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=None,inErr2=None,l98=False,leg=None, hAlpha=False):
+def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=None,inErr2=None,inModel2=None,l98=False,leg=None, indvPlot=False, hAlpha=False, B01=False):
     # setting only inData compares the OSIRIS kinematic fits to the STIS measurements
     # setting both inData and inData2 compares the two different OSIRIS kinematic fits to each other (no STIS comparison),
     #    but along the STIS PA still; assumes cube size and SMBH position are the same as in inData
     
     ppxf = PPXFresults(inData)
+    #ppxf = modelFitResults(inData)
     if inData2 is not None:
         ppxf2 = PPXFresults(inData2)
+    if inModel2 is not None:
+        ppxf2 = modelFitResults(inModel2)
     if inErr is not None:
         err = PPXFresults(inErr)
     if inErr2 is not None:
@@ -2822,8 +2883,11 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
 
     cubeshape = vel.shape
     
-    if inData2 is not None:
-        vel_2 = np.rot90(ppxf2.velocity.T,3) + vsys
+    if ((inData2 is not None) or (inModel2 is not None)):
+        if inData2 is not None:
+            vel_2 = np.rot90(ppxf2.velocity.T,3) + vsys
+        if inModel2 is not None:
+            vel_2 = np.rot90(ppxf2.velocity.T,3)
         sig_2 = np.rot90(ppxf2.sigma.T,3)
         h3_2 = np.rot90(ppxf2.h3.T,3)
         h4_2 = np.rot90(ppxf2.h4.T,3)
@@ -2848,6 +2912,11 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
 
     if hAlpha:
         inHAlpha = pandas.read_csv('/Users/kel/Documents/Projects/M31/data/menezes2013/fig3_scrape.txt',delim_whitespace=True,header=None,names=['r','vel'])
+    if B01:
+        inB01_v = pandas.read_csv('/Users/kel/Documents/Projects/M31/data/bacon2001/fig13_scrape_velocity.txt',delim_whitespace=True,header=None,names=['r','vel'])
+        inB01_v['r'] *= -1.
+        inB01_s = pandas.read_csv('/Users/kel/Documents/Projects/M31/data/bacon2001/fig13_scrape_sigma..txt',delim_whitespace=True,header=None,names=['r','sig'])
+        inB01_s['r'] *= -1.
 
     if inErr is not None:
         velErr = np.rot90(err.velocity.T,3)
@@ -2863,7 +2932,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     # STIS PA = angle between N and long axis of the STIS slit
     spa = 39.
     # rotate the slit a bit
-    #spa=33.
+    #spa=60.
     # OSIRIS PA = angle between top (along long end of the OSIRIS cube) and N
     opa = 34.
     # slit PA = angle between top (along long end of the cube) and slit
@@ -2883,6 +2952,8 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     # shift the slit up and down a bit
     #y1 += 1
     #y2 += 1
+    #x1 -=1
+    #x2 -=1
 
     # get the high and low ends of the slit - in this case, the slit is 0.1" wide, so taking +/- 0.05" = 1 pixel
     dw = 1.
@@ -2911,7 +2982,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot([x1,x2],[y1,y2],'k-')
     py.plot([x1u,x2u],[y1u,y2u],'k--')
     py.plot([x1d,x2d],[y1d,y2d],'k--')
-    py.plot([bhpos_pix[0]],[bhpos_pix[1]],'kx',markeredgewidth=2)
+    py.plot([bhpos_pix[0]],[bhpos_pix[1]],'ko', markeredgewidth=2,markerfacecolor='None')
     py.axis('image')
 
     #pdb.set_trace()
@@ -2938,7 +3009,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
         py.imshow(l98)
         py.title('L98 flux map w/ STIS slit PA marked')
         py.plot([x1_l98,x2_l98],[y1_l98,y2_l98],'k-')
-        py.plot([lbh[0]],[lbh[1]],'kx',markeredgewidth=2)
+        py.plot([lbh[0]],[lbh[1]],'ko', markeredgewidth=2,markerfacecolor='None')
         py.axis('image')
 
         pdb.set_trace()
@@ -2954,7 +3025,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     sint = sig
     h3int = h3
     h4int = h4
-    if inData2 is not None:
+    if ((inData2 is not None) or (inModel2 is not None)):
         #vint_2 = scipy.interpolate.interp2d(XX,YY,vel_2)
         #sint_2 = scipy.interpolate.interp2d(XX,YY,sig_2)
         #h3int_2 = scipy.interpolate.interp2d(XX,YY,h3_2)
@@ -3096,7 +3167,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     ras = np.arange(npoints)*0.05 - (bhpos_pix[0]/np.cos(cpa))*0.05
     rasshift = np.arange(npoints)*0.05 - (44./np.cos(cpa))*0.05
         
-    if inData2 is not None:
+    if ((inData2 is not None) or (inModel2 is not None)):
         vslit_2 = []
         vsd_2 = []
         sslit_2 = []
@@ -3191,7 +3262,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
         # first get the PSF
         #PSFparams = readPSFparams(inputFile=workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt',twoGauss=False)
         #PSFparams = readPSFparams(inputFile='/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/numclip_5/data/osiris_perf/twogauss/osir_perf_s081021_a019001__mosaic_Kbb_050_img_params.txt',twoGauss=True)
-        PSFparams = readPSFparams(inputFile='/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_comb2shift_tweak/woscalecont_mf_all/perfdata/osiris_perf/osir_perf_m31_2125nm_w_osiris_rot_scale_params.txt_params.txt',twoGauss=True)
+        PSFparams = readPSFparams(inputFile='/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_NIRC2_CC_DTOTOFF_2/data/osiris_perf/osir_perf_m31_2125nm_w_osiris_rot_scale_params.txt_params.txt',twoGauss=True)
         # grab sigma of the PSF in units of pixels and convert to arcsec
         PSFsig = PSFparams.sig1[0]#*0.05
         gauss = ifu.gauss_kernel1D(PSFsig,PSFparams.amp1[0],half_box=PSFsig*5.)
@@ -3215,100 +3286,105 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
         h32 = np.convolve(h32int.__call__(ras),gauss,mode='same')
         h42int = interp1d(stis['r'],stis['h4'],kind='cubic')
         h42 = np.convolve(h42int.__call__(ras),gauss,mode='same')
+
+    if indvPlot:
+        py.figure(2)
+        py.clf()
+        py.plot(ras,vpl,'ro')
+        py.errorbar(ras,vpl,yerr=vsd,ecolor='k',fmt='none')
+        #py.plot(rasshift,vslit,'go')
+        if ((inData2 is None) and (inModel2 is None)):
+            py.plot(stis['r'],stis['vel'],'ko')
+            py.errorbar(stis['r'],stis['vel'],yerr=stis['dv'],ecolor='k',fmt='none')
+            #py.plot(ras,v1,'k.')
+            py.plot(ras,v2,'k-')
+        else:
+            py.plot(ras,vpl2,'ko')
+            if inErr2 is not None:
+                py.errorbar(ras,vpl2,yerr=vsd_2,ecolor='k',fmt='none')
+        py.plot([-2,2],[0,0],'k--')
+        py.plot([0,0],[-300,300],'k--')
+        py.xlim(-2,2)
+        py.ylim(-300,300)
+        py.xlabel('r (arcsec)')
+        py.ylabel('velocity (km s$^{-1}$)')
+
+        #py.savefig(workdir+'plots/osiris_vs_stis_vel_340-1.png')
+        #py.savefig(workdir+'plots/osiris_vs_stis_vel_blue.png')
+    
+        #pdb.set_trace()
+
+        py.clf()
+        py.plot(ras,spl,'ro-')
+        py.errorbar(ras,spl,yerr=ssd,ecolor='k',fmt='none')
+        #py.plot(rasshift,sslit,'go-')
+        if ((inData2 is None) and (inModel2 is None)):
+            py.plot(stis['r'],stis['sig'],'ko')
+            py.errorbar(stis['r'],stis['sig'],yerr=stis['ds'],ecolor='k',fmt='none')
+            #py.plot(ras,s1,'k.')
+            py.plot(ras,s2,'k-')
+        else:
+            py.plot(ras,spl2,'ko')
+            if inErr2 is not None:
+                py.errorbar(ras,spl2,yerr=ssd_2,ecolor='k',fmt='none')
+        py.plot([-2,2],[0,0],'k--')
+        py.plot([0,0],[0,350],'k--')
+        py.xlim(-2,2)
+        py.ylim(0,350)
+        py.xlabel('r (arcsec)')
+        py.ylabel('$\sigma$ (km s$^{-1}$)')
+
+        #py.savefig(workdir+'plots/osiris_vs_stis_sig_blue.png')
         
-    py.figure(2)
-    py.clf()
-    py.plot(ras,vpl,'ro')
-    py.errorbar(ras,vpl,yerr=vsd,ecolor='k',fmt='none')
-    #py.plot(rasshift,vslit,'go')
-    if inData2 is None:
-        py.plot(stis['r'],stis['vel'],'ko')
-        py.errorbar(stis['r'],stis['vel'],yerr=stis['dv'],ecolor='k',fmt='none')
-        #py.plot(ras,v1,'k.')
-        py.plot(ras,v2,'k-')
-    else:
-        py.plot(ras,vpl2,'ko')
-        py.errorbar(ras,vpl2,yerr=vsd_2,ecolor='k',fmt='none')
-    py.plot([-2,2],[0,0],'k--')
-    py.plot([0,0],[-300,300],'k--')
-    py.xlim(-2,2)
-    py.ylim(-300,300)
-    py.xlabel('r (arcsec)')
-    py.ylabel('velocity (km s$^{-1}$)')
+        #pdb.set_trace()
 
-    #py.savefig(workdir+'plots/osiris_vs_stis_vel_340-1.png')
-    #py.savefig(workdir+'plots/osiris_vs_stis_vel_blue.png')
+        py.clf()
+        py.plot(ras,h3pl,'ro-')
+        py.errorbar(ras,h3pl,yerr=h3sd,ecolor='k',fmt='none')
+        #py.plot(rasshift,h3slit,'go-')
+        if ((inData2 is None) and (inModel2 is None)):
+            py.plot(stis['r'],stis['h3'],'ko')
+            py.errorbar(stis['r'],stis['h3'],yerr=stis['dh3'],ecolor='k',fmt='none')
+            #py.plot(ras,h31,'k.')
+            py.plot(ras,h32,'k-')
+        else:
+            py.plot(ras,h3pl2,'ko')
+            if inErr2 is not None:
+                py.errorbar(ras,h3pl2,yerr=h3sd_2,ecolor='k',fmt='none')
+        py.plot([-2,2],[0,0],'k--')
+        py.plot([0,0],[-0.3,0.3],'k--')
+        py.xlim(-2,2)
+        py.ylim(-0.3,0.3)
+        py.xlabel('r (arcsec)')
+        py.ylabel('h3')
+
+        #py.savefig(workdir+'plots/osiris_vs_stis_h3_blue.png')
     
-    #pdb.set_trace()
-
-    py.clf()
-    py.plot(ras,spl,'ro-')
-    py.errorbar(ras,spl,yerr=ssd,ecolor='k',fmt='none')
-    #py.plot(rasshift,sslit,'go-')
-    if inData2 is None:
-        py.plot(stis['r'],stis['sig'],'ko')
-        py.errorbar(stis['r'],stis['sig'],yerr=stis['ds'],ecolor='k',fmt='none')
-        #py.plot(ras,s1,'k.')
-        py.plot(ras,s2,'k-')
-    else:
-        py.plot(ras,spl2,'ko')
-        py.errorbar(ras,spl2,yerr=ssd_2,ecolor='k',fmt='none')
-    py.plot([-2,2],[0,0],'k--')
-    py.plot([0,0],[0,350],'k--')
-    py.xlim(-2,2)
-    py.ylim(0,350)
-    py.xlabel('r (arcsec)')
-    py.ylabel('$\sigma$ (km s$^{-1}$)')
-
-    #py.savefig(workdir+'plots/osiris_vs_stis_sig_blue.png')
+        #pdb.set_trace()
     
-    #pdb.set_trace()
+        py.clf()
+        py.plot(ras,h4pl,'ro-')
+        py.errorbar(ras,h4pl,yerr=h4sd,ecolor='k',fmt='none')
+        #py.plot(rasshift,h4slit,'go-')
+        if ((inData2 is None) and (inModel2 is None)):
+            py.plot(stis['r'],stis['h4'],'ko')
+            py.errorbar(stis['r'],stis['h4'],yerr=stis['dh4'],ecolor='k',fmt='none')
+            #py.plot(ras,h41,'k.')
+            py.plot(ras,h42,'k-')
+        else:
+            py.plot(ras,h4pl2,'ko')
+            if inErr2 is not None:
+                py.errorbar(ras,h4pl2,yerr=h4sd_2,ecolor='k',fmt='none')
+        py.plot([-2,2],[0,0],'k--')
+        py.plot([0,0],[-0.3,0.3],'k--')
+        py.xlim(-2,2)
+        py.ylim(-0.3,0.3)
+        py.xlabel('r (arcsec)')
+        py.ylabel('h4')
 
-    py.clf()
-    py.plot(ras,h3pl,'ro-')
-    py.errorbar(ras,h3pl,yerr=h3sd,ecolor='k',fmt='none')
-    #py.plot(rasshift,h3slit,'go-')
-    if inData2 is None:
-        py.plot(stis['r'],stis['h3'],'ko')
-        py.errorbar(stis['r'],stis['h3'],yerr=stis['dh3'],ecolor='k',fmt='none')
-        #py.plot(ras,h31,'k.')
-        py.plot(ras,h32,'k-')
-    else:
-        py.plot(ras,h3pl2,'ko')
-        py.errorbar(ras,h3pl2,yerr=h3sd_2,ecolor='k',fmt='none')
-    py.plot([-2,2],[0,0],'k--')
-    py.plot([0,0],[-0.3,0.3],'k--')
-    py.xlim(-2,2)
-    py.ylim(-0.3,0.3)
-    py.xlabel('r (arcsec)')
-    py.ylabel('h3')
+        #py.savefig(workdir+'plots/osiris_vs_stis_h4_blue.png')
 
-    #py.savefig(workdir+'plots/osiris_vs_stis_h3_blue.png')
-
-    #pdb.set_trace()
-    
-    py.clf()
-    py.plot(ras,h4pl,'ro-')
-    py.errorbar(ras,h4pl,yerr=h4sd,ecolor='k',fmt='none')
-    #py.plot(rasshift,h4slit,'go-')
-    if inData2 is None:
-        py.plot(stis['r'],stis['h4'],'ko')
-        py.errorbar(stis['r'],stis['h4'],yerr=stis['dh4'],ecolor='k',fmt='none')
-        #py.plot(ras,h41,'k.')
-        py.plot(ras,h42,'k-')
-    else:
-        py.plot(ras,h4pl2,'ko')
-        py.errorbar(ras,h4pl2,yerr=h4sd_2,ecolor='k',fmt='none')
-    py.plot([-2,2],[0,0],'k--')
-    py.plot([0,0],[-0.3,0.3],'k--')
-    py.xlim(-2,2)
-    py.ylim(-0.3,0.3)
-    py.xlabel('r (arcsec)')
-    py.ylabel('h4')
-
-    #py.savefig(workdir+'plots/osiris_vs_stis_h4_blue.png')
-
-    #pdb.set_trace()
+        #pdb.set_trace()
 
     py.close(3)
     py.figure(3, figsize=(7,11))
@@ -3316,15 +3392,20 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot(ras,vpl,'ro')
     py.errorbar(ras,vpl,yerr=vsd,ecolor='r',fmt='none')
     #py.plot(rasshift,vslit,'go')
-    if inData2 is None:
+    if ((inData2 is None) and (inModel2 is None)):
         py.plot(stis['r'],stis['vel'],'ko')
         py.errorbar(stis['r'],stis['vel'],yerr=stis['dv'],ecolor='k',fmt='none')
         #py.plot(ras,v1,'k.')
         py.plot(ras,v2,'k-')
-        py.legend(('OSIRIS','STIS'),loc=0)
+        if B01:
+            py.plot(inB01_v['r'],inB01_v['vel'],'bo')
+            py.legend(('OSIRIS','STIS','STIS smooth','OASIS'),loc=0)
+        else:
+            py.legend(('OSIRIS','STIS'),loc=0)
     else:
         py.plot(ras,vpl2,'ko')
-        py.errorbar(ras,vpl2,yerr=ssd_2,ecolor='k',fmt='none')
+        if inErr2 is not None:
+            py.errorbar(ras,vpl2,yerr=ssd_2,ecolor='k',fmt='none')
         if leg is not None:
             py.legend((leg[0],leg[1]),loc=0)
         else:
@@ -3333,6 +3414,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot([0,0],[-300,300],'k--')
     py.xlim(-2,2)
     py.ylim(-300,300)
+    #py.ylim(-500,400)
     ax1.set_xticklabels([])
     py.yticks([-200,0,200])
     py.ylabel('v (km s$^{-1}$)')
@@ -3342,18 +3424,22 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot(ras,spl,'ro-')
     py.errorbar(ras,spl,yerr=ssd,ecolor='r',fmt='none')
     #py.plot(rasshift,sslit,'go-')
-    if inData2 is None:
+    if ((inData2 is None) and (inModel2 is None)):
         py.plot(stis['r'],stis['sig'],'ko')
         py.errorbar(stis['r'],stis['sig'],yerr=stis['ds'],ecolor='k',fmt='none')
         #py.plot(ras,s1,'k.')
         py.plot(ras,s2,'k-')
+        if B01:
+            py.plot(inB01_s['r'],inB01_s['sig'],'bo')
     else:
         py.plot(ras,spl2,'ko')
-        py.errorbar(ras,spl2,yerr=ssd_2,ecolor='k',fmt='none')
+        if inErr2 is not None:
+            py.errorbar(ras,spl2,yerr=ssd_2,ecolor='k',fmt='none')
     py.plot([-2,2],[0,0],'k--')
     py.plot([0,0],[0,350],'k--')
     py.xlim(-2,2)
     py.ylim(0,350)
+    #py.ylim(0,500)
     ax2.set_xticklabels([])
     py.yticks([50,150,250])
     py.ylabel('$\sigma$ (km s$^{-1}$)')
@@ -3362,14 +3448,15 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot(ras,h3pl,'ro-')
     py.errorbar(ras,h3pl,yerr=h3sd,ecolor='r',fmt='none')
     #py.plot(rasshift,h3slit,'go-')
-    if inData2 is None:
+    if ((inData2 is None) and (inModel2 is None)):
         py.plot(stis['r'],stis['h3'],'ko')
         py.errorbar(stis['r'],stis['h3'],yerr=stis['dh3'],ecolor='k',fmt='none')
         #py.plot(ras,h31,'k.')
         py.plot(ras,h32,'k-')
     else:
         py.plot(ras,h3pl2,'ko')
-        py.errorbar(ras,h3pl2,yerr=h3sd_2,ecolor='k',fmt='none')
+        if inErr2 is not None:
+            py.errorbar(ras,h3pl2,yerr=h3sd_2,ecolor='k',fmt='none')
     py.plot([-2,2],[0,0],'k--')
     py.plot([0,0],[-0.3,0.3],'k--')
     py.xlim(-2,2)
@@ -3382,14 +3469,15 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.plot(ras,h4pl,'ro-')
     py.errorbar(ras,h4pl,yerr=h4sd,ecolor='r',fmt='none')
     #py.plot(rasshift,h4slit,'go-')
-    if inData2 is None:
+    if ((inData2 is None) and (inModel2 is None)):
         py.plot(stis['r'],stis['h4'],'ko')
         py.errorbar(stis['r'],stis['h4'],yerr=stis['dh4'],ecolor='k',fmt='none')
         #py.plot(ras,h41,'k.')
         py.plot(ras,h42,'k-')
     else:
         py.plot(ras,h4pl2,'ko')
-        py.errorbar(ras,h4pl2,yerr=h4sd_2,ecolor='k',fmt='none')
+        if inErr2 is not None:
+            py.errorbar(ras,h4pl2,yerr=h4sd_2,ecolor='k',fmt='none')
     py.plot([-2,2],[0,0],'k--')
     py.plot([0,0],[-0.3,0.3],'k--')
     py.xlim(-2,2)
@@ -3401,7 +3489,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
     py.tight_layout()
     py.subplots_adjust(wspace=0, hspace=0)
     
-    #pdb.set_trace()
+    pdb.set_trace()
 
     if hAlpha:
         py.close(4)
@@ -3445,7 +3533,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.subplot(3,1,1)
     py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,cubeimg/cubeimg.max()),3),vmin=0.,vmax=1.,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     #py.ylabel('Y (arcsec)')
     py.ylabel('Data')
     py.xlabel('X (arcsec)')
@@ -3484,7 +3572,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
         py.imshow(py.ma.masked_where(modFplot==0.,modFplot),vmin=0.,vmax=1., extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     else:
         py.imshow(np.rot90((trimModel(model.nstar,nonaligned=nonaligned).transpose()/trimModel(model.nstar,nonaligned=nonaligned).max().transpose()),3),vmin=0.,vmax=1., extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     #py.ylabel('Y (arcsec)')
     py.ylabel('Model')
     py.xlabel('X (arcsec)')
@@ -3500,7 +3588,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.nstar.transpose()),3),vmin=-.25,vmax=.25,
     #py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,nstarres.transpose()),3),vmin=-.25,vmax=.25,
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     #py.ylabel('Y (arcsec)')
     py.ylabel('Residuals')
     py.xlabel('X (arcsec)')
@@ -3511,13 +3599,17 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     py.tight_layout()
 
+    
+    
     if outStem:
         py.savefig(outStem+'_flux.png')
     else:
         py.savefig(modelworkdir + 'plots/residuals_flux.png')
         py.savefig(modelworkdir + 'plots/residuals_flux.eps')
     py.show()
-    #pdb.set_trace()
+
+    pdb.set_trace()
+    
     ##########
     # Plot velocity
     ##########  
@@ -3526,7 +3618,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.subplot(3,1,1)
     py.imshow(np.rot90(py.ma.masked_where((data.velocity.transpose()+vsys)==vsys,data.velocity.transpose()+vsys),3),vmin=-250.,vmax=250., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     #py.ylabel('Y (arcsec)')
     py.ylabel('Data')
     py.xlabel('X (arcsec)')
@@ -3567,7 +3659,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     else:
         py.imshow(np.rot90(trimModel(model.velocity,nonaligned=nonaligned).transpose(),3),vmin=-250.,vmax=250., 
                 extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Model')
     py.xlabel('X (arcsec)')
@@ -3579,7 +3671,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.subplot(3,1,3)
     py.imshow(np.rot90(res.velocity.transpose(),3),vmin=-100.,vmax=200., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Residuals')
     py.xlabel('X (arcsec)')
@@ -3605,7 +3697,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.subplot(3,1,1)
     py.imshow(np.rot90(py.ma.masked_where(data.sigma.transpose()==0.,data.sigma.transpose()),3),vmin=0.,vmax=300., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Data')
     py.xlabel('X (arcsec)')
@@ -3646,7 +3738,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     else:
         py.imshow(np.rot90(trimModel(model.sigma,nonaligned=nonaligned).transpose(),3),vmin=0.,vmax=250., 
                 extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Model')
     py.xlabel('X (arcsec)')
@@ -3658,7 +3750,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
     py.subplot(3,1,3)
     py.imshow(np.rot90(res.sigma.transpose(),3),vmin=-150.,vmax=150., 
               extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Residuals')
     py.xlabel('X (arcsec)')
@@ -3686,7 +3778,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     py.subplot(3,1,1)
     py.imshow(np.rot90(py.ma.masked_where(data.h3.transpose()==0.,data.h3.transpose()),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Data')
     py.xlabel('X (arcsec)')
@@ -3725,7 +3817,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
         py.imshow(py.ma.masked_where(modVplot==0.,modH3plot),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     else:
         py.imshow(np.rot90(trimModel(model.h3,nonaligned=nonaligned).transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Model')
     py.xlabel('X (arcsec)')
@@ -3736,7 +3828,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     py.subplot(3,1,3)
     py.imshow(np.rot90(res.h3.transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Residuals')
     py.xlabel('X (arcsec)')
@@ -3766,7 +3858,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     py.subplot(3,1,1)
     py.imshow(np.rot90(py.ma.masked_where(data.h4.transpose()==0.,data.h4.transpose()),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Data')
     py.xlabel('X (arcsec)')
@@ -3805,7 +3897,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
         py.imshow(py.ma.masked_where(modVplot==0.,modH4plot),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
     else:
         py.imshow(np.rot90(trimModel(model.h4,nonaligned=nonaligned).transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Model')
     py.xlabel('X (arcsec)')
@@ -3816,7 +3908,7 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
 
     py.subplot(3,1,3)
     py.imshow(np.rot90(res.h4.transpose(),3),vmin=-0.2,vmax=0.2, extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-    py.plot([0], 'kx', markeredgewidth=3)
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None' )
     #py.ylabel('Y (arcsec)')
     py.ylabel('Residuals')
     py.xlabel('X (arcsec)')
@@ -4091,7 +4183,9 @@ def trimModel(input,nonaligned=True):
         # BHpos (nonaligned, PA=-56) = [57.954999999999998, 58.034999999999997]
         #trimrange = [[38.9,79.9],[17.3,101.3]]
         # BHps (nonaligned, new BH position) = [58.2, 57.6]
-        trimrange = [[39.0,80.0],[19.0,102.0]]
+        #trimrange = [[39.0,80.0],[19.0,102.0]]
+        # BHps (nonaligned, new BH position) = [58.7, 58.0]
+        trimrange = [[38.7,79.7],[14.7,96.7]]
     else:
         # BHpos (aligned) = [54.954999999999998, 59.034999999999997]
         trimrange = [[35.9, 75.9],[18.3,102.3]]
@@ -4948,6 +5042,8 @@ def log_rebin_cube(wavelength, cube):
     return logWave, newCube, vel
 
 def log_rebin2(xaxis, spectrum, inMicrons=True, velScale=None, plot=False):
+
+    spectrum = np.nan_to_num(spectrum)
     
     if inMicrons:
         # xaxis is currently expressed in wavelength with units of microns

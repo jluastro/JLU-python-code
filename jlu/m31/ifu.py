@@ -334,11 +334,13 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
             yshift0 = float(shiftsTable[0][rr])
             xshift = float(shiftsTable[1][rr])
             yshift = float(shiftsTable[0][rr])
-            filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+            #filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+            filerr = str(shiftsTable[2][rr]).strip()
         else:
             xshift = float(shiftsTable[1][rr])
             yshift = float(shiftsTable[0][rr])
-            filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+            #filerr = str(shiftsTable[2][rr]).strip()+'.fits'
+            filerr = str(shiftsTable[2][rr]).strip()
         
         #    if shiftsTable[0][rr] == cubefile:
         #        xshift = float(shiftsTable[1][rr])
@@ -420,7 +422,7 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
         
         # Save the modified NIRC2 image.
         nirc2_file = rootdir + 'data/osiris_perf/nirc2_ref_'+str(rr)+'.fits'
-        ir.imdelete(nirc2_file)
+        #ir.imdelete(nirc2_file)
         pyfits.writeto(nirc2_file, img, header=imghdr, output_verify='silentfix')
 
         # Clean up the cube image to get rid of very very low flux values 
@@ -467,6 +469,8 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
         
             frameimg_norm = frameimg / frameimg.sum()
             newimg_norm = newimg / newimg.sum()
+            #frameimg_norm = frameimg / frameimg.max()
+            #newimg_norm = newimg / newimg.max()
         
             residuals = (frameimg_norm - newimg_norm) / np.sqrt(frameimg_norm)
             residuals[cidx] = 0
@@ -485,23 +489,34 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
             if plot:
                 py.figure(1)
                 py.clf()
-                py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
+                py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=.4)
             
                 py.subplot(1, 3, 1)
-                py.imshow(frameimg)
+                py.imshow(frameimg_norm)
+                cbar1 = py.colorbar(orientation='horizontal',format='%5.4f')
+                cbar1.set_label('OSIRIS (norm)')
+                cbar1.set_ticks([0,frameimg_norm.max()/2.,frameimg_norm.max()])
                 py.title('OSIRIS')
                 
                 py.subplot(1, 3, 2)
-                py.imshow(newimg)
+                py.imshow(newimg_norm)
+                cbar2 = py.colorbar(orientation='horizontal',format='%5.4f')
+                cbar2.set_label('NIRC2 (convolved, norm)')
+                cbar2.set_ticks([0,newimg_norm.max()/2.,newimg_norm.max()])
                 py.title('NIRC2+')
             
                 py.subplot(1, 3, 3)
                 py.imshow(residuals)
+                cbar3 = py.colorbar(orientation='horizontal',format='%5.4f')
+                cbar3.set_label('Residuals')
+                cbar3.set_ticks([residuals.min(),0,residuals.max()])
                 py.title('Residuals')
 
                 py.savefig(rootdir + 'data/osiris_perf/osir_perf_' + 
                         filerr.replace('.fits', '.png'))
                 py.show()
+
+                #pdb.set_trace()
             
             return residuals.flatten()
 
@@ -660,7 +675,7 @@ def compPSF(inPSFpath=datadir+'data/osiris_perf/',twoGauss=False,toTxt=False,num
     # files are in units of pixels, convert to arcsec
     py.close(3)
     py.figure(3)
-    py.hist(fwhm,bins=20)
+    py.hist(fwhm,bins=10)
     py.xlabel('PSF FWHM (arcsec)')
     py.ylabel('Number')
     py.annotate('Median FWHM = '+str(fwhmmed),xy=(.6,.9), xycoords='axes fraction')
