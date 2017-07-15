@@ -23,7 +23,6 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     s.loadPolyfit(rootDir + poly, accel=0, arcsec=0)
     Nstars = len(starNames)
     Ncols = 2 * np.min([Nstars, NcolMax])
-
     if Nstars <= Ncols/2:
         Nrows = 3
     else:
@@ -41,347 +40,329 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     
         starName = starNames[i]
         
-        try:
-            
-            ii = names.index(starName)
-            star = s.stars[ii]
-       
-            pointsTab = Table.read(rootDir + points + starName + '.points', format='ascii')
-        
-            time = pointsTab[pointsTab.colnames[0]]
-            x = pointsTab[pointsTab.colnames[1]]
-            y = pointsTab[pointsTab.colnames[2]]
-            xerr = pointsTab[pointsTab.colnames[3]]
-            yerr = pointsTab[pointsTab.colnames[4]]
-        
-            fitx = star.fitXv
-            fity = star.fitYv
-            dt = time - fitx.t0
-            fitLineX = fitx.p + (fitx.v * dt)
-            fitSigX = np.sqrt( fitx.perr**2 + (dt * fitx.verr)**2 )
-        
-            fitLineY = fity.p + (fity.v * dt)
-            fitSigY = np.sqrt( fity.perr**2 + (dt * fity.verr)**2 )
+        ii = names.index(starName)
+        star = s.stars[ii]
 
-        
-            if (radial == True):
-                # Lets also do radial/tangential
-                x0 = fitx.p
-                y0 = fity.p
-                vx = fitx.v
-                vy = fity.v
-                x0e = fitx.perr
-                y0e = fity.perr
-                vxe = fitx.verr
-                vye = fity.verr
-                
-                r0 = np.sqrt(x0**2 + y0**2)
-        
-                vr = ((vx*x0) + (vy*y0)) / r0
-                vt = ((vx*y0) - (vy*x0)) / r0
-                vre =  (vxe*x0/r0)**2 + (vye*y0/r0)**2
-                vre += (y0*x0e*vt/r0**2)**2 + (x0*y0e*vt/r0**2)**2
-                vre =  np.sqrt(vre)
-                vte =  (vxe*y0/r0)**2 + (vye*x0/r0)**2
-                vte += (y0*x0e*vr/r0**2)**2 + (x0*y0e*vr/r0**2)**2
-                vte =  np.sqrt(vte)
-        
-                r = ((x*x0) + (y*y0)) / r0
-                t = ((x*y0) - (y*x0)) / r0
-                rerr = (xerr*x0/r0)**2 + (yerr*y0/r0)**2
-                rerr += (y0*x0e*t/r0**2)**2 + (x0*y0e*t/r0**2)**2
-                rerr =  np.sqrt(rerr)
-                terr =  (xerr*y0/r0)**2 + (yerr*x0/r0)**2
-                terr += (y0*x0e*r/r0**2)**2 + (x0*y0e*r/r0**2)**2
-                terr =  np.sqrt(terr)
-        
-                fitLineR = ((fitLineX*x0) + (fitLineY*y0)) / r0
-                fitLineT = ((fitLineX*y0) - (fitLineY*x0)) / r0
-                fitSigR = ((fitSigX*x0) + (fitSigY*y0)) / r0
-                fitSigT = ((fitSigX*y0) - (fitSigY*x0)) / r0
-        
-                diffR = r - fitLineR
-                diffT = t - fitLineT
-                sigR = diffR / rerr
-                sigT = diffT / terr
-        
-                idxR = np.where(abs(sigR) > 4)
-                idxT = np.where(abs(sigT) > 4)
-                
-        
-            diffX = x - fitLineX
-            diffY = y - fitLineY
-            diff = np.hypot(diffX, diffY)
-            rerr = np.sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
-            sigX = diffX / xerr
-            sigY = diffY / yerr
-            sig = diff / rerr
-        
+        pointsTab = Table.read(rootDir + points + starName + '.points', format='ascii')
+
+        time = pointsTab[pointsTab.colnames[0]]
+        x = pointsTab[pointsTab.colnames[1]]
+        y = pointsTab[pointsTab.colnames[2]]
+        xerr = pointsTab[pointsTab.colnames[3]]
+        yerr = pointsTab[pointsTab.colnames[4]]
+
+        fitx = star.fitXv
+        fity = star.fitYv
+        dt = time - fitx.t0
+        fitLineX = fitx.p + (fitx.v * dt)
+        fitSigX = np.sqrt( fitx.perr**2 + (dt * fitx.verr)**2 )
+
+        fitLineY = fity.p + (fity.v * dt)
+        fitSigY = np.sqrt( fity.perr**2 + (dt * fity.verr)**2 )
+
+        if (radial == True):
+            # Lets also do radial/tangential
+            x0 = fitx.p
+            y0 = fity.p
+            vx = fitx.v
+            vy = fity.v
+            x0e = fitx.perr
+            y0e = fity.perr
+            vxe = fitx.verr
+            vye = fity.verr
+
+            r0 = np.sqrt(x0**2 + y0**2)
+
+            vr = ((vx*x0) + (vy*y0)) / r0
+            vt = ((vx*y0) - (vy*x0)) / r0
+            vre =  (vxe*x0/r0)**2 + (vye*y0/r0)**2
+            vre += (y0*x0e*vt/r0**2)**2 + (x0*y0e*vt/r0**2)**2
+            vre =  np.sqrt(vre)
+            vte =  (vxe*y0/r0)**2 + (vye*x0/r0)**2
+            vte += (y0*x0e*vr/r0**2)**2 + (x0*y0e*vr/r0**2)**2
+            vte =  np.sqrt(vte)
+
+            r = ((x*x0) + (y*y0)) / r0
+            t = ((x*y0) - (y*x0)) / r0
+            rerr = (xerr*x0/r0)**2 + (yerr*y0/r0)**2
+            rerr += (y0*x0e*t/r0**2)**2 + (x0*y0e*t/r0**2)**2
+            rerr =  np.sqrt(rerr)
+            terr =  (xerr*y0/r0)**2 + (yerr*x0/r0)**2
+            terr += (y0*x0e*r/r0**2)**2 + (x0*y0e*r/r0**2)**2
+            terr =  np.sqrt(terr)
+
+            fitLineR = ((fitLineX*x0) + (fitLineY*y0)) / r0
+            fitLineT = ((fitLineX*y0) - (fitLineY*x0)) / r0
+            fitSigR = ((fitSigX*x0) + (fitSigY*y0)) / r0
+            fitSigT = ((fitSigX*y0) - (fitSigY*x0)) / r0
+
+            diffR = r - fitLineR
+            diffT = t - fitLineT
+            sigR = diffR / rerr
+            sigT = diffT / terr
+
+            idxR = np.where(abs(sigR) > 4)
+            idxT = np.where(abs(sigT) > 4)
+
+
+        diffX = x - fitLineX
+        diffY = y - fitLineY
+        diff = np.hypot(diffX, diffY)
+        rerr = np.sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
+        sigX = diffX / xerr
+        sigY = diffY / yerr
+        sig = diff / rerr
+
+
+        # Determine if there are points that are more than 5 sigma off
+        idxX = np.where(abs(sigX) > 4)
+        idxY = np.where(abs(sigY) > 4)
+        idx = np.where(abs(sig) > 4)
+
+        print( 'Star:        ', starName )
+        print( '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % 
+              (fitx.chi2red, fitx.chi2, fitx.dof))
+        print( '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % 
+              (fity.chi2red, fity.chi2, fity.dof))
+        # print( 'X  Outliers: ', time[idxX] )
+        # print( 'Y  Outliers: ', time[idxY] )
+        # if (radial):
+        #     print( 'R  Outliers: ', time[idxX] )
+        #     print( 'T  Outliers: ', time[idxY] )
+        # print( 'XY Outliers: ', time[idx] )
+
+        # close(2)
+        #             figure(2, figsize=(7, 8))
+        #             clf()
+
+        dateTicLoc = py.MultipleLocator(3)
+        dateTicRng = [2006, 2017]
+        # dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
+        dateTics = np.array([2015, 2016, 2017])
+        DateTicsLabel = dateTics-2000
+
+        # See if we are using MJD instead.
+        if time[0] > 50000:
+            dateTicLoc = py.MultipleLocator(1000)
+            dateTicRng = [56000, 58000]
+            dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
+            DateTicsLabel = dateTics
+
+
+        maxErr = np.array([xerr, yerr]).max()
+        resTicRng = [-1.1*maxErr, 1.1*maxErr]
+
+        from matplotlib.ticker import FormatStrFormatter
+        fmtX = FormatStrFormatter('%5i')
+        fmtY = FormatStrFormatter('%6.2f')
+        fontsize1 = 10
+
+        if i < (Ncols/2):
+            col = (2*i)+1
+            row = 1
+        else:
+            col = 1 + 2*(i % (Ncols/2))
+            row = 1 + 3*(i//(Ncols/2)) 
             
-            # Determine if there are points that are more than 5 sigma off
-            idxX = np.where(abs(sigX) > 4)
-            idxY = np.where(abs(sigY) > 4)
-            idx = np.where(abs(sig) > 4)
-        
-            print( 'Star:        ', starName )
-            print( '\tX Chi^2 = %5.2f (%6.2f for %2d dof)' % 
-                  (fitx.chi2red, fitx.chi2, fitx.chi2/fitx.chi2red))
-            print( '\tY Chi^2 = %5.2f (%6.2f for %2d dof)' % 
-                  (fity.chi2red, fity.chi2, fity.chi2/fity.chi2red))
-            # print( 'X  Outliers: ', time[idxX] )
-            # print( 'Y  Outliers: ', time[idxY] )
-            # if (radial):
-            #     print( 'R  Outliers: ', time[idxX] )
-            #     print( 'T  Outliers: ', time[idxY] )
-            # print( 'XY Outliers: ', time[idx] )
-        
-            # close(2)
-            #             figure(2, figsize=(7, 8))
-            #             clf()
-            
+        ind = (row-1)*Ncols + col
+
+        paxes = py.subplot(Nrows, Ncols, ind)
+        py.plot(time, fitLineX, 'b-')
+        py.plot(time, fitLineX + fitSigX, 'b--')
+        py.plot(time, fitLineX - fitSigX, 'b--')
+        py.errorbar(time, x, yerr=xerr, fmt='k.')
+        rng = py.axis()
+        py.ylim(np.min(x-xerr-0.1),np.max(x+xerr+0.1)) 
+        py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+        if time[0] > 50000:
+            py.xlabel('Date (MJD)', fontsize=fontsize1)
+        py.ylabel('X (pix)', fontsize=fontsize1)
+        paxes.xaxis.set_major_formatter(fmtX)
+        paxes.get_xaxis().set_major_locator(dateTicLoc)
+        paxes.yaxis.set_major_formatter(fmtY)
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        py.yticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2))
+        py.xticks(dateTics, DateTicsLabel)
+        py.xlim(np.min(dateTics), np.max(dateTics))
+        py.annotate(starName,xy=(1.0,1.1), xycoords='axes fraction', fontsize=12, color='red')
+
+
+        col = col + 1
+        ind = (row-1)*Ncols + col
+
+        paxes = py.subplot(Nrows, Ncols, ind)
+        py.plot(time, fitLineY, 'b-')
+        py.plot(time, fitLineY + fitSigY, 'b--')
+        py.plot(time, fitLineY - fitSigY, 'b--')
+        py.errorbar(time, y, yerr=yerr, fmt='k.')
+        rng = py.axis()
+        py.axis(dateTicRng + [rng[2], rng[3]], fontsize=fontsize1)
+        py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+        if time[0] > 50000:
+            py.xlabel('Date (MJD)', fontsize=fontsize1)
+        py.ylabel('Y (pix)', fontsize=fontsize1)
+        #paxes.get_xaxis().set_major_locator(dateTicLoc)
+        paxes.xaxis.set_major_formatter(fmtX)
+        paxes.get_xaxis().set_major_locator(dateTicLoc)
+        paxes.yaxis.set_major_formatter(fmtY)
+        paxes.tick_params(axis='both', which='major', labelsize=12)
+        py.ylim(np.min(y-yerr-0.1),np.max(y+yerr+0.1))
+        py.yticks(np.arange(np.min(y-yerr-0.1), np.max(y+yerr+0.1), 0.2))
+        py.xticks(dateTics, DateTicsLabel)
+        py.xlim(np.min(dateTics), np.max(dateTics))
+
+        row = row + 1
+        col = col - 1
+        ind = (row-1)*Ncols + col
+
+        paxes = py.subplot(Nrows, Ncols, ind)
+        py.plot(time, np.zeros(len(time)), 'b-')
+        py.plot(time, fitSigX, 'b--')
+        py.plot(time, -fitSigX, 'b--')
+        py.errorbar(time, x - fitLineX, yerr=xerr, fmt='k.')
+        py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
+        py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
+        if time[0] > 50000:
+            py.xlabel('Date (MJD)', fontsize=fontsize1)
+        py.ylabel('X Residuals (pix)', fontsize=fontsize1)
+        paxes.get_xaxis().set_major_locator(dateTicLoc)
+        paxes.xaxis.set_major_formatter(fmtX)
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        py.xticks(dateTics, DateTicsLabel)
+        py.xlim(np.min(dateTics), np.max(dateTics))
+
+        col = col + 1
+        ind = (row-1)*Ncols + col
+
+        paxes = py.subplot(Nrows, Ncols, ind)
+        py.plot(time, np.zeros(len(time)), 'b-')
+        py.plot(time, fitSigY, 'b--')
+        py.plot(time, -fitSigY, 'b--')
+        py.errorbar(time, y - fitLineY, yerr=yerr, fmt='k.')
+        py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
+        py.xlabel('Date -2000 (yrs)', fontsize=fontsize1)
+        if time[0] > 50000:
+            py.xlabel('Date (MJD)', fontsize=fontsize1)
+        py.ylabel('Y Residuals (pix)', fontsize=fontsize1)
+        paxes.get_xaxis().set_major_locator(dateTicLoc)
+        paxes.xaxis.set_major_formatter(fmtX)
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        py.xticks(dateTics, DateTicsLabel)
+        py.xlim(np.min(dateTics), np.max(dateTics))
+
+        row = row + 1
+        col = col - 1
+        ind = (row-1)*Ncols + col
+
+
+        paxes = py.subplot(Nrows, Ncols, ind)
+        py.errorbar(x,y, xerr=xerr, yerr=yerr, fmt='k.')
+        py.yticks(np.arange(np.min(y-yerr-0.1), np.max(y+yerr+0.1), 0.2))
+        py.xticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2), rotation = 270)
+        py.axis('equal')
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        paxes.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        py.xlabel('X (pix)', fontsize=fontsize1)
+        py.ylabel('Y (pix)', fontsize=fontsize1)
+        py.plot(fitLineX, fitLineY, 'b-')    
+
+        col = col + 1
+        ind = (row-1)*Ncols + col
+
+        bins = np.arange(-7, 7, 1)
+        paxes = py.subplot(Nrows, Ncols, ind)
+        id = np.where(diffY < 0)[0]
+        sig[id] = -1.*sig[id] 
+        (n, b, p) = py.hist(sigX, bins, histtype='stepfilled', color='b')
+        py.setp(p, 'facecolor', 'b')
+        (n, b, p) = py.hist(sigY, bins, histtype='step', color='r')
+        py.axis([-7, 7, 0, 8], fontsize=10)
+        py.xlabel('X Residuals (sigma)', fontsize=fontsize1)
+        py.ylabel('Number of Epochs', fontsize=fontsize1)
+
+        ##########
+        #
+        # Also plot radial/tangential
+        #
+        ##########
+        if (radial == True):
+            py.clf()
+
             dateTicLoc = py.MultipleLocator(3)
-            dateTicRng = [2006, 2017]
-            dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
-            DateTicsLabel = dateTics-2000
 
-            # See if we are using MJD instead.
-            if time[0] > 50000:
-                dateTicLoc = py.MultipleLocator(1000)
-                dateTicRng = [56000, 58000]
-                dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
-                DateTicsLabel = dateTics
-                
-    	    
-            maxErr = np.array([xerr, yerr]).max()
-            resTicRng = [-1.1*maxErr, 1.1*maxErr]
-        
+            maxErr = np.array([rerr, terr]).max()
+            resTicRng = [-3*maxErr, 3*maxErr]
+
             from matplotlib.ticker import FormatStrFormatter
             fmtX = FormatStrFormatter('%5i')
             fmtY = FormatStrFormatter('%6.2f')
-            fontsize1 = 10
-	        
-#             paxes = py.subplot2grid((3,2*Nstars),(0, 2*i))
-            
-            
-            if i < (Ncols/2):
-                col = (2*i)+1
-                row = 1
-            else:
-                col = 1 + 2*(i % (Ncols/2))
-                row = 1 + 3*(i//(Ncols/2)) 
-            
-            ind = (row-1)*Ncols + col
-            
-            paxes = py.subplot(Nrows, Ncols, ind)
-            py.plot(time, fitLineX, 'b-')
-            py.plot(time, fitLineX + fitSigX, 'b--')
-            py.plot(time, fitLineX - fitSigX, 'b--')
-            py.errorbar(time, x, yerr=xerr, fmt='k.')
+
+            paxes = py.subplot(3,2,1)
+            py.plot(time, fitLineR, 'b-')
+            py.plot(time, fitLineR + fitSigR, 'b--')
+            py.plot(time, fitLineR - fitSigR, 'b--')
+            py.errorbar(time, r, yerr=rerr, fmt='k.')
             rng = py.axis()
-            py.ylim(np.min(x-xerr-0.1),np.max(x+xerr+0.1)) 
-            py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
-            if time[0] > 50000:
-                py.xlabel('Date (MJD)', fontsize=fontsize1)
-            py.ylabel('X (pix)', fontsize=fontsize1)
+            py.axis(dateTicRng + [rng[2], rng[3]])
+            py.xlabel('Date (yrs)')
+            py.ylabel('R (pix)')
             paxes.xaxis.set_major_formatter(fmtX)
             paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.yaxis.set_major_formatter(fmtY)
-            paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
-            py.yticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2))
-            py.xticks(dateTics, DateTicsLabel)
-            py.xlim(np.min(dateTics), np.max(dateTics))
-            py.annotate(starName,xy=(1.0,1.1), xycoords='axes fraction', fontsize=12, color='red')
-            
-            
-#             show()
-    
-            col = col + 1
-            ind = (row-1)*Ncols + col
-            
-#             paxes = subplot2grid((3,2*Nstars),(0, 2*i+1))
-            paxes = py.subplot(Nrows, Ncols, ind)
-            py.plot(time, fitLineY, 'b-')
-            py.plot(time, fitLineY + fitSigY, 'b--')
-            py.plot(time, fitLineY - fitSigY, 'b--')
-            py.errorbar(time, y, yerr=yerr, fmt='k.')
+
+            paxes = py.subplot(3, 2, 2)
+            py.plot(time, fitLineT, 'b-')
+            py.plot(time, fitLineT + fitSigT, 'b--')
+            py.plot(time, fitLineT - fitSigT, 'b--')
+            py.errorbar(time, t, yerr=terr, fmt='k.')
             rng = py.axis()
-            py.axis(dateTicRng + [rng[2], rng[3]], fontsize=fontsize1)
-            py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
-            if time[0] > 50000:
-                py.xlabel('Date (MJD)', fontsize=fontsize1)
-            py.ylabel('Y (pix)', fontsize=fontsize1)
-            #paxes.get_xaxis().set_major_locator(dateTicLoc)
+            py.axis(dateTicRng + [rng[2], rng[3]])
+            py.xlabel('Date (yrs)')
+            py.ylabel('T (pix)')
             paxes.xaxis.set_major_formatter(fmtX)
             paxes.get_xaxis().set_major_locator(dateTicLoc)
             paxes.yaxis.set_major_formatter(fmtY)
-            paxes.tick_params(axis='both', which='major', labelsize=12)
-            py.ylim(np.min(y-yerr-0.1),np.max(y+yerr+0.1))
-            py.yticks(np.arange(np.min(y-yerr-0.1), np.max(y+yerr+0.1), 0.2))
-            py.xticks(dateTics, DateTicsLabel)
-            py.xlim(np.min(dateTics), np.max(dateTics))
-#             show()
-            
-            row = row + 1
-            col = col - 1
-            ind = (row-1)*Ncols + col
-    
-#             paxes = subplot2grid((3,2*Nstars),(1, 2*i))
-            paxes = py.subplot(Nrows, Ncols, ind)
+
+            paxes = py.subplot(3, 2, 3)
             py.plot(time, np.zeros(len(time)), 'b-')
-            py.plot(time, fitSigX, 'b--')
-            py.plot(time, -fitSigX, 'b--')
-            py.errorbar(time, x - fitLineX, yerr=xerr, fmt='k.')
-            py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
-            py.xlabel('Date - 2000 (yrs)', fontsize=fontsize1)
-            if time[0] > 50000:
-                py.xlabel('Date (MJD)', fontsize=fontsize1)
-            py.ylabel('X Residuals (pix)', fontsize=fontsize1)
+            py.plot(time, fitSigR, 'b--')
+            py.plot(time, -fitSigR, 'b--')
+            py.errorbar(time, r - fitLineR, yerr=rerr, fmt='k.')
+            py.axis(dateTicRng + resTicRng)
+            py.xlabel('Date (yrs)')
+            py.ylabel('R Residuals (pix)')
             paxes.get_xaxis().set_major_locator(dateTicLoc)
-            paxes.xaxis.set_major_formatter(fmtX)
-            paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
-            py.xticks(dateTics, DateTicsLabel)
-            py.xlim(np.min(dateTics), np.max(dateTics))
-#             show()
-	        
-            col = col + 1
-            ind = (row-1)*Ncols + col
-    
-#             paxes = subplot2grid((3,2*Nstars),(1, 2*i+1))
-            paxes = py.subplot(Nrows, Ncols, ind)
-#             paxes = subplot(3, 2, 4)
+
+            paxes = py.subplot(3, 2, 4)
             py.plot(time, np.zeros(len(time)), 'b-')
-            py.plot(time, fitSigY, 'b--')
-            py.plot(time, -fitSigY, 'b--')
-            py.errorbar(time, y - fitLineY, yerr=yerr, fmt='k.')
-            py.axis(dateTicRng + resTicRng, fontsize=fontsize1)
-            py.xlabel('Date -2000 (yrs)', fontsize=fontsize1)
-            if time[0] > 50000:
-                py.xlabel('Date (MJD)', fontsize=fontsize1)
-            py.ylabel('Y Residuals (pix)', fontsize=fontsize1)
+            py.plot(time, fitSigT, 'b--')
+            py.plot(time, -fitSigT, 'b--')
+            py.errorbar(time, t - fitLineT, yerr=terr, fmt='k.')
+            py.axis(dateTicRng + resTicRng)
+            py.xlabel('Date (yrs)')
+            py.ylabel('T Residuals (pix)')
             paxes.get_xaxis().set_major_locator(dateTicLoc)
-            paxes.xaxis.set_major_formatter(fmtX)
-            paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
-            py.xticks(dateTics, DateTicsLabel)
-            py.xlim(np.min(dateTics), np.max(dateTics))
-#             show()
-            
-            row = row + 1
-            col = col - 1
-            ind = (row-1)*Ncols + col
-    
-           
-            paxes = py.subplot(Nrows, Ncols, ind)
-            py.errorbar(x,y, xerr=xerr, yerr=yerr, fmt='k.')
-            py.yticks(np.arange(np.min(y-yerr-0.1), np.max(y+yerr+0.1), 0.2))
-            py.xticks(np.arange(np.min(x-xerr-0.1), np.max(x+xerr+0.1), 0.2), rotation = 270)
-            py.axis('equal')
-            paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
-            paxes.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-            paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
-            py.xlabel('X (pix)', fontsize=fontsize1)
-            py.ylabel('Y (pix)', fontsize=fontsize1)
-            py.plot(fitLineX, fitLineY, 'b-')    
-            
-            col = col + 1
-            ind = (row-1)*Ncols + col
 
             bins = np.arange(-7, 7, 1)
-            paxes = py.subplot(Nrows, Ncols, ind)
-            id = np.where(diffY < 0)[0]
-            sig[id] = -1.*sig[id] 
-            (n, b, p) = py.hist(sigX, bins, histtype='stepfilled', color='b')
-            py.setp(p, 'facecolor', 'b')
-            (n, b, p) = py.hist(sigY, bins, histtype='step', color='r')
-            py.axis([-7, 7, 0, 8], fontsize=10)
-            py.xlabel('X Residuals (sigma)', fontsize=fontsize1)
-            py.ylabel('Number of Epochs', fontsize=fontsize1)
+            py.subplot(3, 2, 5)
+            (n, b, p) = py.hist(sigR, bins)
+            py.setp(p, 'facecolor', 'k')
+            py.axis([-5, 5, 0, 20])
+            py.xlabel('T Residuals (sigma)')
+            py.ylabel('Number of Epochs')
 
-            ##########
-            #
-            # Also plot radial/tangential
-            #
-            ##########
-            if (radial == True):
-                py.clf()
-        
-                dateTicLoc = py.MultipleLocator(3)
-                
-                maxErr = np.array([rerr, terr]).max()
-                resTicRng = [-3*maxErr, 3*maxErr]
-                
-                from matplotlib.ticker import FormatStrFormatter
-                fmtX = FormatStrFormatter('%5i')
-                fmtY = FormatStrFormatter('%6.2f')
-                
-                paxes = py.subplot(3,2,1)
-                py.plot(time, fitLineR, 'b-')
-                py.plot(time, fitLineR + fitSigR, 'b--')
-                py.plot(time, fitLineR - fitSigR, 'b--')
-                py.errorbar(time, r, yerr=rerr, fmt='k.')
-                rng = py.axis()
-                py.axis(dateTicRng + [rng[2], rng[3]])
-                py.xlabel('Date (yrs)')
-                py.ylabel('R (pix)')
-                paxes.xaxis.set_major_formatter(fmtX)
-                paxes.get_xaxis().set_major_locator(dateTicLoc)
-                paxes.yaxis.set_major_formatter(fmtY)
-                
-                paxes = py.subplot(3, 2, 2)
-                py.plot(time, fitLineT, 'b-')
-                py.plot(time, fitLineT + fitSigT, 'b--')
-                py.plot(time, fitLineT - fitSigT, 'b--')
-                py.errorbar(time, t, yerr=terr, fmt='k.')
-                rng = py.axis()
-                py.axis(dateTicRng + [rng[2], rng[3]])
-                py.xlabel('Date (yrs)')
-                py.ylabel('T (pix)')
-                paxes.xaxis.set_major_formatter(fmtX)
-                paxes.get_xaxis().set_major_locator(dateTicLoc)
-                paxes.yaxis.set_major_formatter(fmtY)
-                
-                paxes = py.subplot(3, 2, 3)
-                py.plot(time, np.zeros(len(time)), 'b-')
-                py.plot(time, fitSigR, 'b--')
-                py.plot(time, -fitSigR, 'b--')
-                py.errorbar(time, r - fitLineR, yerr=rerr, fmt='k.')
-                py.axis(dateTicRng + resTicRng)
-                py.xlabel('Date (yrs)')
-                py.ylabel('R Residuals (pix)')
-                paxes.get_xaxis().set_major_locator(dateTicLoc)
-                
-                paxes = py.subplot(3, 2, 4)
-                py.plot(time, np.zeros(len(time)), 'b-')
-                py.plot(time, fitSigT, 'b--')
-                py.plot(time, -fitSigT, 'b--')
-                py.errorbar(time, t - fitLineT, yerr=terr, fmt='k.')
-                py.axis(dateTicRng + resTicRng)
-                py.xlabel('Date (yrs)')
-                py.ylabel('T Residuals (pix)')
-                paxes.get_xaxis().set_major_locator(dateTicLoc)
-                
-                bins = np.arange(-7, 7, 1)
-                py.subplot(3, 2, 5)
-                (n, b, p) = py.hist(sigR, bins)
-                py.setp(p, 'facecolor', 'k')
-                py.axis([-5, 5, 0, 20])
-                py.xlabel('T Residuals (sigma)')
-                py.ylabel('Number of Epochs')
-                
-                py.subplot(3, 2, 6)
-                (n, b, p) = py.hist(sigT, bins)
-                py.axis([-5, 5, 0, 20])
-                py.setp(p, 'facecolor', 'k')
-                py.xlabel('Y Residuals (sigma)')
-                py.ylabel('Number of Epochs')
-                
-                py.subplots_adjust(wspace=0.4, hspace=0.4, right=0.95, top=0.95)
-                py.show()
-                py.savefig(rootDir+'plots/plotStarRadial_' + starName + '.png')
-    
-        except Exception as e:
-            print( 'Star ' + starName + ' not in list' )
-            print( e )
-           
+            py.subplot(3, 2, 6)
+            (n, b, p) = py.hist(sigT, bins)
+            py.axis([-5, 5, 0, 20])
+            py.setp(p, 'facecolor', 'k')
+            py.xlabel('Y Residuals (sigma)')
+            py.ylabel('Number of Epochs')
+
+            py.subplots_adjust(wspace=0.4, hspace=0.4, right=0.95, top=0.95)
+            py.show()
+            py.savefig(rootDir+'plots/plotStarRadial_' + starName + '.png')
+
     title = rootDir.split('/')[-2]
     py.suptitle(title, x=0.5, y=0.97)
 
@@ -1060,7 +1041,7 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     chi2x = np.zeros((N_epochs, N_stars), dtype=float)
     chi2y = np.zeros((N_epochs, N_stars), dtype=float)
     chi2 = np.zeros((N_epochs, N_stars), dtype=float)
-
+    
     xresid = np.zeros((N_epochs, N_stars), dtype=float)
     yresid = np.zeros((N_epochs, N_stars), dtype=float)
     resid = np.zeros((N_epochs, N_stars), dtype=float)
