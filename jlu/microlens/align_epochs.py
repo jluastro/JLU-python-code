@@ -145,13 +145,13 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
     os.chdir(root)
     if makePlots == True:
         print( 'Plotting...')
-        AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m)
+        AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m, target=target)
 
     return
     
 
 
-def AlignPlot(root, DirNames, NjackKnifes, magCut): 
+def AlignPlot(root, DirNames, NjackKnifes, magCut, target='OB120169'): 
 	   
     Ndirs = len(DirNames)
     n = -1
@@ -163,10 +163,10 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut):
             n += 1
             print( DirNames[n] )
             os.chdir(root + DirNames[n])
-            makeResPlot(root=root, DirName=DirNames[n])  # Comment these out as needed
-            makeVectorPlot(root=root, DirName=DirNames[n], magCut=magCut[n]) # Comment these out as needed
+            makeResPlot(root=root, DirName=DirNames[n], target=target)  # Comment these out as needed
+            makeVectorPlot(root=root, DirName=DirNames[n], magCut=magCut[n], target=target) # Comment these out as needed
             residuals.chi2_dist_all_epochs('align/align_t', root_dir=root + DirNames[n] + '/')
-            residuals.sum_all_stars(root=root + DirNames[n] + '/', target='OB120169')
+            residuals.sum_all_stars(root=root + DirNames[n] + '/', target=target)
             
             if j != 0:
                 velX, velY = GetVel(root, DirNames[n])
@@ -273,23 +273,21 @@ def GetDirNames(a, m, w, o, Ntrials, target, date, prefix, nMC):
 
         
 
-def makeVectorPlot(root, DirName, magCut):  
-    residuals.ResVectorPlot(root=root + DirName + '/', align='align/align_t',poly='polyfit_d/fit', useAccFits=False, magCut=magCut)
+def makeVectorPlot(root, DirName, magCut, target='OB120169'):
+    root_dir = root + DirName + '/'
+    residuals.ResVectorPlot(root=root_dir, align='align/align_t',poly='polyfit_d/fit',
+                                useAccFits=False, magCut=magCut,
+                                TargetName=target)
     plt.show()
 
 
-def makeResPlot(root, DirName):
-#       residuals.plotStar(['ob110022', 'p001_14_1.8', 'p002_16_1.0', 's000_16_1.1', 'p003_16_2.3', 's002_17_1.5'], 
-#                         rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-#                         radial=False, NcolMax=3, figsize=(15,15))
-#     residuals.plotStar(['ob110125', 'S1_16_3.9', 'S6_17_3.8', 'S13_18_1.7', 'S14_18_2.7', 'p004_18_3.0'], 
-#                        rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-#                        radial=False, NcolMax=3, figsize=(15,15))     
-    # residuals.plotStar(['OB120169', 'p005_15_3.5', 'S2_16_2.5', 'p000_16_3.6', 'S6_17_2.4', 'OB120169_L'], 
-    #                    rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-    #                    radial=False, NcolMax=3, figsize=(15,15))
-    residuals.plotStar(['OB120169', 'OB120169_L', 'S24_18_0.8', 'S10_17_1.4', 'S19_18_1.6', 'S7_17_2.3'], 
-                       rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
+def makeResPlot(root, DirName, target='OB120169'):
+    plot_stars = {'OB120169': ['OB120169', 'OB120169_L', 'S24_18_0.8', 'S10_17_1.4', 'S19_18_1.6', 'S7_17_2.3'],
+                  'ob150211': ['ob150211', 'psf_001', 'psf_002', 'psf_003', 'psf_004']}
+
+    root_dir = root + DirName + '/'
+    residuals.plotStar(plot_stars[target], 
+                       rootDir=root_dir, align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
                        radial=False, NcolMax=3, figsize=(15,15))
     plt.show()
 

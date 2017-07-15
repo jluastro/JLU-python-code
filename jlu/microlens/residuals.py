@@ -45,6 +45,7 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
             
             ii = names.index(starName)
             star = s.stars[ii]
+            pdb.set_trace()
        
             pointsTab = Table.read(rootDir + points + starName + '.points', format='ascii')
         
