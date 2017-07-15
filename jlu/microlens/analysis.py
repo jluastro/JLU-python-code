@@ -28,11 +28,11 @@ class OB140613(analysis.Analysis):
         self.calColumn = self.mapFilter2Cal[filt]
 
         # Set the coo star
-        self.cooStar = 'S20_11_5.3'
+        self.cooStar = 'ob140613'
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
-        self.calFlags = '-f 1 -R -s 1 '
+        self.calFlags = '-f 1 -R -s 1 --searchMag=2.0 '
         self.calFile = rootDir + 'source_list/ob140613_photo.dat'
 
         self.labellist = rootDir + 'source_list/ob140613_label.dat'

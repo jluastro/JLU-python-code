@@ -56,7 +56,7 @@ def make_align_list(root='/Users/jlu/work/microlens/OB120169/',
     
 
 def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', target='ob120169', 
-               date='2016_06_22', 
+               stars=['OB120169', 'OB120169_L', 'S24_18_0.8', 'S10_17_1.4', 'S19_18_1.6', 'S7_17_2.3'], date='2016_06_22', 
                transforms=[3,4,5], magCuts=[22], weightings=[4],
                Nepochs='8', overwrite=False, nMC=100,
                makePlots=False, DoAlign=False, letterStart=0,
@@ -66,21 +66,22 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
     prefix -- First part of new sub directory name.
     target -- Name of target used in sub directory and also assumed to have
               <target>_label.txt for label file input to align.
+    stars -- Names of PSF stars, including the target's name, that are passed into the plotting routine.
     date -- String representation of the date, added to sub-dir.
     transforms -- The align -a flags to iterate over.
     magCuts -- The align -m flags to iterate over.
     weightings -- The align -w flags to iterate over.
-    retstrict -- (def=False) If True, use the -restrict flag in align.
+    restrict -- (def=False) If True, use the -restrict flag in align.
 
     Code originally written by Evan Sinukoff. Modified by J.R. Lu
     """
     
-    # Read in the label.txt file. Target must be in first row of label.txt file.
+    # Read in the label.dat file. Target must be in first row of label.dat file.
     analysisDir = prefix + '_' + date + '/'
     root = root + analysisDir
     sourceDir = prefix + '_' + target + '_' + date + '/'
-    labelFile = target + '_label.txt'
-    data = Table.read(root + sourceDir + '/source_list/'+ labelFile, format='ascii')
+    labelFile = target + '_label.dat'
+    data = Table.read(root + sourceDir + 'source_list/'+ labelFile, format='ascii')
     transposed = zip(*data)
 
     if restrict:
@@ -133,9 +134,9 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
                 os.system('cp ../' + sourceDir + '/align/*Input* align/align.list') 
                 os.chdir('align')
                 os.system('java align ' + restrict + ' -i -a ' + str(a[n]) + ' -m ' + str(m[n]) + ' -w ' + str(w[n]) + ' -n ' +
-                           str(nMC) + ' -p -N ../source_list/' + target + '_label.txt align.list')
+                           str(nMC) + ' -p -N ../source_list/' + target + '_label.dat align.list')
                 os.system('java trim_align -e ' + Nepochs + ' -r align_t -N ../source_list/' + target +
-                          '_label.txt -f ../points_d/ -p align')
+                          '_label.dat -f ../points_d/ -p align')
                 os.system('polyfit -d 1 -linear -i align_t -points ../points_d/ -o ../polyfit_d/fit')
 
             else:       
@@ -145,13 +146,13 @@ def align_loop(root='/Users/jlu/work/microlens/OB120169/', prefix='analysis', ta
     os.chdir(root)
     if makePlots == True:
         print( 'Plotting...')
-        AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m, target=target)
+        AlignPlot(root=root, DirNames=DirNames, NjackKnifes=Nomit, magCut=m, target=target, stars=stars)
 
     return
     
 
 
-def AlignPlot(root, DirNames, NjackKnifes, magCut, target='OB120169'): 
+def AlignPlot(root, DirNames, NjackKnifes, magCut, target, stars): 
 	   
     Ndirs = len(DirNames)
     n = -1
@@ -163,7 +164,7 @@ def AlignPlot(root, DirNames, NjackKnifes, magCut, target='OB120169'):
             n += 1
             print( DirNames[n] )
             os.chdir(root + DirNames[n])
-            makeResPlot(root=root, DirName=DirNames[n], target=target)  # Comment these out as needed
+            makeResPlot(stars=stars, root=root, DirName=DirNames[n])  # Comment these out as needed
             makeVectorPlot(root=root, DirName=DirNames[n], magCut=magCut[n], target=target) # Comment these out as needed
             residuals.chi2_dist_all_epochs('align/align_t', root_dir=root + DirNames[n] + '/')
             residuals.sum_all_stars(root=root + DirNames[n] + '/', target=target)
@@ -273,22 +274,25 @@ def GetDirNames(a, m, w, o, Ntrials, target, date, prefix, nMC):
 
         
 
-def makeVectorPlot(root, DirName, magCut, target='OB120169'):
-    root_dir = root + DirName + '/'
-    residuals.ResVectorPlot(root=root_dir, align='align/align_t',poly='polyfit_d/fit',
-                                useAccFits=False, magCut=magCut,
-                                TargetName=target)
+def makeVectorPlot(root, DirName, magCut, target):  
+    residuals.ResVectorPlot(root=root + DirName + '/', align='align/align_t',poly='polyfit_d/fit', useAccFits=False, TargetName=target, magCut=magCut)
     plt.show()
 
 
-def makeResPlot(root, DirName, target='OB120169'):
-    plot_stars = {'OB120169': ['OB120169', 'OB120169_L', 'S24_18_0.8', 'S10_17_1.4', 'S19_18_1.6', 'S7_17_2.3'],
-                  'ob150211': ['ob150211', 'psf_001', 'psf_002', 'psf_003', 'psf_004']}
-
-    root_dir = root + DirName + '/'
-    residuals.plotStar(plot_stars[target], 
-                       rootDir=root_dir, align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-                       radial=False, NcolMax=3, figsize=(15,15))
+def makeResPlot(stars, root, DirName):
+#       residuals.plotStar(['ob110022', 'p001_14_1.8', 'p002_16_1.0', 's000_16_1.1', 'p003_16_2.3', 's002_17_1.5'], 
+#                         rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
+#                         radial=False, NcolMax=3, figsize=(15,15))
+#     residuals.plotStar(['ob110125', 'S1_16_3.9', 'S6_17_3.8', 'S13_18_1.7', 'S14_18_2.7', 'p004_18_3.0'], 
+#                        rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
+#                        radial=False, NcolMax=3, figsize=(15,15))     
+    # residuals.plotStar(['OB120169', 'p005_15_3.5', 'S2_16_2.5', 'p000_16_3.6', 'S6_17_2.4', 'OB120169_L'], 
+    #                    rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
+    #                    radial=False, NcolMax=3, figsize=(15,15))
+    numStars = int(len(stars))
+    residuals.plotStar(starNames=stars, 
+                       rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
+                       radial=False, NcolMax=numStars, figsize=(15,numStars*10))
     plt.show()
 
 

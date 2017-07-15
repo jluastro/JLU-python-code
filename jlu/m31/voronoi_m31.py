@@ -178,21 +178,21 @@ def createVoronoiOutput(inputFile=datadir+cuberoot+'.fits',inputVoronoiFile=data
 def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputModelArr=None,inputVoronoiFile=datadir+'voronoi_2d_binning_output.txt',l98bin=False,outFile=None):
     
     # read in the full model file (not fitted)
-    #if not inputModelArr[0,0]:
-    model = ppxf_m31.modelResults(inputFile=inputModel)
-    X = model.x
-    Y = model.y
-    Z = model.z
-    VX = model.vx
-    VY = model.vy
-    VZ = model.vz
-    #else:
-    #    X = inputModelArr[:,0]
-    #    Y = inputModelArr[:,1]
-    #    Z = inputModelArr[:,2]
-    #    VX = inputModelArr[:,3]
-    #    VY = inputModelArr[:,4]
-    #    VZ = inputModelArr[:,5]
+    if inputModelArr is None:
+        model = ppxf_m31.modelResults(inputFile=inputModel)
+        X = model.x
+        Y = model.y
+        Z = model.z
+        VX = model.vx
+        VY = model.vy
+        VZ = model.vz
+    else:
+        X = inputModelArr[:,0]
+        Y = inputModelArr[:,1]
+        Z = inputModelArr[:,2]
+        VX = inputModelArr[:,3]
+        VY = inputModelArr[:,4]
+        VZ = inputModelArr[:,5]
 
     # this section is all taken from ppxf_m31.modelBin()
     # bin size = 0.05" = 0.1865 pc
@@ -229,11 +229,11 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputMode
     print "Model BH is at ", modbhpos
 
     # trim to only cover the OSIRIS FOV
-    newnegxbin = 0. - np.floor(ppxf_m31.bhpos[0]/0.05)
-    newnegybin = 0. - np.floor(ppxf_m31.bhpos[1]/0.05)
+    newnegxbin = 0. - np.floor(ppxf_m31.bhpos[1]/0.05)
+    newnegybin = 0. - np.floor(ppxf_m31.bhpos[0]/0.05)
 
     xlen = 41
-    ylen = 83
+    ylen = 82
     goodTrim = np.where((X/binpc >= newnegxbin) & (X/binpc <= (newnegxbin + xlen)) & (Y/binpc >= newnegybin) & (Y/binpc <= (newnegybin + ylen)))
 
     xClip = X[goodTrim[0]] - newnegxbin*binpc

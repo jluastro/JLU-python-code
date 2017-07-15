@@ -22,6 +22,7 @@ cuberoot = 'm31_all_scalederr_cleanhdr'
 
 bhpos = ppxf_m31.bhpos
 bhpos_hor = ppxf_m31.bhpos_hor
+bhpos_pix = ppxf_m31.bhpos_pix
 
 cc = objects.Constants()
 
@@ -553,7 +554,15 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_100828.fits')
     #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_combshift.fits')
     #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_comb2shift.fits')
-    nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_comb3shift.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_comb3shift.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_NIRC2_DTOTOFF.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_CC_mos_DTOTOFF.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_NIRC2_DTOTOFF_2.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_CC_mos_DTOTOFF_2.fits')
+    nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_NIRC2_DTOTOFF_no100828.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_NIRC2_DTOTOFF_no100828_29.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_CC_mos_DTOTOFF_no100828.fits')
+    #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_CC_mos_DTOTOFF_no100828_100829.fits')
     
     nirc2scale = nirc2scalefits[0].data
     # convert to e-/s
@@ -603,10 +612,10 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     # plot the SB ratio map
     py.close(2)
     py.figure(2,figsize=(9,5))
-    xaxis = (np.arange(sbratiomap.shape[1], dtype=float))*0.05
-    yaxis = (np.arange(sbratiomap.shape[0], dtype=float))*0.05
+    xaxis = (np.arange(sbratiomap.shape[1], dtype=float) - bhpos_pix[0])*0.05
+    yaxis = (np.arange(sbratiomap.shape[0], dtype=float) - bhpos_pix[1])*0.05
     py.imshow(sbratiomap,extent=[xaxis[0],xaxis[-1],yaxis[0],yaxis[-1]])
-    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'kx',markeredgewidth=2)
+    py.plot([0],'kx',markeredgewidth=2)
     py.axis('image')
     cbar = py.colorbar(orientation='vertical')
     cbar.set_label('Surface brightness ratio')
