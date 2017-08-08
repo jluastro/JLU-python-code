@@ -22,9 +22,10 @@ from jlu.m31 import ppxf_m31,voronoi_m31
 workdir = '/Users/kel/Documents/Projects/M31/analysis_new/ifu_11_11_30/'
 datadir = workdir
 mctmpdir = workdir+'tmp_mc/'
-modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/'
+modeldir = '/Users/kel/Documents/Projects/M31/models/Peiris/2003/' # output folder for models
 contmpdir = workdir+'tmp_convert/'
 modelworkdir = '/Users/kel/Documents/Projects/M31/analysis_new/modeling/'
+modeltestdir = '/Users/kel/Documents/Projects/M31/modelfiles/' # input data/model files
 
 #cuberoot = 'm31_all_semerr'
 #cuberoot = 'm31_all'
@@ -66,7 +67,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     t1 = time.time()
     
     # read in nonaligned model file; units are in pc, BH at origin
-    inputFile = modeldir + 'nonaligned_model.dat'
+    inputFile = modeltestdir + 'nonaligned_model.dat'
     model = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
 
     if verbose:
@@ -154,8 +155,8 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     nPart = len(X)
     if PSFfile is None:
         #PSFfile = workdir+'plots/osir_perf_m31_all_scalederr_cleanhdr_params.txt'
-        PSFfile = '/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_NIRC2_CC_DTOTOFF_2/data/osiris_perf/osir_perf_m31_2125nm_w_osiris_rot_scale_params.txt_params.txt'
-    PSFparams = ppxf_m31.readPSFparams(inputFile=PSFfile,twoGauss=True)
+        PSFfile = modeltestdir+'params.txt'
+    PSFparams = ppxf_m31.readPSFparams(inputFile=PSFfile,twoGauss=False)
     # grab sigma of the PSF in units of pixels and convert to arcsec
     PSFsig = PSFparams.sig1[0]*0.05
     # convert to units of pc
@@ -404,7 +405,7 @@ def modelCompRes(inModel=modeldir+'nonaligned_OSIRIScoords_test_fits_trim_tess.d
         ppxf_m31.plotDataModelResiduals(inData,inModel,inRes,trimTess=True,outStem=outplotfile)
     
         
-def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incubeimg=None,norm=False,inFolder=None,plotOnly=False):
+def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incubeimg=None,norm=False,inFolder=None,plotOnly=False,toPlot=False):
     # routine to conduct a grid search over the coordinate transformation angles
     # (angles in Peiris & Tremaine 2003 eq 4)
 
@@ -487,91 +488,92 @@ def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incub
                         modelCompRes(inModel=newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f.dat' % (testAng[0],testAng[1],testAng[2],testAng[3],PP),toPlot=False,inData=inDataFile,incubeimg=incubeimg)
                         modelChiSq(inCube=incube,inData=inDataFile,inErr=inErr,inModel=newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f.dat' % (testAng[0],testAng[1],testAng[2],testAng[3],PP),mask=True,norm=norm)
 
-    # plotting
-    py.close(2)
-    py.figure(2)
-    py.subplots_adjust(left=0.05, right=0.94, top=0.95)
-    nPlot = N**2
-    # flux plots
-    for AA in Agrid:
-        for PP in Pgrid:
-            py.clf()
-            plLL = np.fliplr([Lgrid])[0]
-            pI,pL = np.meshgrid(Igrid,plLL)
-            pI = pI.flatten()
-            pL = pL.flatten()
-            for pp in np.arange(nPlot):
-                py.subplot(N,N,pp+1)
-                #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+    if toPlot:
+        # plotting
+        py.close(2)
+        py.figure(2)
+        py.subplots_adjust(left=0.05, right=0.94, top=0.95)
+        nPlot = N**2
+        # flux plots
+        for AA in Agrid:
+            for PP in Pgrid:
+                py.clf()
+                plLL = np.fliplr([Lgrid])[0]
+                pI,pL = np.meshgrid(Igrid,plLL)
+                pI = pI.flatten()
+                pL = pL.flatten()
+                for pp in np.arange(nPlot):
+                    py.subplot(N,N,pp+1)
+                    #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+                    if inFolder:
+                        inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    else:
+                        inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    res = ppxf_m31.modelFitResults(inRes)
+                    py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.nstar.T),3),vmin=-0.25,vmax=0.25,
+                            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                    pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
+                    py.title(pltitle)
+                    py.xticks([])
+                    py.yticks([])
+                cbar = py.colorbar(orientation='horizontal',ticks=[-.25,0.,.25])
+                clab = 'Flux residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
+                cbar.set_label(clab)
                 if inFolder:
-                    inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    figname = inFolder + 'residuals_flux_thetaA_%.1f_%.1f.png' %(AA,PP)
                 else:
-                    inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
-                res = ppxf_m31.modelFitResults(inRes)
-                py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.nstar.T),3),vmin=-0.25,vmax=0.25,
-                        extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-                pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
-                py.title(pltitle)
-                py.xticks([])
-                py.yticks([])
-            cbar = py.colorbar(orientation='horizontal',ticks=[-.25,0.,.25])
-            clab = 'Flux residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
-            cbar.set_label(clab)
-            if inFolder:
-                figname = inFolder + 'residuals_flux_thetaA_%.1f_%.1f.png' %(AA,PP)
-            else:
-                figname=newfolder + 'residuals_flux_thetaA_%.1f_%.1f.png' %(AA,PP)
-            py.savefig(figname)
+                    figname=newfolder + 'residuals_flux_thetaA_%.1f_%.1f.png' %(AA,PP)
+                py.savefig(figname)
 
-            # velocity plots
-            py.clf()
-            for pp in np.arange(nPlot):
-                py.subplot(N,N,pp+1)
-                #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+                # velocity plots
+                py.clf()
+                for pp in np.arange(nPlot):
+                    py.subplot(N,N,pp+1)
+                    #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+                    if inFolder:
+                        inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    else:
+                        inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    res = ppxf_m31.modelFitResults(inRes)
+                    py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.velocity.T),3),vmin=-100.,vmax=200.,
+                            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                    pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
+                    py.title(pltitle)
+                    py.xticks([])
+                    py.yticks([])
+                cbar = py.colorbar(orientation='horizontal',ticks=[-100.,0.,200.])
+                clab = 'Velocity residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
+                cbar.set_label(clab)
                 if inFolder:
-                    inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    figname = inFolder + 'residuals_velocity_thetaA_%.1f_%.1f.png' %(AA,PP)
                 else:
-                    inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
-                res = ppxf_m31.modelFitResults(inRes)
-                py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.velocity.T),3),vmin=-100.,vmax=200.,
-                        extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-                pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
-                py.title(pltitle)
-                py.xticks([])
-                py.yticks([])
-            cbar = py.colorbar(orientation='horizontal',ticks=[-100.,0.,200.])
-            clab = 'Velocity residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
-            cbar.set_label(clab)
-            if inFolder:
-                figname = inFolder + 'residuals_velocity_thetaA_%.1f_%.1f.png' %(AA,PP)
-            else:
-                figname=newfolder + 'residuals_velocity_thetaA_%.1f_%.1f.png' %(AA,PP)
-            py.savefig(figname)
+                    figname=newfolder + 'residuals_velocity_thetaA_%.1f_%.1f.png' %(AA,PP)
+                py.savefig(figname)
 
-            # sigma plots
-            py.clf()
-            for pp in np.arange(nPlot):
-                py.subplot(N,N,pp+1)
-                #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+                # sigma plots
+                py.clf()
+                for pp in np.arange(nPlot):
+                    py.subplot(N,N,pp+1)
+                    #inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f.dat' % (pL[pp],pI[pp],AA,CPA)
+                    if inFolder:
+                        inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    else:
+                        inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    res = ppxf_m31.modelFitResults(inRes)
+                    py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.sigma.T),3),vmin=-100.,vmax=100.,
+                            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                    pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
+                    py.title(pltitle)
+                    py.xticks([])
+                    py.yticks([])
+                cbar = py.colorbar(orientation='horizontal',ticks=[-100.,0.,100.])
+                clab = 'Sigma residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
+                cbar.set_label(clab)
                 if inFolder:
-                    inRes = inFolder + 'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
+                    figname = inFolder + 'residuals_sigma_thetaA_%.1f_%.1f.png' %(AA,PP)
                 else:
-                    inRes = newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f_residuals.dat' % (pL[pp],pI[pp],AA,CPA,PP)
-                res = ppxf_m31.modelFitResults(inRes)
-                py.imshow(np.rot90(py.ma.masked_where(cubeimg==0.,res.sigma.T),3),vmin=-100.,vmax=100.,
-                        extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
-                pltitle = '$\\theta_l$ = %.1f, $\\theta_i$ = %.1f' % (pL[pp],pI[pp])
-                py.title(pltitle)
-                py.xticks([])
-                py.yticks([])
-            cbar = py.colorbar(orientation='horizontal',ticks=[-100.,0.,100.])
-            clab = 'Sigma residuals, $\\theta_a$ = %.1f, v$_{precess}$ = %.1f' % (AA,PP)
-            cbar.set_label(clab)
-            if inFolder:
-                figname = inFolder + 'residuals_sigma_thetaA_%.1f_%.1f.png' %(AA,PP)
-            else:
-                figname=newfolder + 'residuals_sigma_thetaA_%.1f_%.1f.png' %(AA,PP)
-            py.savefig(figname)
+                    figname=newfolder + 'residuals_sigma_thetaA_%.1f_%.1f.png' %(AA,PP)
+                py.savefig(figname)
 
 def gridChiSqMap(inFolder=None):
     # reads in chi sq txts from inFolder, assembles data into a map,
