@@ -457,6 +457,7 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
             boxsize = min(frameimg.shape) / 2
             newimg = signal.convolve(img, psf, mode='same')
 
+            img2 = img.astype(float)
             if verbose:
                 print 'fitfunc shapes:',
                 print ' cubeimg = ', frameimg.shape, 
@@ -466,6 +467,8 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
 
             newimg[cidx] = 0
             newimg[midx] = 0
+            img2[cidx] = 0
+            img2[midx] = 0
         
             frameimg_norm = frameimg / frameimg.sum()
             newimg_norm = newimg / newimg.sum()
@@ -487,36 +490,57 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
                 print '' 
 
             if plot:
-                py.figure(1)
+                py.close(1)
+                py.figure(1,figsize=(7,10))
                 py.clf()
-                py.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95, wspace=.4)
-            
-                py.subplot(1, 3, 1)
-                py.imshow(frameimg_norm)
-                cbar1 = py.colorbar(orientation='horizontal',format='%5.4f')
-                cbar1.set_label('OSIRIS (norm)')
-                cbar1.set_ticks([0,frameimg_norm.max()/2.,frameimg_norm.max()])
-                py.title('OSIRIS')
-                
-                py.subplot(1, 3, 2)
-                py.imshow(newimg_norm)
-                cbar2 = py.colorbar(orientation='horizontal',format='%5.4f')
-                cbar2.set_label('NIRC2 (convolved, norm)')
-                cbar2.set_ticks([0,newimg_norm.max()/2.,newimg_norm.max()])
-                py.title('NIRC2+')
-            
-                py.subplot(1, 3, 3)
-                py.imshow(residuals)
-                cbar3 = py.colorbar(orientation='horizontal',format='%5.4f')
-                cbar3.set_label('Residuals')
-                cbar3.set_ticks([residuals.min(),0,residuals.max()])
-                py.title('Residuals')
+                py.subplots_adjust(left=0.05, right=0.95, bottom=0.08, top=0.95, hspace=.4)
 
+                xaxis = (np.arange(frameimg_norm.shape[0]) - ppxf_m31.bhpos_pix[0]) * 0.05
+                yaxis = (np.arange(frameimg_norm.shape[1]) - ppxf_m31.bhpos_pix[1]) * 0.05
+
+                xtickLoc = py.MultipleLocator(1.0)
+        
+                py.subplot(3, 1, 1)
+                py.imshow(np.rot90(frameimg_norm,3),extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                #cbar1 = py.colorbar(orientation='vertical',format='%5.4f')
+                #cbar1.set_label('Flux (norm)')
+                #cbar1.set_ticks([0,frameimg_norm.max()/2.,frameimg_norm.max()])
+                py.gca().get_xaxis().set_major_locator(xtickLoc)
+                py.title('OSIRIS (FWHM: 124 mas)')
+                py.ylabel('Y (arcsec)')
+                
+                py.subplot(3, 1, 2)
+                py.imshow(np.rot90(newimg_norm,3),extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                #cbar2 = py.colorbar(orientation='vertical',format='%5.4f')
+                #cbar2.set_label('Flux (norm)')
+                #cbar2.set_ticks([0,newimg_norm.max()/2.,newimg_norm.max()])
+                py.gca().get_xaxis().set_major_locator(xtickLoc)
+                py.title('NIRC2 (FWHM: 124 mas)')
+                py.ylabel('Y (arcsec)')
+            
+                py.subplot(3, 1, 3)
+                #py.imshow(residuals)
+                #cbar3 = py.colorbar(orientation='vertical',format='%5.4f')
+                #cbar3.set_label('Residuals')
+                #cbar3.set_ticks([residuals.min(),0,residuals.max()])
+                #py.title('Residuals')
+                py.imshow(np.rot90(img2 / img2.sum(),3),extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]])
+                #cbar3.set_label('Flux (norm)')
+                testmax=(img2/img2.sum()).max()*.95
+                #cbar3.set_ticks([0,(img2/img2.sum()).max()/2.,testmax])
+                py.gca().get_xaxis().set_major_locator(xtickLoc)
+                py.title('NIRC2 (FWHM: 60 mas)')
+                #py.xlabel('Distance from SMBH (arcsec)')
+                py.xlabel('X (arcsec)')
+                py.ylabel('Y (arcsec)')
+                
                 py.savefig(rootdir + 'data/osiris_perf/osir_perf_' + 
                         filerr.replace('.fits', '.png'))
+                py.savefig(rootdir + 'data/osiris_perf/osir_perf_' + 
+                        filerr.replace('.fits', '.eps'))
                 py.show()
 
-                #pdb.set_trace()
+                pdb.set_trace()
             
             return residuals.flatten()
 
@@ -529,7 +553,9 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
         else:
             params = np.zeros(2, dtype=float)
             params[0] = 1.0 # amp1
-            params[1] = 0.6 # sigma1 (near-diffraction-limit)
+            #params[1] = 0.6 # sigma1 (near-diffraction-limit)
+            # testing
+            params[1] = 1.05
        
 
         print 'Fitting PSF: '
@@ -841,6 +867,8 @@ def map_snr(inCubeRoot=None,waveLo=2.160, waveHi=2.175, datadir=datadir, errext=
     unless otherwise specified by setting errext=True, in which case S/N is calculated
     by taking the ratio of the median signal to the median noise, taken as extension 1
     of the input cube.
+
+    bulgesub: 2.270 - 2.280
     """
 
     if inCubeRoot is None:

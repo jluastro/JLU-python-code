@@ -42,8 +42,8 @@ def createVoronoiInput(cubeFile=None):
 
     #snrimg = pyfits.getdata(datadir + cuberoot + '_snr.fits')
     if cubeFile:
-        snrimg = pyfits.getdata(cubeFile.replace('_bulgesub.fits','_snr.fits'))
-        #snrimg = pyfits.getdata(cubeFile.replace('.fits','_snr.fits'))
+        #snrimg = pyfits.getdata(cubeFile.replace('_bulgesub.fits','_snr.fits'))
+        snrimg = pyfits.getdata(cubeFile.replace('.fits','_snr.fits'))
     else:
         snrimg = pyfits.getdata(datadir+'m31_all_scalederr_cleanhdr_snr.fits')
     
@@ -105,18 +105,24 @@ def tessellate(inputFile=datadir+cuberoot+'_vor.fits',targetSN=50):
     yy = good[0]
     #pdb.set_trace()
     binNum, xNode, yNode, xBar, yBar, sn, nPixels, scale, pixSize = v2d.voronoi_2d_binning(xx, yy, cube[good], errors[good], targetSN, plot=1, quiet=0)
-
-    py.clf()
+        
+    py.close(1)
+    py.figure(1,figsize=(8,8))
+    py.subplots_adjust(left=0.16, right=0.94, top=0.95)
     py.subplot(211)
     rnd = np.argsort(np.random.random(xNode.size))  # Randomize bin colors
     # added in flips to display in the same orientation as the data
     # divide by 20 to put in arcsec (0.05 arcsec per pixel)
-    v2d._display_pixels(xx/20., np.flipud(yy)/20., rnd[binNum], pixSize/20., horflip=True)
-    py.plot(xNode/20., yNode/20., '+w', scalex=False, scaley=False) # do not rescale after imshow()
-    py.plot([bhpos_hor[0]],[bhpos_hor[1]],'kx', markeredgewidth=3)
+    xxpl = (xx - ppxf_m31.bhpos_pix[0]) * 0.05
+    yypl = (np.flipud(yy) - ppxf_m31.bhpos_pix[1]) * 0.05
+    xnpl = (xNode - ppxf_m31.bhpos_pix[0]) * 0.05
+    ynpl = (yNode - ppxf_m31.bhpos_pix[1]) * 0.05
+    v2d._display_pixels(xxpl, yypl, rnd[binNum], pixSize/20., horflip=True)
+    py.plot(xnpl, ynpl, '+w', scalex=False, scaley=False) # do not rescale after imshow()
+    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
     py.axis('image')
-    py.xlabel('R (arcsec)')
-    py.ylabel('R (arcsec)')
+    py.ylabel('Y (arcsec)')
+    py.xlabel('X (arcsec)')
     py.title('Map of Voronoi bins')
     
     py.subplot(212)

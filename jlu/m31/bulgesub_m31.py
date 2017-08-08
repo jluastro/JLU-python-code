@@ -11,6 +11,7 @@ from pyraf import iraf as ir
 from jlu.osiris import cube as cube_code
 from jlu.osiris import spec
 from jlu.m31 import ppxf_m31
+from jlu.m31 import ifu
 import glob
 import os
 import pdb
@@ -98,6 +99,7 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         # eyeballed in wide camera image - need to properly register if using this one
         #bh_nirc2 = [539.,485.]
         # registered the wide FOV camera
+        #bh_nirc2 = [ 538.0, 484.5]
         bh_nirc2 = [ 538.0, 484.5]
         #bh_nirc2 = [416.,427.]
         # arcsec / pixel
@@ -118,7 +120,7 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         endR = 90
         itime = 5.
         #itime = 500.
-        #testing
+        #testing - subtracting a sky level
         nirc2 -= 455.
         #nirc2 -= 600.
         py.figure(3)
@@ -128,7 +130,7 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         #nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_osiris_rot.fits'
         #bh_nirc2 = [699.6, 584.3]
         # 360 - PA of the frame - PA of the bulge (Dorman 2013) - 90 (to get to ref axis of photutils)
-        #pa = np.radians(360. - 56. - 6.632 - 90.) # org
+        pa = np.radians(360. - 56. - 6.632 - 90.) # org
         #pixscale = 0.01  
         #itime = 60.
         #nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/m31_05jul_kp.fits'
@@ -141,8 +143,10 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         #nirc2file = '/Users/kel/Documents/Projects/M31/data/nirc2_koa/KOA_3344/NIRC2/narrow/calibrated/KOA_25476/NIRC2/calibrated/N2.20090910.42407_drp.fits.gz'
         #bh_nirc2 = [535.,532.]
         #nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_osiris_rot_scale.fits'
-        #bh_nirc2 = [bhpos[0]/.05,bhpos[1]/.05]
-        #pixscale = 0.05
+        nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_NIRC2_DTOTOFF_no100828.fits'
+        bh_nirc2 = [bhpos_pix[1],bhpos_pix[0]]
+        pixscale = 0.05
+        itime=5.
         #nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/mag09sep_m31_j.fits'
         #bh_nirc2 = [592.,589.]
         #itime = 120.
@@ -151,12 +155,12 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         #nirc2file = '/Users/kel/Documents/Projects/M31/data/combo/mag09sep_m31_h.fits'
         #bh_nirc2 = [602.,593.]
         #itime = 60.
-        nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_0330nm.fits'
-        bh_nirc2 = [586.,634.]
-        itime = 1. # image in e-/s, not counts
-        gain=1.
-        pa = np.radians(360. - 81.837029 - 6.632 - 90.)
-        pixscale=0.025
+        #nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_0330nm.fits'
+        #bh_nirc2 = [586.,634.]
+        #itime = 1. # image in e-/s, not counts
+        #gain=1.
+        #pa = np.radians(360. - 81.837029 - 6.632 - 90.)
+        #pixscale=0.025
         #nirc2file = '/Users/kel/Documents/Projects/M31/analysis_old/align/m31_0435nm.fits'
         #bh_nirc2 = [585.,634.]
         #gain=1.
@@ -196,7 +200,7 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
         nirc2 = pyfits.getdata(nirc2file)
         #nirc2 -= 316. # /N2.20090910.42407.fits
-              
+        nirc2 -= 568. # 455 value for wide, converted to 0.05 pixel scale    
         #NIRC2 FOV is 10"x10"
         rad = 6.
         #rad = 15.
@@ -206,7 +210,6 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
             matchR = 5.5
         endR = 25
         #endR=70
-        
         py.figure(2)
     
     
@@ -269,7 +272,8 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
         # convert to mags
         # NIRC2 zeropoint for K band, Strehl=1, =24.63
         tmpmag = -2.5*np.log10(tmpflux[0][0]/dearea)+24.63
-        #tmpmag = -2.5*np.log10(tmpflux[0][0]/area)
+        #tmpmag = -2.5*np.log10(tmpflux[0][0])+24.63
+        #tmpmag = -2.5*np.log10(tmpflux[0][0]/area)+24.63
         binsbmag[i] = tmpmag
         #pdb.set_trace()
 
@@ -302,33 +306,39 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
     profMu_KB99, profI_KB99, profR_KB99 = plotLitSersic(outSB=(binsbmag[matchidx]+diffmag_KB99),plot=False)
     profMu_C11e, profI_C11e, profR_C11e = plotLitSersic(outSB=(binsbmag[matchidx]+diffmag_C11e),plot=False)
     #profMu_C11e, profI_C11e, profR_C11e = plotLitSersic(outSB=-8.61758645,plot=False)
+    # outSB = binsbmag[matchidx]+diffmag_C11e (wide, flux cal) = 16.01241355 (not flux call = 16.01241355-24.63 = -8.61758645)
     profMu_C11m, profI_C11m, profR_C11m = plotLitSersic(outSB=(binsbmag[matchidx]+diffmag_C11m),plot=False)
+    # outSB = binsbmag[matchidx]+diffmag_C11e (wide, not flux cal) = -9.02365025 (match R = 10); -8.96452571 (match R = 15)
     profMu_D13, profI_D13, profR_D13 = plotLitSersic(outSB=(binsbmag[matchidx]+diffmag_D13),plot=False)
     #pdb.set_trace()  
     if toplot:
-        py.clf()
+        py.close(3)
+        py.figure(3,figsize=(7,5))
         py.plot(binin,binsbflux,'ko')
-        py.ylabel('$\mu$ (e$^{-}$ s$^{-1}$ arcsec$^{-2}$ (arbitrary units))')
+        py.ylabel('$\mu_{K\'}$ (e$^{-}$ s$^{-1}$ arcsec$^{-2}$ (arbitrary units))')
         py.xlabel('Semimajor axis (arcsec)')
+        py.plot(profR_C11e[0:endR]/3.73, profI_C11e[1,0:endR],'r-')
         pdb.set_trace()
         
         py.clf()
-        py.plot(binin,binsbmag,'ko')
+        py.plot(binin,binsbmag,'ko',label='Observed (K\')')
         if wide:
             #py.ylim(-14,-17)
-            py.ylim(-11,-15)
+            #py.ylim(-11,-15)
+            py.ylim(13.3,10)
+            py.xlim(0,18)
         else:
             py.ylim(-8,-12)
-        py.ylabel('$\Sigma$ (mag arcsec$^{-2}$ (arbitrary units))')
+        py.ylabel('$\Sigma_{K\'}$ (mag arcsec$^{-2}$)')
         py.xlabel('Semimajor axis (arcsec)')
-        pdb.set_trace()
+        #pdb.set_trace()
         
-        #py.plot(profR_KB99[0:endR]/3.73, profMu_KB99[0,0:endR],'g-')
-        py.plot(profR_C11e[0:endR]/3.73, profMu_C11e[1,0:endR],'r-')
-        #py.plot(profR_C11m[0:endR]/3.73, profMu_C11m[2,0:endR],'b-')
-        #py.plot(profR_D13[0:endR]/3.73, profMu_D13[3,0:endR],'m-')
+        #py.plot(profR_KB99[0:endR]/3.73, profMu_KB99[0,0:endR],'g-',label='KB99 bulge (V band)')
+        #py.plot(profR_C11e[0:endR]/3.73, profMu_C11e[1,0:endR],'r-',label='C11_E bulge (3.6 $\mu$m)')
+        py.plot(profR_C11m[0:endR]/3.73, profMu_C11m[2,0:endR],'b-',label='C11$_M$ bulge (I band)')
+        #py.plot(profR_D13[0:endR]/3.73, profMu_D13[3,0:endR],'m-',label='D13 bulge (I band)')
         #py.legend(('Observed (Kp)','KB99 bulge (V band)','C11_E bulge (3.6 $\mu$m)', 'C11_M bulge (I band)', 'D13 bulge (I band)'))
-        py.legend(('Observed (Kp)','C11_E bulge (3.6 $\mu$m)'))
+        py.legend(loc=0)
         pdb.set_trace()
 
     magdiff = binsbmag[1] - profMu_C11e[1,1]
@@ -525,6 +535,7 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     errors = cubefits[1].data
     quality = cubefits[2].data
     nframes = cubefits[3].data
+    cubeimg = np.median(cube,axis=2)
 
     # trim spectra to match template lengths
     # Get the wavelength solution so we can specify range:
@@ -565,7 +576,7 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     #nirc2scalefits = pyfits.open('/Users/kel/Documents/Projects/M31/analysis_old/align/m31_2125nm_w_osiris_rot_scale_CC_mos_DTOTOFF_no100828_100829.fits')
     
     nirc2scale = nirc2scalefits[0].data
-    # convert to e-/s
+    # convert to e-/s (wide: 5s, narrow: 60s)
     #nirc2flux = nirc2scale*4./60.
     nirc2flux = nirc2scale*4./5.
     # area of a spaxel, in spaxels (=1)
@@ -589,7 +600,7 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     # 360 - PA of the frame - PA of the bulge (Dorman 2013) - 90 (to convert from PA of semimajor to PA of semiminor)
     pa_C11 = 360. - 56. - 6.632 - 90.
     # returns semi-major axis length in pixels
-    a_all = a_ellipse(n=[cubeShape[0],cubeShape[1]],cent=bhpos/0.05,ell=ell_C11,pa=pa_C11)
+    a_all = a_ellipse(n=[cubeShape[0],cubeShape[1]],cent=[bhpos_pix[1],bhpos_pix[0]],ell=ell_C11,pa=pa_C11)
     # OSIRIS: 1 pixel = 0.05"
     aarcsec = a_all*0.05
     # M31: 1" = 3.73 pc
@@ -599,50 +610,96 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     #outSB_C11E = -4.76470713
     # area is *not* deprojected
     #outSB_C11E = -4.8263725
-    # using wide camera image, matchR=10., C11E
+    # using wide camera image, matchR=10., C11E (binsbmag[matchidx]+diffmag_C11e)
     outSB_C11E = -8.61758645
+    outSB_C11M = -9.02365025 #(matchR = 10)
+    #outSB_C11M = -8.96452571 # (matchR = 15)
+    #outSB_C11E = 16.01241355 # can't use flux calibrated, as we're in intensities, not magitudes, here
     # returns mag, SB
-    litMu, litI = getLitProfile2D(outSB=outSB_C11E,rpc2D=apc,inprofile='C11E')
+    #litMu, litI = getLitProfile2D(outSB=outSB_C11E,rpc2D=apc,inprofile='C11E')
+    litMu, litI = getLitProfile2D(outSB=outSB_C11M,rpc2D=apc,inprofile='C11M')
     # reorient lit maps
     litMu = np.rot90(litMu.T,3)
     litI = np.rot90(litI.T,3)
-    # take ratio of bulge_lit to observed to get SB ratio map
-    sbratiomap = litI/nirc2sb
+    
+    # smooth the bulge and NIRC2 maps by the seeing
+    PSFparams = ppxf_m31.readPSFparams('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_NIRC2_CC_DTOTOFF_2/no100828/data/osiris_perf/sig_1.05/params.txt',twoGauss=False)
+    PSFsig = PSFparams.sig1[0]
+    gauss = ifu.gauss_kernel(PSFparams.sig1[0],PSFparams.amp1[0],half_box=PSFsig*5.)
+    litIsm = signal.convolve2d(litI,gauss,mode='same',boundary='wrap')
+    nirc2sbsm = signal.convolve2d(nirc2sb,gauss,mode='same',boundary='wrap')
 
+    # take ratio of bulge_lit to observed to get SB ratio map
+    sbratiomap = litIsm/nirc2sbsm
+
+    #pdb.set_trace()
     # plot the SB ratio map
     py.close(2)
-    py.figure(2,figsize=(9,5))
+    py.figure(2,figsize=(8,3))
     xaxis = (np.arange(sbratiomap.shape[1], dtype=float) - bhpos_pix[0])*0.05
     yaxis = (np.arange(sbratiomap.shape[0], dtype=float) - bhpos_pix[1])*0.05
     py.imshow(sbratiomap,extent=[xaxis[0],xaxis[-1],yaxis[0],yaxis[-1]])
     py.plot([0],'kx',markeredgewidth=2)
     py.axis('image')
-    cbar = py.colorbar(orientation='vertical')
-    cbar.set_label('Surface brightness ratio')
+    cbar = py.colorbar(orientation='vertical',ticks=[.15,.3,.45])
+    cbar.set_label('$\Sigma$ ratio')
     
     pdb.set_trace()
     
     # make the model bulge spectrum
     # first read in the ppxf files to get the template weights
-    pIn=ppxf_m31.PPXFresults(inputPPXF)
+    pIn=ppxf_m31.PPXFresults(inputPPXF,bestfit=True)
     tw = pIn.tweights
+    tw = np.nan_to_num(tw)
+    # changed bulge spaxel selection to be spaxels that are above a certain bulge ratio
+    #bfrac = 0.5
+    #bfrac = 0.45
+    bfrac = 0.42
+    bulgeidx = np.where((sbratiomap >= bfrac) & (cubeimg > 0) & (tw.sum(axis=2) != 0))
+    nobulgeidx = np.where(sbratiomap < bfrac)
+    # scale by the luminosity contribution
+    # match the bulge spectrum median flux to that of the science spectrum
+    medsciflux = np.median(cube,axis=2)
     # get the cube's model templates
-    logWaveSpec, modSpecCube = ppxf_m31.create_model_templates(tw)
+    # normalize so the sum of the weights in each spaxel = 1
+    logWaveSpec, modSpecCubeOut = ppxf_m31.create_model_templates(tw,norm=False,rebinWave=False)#,pWeights=pIn.pweights)#,normmask=medsciflux)
+    # for plotting, later
+    twnorm = np.zeros(tw.shape)
+    twsum = tw.sum(axis=2)
+    for i in range(tw.shape[2]):
+        twnorm[:,:,i] = tw[:,:,i]/twsum
     # clip the red end to match the cube (same wavelength scale and
     # blue cut off, so can drop the wavelength vector)
-    modSpecCube = modSpecCube[:,:,0:cubeShape[2]]
+    #modSpecCube = modSpecCube[:,:,0:cubeShape[2]]
     waveSpec = waveClip
-    nWave = np.arange(len(waveSpec))
-    # pick a spaxel to use for the bulge spectrum
-    # (may implement a mean across several spaxels later)
-    modSpec = modSpecCube[20,10,:]
-
+    # interpolate templates onto the same wavelength grid
+    modSpecCubeNoCont = np.zeros([modSpecCubeOut.shape[0],modSpecCubeOut.shape[1],cube.shape[2]])
+    for i in np.arange(modSpecCubeOut.shape[0]):
+        for j in np.arange(modSpecCubeOut.shape[1]):
+            tck = scipy.interpolate.splrep(logWaveSpec, modSpecCubeOut[i,j,:], s=0)
+            modSpecCubeNoCont[i,j,:] = scipy.interpolate.splev(waveClip, tck)
+    # add the ppxf continuum to the templates (should about match the science spaxels now, except for the LOSVD)
+    modSpecCube = np.zeros([modSpecCubeOut.shape[0],modSpecCubeOut.shape[1],cube.shape[2]])
+    x = np.linspace(-1, 1, len(waveClip))
+    for i in range(modSpecCubeOut.shape[0]):
+        for j in range(modSpecCubeOut.shape[1]):
+            apoly = np.polynomial.legendre.legval(x, pIn.pweights[i,j,:])
+            modSpecCube[i,j,:] = modSpecCubeNoCont[i,j,:] + apoly
+    # normalize, to compare line depths
+    modSpecCubeNorm = np.zeros(modSpecCube.shape)
+    for i in range(modSpecCube.shape[2]):
+        modSpecCubeNorm[:,:,i] = modSpecCube[:,:,i] / np.median(modSpecCube,axis=2)
+    #pdb.set_trace()
+    modSpec = np.median(modSpecCubeNorm[bulgeidx[0],bulgeidx[1],:],axis=0)
+        
+    
     #pdb.set_trace()
     # set the velocity
     # have two choices - systemic velocity, or scaled w/ distance from SMBH (probably same, within errors)
     # going w/ systemic velocity for now
     # velocity in km/s
-    v = -308.
+    #v = -308.
+    v = -1.*ppxf_m31.vsys
     # convert to pixels - manually calc v/pixel
     vScale = cc.c*((waveSpec[401]-waveSpec[400])/waveSpec[400])
     vPix = v/vScale
@@ -652,6 +709,7 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     # grabbing the value from the edge of the data cube (tessellated)
     # first in km/s
     disp = 110.
+    #disp = 150.
     # now in pixels
     dispPix = disp/vScale
 
@@ -668,20 +726,42 @@ def subtractBulge(inputFile=None,inputPPXF=None,bulgeProfile='C11E',matchR=5.):
     gausstmp = np.exp(-0.5*w2)
     # normalize
     gausskern = gausstmp/gausstmp.sum()
+
+    # also convolve by the diff between the OSIRIS and GNIRS resolution, before the LOSVD
     
     # convolve the model bulge spectrum by the LOSVD Gaussian
     newSpec = signal.convolve(modSpec, gausskern, mode='same')
 
-    # scale by the luminosity contribution
-    # first make a 3D array of the ratio map, with the same factor at each spectral channel
-    tmp1 = np.tile(sbratiomap,(len(waveSpec),1,1))
+    # flip the ratio map to match the orientation of the cube
+    sbratiomap = np.rot90(sbratiomap.T,3)
+    # combine the scaling factors
+    totscale = medsciflux * sbratiomap
+    # make a 3D array of the ratio map, with the same factor at each spectral channel
+    #tmp1 = np.tile(sbratiomap,(len(waveSpec),1,1))
+    tmp1 = np.tile(totscale,(len(waveSpec),1,1))
     # swap the axes around so it's the correct dimensions
     tmp2 = np.swapaxes(tmp1,0,2)
-    sbratiomap3d = np.swapaxes(tmp2,0,1)
-    specScale = sbratiomap3d*newSpec
+    ratiomap3d = np.swapaxes(tmp2,0,1)
     
+    specScale = ratiomap3d*newSpec
+
     # subtract from the data cube
     newCube = cube - specScale
+
+    # example plot for a single spaxel
+    py.close(1)
+    py.figure(1,figsize=(7,5))
+    py.subplots_adjust(left=0.14, right=0.94, top=0.95,bottom=.15)
+    py.plot(waveClip,cube[20,40,:],'b-',label='Original science spectrum')
+    py.plot(waveClip,specScale[20,40,:],'g-',label='Scaled bulge spectrum')
+    py.plot(waveClip,newCube[20,40,:],'r-',label='Bulge-subtracted science spectrum')
+    py.xlim(waveClip[0],waveClip[-1])
+    py.ylim(0,.65)
+    py.xlabel('Wavelength ($\mu$m)')
+    py.ylabel('Flux (DN s$^{-1}$)')
+    py.legend(loc=0)
+    
+    pdb.set_trace()
 
     mask0 = np.where(cube[:,:,500] == 0.)
     newCube[mask0[0],mask0[1],:] = 0.
