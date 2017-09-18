@@ -44,7 +44,7 @@ def go(mcFile, npix, ntrials, plottrial=0, plotlog=False, olddisks=False):
     peakPixIdx = healpix.argmax()
     peakIncl = np.degrees(theta[peakPixIdx])
     peakOmeg = np.degrees(phi[peakPixIdx])
-    print 'Disk candidate at i = %6.2f, O = %6.2f' % (peakIncl, peakOmeg)
+    print('Disk candidate at i = %6.2f, O = %6.2f' % (peakIncl, peakOmeg))
 
     # Determine the background (avg and stddev)
     avgiter = 2
@@ -59,13 +59,13 @@ def go(mcFile, npix, ntrials, plottrial=0, plotlog=False, olddisks=False):
 
         idx = np.where((healpix > locut) & (healpix < hicut))[0]
 
-        print 'BKG: iter = %d, rejecting %d out of %d pixels' % \
-               (ii, (npix - len(idx)), npix)
+        print('BKG: iter = %d, rejecting %d out of %d pixels' % \
+               (ii, (npix - len(idx)), npix))
 
-    print ''
-    print 'Background mean = %f, stddev = %f' % (avgval, stddev)
-    print 'Peak = %f, significance = %f' % \
-          (healpix.max(), (healpix.max() - avgval) / stddev)
+    print('')
+    print('Background mean = %f, stddev = %f' % (avgval, stddev))
+    print('Peak = %f, significance = %f' % \
+          (healpix.max(), (healpix.max() - avgval) / stddev))
 
     # Find pixels 1, 2, 3 sigma below the peak
     idx1 = np.where(healpix > (peakPixVal - (1.0 * stddev)))[0]
@@ -82,9 +82,9 @@ def go(mcFile, npix, ntrials, plottrial=0, plotlog=False, olddisks=False):
     omegRng3 = np.degrees([min(phi[idx3]), max(phi[idx3])])
 
     fmt = '%d sigma ranges: i = [%5.1f - %5.1f]  o = [%5.1f - %5.1f] (N=%d)'
-    print fmt % (1, inclRng1[0], inclRng1[1], omegRng1[0], omegRng1[1], cnt1)
-    print fmt % (2, inclRng2[0], inclRng2[1], omegRng2[0], omegRng2[1], cnt2)
-    print fmt % (3, inclRng3[0], inclRng3[1], omegRng3[0], omegRng3[1], cnt3)
+    print(fmt % (1, inclRng1[0], inclRng1[1], omegRng1[0], omegRng1[1], cnt1))
+    print(fmt % (2, inclRng2[0], inclRng2[1], omegRng2[0], omegRng2[1], cnt2))
+    print(fmt % (3, inclRng3[0], inclRng3[1], omegRng3[0], omegRng3[1], cnt3))
 
     # Now display gaussian fits along inclination and Omega to get
     # estimate of the disk thickness

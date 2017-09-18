@@ -1,11 +1,9 @@
 import math
-import pyfits
+from astropy.io import fits as pyfits
 import numpy as np
 import pylab as py
 import scipy
-import asciidata
 from scipy import signal
-from pyraf import iraf as ir
 import time
 import pickle
 from scipy.optimize import curve_fit
@@ -232,7 +230,7 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputMode
 
     # new BH position: (0,0) + (xfrac,yfrac)
     modbhpos = [negxbin+xfrac,negybin+yfrac]
-    print "Model BH is at ", modbhpos
+    print("Model BH is at ", modbhpos)
 
     # trim to only cover the OSIRIS FOV
     newnegxbin = 0. - np.floor(ppxf_m31.bhpos[1]/0.05)
@@ -254,7 +252,7 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputMode
     yBin = np.floor(yClip/binpc)
     xClippc = xClip/binpc
     yClippc = yClip/binpc
-    xyBin = zip(xBin,yBin)
+    xyBin = list(zip(xBin,yBin))
 
     #pdb.set_trace()
 
@@ -369,7 +367,7 @@ def tessModels(inputModel=modeldir+'nonaligned_model_OSIRIScoords.dat',inputMode
         outputFile = outFile
     else:
         outFile = inputModel.replace('.dat','_fits_trim_tess.dat')
-    output = open(outputFile, 'w')
+    output = open(outputFile, 'wb')
     pickle.dump(newNstar, output)
     pickle.dump(newVel, output)
     pickle.dump(newSigma, output)

@@ -245,7 +245,7 @@ def make_residuals_table_year_2pos(year, filt, pos1, pos2):
     for nn in range(N_images):
         # Loop through 2 different positions.
         for ii in range(2):
-            print 'nn = ', nn, 'ii = ', ii
+            print('nn = ', nn, 'ii = ', ii)
 
             dat = ascii.read('{0:s}LNK.{1:03d}'.format(dir_xym, pos_idx[ii, nn]))
 
@@ -267,7 +267,7 @@ def make_residuals_table_year_2pos(year, filt, pos1, pos2):
     # the images (the overlaps) at these two positions.
     det_Nimg = detected.sum(axis=1).sum(axis=0)
     idx = np.where(det_Nimg == (2*N_images))[0]
-    print 'Trim 1', len(idx)
+    print('Trim 1', len(idx))
 
     xt = xt[:, :, idx]
     yt = yt[:, :, idx]
@@ -284,7 +284,7 @@ def make_residuals_table_year_2pos(year, filt, pos1, pos2):
     idx2 = np.where((stars['m']>-11) & (stars['m']<-6) & 
                    (stars['xe']<0.05) & (stars['ye']<0.05) & 
                    (stars['me']<0.1))[0]
-    print 'Trim 1', len(idx2)
+    print('Trim 1', len(idx2))
 
     stars = stars[idx2]
     xraw = xraw[:, :, idx2]
@@ -355,7 +355,7 @@ def make_residuals_table_year_pos(year, filt, pos):
 
     
     for nn in range(N_images):
-        print 'nn = ', nn
+        print('nn = ', nn)
         dat = ascii.read('{0:s}LNK.{1:03d}'.format(dir_xym, nn+1))
 
         xt[nn, :] = dat['col1']
@@ -484,7 +484,7 @@ def plot_residuals_year_2pos(year, filt, pos1, pos2, refresh=False):
 
     d = read_residuals_table_year_2pos(year, filt, pos1, pos2)
 
-    print d.xstd_p.min(), d.xstd_p.max()
+    print(d.xstd_p.min(), d.xstd_p.max())
 
     # Remember, this was all aligned to F814W in ACS. So there is a
     # relative scale change between the transformed and the raw pixels.
@@ -542,7 +542,7 @@ def plot_residuals_year_pos(year, filt, pos, refresh=False):
 
     d = read_residuals_table_year_pos(year, filt, pos)
 
-    print d.xstd.min(), d.xstd.max()
+    print(d.xstd.min(), d.xstd.max())
     
     # Look at the variance in the raw X pixels.
     py.clf()

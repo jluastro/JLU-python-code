@@ -14,7 +14,7 @@ from popstar import synthetic, reddening, evolution
 from jlu.stellarModels import extinction
 import math
 import matplotlib.animation as animation
-import pyfits
+from astropy.io import fits as pyfits
 import pickle
 
 # On LHCC
@@ -204,12 +204,12 @@ def debug_2005_F814W_ks2_vs_nimfo2bar():
     det = np.where((t['n_out'] > 1) & (t['m_in'] < -11) &
                    (t['xe_out'] < 0.5) & (t['ye_out'] < 0.5))[0]
     td = t[det]
-    print '****'
-    print '  {0} planted     {1} detected'.format(len(t), len(td))
-    print '****'
-    print '   NOTE: detected stars are brighter than -11 with'
-    print '   pos. errors < 0.5 pixels'
-    print ''
+    print('****')
+    print(('  {0} planted     {1} detected'.format(len(t), len(td))))
+    print('****')
+    print('   NOTE: detected stars are brighter than -11 with')
+    print('   pos. errors < 0.5 pixels')
+    print('')
 
     dx = td['x_out'] - td['x_in']
     dy = td['y_out'] - td['y_in']
@@ -220,8 +220,8 @@ def debug_2005_F814W_ks2_vs_nimfo2bar():
     #   one with small differences in  y
     idx_b = np.where(dy > -10)[0] # big (top chip)
     idx_s = np.where(dy < -10)[0] # small (bottom chip)
-    print '{0} with small delta-y, {1} with large delta y'.format(len(idx_s),
-                                                                  len(idx_b))
+    print(('{0} with small delta-y, {1} with large delta y'.format(len(idx_s),
+                                                                  len(idx_b))))
     py.figure(1)
     py.clf()
     py.plot(dx[idx_s], dy[idx_s], 'k.', ms=2, alpha=0.5, label='Bottom Chip')
@@ -316,7 +316,7 @@ def plot_artstar_in_vs_out(use_obs_align=False):
     for ee in range(len(epochs)):
         suffix = epochs[ee]
 
-        print 'Plotting ', suffix
+        print(('Plotting ', suffix))
         
         det = np.where(t['n_' + suffix] > 1)[0]
         t_det = t[det]
@@ -404,7 +404,7 @@ def plot_artstar_in_vs_out(use_obs_align=False):
         idx = np.where((dr < dr_lim) & (dm < dm_lim) &
                        (t_det['min_'+suffix] > mag_lim[0]) &
                        (t_det['min_'+suffix] < mag_lim[1]))[0]
-        print 'N stars in Quiver: ', len(idx)
+        print(('N stars in Quiver: ', len(idx)))
 
         py.close(3)
         py.figure(3, figsize=(12,12))
@@ -907,28 +907,28 @@ def calc_color_members():
     
     points = np.vstack((color1, m814)).T
     idx_opt = np.where(optical_path.contains_points(points) == True)[0]
-    print 'Found {0:d} optical color members'.format(len(idx_opt))
+    print(('Found {0:d} optical color members'.format(len(idx_opt))))
     points = np.vstack((color2, m125)).T
     idx_ir = np.where(infrared_path.contains_points(points) == True)[0]
-    print 'Found {0:d} infrared color members'.format(len(idx_ir))
+    print(('Found {0:d} infrared color members'.format(len(idx_ir))))
     
     idx = np.intersect1d(idx_opt, idx_ir)
-    print 'Found {0:d} optica+infrared color members'.format(len(idx))
+    print(('Found {0:d} optica+infrared color members'.format(len(idx))))
     
     
     fmt = 'Setting P(color) = 0 for {0} of {1} stars based on color cut.'
-    print fmt.format(len(m814) - len(idx), len(m814))
+    print((fmt.format(len(m814) - len(idx), len(m814))))
 
     pcolor[idx] = 1
 
     d['Membership_color'] = pcolor
-    print 'Sum[ P(color) ] = ', d['Membership_color'].sum()
-    print 'Sum[ P(color) * P(VPD) ] = ', (d['Membership_color'] * d['Membership']).sum()
+    print(('Sum[ P(color) ] = ', d['Membership_color'].sum()))
+    print(('Sum[ P(color) * P(VPD) ] = ', (d['Membership_color'] * d['Membership']).sum()))
 
     # Finally, make a new catalog with only cluster members
     path_info = os.path.split(cat_pclust)
     outfile = work_dir + path_info[1].replace('.fits', '_Pcolor.fits')
-    print 'Writing: ', outfile
+    print(('Writing: ', outfile))
     d.write(outfile, format='fits', overwrite=True)
 
     clust = np.where((d['Membership'] * d['Membership_color']) > 0.6)[0]
@@ -975,8 +975,8 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
     wave_obs = [0.814, 1.25, 1.39, 1.60]
     A_0 = interpolate.splev(wave_obs, A_int_0)
     A_1 = interpolate.splev(wave_obs, A_int_1)
-    print A_0
-    print A_1
+    print(A_0)
+    print(A_1)
 
     dA_F814W = A_1[0] - A_0[0]
     dA_F125W = A_1[1] - A_0[1]
@@ -1078,8 +1078,8 @@ def play_cmd_isochrone_red(logAge=wd1_logAge, AKs=wd1_AKs,
     red_vec_dy = (m_F125W_AKs_1 - m_F125W_AKs_0)
     py.arrow(0.6, 18, red_vec_dx, red_vec_dy, head_width=0.1)
 
-    print 'Slope of IR redvector: {0}'.format( red_vec_dy / red_vec_dx )
-    print 'Length of IR redvector: {0}'.format(np.hypot(red_vec_dy, red_vec_dx))
+    print(('Slope of IR redvector: {0}'.format( red_vec_dy / red_vec_dx )))
+    print(('Length of IR redvector: {0}'.format(np.hypot(red_vec_dy, red_vec_dx))))
 
     
     # Color-color
@@ -1416,9 +1416,9 @@ def compare_art_vs_obs_vel(use_obs_align=False):
     med_art_y = np.median(art[mdx_art]['fit_vye'])
     med_obs_y = np.median(obs[mdx_obs]['fit_vye'])
 
-    print 'Median Velocity (mas/yr)'
-    print '   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)
-    print '   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)
+    print('Median Velocity (mas/yr)')
+    print(('   X: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_x, med_art_x)))
+    print(('   Y: Obs = {0:5.3f}  Art = {1:5.3f}'.format(med_obs_y, med_art_y)))
 
 
 def compare_art_vs_obs_cmds(use_obs_align=False, vel_err_cut=0.5, mag_err_cut=1.0):
@@ -1630,12 +1630,12 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
         for jj in range(n_bins):
             c_mag_arr[ii, jj] = mag[ii]
             c_col_arr[ii, jj] = mag[ii] - mag[jj]
-            print(ii, jj, 
+            print((ii, jj, 
                   '{0:s} = {1:4.2f}'.format(blue_name, mag[ii]), 
                   '{0:s} = {1:4.2f}'.format(red_name, mag[jj]), 
                   '{0:s} - {1:s} = {2:4.2f}'.format(blue_name, red_name, mag[ii] - mag[jj]),
                   'c_{0:s} = {1:4.2f}'.format(blue_name, comp_blue[ii]),
-                  'c_{0:s} = {1:4.2f}'.format(red_name, comp_red[jj]))
+                  'c_{0:s} = {1:4.2f}'.format(red_name, comp_red[jj])))
 
 
             # Take whichever is lower, don't multiply because they aren't 
@@ -1683,7 +1683,7 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     py.savefig(plot_dir + 'completeness_cmd_raw_' + blue_name + '_' + red_name + '.png')
     
     # Read in isochrone
-    print 'Loading Isochrone'
+    print('Loading Isochrone')
     #----FOR NISHIYAMA+09----#
     #synthetic.redlaw = reddening.RedLawNishiyama09()
     #------------------------#
@@ -1702,9 +1702,9 @@ def comp_interp_for_cmd(mag, comp_blue, comp_red, blue_name, red_name):
     # comp_tmp = comp_int(mm_tmp, cc_tmp)
     mm_tmp_2d, cc_tmp_2d = np.meshgrid(mm_tmp, cc_tmp)
     points = np.array([mm_tmp_2d, cc_tmp_2d]).T
-    print points.shape
+    print((points.shape))
     comp_tmp = comp_int(points)
-    print comp_tmp.shape
+    print((comp_tmp.shape))
     py.clf()
     py.imshow(comp_tmp, extent=(cc_tmp[0], cc_tmp[-1],
                                 mm_tmp[0], mm_tmp[-1]), 
@@ -1886,7 +1886,7 @@ def make_completeness_ccmd():
                 if np.isnan(c_comp_arr[mm, cc1, cc2]):
                     c_comp_arr[mm, cc1, cc2] = 0
                 
-    print 'Plotting raw completeness mag vs. mag (comp_mF160W_mF814W.mp4).'
+    print('Plotting raw completeness mag vs. mag (comp_mF160W_mF814W.mp4).')
     # Plot the raw completeness array
     py.close(1)
     fig = py.figure(1)
@@ -1915,7 +1915,7 @@ def make_completeness_ccmd():
     # Flatten the arrays and clean out invalid regions.
     ##########
 
-    print 'Interpolating to CMD. Setup'
+    print('Interpolating to CMD. Setup')
     comp_int = interpolate.LinearNDInterpolator((c_mag_arr.flatten(),
                                                  c_col1_arr.flatten(),
                                                  c_col2_arr.flatten()),
@@ -1947,9 +1947,9 @@ def make_completeness_ccmd():
     # pdb.set_trace()
 
     
-    print 'Interpolating to CMD. Calc.'
+    print('Interpolating to CMD. Calc.')
     comp_tmp = comp_int(points_3d)
-    print points_3d.shape, comp_tmp.shape
+    print((points_3d.shape, comp_tmp.shape))
 
     # Plot
     py.clf()
@@ -2028,7 +2028,7 @@ def plot_completeness_cmd(cmd_comp, bins_col, bins_mag, col_label):
     
 def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     # Read in data table
-    print 'Reading data table'
+    print('Reading data table')
     d = Table.read(cat_pclust_pcolor)
 
     # Trim down to cluster stars.
@@ -2046,7 +2046,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     color2 = m125 - m160
     
     # Read in isochrone
-    print 'Loading Isochrone'
+    print('Loading Isochrone')
     #----FOR NISHIYAMA+09----#
     synthetic.redlaw = reddening.RedLawNishiyama09()
     #------------------------#
@@ -2055,12 +2055,12 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     iso_red = load_isochrone(logAge=logAge, AKs=AKs+red_dAKs, distance=distance)
 
     # Get the completeness (relevant for diff. de-reddened magnitudes).
-    print 'Loading completeness table'
+    print('Loading completeness table')
     comp = Table.read(work_dir + 'completeness_vs_mag.fits')
 
     # Make a finely sampled mass-luminosity relationship by
     # interpolating on the isochrone.
-    print 'Setting up mass-luminosity interpolater'
+    print('Setting up mass-luminosity interpolater')
     iso_mag1 = iso['mag814w']
     iso_mag2 = iso['mag125w']
     iso_col1 = iso['mag814w'] - iso['mag160w']
@@ -2217,7 +2217,7 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     
         pdb.set_trace()
 
-    print 'Setting up completeness interpolater for CMD space.'
+    print('Setting up completeness interpolater for CMD space.')
     comp1_int = comp_interp_for_cmd(comp['mag'], comp['c_2005_F814W'],
                                     comp['c_2010_F160W'], 'F814W', 'F160W')
 
@@ -2320,10 +2320,10 @@ def calc_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
         pdb.set_trace()
     
     # Find the maximum mass where we don't have WR stars anymore
-    print mass_max, mass1.max(), mass2.max()
+    print((mass_max, mass1.max(), mass2.max()))
     mass_max1 = mass1[isWR1 == False].max()
     mass_max2 = mass2[isWR2 == False].max()
-    print mass_max1, mass_max2
+    print((mass_max1, mass_max2))
 
     # Trim down to just the stars that aren't WR stars.
     idx1_noWR = np.where(mass1 <= mass_max1)[0]
@@ -2378,14 +2378,14 @@ def plot_mass_function(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance):
     imf2 = Table.read(work_dir + 'imf_table_from_infrared' + suffix + '.fits')
 
     # Read in isochrone
-    print 'Loading Isochrone'
+    print('Loading Isochrone')
     iso = load_isochrone(logAge=imf1.meta['LOGAGE'], 
                          AKs=imf1.meta['AKS'], 
                          distance=imf1.meta['DISTANCE'])
     
     # Make a finely sampled mass-luminosity relationship by
     # interpolating on the isochrone.
-    print 'Setting up mass-luminosity interpolater'
+    print('Setting up mass-luminosity interpolater')
     iso_mag1 = iso['mag814w']
     iso_mag2 = iso['mag125w']
     iso_col1 = iso['mag814w'] - iso['mag160w']
@@ -2428,8 +2428,8 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
     weights = pmem_noWR / comp_noWR
 
     idx = np.where(comp_noWR == 0)[0]
-    print 'Bad completeness for N stars = ', len(idx)
-    print mass_noWR[idx][0:10]
+    print(('Bad completeness for N stars = ', len(idx)))
+    print((mass_noWR[idx][0:10]))
     weights[idx] = 0
 
     py.close(1)
@@ -2452,7 +2452,7 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
                             label='Complete')
 
     mean_weight = n_fin / n_mem
-    print 'mean_weight = ', mean_weight
+    print(('mean_weight = ', mean_weight))
     
     n_err = (n_raw**0.5) * mean_weight
     n_err[0] = 1000.0  # dumb fix for empty bin
@@ -2467,18 +2467,18 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
 
     idx = np.where((bc > 0.2) & (n_fin > 0) & 
                    (np.isnan(n_fin) == False) & (np.isinf(n_fin) == False))[0]
-    print bc
-    print n_fin
-    print n_err
-    print idx
+    print(bc)
+    print(n_fin)
+    print(n_err)
+    print(idx)
 
     log_m = bc[idx]
     log_n = np.log10(n_fin)[idx]
     log_n_err = n_err[idx] / n_fin[idx]
     
-    print 'log_m = ', log_m
-    print 'log_n = ', log_n
-    print 'log_n_err = ', log_n_err
+    print(('log_m = ', log_m))
+    print(('log_n = ', log_n))
+    print(('log_n_err = ', log_n_err))
 
     pinit = [1.0, -1.0]
     out = optimize.leastsq(errfunc, pinit, args=(log_m, log_n, log_n_err),
@@ -2486,8 +2486,8 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
 
     pfinal = out[0]
     covar = out[1]
-    print 'pfinal = ', pfinal
-    print 'covar = ', covar
+    print(('pfinal = ', pfinal))
+    print(('covar = ', covar))
 
     index = pfinal[1]
     amp = 10.0**pfinal[0]
@@ -2521,9 +2521,9 @@ def plot_fit_mass_function(imf, bins_log_mass, iso_mass, iso_mag, iso_color, mas
         top_tick_mass[nn] = iso_mass[dm_idx]
         top_tick_label[nn] = '{0:3.1f}'.format(top_tick_mag[nn])
 
-    print 'top_tick_mag = ', top_tick_mag
-    print 'top_tick_msas = ', top_tick_mass
-    print 'top_tick_label = ', top_tick_label
+    print(('top_tick_mag = ', top_tick_mag))
+    print(('top_tick_msas = ', top_tick_mass))
+    print(('top_tick_label = ', top_tick_label))
 
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(np.log10(top_tick_mass))
@@ -2650,10 +2650,10 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         min_idx = iso_idx_per_rr[min_rdx]
         
 
-        print '{0:4d} {1:4d} {2:4d} {3:4.2f} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
+        print(('{0:4d} {1:4d} {2:4d} {3:4.2f} {4:5.1f} {5:4.2f}'.format(ii, min_idx, min_rdx,
                                                               delta[min_rdx],
                                                               iso_mass_f[min_idx],
-                                                              red_dAKs[min_rdx])
+                                                              red_dAKs[min_rdx])))
         
 
         mass[ii] = iso_mass_f[min_idx]
@@ -2685,8 +2685,8 @@ def calc_mass_isWR_comp(mag, color, iso_mag_f, iso_col_f, iso_mass_f, iso_WR_f,
         if comp[ii] < 0:
             comp[ii] = 0
     
-    print mag.min(), mag.max(), color.min(), color.max()
-    print comp.shape, mag.shape, color.shape
+    print((mag.min(), mag.max(), color.min(), color.max()))
+    print((comp.shape, mag.shape, color.shape))
 
     return mass, isWR, comp, dAKs
     
@@ -2700,9 +2700,9 @@ def get_mag_for_mass(log_mass, iso_mass, iso_mag):
 
         mag[ii] = iso_mag[dmass_min_idx]
 
-    print 'log_mass = ', log_mass
-    print 'mass = ', 10**log_mass
-    print 'mag = ', mag
+    print(('log_mass = ', log_mass))
+    print(('mass = ', 10**log_mass))
+    print(('mag = ', mag))
 
     return mag
     
@@ -2715,7 +2715,7 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
              '125w': 'wfc3,ir,f125w',
              '160w': 'wfc3,ir,f160w'}
 
-    print 'Using Red Law = ', synthetic.redlaw.name
+    print(('Using Red Law = ', synthetic.redlaw.name))
 
     # Change iso_dir depending on redlaw used
     if synthetic.redlaw.name == 'Nishiyama09':
@@ -2731,12 +2731,12 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance, IAU=Fa
 
     # Extract isochrone properties
     iso_f = iso.points
-    col_names = iso_f.keys()
+    col_names = list(iso_f.keys())
 
     # Correct for distance, if necessary
     for cc in range(len(col_names)):
         delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
-        print 'Changing distance: delta_DM = ', delta_DM
+        print(('Changing distance: delta_DM = ', delta_DM))
         
         if col_names[cc].startswith('mag'):
             iso_f[col_names[cc]] += delta_DM
@@ -2764,7 +2764,7 @@ def check_atmospheres():
     # Get the unique log-g and loop through to find Teff range for each.
     c_logg_uni = np.unique(c_logg)
 
-    print 'Castelli: solar metallicity'
+    print('Castelli: solar metallicity')
     for ii in range(len(c_logg_uni)):
         idx = np.where((c_logg == c_logg_uni[ii]) & (c_metal == 0))[0]
 
@@ -2773,13 +2773,13 @@ def check_atmospheres():
         max_teff = teff_good.max()
 
         fmt = 'logg = {0:4.2f}   Teff = [{1:5.0f} - {2:5.0f}]'
-        print fmt.format(c_logg_uni[ii], min_teff, max_teff)
+        print((fmt.format(c_logg_uni[ii], min_teff, max_teff)))
 
 
     # Get the unique log-g and loop through to find Teff range for each.
     p_logg_uni = np.unique(p_logg)
-    print ''
-    print 'Phoenix: solar metallicity'
+    print('')
+    print('Phoenix: solar metallicity')
     for ii in range(len(p_logg_uni)):
         idx = np.where((p_logg == p_logg_uni[ii]) & (p_metal == 0))[0]
 
@@ -2788,7 +2788,7 @@ def check_atmospheres():
         max_teff = teff_good.max()
 
         fmt = 'logg = {0:4.2f}   Teff = [{1:5.0f} - {2:5.0f}]'
-        print fmt.format(p_logg_uni[ii], min_teff, max_teff)
+        print((fmt.format(p_logg_uni[ii], min_teff, max_teff)))
         
 def do_a_bunch():
     AKs = np.arange(0.67, 0.75, 0.01)

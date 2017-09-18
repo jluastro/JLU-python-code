@@ -97,7 +97,7 @@ def plot_vpd_across_field(nside=4, interact=False):
     out = 'All X:{0:5.0f}-{1:5.0f}  Y:{2:5.0f}-{3:5.0f}  '
     out += 'PMX:{4:5.2f} +/- {5:5.2f} PMY:{6:5.2f} +/- {7:5.2f}  '
     out += 'N:{8:5d}'
-    print(out.format(xlo, xhi, ylo, yhi, pmx_all, 0.0, pmy_all, 0.0, len(idx2)))
+    print((out.format(xlo, xhi, ylo, yhi, pmx_all, 0.0, pmy_all, 0.0, len(idx2))))
 
     # Make a global proper motion diagram of star with a proper motion within
     # 1 mas/yr. This is mainly to see systematic flows due to residual distortion.
@@ -159,11 +159,11 @@ def plot_vpd_across_field(nside=4, interact=False):
 
             if interact:
                 out += 'Continue?'
-                raw_input(out.format(xlo_box, xhi_box, ylo_box, yhi_box,
+                input(out.format(xlo_box, xhi_box, ylo_box, yhi_box,
                                      xmean, xmean_err, ymean, ymean_err, len(idx2)))
             else:
-                print(out.format(xlo_box, xhi_box, ylo_box, yhi_box,
-                                 xmean, xmean_err, ymean, ymean_err, len(idx2)))
+                print((out.format(xlo_box, xhi_box, ylo_box, yhi_box,
+                                 xmean, xmean_err, ymean, ymean_err, len(idx2))))
 
 
     if interact:
@@ -210,8 +210,8 @@ def calc_years():
 
         epoch = images.calc_mean_year(glob.glob(dataDir + '*_flt.fits'))
 
-        print('{0}_{1} at {2:8.3f}'.format(years[ii], filts[ii], epoch))
-        input('Continue?')
+        print(('{0}_{1} at {2:8.3f}'.format(years[ii], filts[ii], epoch)))
+        eval(input('Continue?'))
     
 def make_master_lists():
     """
@@ -335,7 +335,7 @@ def cross_match_ks2():
     # Loop through each IR star and find an optical match (by position).
     for ii in range(len(irTable)):
         if (ii % 1000) == 0:
-            print('Working on IR star {0}'.format(ii))
+            print(('Working on IR star {0}'.format(ii)))
         
         # Use the x_0, y_0 positions
         dr = np.hypot(irTable.x_0[ii] - opTable.x_0, irTable.y_0[ii] - opTable.y_0)
@@ -374,7 +374,7 @@ def make_catalog():
 
     suffixes = ['814', '160', '139', '125']
 
-    print 'Reading in star lists.'
+    print('Reading in star lists.')
     final = None
     for ff in range(len(files)):
         tab = atpy.Table(files[ff], type='ascii')
@@ -404,7 +404,7 @@ def make_catalog():
 
 
     # Trim down the table to only those stars in all filters.
-    print 'Trimming stars not in all 4 filters.'
+    print('Trimming stars not in all 4 filters.')
     final2 = final.where((final.m_814 != 0) & (final.m_160 != 0) &
                          (final.m_139 != 0) & (final.m_125 != 0) &
                          (final.xe_814 < 9) & (final.xe_160 < 9) &
@@ -445,10 +445,10 @@ def check_vpd_ks2_astrometry():
 
     idx = np.where((np.abs(dx) < 10) & (np.abs(dy) < 10))[0]
     print('Cluster Members (within dx < 10 mas and dy < 10 mas)')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx[idx].mean(),
-                                                        dxe=dx[idx].std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy[idx].mean(),
-                                                        dye=dy[idx].std()))
+    print(('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx[idx].mean(),
+                                                        dxe=dx[idx].std())))
+    print(('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy[idx].mean(),
+                                                        dye=dy[idx].std())))
     
 
 def map_of_errors():
@@ -537,7 +537,7 @@ def remake_loga_input(loga_file, artstar_file):
     """
     # Load up the input file (ARTSTAR) as a table... we are going to sort 
     # this at the end to give the same order as in the LOGA.INPUT file.
-    print 'Loading Table: {0}'.format(loga_file)
+    print('Loading Table: {0}'.format(loga_file))
     astar = atpy.Table(artstar_file, type='ascii')
 
     # This will contain the indices for re-sorting the ARTSTAR file
@@ -571,7 +571,7 @@ def remake_loga_input(loga_file, artstar_file):
     sidx = sidx[good]
     names = names[good]
     msg = 'Dropped {0} of {1} ARTSTAR entries that are not in LOGA.INPUT'
-    print msg.format(len(astar) - len(sidx), len(astar))
+    print(msg.format(len(astar) - len(sidx), len(astar)))
  
     # Make a new table that has the contents of ARTSTAR sorted
     # in the same order as LOGA.INPUT.
@@ -613,7 +613,7 @@ def make_completeness_table(loga_mag_file, matchup_files, filt_names=None):
     num_filt2 = len(loga.columns) - 3
 
     if num_filt != num_filt2:
-        print 'Filter mismatch: {0} in input, {1} in output'.format()
+        print('Filter mismatch: {0} in input, {1} in output'.format())
         return
 
     # First modify the column names in loga to reflect that these are
@@ -622,7 +622,7 @@ def make_completeness_table(loga_mag_file, matchup_files, filt_names=None):
     loga.rename_column('y', 'y_in')
 
     for ff in range(num_filt):
-        print 'Processing Filter #{0}'.format(ff+1)
+        print('Processing Filter #{0}'.format(ff+1))
         if filt_names != None:
             filt = '_{0}'.format(filt_names[ff])
         else:

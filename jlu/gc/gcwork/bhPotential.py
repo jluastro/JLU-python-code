@@ -116,7 +116,7 @@ class BHprops(object):
             lines = open(efitFile, 'r').readlines()
 
             if (self.ntrials > len(lines)):
-                print 'EFIT file too short for number of trials = ', len(lines)
+                print('EFIT file too short for number of trials = ', len(lines))
 
             for ii in range(self.ntrials):
                 fields = lines[ii].split()

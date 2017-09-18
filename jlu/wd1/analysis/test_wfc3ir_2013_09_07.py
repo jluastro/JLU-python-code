@@ -14,8 +14,8 @@ def get_shifts(drz_root):
     From a drizzle file, get the shifts that were applied.
     """
     hdr = fits.getheader(drz_root + '_drz.fits')
-    keys = hdr.keys()
-    vals = hdr.values()
+    keys = list(hdr.keys())
+    vals = list(hdr.values())
 
     file_name = []
     xshift = []
@@ -33,5 +33,5 @@ def get_shifts(drz_root):
             yshift.append(val)
 
     for ii in range(len(file_name)):
-        print file_name[ii], xshift[ii], yshift[ii]
+        print(file_name[ii], xshift[ii], yshift[ii])
         

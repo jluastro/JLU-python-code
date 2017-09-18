@@ -232,10 +232,10 @@ def run(catalogfile, vel_err, mag_err, N_gauss, outdir, rotate=True):
 
         if headerFirst:
             outhdr = '  '.join([colHead.format(k) for k in range(N_gauss)])
-            print rowHead.format('') + outhdr
+            print(rowHead.format('') + outhdr)
 
         outstr = '  '.join([colVal.format(val[k], logp[k]) for k in range(N_gauss)])
-        print rowHead.format(pname) + outstr
+        print(rowHead.format(pname) + outstr)
 
         return
 
@@ -378,7 +378,7 @@ def run(catalogfile, vel_err, mag_err, N_gauss, outdir, rotate=True):
             logL += logp_theta[kk]
 
         # Some printing
-        print '*** logL = {0:9.2e}   w/priors = {1:9.2e}'.format(logL_tmp, logL)
+        print('*** logL = {0:9.2e}   w/priors = {1:9.2e}'.format(logL_tmp, logL))
 
         print_param('pi', pi, logp_pi, headerFirst=True)
         print_param('vx', vx, logp_vx)
@@ -391,7 +391,7 @@ def run(catalogfile, vel_err, mag_err, N_gauss, outdir, rotate=True):
 
         total = t1 - t0
         
-        print 'TIME SPENT: ' + str(total)
+        print('TIME SPENT: ' + str(total))
         #pdb.set_trace()
         return logL
 
@@ -469,7 +469,7 @@ def loadData(catalogfile, vel_err, mag_err, rotate=True):
                       (d['me_2013_F160W'] < mag_err))
                         
     d_trim = d[lowErr]
-    print 'Stars in trimmed catalog: {0} out of {1}'.format(len(d_trim), len(d))
+    print('Stars in trimmed catalog: {0} out of {1}'.format(len(d_trim), len(d)))
 
     #--- If rotate flag, then rotate to RA/DEC ---#
     if rotate:
@@ -543,7 +543,7 @@ def pair_posterior(tab, weights, N_gauss, outfile=None, title=None):
     marginal pairwise posteriors of the parameters.
     """
 
-    params = tab.keys()
+    params = list(tab.keys())
     pcnt = len(params)
 
     fontsize = 10
@@ -601,7 +601,7 @@ def plot_posteriors_1D(outdir, N_gauss):
     tab.remove_columns(('weights', 'logLike'))
 
     # Get the parameters array
-    params = tab.keys()
+    params = list(tab.keys())
     N_params = len(params)
     N_params_per_gauss = 6
     
@@ -757,7 +757,7 @@ def show_distributions(catalogfile, velcut, magcut, outdir, N_gauss, rotate=True
         sigA_fit[kk] = params['Mu'][sigA_idx]
         sigB_fit[kk] = params['Mu'][sigB_idx]
         theta_fit[kk] = np.degrees(params['Mu'][theta_idx]) - 90.0
-        print theta_fit[kk]
+        print(theta_fit[kk])
 
     #---------------------------#
     # Plotting just VPD
@@ -959,7 +959,7 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
     members_ind = np.array(np.where(bins >= prob)[0])
     members_ind = members_ind[:-1]
     members = n[members_ind].sum()
-    print 'Number of cluster members: ' + str(members)
+    print('Number of cluster members: ' + str(members))
 
     # Plot spatial and VPD positions of ID'ed cluster members
     memberID = np.where(p_cluster >= prob)[0]
@@ -1021,11 +1021,11 @@ def cluster_membership(catalogfile, velcut, magcut, outdir, N_gauss, prob, rotat
 
     # Finally, make a new catalog with only cluster members
     outfile = '{0}/catalog_membership_{1}_rot.fits'.format(outdir, N_gauss)
-    print 'Writing: ', outfile
+    print('Writing: ', outfile)
     d.write(outfile, format='fits', overwrite=True)
 
     outfile = '{0}/catalog_cluster_only_{1}_{2:.1f}_rot.fits'.format(outdir, N_gauss, prob)
-    print 'Writing: ', outfile
+    print('Writing: ', outfile)
     d_clust = d[memberID]
     d_clust.write(outfile, format='fits', overwrite=True)
 

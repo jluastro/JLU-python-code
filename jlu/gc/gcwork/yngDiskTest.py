@@ -50,7 +50,7 @@ def run():
 
     for trial in range(ntrials):
 	if ((trial % 100) == 0):
-	    print 'Trial %d' % trial
+	    print('Trial %d' % trial)
 
 	x = na.zeros(nstars, type=na.Float)
 	y = na.zeros(nstars, type=na.Float)
@@ -144,7 +144,7 @@ def run():
 	m = mpfit.mpfit(fitfunc, p0, functkw=functargs, parinfo=pinfo,
 			quiet=1)
 	if (m.status <= 0): 
-	    print 'error message = ', m.errmsg
+	    print('error message = ', m.errmsg)
 
 	p = m.params
 
@@ -179,16 +179,16 @@ def run():
     pylab.errorbar(chi2, angleAvg, fmt='k.', yerr=angleStd)
     pylab.xlabel('Chi^2')
     pylab.ylabel('Angle w.r.t. Best Fit')
-    foo = raw_input('Contine?')
+    foo = input('Contine?')
 
     # Probability of encountering solution with chi^2 < 2
     idx = (na.where(chi2 < 2.0))[0]
-    print 'Prob(chi^2 < 2) = %5.3f ' % (len(idx) / float(ntrials))
+    print('Prob(chi^2 < 2) = %5.3f ' % (len(idx) / float(ntrials)))
 
     # Probability of encountering solution with chi^2 < 2 AND 
     # inclination = 20 - 30 and Omega = 160 - 170
     foo = (na.where((chi2 < 2.0) & (incl > 20) & (incl < 40)))[0]
-    print 'Prob of chi2 and incl = %5.3f' % (len(foo) / float(ntrials))
+    print('Prob of chi2 and incl = %5.3f' % (len(foo) / float(ntrials)))
 
     pylab.clf()
     pylab.subplot(2, 2, 1)

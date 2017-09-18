@@ -202,7 +202,7 @@ class StarOrbits(object):
                        (self.vy*self.vyerr)**2 +
                        (self.vz*self.vzerr)**2) / vtot
 
-        print 'Radial velocity from: %s' % self.vz_ref
+        print('Radial velocity from: %s' % self.vz_ref)
  
         # Assume z = 0 and zerr = +/- zmax
         # zmax is set by distance at which vTot = vEsc
@@ -370,8 +370,8 @@ class StarOrbits(object):
             
         ## Only look for acceleration limits in stars with lots of data.
         ## We define this as existing in > 24 epochs.
-        print 'ORBIT ANALYSIS: Polyfit vs. MinDist acc = %7.3f vs. %7.3f' % \
-              (self.alimR, self.a2d_mag.min())
+        print('ORBIT ANALYSIS: Polyfit vs. MinDist acc = %7.3f vs. %7.3f' % \
+              (self.alimR, self.a2d_mag.min()))
 
         if (self.alimR > self.a2d_mag.min()):
             # We have significant acceleration limits.
@@ -382,14 +382,14 @@ class StarOrbits(object):
                                    (self.z < 0)))[0]
 
             if self.alimR < 0.0:
-                print 'ORBIT ANALYSIS: Significant polyfit acceleration constraints.'
+                print('ORBIT ANALYSIS: Significant polyfit acceleration constraints.')
                 # Check if this is significantly different from zero
                 if (self.aLoLim < 0.0):
-                    print 'ORBIT ANALYSIS: Acceleration Detection'
+                    print('ORBIT ANALYSIS: Acceleration Detection')
             else:
-                print 'ORBIT ANALYSIS: Positive radial acceleration (unphysical).'
+                print('ORBIT ANALYSIS: Positive radial acceleration (unphysical).')
         else:
-            print 'ORBIT ANALYSIS: No polyfit acceleration constraint.'
+            print('ORBIT ANALYSIS: No polyfit acceleration constraint.')
             self.idxp = (where(self.z >= 0))[0]
             self.idxn = (where(self.z < 0))[0]
         #else:
@@ -402,7 +402,7 @@ class StarOrbits(object):
 
         # Lets also make an index for ALL acceptable solutions
         self.idx = concatenate([self.idxp, self.idxn])
-        print 'number of acceptable solutions: %i' % len(self.idx)
+        print('number of acceptable solutions: %i' % len(self.idx))
 
         # Positive solutions:
         self.zp_lo = min(self.z[self.idxp])
@@ -557,7 +557,7 @@ class StarOrbitsMC(object):
         ##########
 
         if (verbose):
-            print 'START: ', time.ctime(time.time())
+            print('START: ', time.ctime(time.time()))
 
         cc = objects.Constants()
 
@@ -582,8 +582,8 @@ class StarOrbitsMC(object):
         ##########
         for zz in range(int(self.ntrials/2.0)):
             if ( ((zz % 5000) == 0) & (verbose == True)):
-                print 'PDF Trial %d: ' % (zz*2), \
-                      time.ctime(time.time()), self.i[zz-1]
+                print('PDF Trial %d: ' % (zz*2), \
+                      time.ctime(time.time()), self.i[zz-1])
             
             #if (isnan(self.i[zz-1]) == 1):
             #    pdb.set_trace()
@@ -688,23 +688,23 @@ class StarOrbitsMC(object):
 
                     if (vtotcgs**2 > (2.0 * GM / r3dcgs)):
                         if ((aminLoopCount % 100) == 0 and verbose):
-                            print 'Random pos/vel break bound orbit criteria: zz=%d, %s' % \
-                                  (zz, self.name)
-                            print '\tamin = %7.3f  amax = %7.3f' % (amin, amax)
-                            print '\tvel = %7.3f    escape = %7.3f' % \
-                                   (vtot, sqrt(2.0 * GM / r3dcgs) / 1.0e5)
-                            print '\tvx = %3d  vy = %3d  vz = %3d' % \
-                                  (vx, vy, vz)
-                            print '\tmass = %7.3e' % (mass * cc.msun)
+                            print('Random pos/vel break bound orbit criteria: zz=%d, %s' % \
+                                  (zz, self.name))
+                            print('\tamin = %7.3f  amax = %7.3f' % (amin, amax))
+                            print('\tvel = %7.3f    escape = %7.3f' % \
+                                   (vtot, sqrt(2.0 * GM / r3dcgs) / 1.0e5))
+                            print('\tvx = %3d  vy = %3d  vz = %3d' % \
+                                  (vx, vy, vz))
+                            print('\tmass = %7.3e' % (mass * cc.msun))
 
                         amin = -1.0
                         amax = -2.0
                         continue
                 else:
                     if ((aminLoopCount % 500) == 0 and verbose):
-                        print 'Having problems getting enough accelerations within'
-                        print 'the range for zz = %d (%7.3f - %7.3f) vs. %7.3f, Mass=%e ' \
-                              % (zz, amin, amax, ar, mass)
+                        print('Having problems getting enough accelerations within')
+                        print('the range for zz = %d (%7.3f - %7.3f) vs. %7.3f, Mass=%e ' \
+                              % (zz, amin, amax, ar, mass))
 
                     amin = -1.0
                     amax = -2.0
@@ -728,9 +728,9 @@ class StarOrbitsMC(object):
             try:
                 self._runOrbit(zidx, x, y, z, vx, vy, vz, ar,
                                mass, dist, x0, y0)
-            except ValueError, e:
-                print 'Problem calculating orbits for POSITIVE %d, mass=%e' % (zz, mass)
-                print e
+            except ValueError as e:
+                print('Problem calculating orbits for POSITIVE %d, mass=%e' % (zz, mass))
+                print(e)
                 #pdb.set_trace()
                 continue
 
@@ -741,9 +741,9 @@ class StarOrbitsMC(object):
             try:
                 self._runOrbit(zidx, x, y, -z, vx, vy, vz, ar,
                                mass, dist, x0, y0)
-            except ValueError, e:
-                print 'Problem calculating orbits for NEGATIVE %d, mass=%e' % (zz, mass)
-                print e
+            except ValueError as e:
+                print('Problem calculating orbits for NEGATIVE %d, mass=%e' % (zz, mass))
+                print(e)
                 continue
 
         # Fix the bigOmega range
@@ -759,7 +759,7 @@ class StarOrbitsMC(object):
         #    o[idx] -= 360.0
 
         if (verbose):
-            print 'FINISH: ', time.ctime(time.time())
+            print('FINISH: ', time.ctime(time.time()))
 
         self.trans = None
 
@@ -792,7 +792,7 @@ class StarOrbitsMC(object):
         pdf -- 2D Probability Density Function for i and o
         """
         if (verbose):
-            print 'START: ', time.ctime(time.time())
+            print('START: ', time.ctime(time.time()))
 
         cc = objects.Constants()
 
@@ -816,8 +816,8 @@ class StarOrbitsMC(object):
         ##########
         for zz in range(int(self.ntrials)):
             if ((zz % 5000) == 0):
-                print 'PDF Trial %d: ' % (zz), \
-                      time.ctime(time.time()), self.i[zz-1]
+                print('PDF Trial %d: ' % (zz), \
+                      time.ctime(time.time()), self.i[zz-1])
             
             # Set temp values for our while loop
             amin = -1.0
@@ -834,13 +834,13 @@ class StarOrbitsMC(object):
                 # velocity exceeds the escape velocity for the randomly
                 # selected distance. We need to throw out these cases.
                 if ((aminLoopCount % 100) == 0 and verbose):
-                    print 'Random pos/vel break bound orbit criteria: zz=%d'% zz
-                    print '\tamin = %7.3f  amax = %7.3f' % (amin, amax)
-                    print '\tvel = %7.3f    escape = %7.3f' % \
+                    print('Random pos/vel break bound orbit criteria: zz=%d'% zz)
+                    print('\tamin = %7.3f  amax = %7.3f' % (amin, amax))
+                    print('\tvel = %7.3f    escape = %7.3f' % \
                           (sqrt(vx**2 + vy**2 + vz**2),
-                           sqrt(2.0 * GM / rcgs) / 1.0e5)
-                    print '\tvx = %3d  vy = %3d  vz = %3d' % \
-                          (vx, vy, vz)
+                           sqrt(2.0 * GM / rcgs) / 1.0e5))
+                    print('\tvx = %3d  vy = %3d  vz = %3d' % \
+                          (vx, vy, vz))
                 
                 # Sample our monte carlo variables
                 x = xgen.gauss(self.x_dat, self.xerr_dat)     # pixels
@@ -894,10 +894,10 @@ class StarOrbitsMC(object):
                 # the while loop down below.
                 if (ar < amin or ar > amax):
                     if ((aminLoopCount % 100) == 0 and verbose):
-                        print 'Orbit is not bound:  a = %7.3f' % ar
-                        print '\tamin = %7.3f  amax = %7.3f' % (amin, amax)
-                        print '\tx = %6.2f  y = %6.2f  z = %6.2f' % \
-                              (x, y, z)
+                        print('Orbit is not bound:  a = %7.3f' % ar)
+                        print('\tamin = %7.3f  amax = %7.3f' % (amin, amax))
+                        print('\tx = %6.2f  y = %6.2f  z = %6.2f' % \
+                              (x, y, z))
                     # Something wierd happened. Choose different
                     # x, y, vx, vy, vz.
                     amin = -1.0
@@ -909,13 +909,13 @@ class StarOrbitsMC(object):
             try:
                 self._runOrbit(zz, x, y, z, vx, vy, vz, ar,
                                mass, dist, x0, y0)
-            except ValueError, e:
-                print 'Problem calculating orbits for %d' % zidx
-                print e
+            except ValueError as e:
+                print('Problem calculating orbits for %d' % zidx)
+                print(e)
                 continue
 
         if (verbose):
-            print 'FINISH: ', time.ctime(time.time())
+            print('FINISH: ', time.ctime(time.time()))
 
         self.trans = None
 
@@ -1193,7 +1193,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(iAll, oAll)
             
             # Save the i/o density maps
-            print 'Making density map'
+            print('Making density map')
             neigh.tofile('%s/%s/disk.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/disk.neighborStd.dat' % \
@@ -1229,7 +1229,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_inner, o_inner)
             
             # Save the i/o density maps
-            print 'Making density map for stars at r < 3.5 arcsec'
+            print('Making density map for stars at r < 3.5 arcsec')
             neigh.tofile('%s/%s/inner_disk.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/inner_disk.neighborStd.dat' % \
@@ -1246,7 +1246,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_middle, o_middle)
             
             ## Save the i/o density maps
-            print 'Making density map for stars at 3.5 <= r < 7.0 arcsec'
+            print('Making density map for stars at 3.5 <= r < 7.0 arcsec')
             neigh.tofile('%s/%s/middle_disk.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/middle_disk.neighborStd.dat' % \
@@ -1286,7 +1286,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_outer, o_outer)
             
             # Save the i/o density maps
-            print 'Making density map for stars at r >= 7.0 arcsec'
+            print('Making density map for stars at r >= 7.0 arcsec')
             neigh.tofile('%s/%s/outer_disk.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/outer_disk.neighborStd.dat' % \
@@ -1317,7 +1317,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_inner, o_inner)
             
             # Save the i/o density maps
-            print 'Making density map for stars at r < 2.266 arcsec'
+            print('Making density map for stars at r < 2.266 arcsec')
             neigh.tofile('%s/%s/inner_disk_cntrl.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/inner_disk_cntrl.neighborStd.dat' % \
@@ -1334,7 +1334,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_middle, o_middle)
             
             ## Save the i/o density maps
-            print 'Making density map for stars at 2.266 <= r < 3.538 arcsec'
+            print('Making density map for stars at 2.266 <= r < 3.538 arcsec')
             neigh.tofile('%s/%s/middle_disk_cntrl.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/middle_disk_cntrl.neighborStd.dat' % \
@@ -1351,7 +1351,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_outer, o_outer)
             
             # Save the i/o density maps
-            print 'Making density map for stars at r >= 3.538 arcsec'
+            print('Making density map for stars at r >= 3.538 arcsec')
             neigh.tofile('%s/%s/outer_disk_cntrl.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/outer_disk_cntrl.neighborStd.dat' % \
@@ -1385,7 +1385,7 @@ class Disk(object):
             (neigh, neighStd, peakD, peakI, peakO) = self.densityPDF(i_lu09, o_lu09)
             
             # Save the i/o density maps
-            print 'Making density map for stars at r < 3.5 arcsec'
+            print('Making density map for stars at r < 3.5 arcsec')
             neigh.tofile('%s/%s/lu09rpt_disk.neighbor.dat' % \
                          (self.mcdir, self.outdir))
             neighStd.tofile('%s/%s/lu09rpt_disk.neighborStd.dat' % \
@@ -1421,19 +1421,19 @@ class Disk(object):
         if rbin == 'r1':
             rad = where(r2d <= 2.266)[0]
             suffix = rbin
-            print 'Number of stars in inner radial bin: %i' % len(rad)
+            print('Number of stars in inner radial bin: %i' % len(rad))
         elif rbin == 'r2':
             rad = where((r2d > 2.266) & (r2d <= 3.538))[0]
             suffix = rbin
-            print 'Number of stars in middle radial bin: %i' % len(rad)
+            print('Number of stars in middle radial bin: %i' % len(rad))
         elif rbin == 'r3':
             rad = where(r2d > 3.538)[0]
             suffix = rbin
-            print 'Number of stars in outer radial bin: %i' % len(rad)
+            print('Number of stars in outer radial bin: %i' % len(rad))
         elif rbin == 'all':
             rad = where(r2d > 0.8)[0]
             suffix = rbin
-            print 'Number of stars in total sample: %i' % len(rad)
+            print('Number of stars in total sample: %i' % len(rad))
             
         # some stuff for randomly choosing stars with replacement
         nstars = len(rad)
@@ -1442,17 +1442,17 @@ class Disk(object):
         for tt in range(samples):
             _random, _int = random.random, int  # speed hack 
             result = [None] * nstars
-            for i in xrange(nstars):
+            for i in range(nstars):
                 j = _int(_random() * nstars)
                 result[i] = idStars[j]  # contains indices for SWR
 
             strtt = str(tt).zfill(4)   # string version
-            print 'Sample with replacement for %s trial %s' % \
-                  (suffix, strtt)
+            print('Sample with replacement for %s trial %s' % \
+                  (suffix, strtt))
 
             sampleNames = [self.names[n] for n in result]
             for ss in sampleNames:
-                print ss
+                print(ss)
 
             iSample = iAll[result,:]
             oSample = oAll[result,:]
@@ -1503,7 +1503,7 @@ class Disk(object):
         # Loop through number of samples and calc density for each
         for tt in range(samples):
             strtt = str(tt).zfill(4)   # string version
-            print 'Bootstrap %s for %s' % (strtt, suffix)
+            print('Bootstrap %s for %s' % (strtt, suffix))
 
             # Randomly select half (no replacement)
             random.shuffle(idStars)
@@ -1547,7 +1547,7 @@ class Disk(object):
                 _f = open('%s/%s.mc.dat' % (self.mcdir, name), 'r')
                 mc = pickle.load(_f)
                 _f.close()
-                print 'Adding %15s (%d) to disk' % (name, len(mc.i))
+                print('Adding %15s (%d) to disk' % (name, len(mc.i)))
     
                 # Marginalize the PDF for this star onto just
                 # incl (i) and PA to ascending node (o).
@@ -1567,7 +1567,7 @@ class Disk(object):
                 self.iomap[0] += pdf
                 self.ioCntMap[0] += (pdf / pdf.max())
             except IOError:
-                print 'No MC file for %s; no RV measurement' % name
+                print('No MC file for %s; no RV measurement' % name)
 
         # Get the (i,o) values for each pixel in the sky
         iAll *= math.pi / 180.0
@@ -1583,7 +1583,7 @@ class Disk(object):
         Map out the PDF for the density of normal vectors
         """
         nstars = iAll.shape[0]
-        print nstars, type(nstars)
+        print(nstars, type(nstars))
         trials = 62000
         #trials = 100000
         npdfs = len(neighbors)
@@ -1609,7 +1609,7 @@ class Disk(object):
             angCutArea = factor * (1 - cos(angCut)) # area in deg^2
             
         if (trials > self.pdftrials):
-            print 'Must have more PDF trials than disk trials'
+            print('Must have more PDF trials than disk trials')
         
         # Compute the PDF for the density at each pixel along
         # with the weighted average density at each pixel.
@@ -1644,7 +1644,7 @@ class Disk(object):
                 _out2 = open('%s/%s/disk_ap_results.txt' % \
                              (self.mcdir, self.outdir), 'w')
 
-        print 'Running MC to obtain density map.'
+        print('Running MC to obtain density map.')
 
         # temp
         import Numeric
@@ -1652,7 +1652,7 @@ class Disk(object):
         
         for ii in range(trials):
             if ((ii % 100) == 0):
-                print 'Trial %d' % ii, time.ctime(time.time())
+                print('Trial %d' % ii, time.ctime(time.time()))
             
             # Randomly select an (i,o) pair out of each star's
             # marginalized PDF.
@@ -1665,7 +1665,7 @@ class Disk(object):
             idx = (where((incl == float('nan')) |
                          (omeg == float('nan'))))[0]
             if (len(idx) > 0):
-                print ii, idx
+                print(ii, idx)
                     
             # Find densities
             #omegSq = Numeric.outerproduct(omeg, onesNpix)
@@ -1736,7 +1736,7 @@ class Disk(object):
             apertureMapStd = sqrt( (apertureMapStd / trials) - apertureMap**2 )
 
             # Save the i/o density maps
-            print 'Making density map'
+            print('Making density map')
             apertureMap.tofile('%s/%s/disk.aperture.dat' % \
                                (self.mcdir, self.outdir))
             apertureMapStd.tofile('%s/%s/disk.apertureStd.dat' % \
@@ -1787,7 +1787,7 @@ class Disk(object):
             angCutArea = factor * (1 - cos(angCut)) # area in deg^2
             
         if (trials > self.pdftrials):
-            print 'Must have more PDF trials than disk trials'
+            print('Must have more PDF trials than disk trials')
         
         # Compute the PDF for the density at each pixel along
         # with the weighted average density at each pixel.
@@ -1824,7 +1824,7 @@ class Disk(object):
         ipc.pushAll( apertureMap )
         ipc.pushAll( apertureMapStd )
 
-        rngTrials = range(trials)
+        rngTrials = list(range(trials))
 
         node_run = """
         trialCnt = len(rngTrials)
@@ -1920,7 +1920,7 @@ class Disk(object):
         ipc.pushAll('node_run')
         ipc.scatterAll('rngTrials', rngTrials)
 
-        print 'Running MC to obtain density map.'
+        print('Running MC to obtain density map.')
         ipc.executeAll('exec node_run')
 
         all_neighborMap = ipc.gatherAll('neighborMap')
@@ -1935,8 +1935,8 @@ class Disk(object):
         all_peakIncliAp = ipc.gatherAll('peakIncliAp')
         all_peakOmegaAp = ipc.gatherAll('peakOmegaAp')
 
-        print all_neighborMap.shape
-        print all_peakDensity.shape
+        print(all_neighborMap.shape)
+        print(all_peakDensity.shape)
 
         neighborMap = total(all_neighborMap, axis=0)
         neighborMapStd = total(all_neighborMapStd, axis=0)
@@ -1957,7 +1957,7 @@ class Disk(object):
         apertureMapStd = sqrt( (apertureMapStd / trials) - apertureMap**2 )
                      
         # Save the i/o density maps
-        print 'Making density map'
+        print('Making density map')
         apertureMap.tofile('%s/parallel/disk.aperture.dat' % (self.mcdir))
         apertureMapStd.tofile('%s/parallel/disk.apertureStd.dat' % (self.mcdir))
         peakDensityAp.tofile('%s/parallel/disk.peakDensityAp.dat' % (self.mcdir))
@@ -1994,7 +1994,7 @@ class DiskPlane(object):
             _f = open('%s%s.mc.dat' % (mcdir, name), 'r')
             mc = pickle.load(_f)
             _f.close()
-            print 'Adding %15s (%d) to disk' % (name, len(mc.i))
+            print('Adding %15s (%d) to disk' % (name, len(mc.i)))
 
             # Store the monte carlo results as (i, o) pairs.
             if (iAll == None):
@@ -2039,12 +2039,12 @@ class DiskPlane(object):
         factor = 2.0 * math.pi * (180.0 / math.pi)**2
 
         if (trials > pdftrials):
-            print 'Cannot run more trials than are available from the PDF.'
+            print('Cannot run more trials than are available from the PDF.')
         
-        print 'Running MC to obtain density map.'
+        print('Running MC to obtain density map.')
         for ii in range(trials):
             if ((ii % 100) == 0):
-                print 'Trial %d' % ii, time.ctime(time.time())
+                print('Trial %d' % ii, time.ctime(time.time()))
             
             # Randomly select an (i,o) pair out of each star's
             # marginalized PDF. Pairs need to match because we need
@@ -2057,7 +2057,7 @@ class DiskPlane(object):
             idx = (where((incl == float('nan')) |
                          (omeg == float('nan'))))[0]
             if (len(idx) > 0):
-                print ii, idx
+                print(ii, idx)
 
             # Find densities
             #omegSq = outerproduct(omeg, onesNpix)
@@ -2120,7 +2120,7 @@ class IsotropicMC(object):
 
     def runmc(self, savefile, verbose=False, zfrom='all'):
         if (verbose):
-            print 'runmc START: ', time.ctime(time.time())
+            print('runmc START: ', time.ctime(time.time()))
 
         cc = objects.Constants()
         
@@ -2136,7 +2136,7 @@ class IsotropicMC(object):
         alltrials = []
         
         for ii in range(self.ntrials):
-            print 'ISO Trial %d: ' % (ii), time.ctime(time.time())
+            print('ISO Trial %d: ' % (ii), time.ctime(time.time()))
 
             thistrial = []
             
@@ -2210,7 +2210,7 @@ class IsotropicMC(object):
         healmap.tofile(savefile + '_maps.dat')
 
         if (verbose):
-            print 'runmc FINISH: ', time.ctime(time.time())
+            print('runmc FINISH: ', time.ctime(time.time()))
 
 
 def diskWidth2d(mapfile, n, nside=64):
@@ -2230,10 +2230,10 @@ def diskWidth2d(mapfile, n, nside=64):
     o *= 180.0 / math.pi
 
     # Convert into regularly spaced grid
-    print 'Makeing mesh'
+    print('Makeing mesh')
     ii, oo = meshgrid(arange(0, 180, stride=2, dtype=float),
                       arange(0, 360, stride=2, dtype=float))
-    print 'Gridding data'
+    print('Gridding data')
     vals = griddata(i, o, planeMap, ii, oo)
 
 
@@ -2252,15 +2252,15 @@ def diskWidth2d(mapfile, n, nside=64):
         return [status, devs.flat]
 
     def printParams(p, msg):
-        print msg
-        print '  Inclination    = %6.2f +/- %6.2f' % (p[2], p[4])
-        print '  PA to Asc Node = %6.2f +/- %6.2f' % (p[3], p[5])
-        print '  Correlation    = %4.2f' % (p[6])
-        print '  Amplitude      = %f' % (p[1])
-        print '  Constant       = %f' % (p[0])
+        print(msg)
+        print('  Inclination    = %6.2f +/- %6.2f' % (p[2], p[4]))
+        print('  PA to Asc Node = %6.2f +/- %6.2f' % (p[3], p[5]))
+        print('  Correlation    = %4.2f' % (p[6]))
+        print('  Amplitude      = %f' % (p[1]))
+        print('  Constant       = %f' % (p[0]))
 
     # Fit hasa 7 free parameters.
-    print 'Fitting 2D gaussian'
+    print('Fitting 2D gaussian')
     
     # Initial guess for each:
     p0 = zeros(7, dtype=float)
@@ -2293,7 +2293,7 @@ def diskWidth2d(mapfile, n, nside=64):
     m = mpfit.mpfit(fitfunc, p0, functkw=functargs, parinfo=pinfo,
                     quiet=0)
     if (m.status <= 0): 
-	print 'error message = ', m.errmsg
+	print('error message = ', m.errmsg)
 
     p = m.params
     printParams(p, 'Final Solution')
@@ -2303,7 +2303,7 @@ def diskWidth2d(mapfile, n, nside=64):
     model = p[0] + (p[1] * gg)
     devs = (vals - model)
 
-    print 'Plotting'
+    print('Plotting')
     figure(2, figsize=(14,4))
     subplot(1, 3, 1)
     contourf(ii, oo, vals, 50, cmap=cm.jet)
@@ -2350,16 +2350,16 @@ def diskWidthCDF(mapfile, n, nside=64):
 
     # Determine the half-max level
     pixSort = planeMap[sid]
-    print 'Peak at i = %6.2f, o = %6.2f' % (i[sid[0]], o[sid[0]])
-    print 'Total Probability = ', pixSort.sum()
+    print('Peak at i = %6.2f, o = %6.2f' % (i[sid[0]], o[sid[0]]))
+    print('Total Probability = ', pixSort.sum())
 
     idHalf = (where(pixSort > pixSort[0] / 2.0))[0]
     iHalf = (i[sid])[idHalf]
     oHalf = (o[sid])[idHalf]
-    print 'Half-Max Level:  i = [%6.2f - %6.2f]  O = [%6.2f - %6.2f]' % \
-          (iHalf.min(), iHalf.max(), oHalf.min(), oHalf.max())
-    print 'Half-Max Solid Angle: %6.2f steradians' % \
-	(len(idHalf) * 4.0 * math.pi / npix)
+    print('Half-Max Level:  i = [%6.2f - %6.2f]  O = [%6.2f - %6.2f]' % \
+          (iHalf.min(), iHalf.max(), oHalf.min(), oHalf.max()))
+    print('Half-Max Solid Angle: %6.2f steradians' % \
+	(len(idHalf) * 4.0 * math.pi / npix))
 
     # Determine the 68% contours assuming a background of 0.00084
     # pixSort = planeMap[sid] - 0.00084
@@ -2374,8 +2374,8 @@ def diskWidthCDF(mapfile, n, nside=64):
     # Now fetch incl and omeg for all these pixels
     i68 = ((i[sid])[pos])[id68]
     o68 = ((o[sid])[pos])[id68]
-    print 'CDF 0.68 Level:  i = [%6.2f - %6.2f]  O = [%6.2f - %6.2f]' % \
-          (i68.min(), i68.max(), o68.min(), o68.max())
+    print('CDF 0.68 Level:  i = [%6.2f - %6.2f]  O = [%6.2f - %6.2f]' % \
+          (i68.min(), i68.max(), o68.min(), o68.max()))
     plot(cdf)
     show()
 

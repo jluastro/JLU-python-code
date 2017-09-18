@@ -31,11 +31,11 @@ def gcDAR():
     pos2._epoch = 2000
     pos2.compute()
 
-    print 'Date of Obs: ', keck.date
+    print('Date of Obs: ', keck.date)
     sgra.compute(keck)
     pos2.compute(keck)
 
-    print 'Azimuth of Objects:  %s  vs.  %s' % (sgra.az, pos2.az)
+    print('Azimuth of Objects:  %s  vs.  %s' % (sgra.az, pos2.az))
 
     for ii in range(15):
 	keck.lat = math.radians(obs.latitude - (ii*2))
@@ -49,5 +49,5 @@ def gcDAR():
 	angRel *= 206265.0
 	angDiff = angAbs - angRel
 
-	print 'Sgr A*:  %s   vs.  %s  deltaR = %5d (muas)' % \
-	    (sgra.alt, pos2.alt, angDiff*1e6)
+	print('Sgr A*:  %s   vs.  %s  deltaR = %5d (muas)' % \
+	    (sgra.alt, pos2.alt, angDiff*1e6))

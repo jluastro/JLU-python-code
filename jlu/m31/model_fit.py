@@ -6,7 +6,7 @@ import time
 import math, glob
 import scipy
 import pdb
-import pp
+# import pp
 import itertools
 import pandas
 import astropy
@@ -15,7 +15,7 @@ import os
 from gcwork import objects
 import warnings
 import matplotlib as mpl
-import colormaps as cmaps
+# import colormaps as cmaps
 import datetime
 from jlu.m31 import ppxf_m31,voronoi_m31
 
@@ -71,14 +71,14 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     model = pandas.read_csv(inputFile,delim_whitespace=True,header=None,names=['x','y','z','v_x','v_y','v_z'])
 
     if verbose:
-        print "Starting rotations"
+        print("Starting rotations")
     if testAngles:
         thetaL = np.radians(testAngles[0])
         thetaI = np.radians(testAngles[1])
         thetaA = np.radians(testAngles[2])
         thetaCPA = np.radians(testAngles[3])
         if verbose:
-            print "Rotation angles are theta_L = %.1f, theta_I =  %.1f, theta_A =  %.1f, theta_CPA =  %.1f" % (testAngles[0],testAngles[1],testAngles[2],testAngles[3])
+            print(("Rotation angles are theta_L = %.1f, theta_I =  %.1f, theta_A =  %.1f, theta_CPA =  %.1f" % (testAngles[0],testAngles[1],testAngles[2],testAngles[3])))
     else:
         # using the nonaligned angles from Peiris & Tremaine 2003
         thetaL = np.radians(-42.8)
@@ -171,7 +171,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
     #pdb.set_trace()
     
     if verbose:
-        print "Starting binning"
+        print("Starting binning")
 
     if tess:
         # performs the tessellated binning on the models *before* doing the LOSVD fits
@@ -179,7 +179,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         # transformed coordinates so it can grab those
         # writing out V_Z, *not* LOS V as the sign flip is taken care of in the tessellation routine
         if verbose:
-            print "Tessellating and binning models"
+            print("Tessellating and binning models")
         # use the smoothed version of X and Y as inputs to the binning
         posvel = np.column_stack((smX,smY,Z,V_X,V_Y,outV_Z))
         outFile = pathstem+'nonaligned_OSIRIScoords_fit_full_smooth_tess.dat'
@@ -232,7 +232,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         # new BH position: (0,0) + (xfrac,yfrac)
         modbhpos = [negxbin+xfrac,negybin+yfrac]
         if verbose:
-            print "Model BH is at ", modbhpos
+            print(("Model BH is at ", modbhpos))
         #pdb.set_trace()
 
         # trim to only cover the OSIRIS FOV
@@ -352,7 +352,7 @@ def modelConvertBin(testAngles=None,testSMBH=None,l98bin=False,verbose=True,tess
         output.close()
 
     if verbose:
-        print "Time elapsed: ", time.time() - t1, "s"
+        print(("Time elapsed: ", time.time() - t1, "s"))
 
 def velPrecess(xpos=None, ypos=None, invx=None, invy=None, precess=None):
     # takes an input precession speed (in km/s/pc), disk plane positions,
@@ -452,11 +452,11 @@ def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incub
     #Igrid = np.array([34.1,29.1])
     Igrid = np.array([29.1,34.1,39.1,44.1,49.1,54.1,59.1,64.1,69.1])
     #Agrid = np.arange(Aorg-(halfN*dAng),Aorg+(halfN*dAng)+1,dAng)
-    Agrid = np.array([-9.5])
-    #Agrid = np.array([-14.5,-19.5,-24.5,-29.5,-34.5,-39.5,-44.5,-49.5])
-    #Lgrid = np.array([-32.8])
-    #Igrid = np.array([44.1])
-    #Agrid = np.array([-14.5])
+    # Agrid = np.array([-9.5])
+    Agrid = np.array([1.5, -4.5, -9.5, -14.5,-19.5,-24.5,-29.5,-34.5,-39.5,-44.5,-49.5])
+    # Lgrid = np.array([-32.8])
+    # Igrid = np.array([44.1])
+    # Agrid = np.array([-14.5])
 
     # precession grid
     #Pgrid = np.array([-100.,-30.,0.,30.,100.])
@@ -464,13 +464,31 @@ def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incub
     #Pgrid = np.array([-20.,-10.,10.,20.])
     #Pgrid = np.array([-5.,5.])
     #Pgrid = np.array([0.])
-    Pgrid = np.array([30.,10.,5.,0.,-5.,-10.,-15.,-20.,-30.])
+    # Pgrid = np.array([30.,10.,5.,0.,-5.,-10.,-15.,-20.,-30.])
     #Pgrid = np.array([30.,10.])
     #Pgrid = np.array([-5.,-10.,-20.,-30.])
-    #Pgrid = np.array([-15.])
+    # Pgrid = np.array([-15.])
     #Pgrid = np.array([5.])
-    #Pgrid = np.array([62.2])
-        
+    # Pgrid = np.array([62.2])
+    # Pgrid = np.array([20])
+    Pgrid = np.array([15, -25])
+
+    # Lgrid = np.array([-32.8, -27.8])
+    # Igrid = np.array([44.1])
+    # Agrid = np.array([-14.5])
+    # Pgrid = np.array([15, 20])
+
+    Lgrid = np.array([-35,-34,-33,-32,-31, -30])
+    Igrid = np.array([43, 44, 45])
+    Agrid = np.arange(-24, -9, 1)
+    Pgrid = np.array([-2,-1,0, 1,2])
+
+    # "Best-fit" (sort of)
+    Lgrid = np.array([-33])
+    Igrid = np.array([44])
+    Agrid = np.arange(-15)
+    Pgrid = np.array([0.0])
+    
     if not plotOnly:
         # create the new folder
         FORMAT = '%Y%m%d_%H-%M-%S'
@@ -483,6 +501,7 @@ def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incub
             for II in Igrid:
                 for AA in Agrid:
                     for PP in Pgrid:
+                        print( LL, II, AA, PP, time.ctime())
                         testAng = [LL,II,AA,CPA]
                         modelConvertBin(testAngles=testAng,l98bin=False,verbose=False,tess=True,pathstem=newfolder,inVorTxt=inVorTxt,precess=PP)
                         modelCompRes(inModel=newfolder+'nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f.dat' % (testAng[0],testAng[1],testAng[2],testAng[3],PP),toPlot=False,inData=inDataFile,incubeimg=incubeimg)
@@ -575,6 +594,66 @@ def modelMorphFitGrid(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incub
                     figname=newfolder + 'residuals_sigma_thetaA_%.1f_%.1f.png' %(AA,PP)
                 py.savefig(figname)
 
+def modelMorphFitGridMC(incube=None,inVorTxt=None,inDataFile=None,inErr=None,incubeimg=None,norm=False,inFolder=None,plotOnly=False,toPlot=False):
+    # routine to conduct a grid search over the coordinate transformation angles
+    # (angles in Peiris & Tremaine 2003 eq 4)
+
+    # inFolder: input folder if models have already been run (e.g. for plotOnly)
+    # plotOnly: doesn't rerun models, just does plots
+    # incube: full data cube, generally tessellated, with flux errors
+    # inVorTxt: tessellates models using the same scheme as the data
+    # inDataFile: ppxf fits that go with incube
+    # inErr: kinematic MC errors that go with inDataFile
+    # incubeimg: collapsed data cube from incube, for calculating chi2 for flux map
+    # norm: set to return reduced chi2 instead of standard
+
+    # to do a fresh run, modelMorphFitGrid(incube=,inVorTxt=,inDataFile=,inErr=,incubeimg=,norm=)
+
+    if incube is None:
+        cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
+    else:
+        cube = pyfits.getdata(incube)
+        cubeimg = cube.mean(axis=2)
+
+    # original angles
+    Lorg = -42.8
+    Iorg = 54.1
+    Aorg = -34.5
+    # not changing CPA
+    CPA = -56.
+
+    # "Best-fit" (sort of)
+    Lgrid = np.array([-33])
+    Igrid = np.array([44])
+    Agrid = np.array([-15])
+    Pgrid = np.array([0.0])
+    
+    # create the new top-level folder
+    FORMAT = '%Y%m%d_%H-%M-%S'
+    now = datetime.datetime.now().strftime(FORMAT)
+    top_folder = modeldir+'nonaligned_grid_rotate_'+now+'/'
+    os.mkdir(top_folder)
+
+    for LL in Lgrid:
+        for II in Igrid:
+            for AA in Agrid:
+                for PP in Pgrid:
+                    # Do a Monte Carlo on the model itself. 
+                    for mm in range(100):
+                        newfolder = top_folder + 'sim_{0:03d}/'.format(mm)
+                        os.mkdir(newfolder)
+
+                        testAng = [LL,II,AA,CPA]
+                        inModel = '%s/nonaligned_OSIRIScoords_fit_full_smooth_%.1f_%.1f_%.1f_%.1f_%.1f.dat' % \
+                          (newfolder, testAng[0],testAng[1],testAng[2],testAng[3],PP)
+
+                        print( LL, II, AA, PP, mm, time.ctime())
+                        modelConvertBin(testAngles=testAng, l98bin=False, verbose=False, tess=True, pathstem=newfolder, inVorTxt=inVorTxt, precess=PP)
+                        modelCompRes(inModel=inModel, toPlot=False, inData=inDataFile, incubeimg=incubeimg)
+                        modelChiSq(inCube=incube, inData=inDataFile, inErr=inErr, inModel=inModel, mask=True, norm=norm)
+
+    return
+                
 def gridChiSqMap(inFolder=None):
     # reads in chi sq txts from inFolder, assembles data into a map,
     # saves the output to a fits file (one per moment)
@@ -725,7 +804,7 @@ def plotChiSqMap(inMap=None,sum=False,save=False):
             tmpminidx = np.argmin(chiSq[:,:])
             tmpminarr = np.unravel_index(tmpminidx,chiSq[:,:].shape)
             tmpang = angleMap[tmpminarr[0],tmpminarr[1],:]
-            print 'Chi-sq min for the weighted sum at theta_l = %.1f, theta_i = %.1f, theta_a = %.1f, precess = %.1f' % (tmpang[0],tmpang[1],tmpang[2],tmpang[3])
+            print(('Chi-sq min for the weighted sum at theta_l = %.1f, theta_i = %.1f, theta_a = %.1f, precess = %.1f' % (tmpang[0],tmpang[1],tmpang[2],tmpang[3])))
             if save:
                 outfile = inMap.replace('.fits','_angles.txt')
                 _out = open(outfile,'w')
@@ -735,7 +814,7 @@ def plotChiSqMap(inMap=None,sum=False,save=False):
             tmpminidx = np.argmin(chiSq[:,:,m])
             tmpminarr = np.unravel_index(tmpminidx,chiSq[:,:,m].shape)
             tmpang = angleMap[tmpminarr[0],tmpminarr[1],:]
-            print 'Chi-sq min for moment %.0f at theta_l = %.1f, theta_i = %.1f, theta_a = %.1f, precess = %.1f' % (m,tmpang[0],tmpang[1],tmpang[2],tmpang[3])
+            print(('Chi-sq min for moment %.0f at theta_l = %.1f, theta_i = %.1f, theta_a = %.1f, precess = %.1f' % (m,tmpang[0],tmpang[1],tmpang[2],tmpang[3])))
             if save:
                 outfile = inMap.replace('.fits','_mom%d_angles.txt' % (m))
                 _out = open(outfile,'w')
@@ -1004,7 +1083,7 @@ def calcModChiSq(inCube=None,inData=None,inErr=None,inModelFolder=None,verbose=F
     files = glob.glob(inModelFolder + '*.0.dat')
     for ff in files:
         if verbose:
-            print os.path.basename(ff)
+            print((os.path.basename(ff)))
         modelChiSq(inCube=inCube,inData=inData,inModel=ff,inErr=inErr,verbose=verbose,mask=mask,norm=norm,scaled=scaled)
         
 def modelChiSq(inCube=None,inData=None,inModel=None,inErr=None,verbose=False,mask=False,norm=False,scaled=False,outFolder=None):
@@ -1098,7 +1177,7 @@ def modelChiSq(inCube=None,inData=None,inModel=None,inErr=None,verbose=False,mas
         h4CS /= (numgood - degfree)
 
     if verbose:
-        print 'Chi-squared: flux: %.5f, velocity: %.5f, sigma: %.5f, h3: %.5f, h4: %.5f' % (fluxCS,velCS,sigCS,h3CS,h4CS)
+        print(('Chi-squared: flux: %.5f, velocity: %.5f, sigma: %.5f, h3: %.5f, h4: %.5f' % (fluxCS,velCS,sigCS,h3CS,h4CS)))
 
     #pdb.set_trace()
     if outFolder:
@@ -1161,7 +1240,7 @@ def chi2Errors(inCube=None,inData=None,inErr=None,inModelFolder=None,mask=True,n
     for i in numiter:
         plotChiSqMap(inMap=inModelFolder + '/chi2_MCerr/iter_' + str(i) +'/chisq_map_weightsum.fits',sum=True,save=True)
         
-    print "Time elapsed: ", time.time() - t1, "s"
+    print(("Time elapsed: ", time.time() - t1, "s"))
     
 def run_once_chi_mc(img,data,ferr,err,numgood,inModelFolder,numiter):
 
@@ -1235,8 +1314,8 @@ def chi2MCerr(inFolder=None):
     chi2err = np.std(minchi2,axis=0)
     wchi2err = np.std(wminchi2)
 
-    print 'St. dev. of min. chi2 for each moment is: flux: %.2f, velocity: %.2f, dispersion: %.2f, h3: %.2f, h4: %.2f' %(chi2err[0],chi2err[1],chi2err[2],chi2err[3],chi2err[4])
-    print 'St. dev. of weighted min. chi2 is: %.2f' % (wchi2err)
+    print(('St. dev. of min. chi2 for each moment is: flux: %.2f, velocity: %.2f, dispersion: %.2f, h3: %.2f, h4: %.2f' %(chi2err[0],chi2err[1],chi2err[2],chi2err[3],chi2err[4])))
+    print(('St. dev. of weighted min. chi2 is: %.2f' % (wchi2err)))
 
     pdb.set_trace()
 
@@ -1288,12 +1367,12 @@ def plotTWcal():
     dataPrec = xall[idx]
     ePrec = np.abs(xall[idx]-xall[idxlo])
 
-    print 'TW data precession from best-fit orietnation = %6.2f +/- %6.2f' % (dataPrec, ePrec)
+    print(('TW data precession from best-fit orietnation = %6.2f +/- %6.2f' % (dataPrec, ePrec)))
 
     dataPrecn = xall[idxn]
     ePrecn = np.abs(xall[idxn]-xall[idxlon])
 
-    print 'TW data precession from nonaligned orietnation = %6.2f +/- %6.2f' % (dataPrecn, ePrecn)
+    print(('TW data precession from nonaligned orietnation = %6.2f +/- %6.2f' % (dataPrecn, ePrecn)))
 
     py.plot(xs,ysi,'ko',label='Model')
     py.plot(xall,line,'r-',label='Linear fit to models')

@@ -2,9 +2,9 @@ import os, sys
 from astropy.table import Table # in place of asciidata
 import math
 import numpy as np
-import objects
-import util
-import starTables
+from . import objects
+from . import util
+from . import starTables
 import time
 import pdb
 
@@ -214,7 +214,7 @@ class StarSet(object):
             parts = line.split()
 
             if len(parts) != len(self.years):
-                print 'Error reading starsUsed file.'
+                print('Error reading starsUsed file.')
                 return
 
             # This is a loop through the epochs.
@@ -375,7 +375,7 @@ class StarSet(object):
             # order as the polyfit output.
             if names[alignIdx] != _fit[0]:
                 if silent == False:
-                    print '%-13s: Mis-match in align and polyfit...' % _fit[0]
+                    print(('%-13s: Mis-match in align and polyfit...' % _fit[0]))
 
                 while names[alignIdx] != _fit[0]:
                     if trimUnfound:
@@ -385,7 +385,7 @@ class StarSet(object):
                         msg = '\t skipping '
 
                     if silent == False:
-                        print '%s %s' % (msg, names[alignIdx])
+                        print(('%s %s' % (msg, names[alignIdx])))
                     alignIdx += 1
 
 
@@ -510,9 +510,9 @@ class StarSet(object):
             try:
                 idx = names.index(efit.name)
                 star = self.stars[idx]
-            except ValueError, e:
+            except ValueError as e:
 
-                print 'Failed to find efit data for %s' % efit.name
+                print(('Failed to find efit data for %s' % efit.name))
                 continue
 
             # Select for the first one.
@@ -550,7 +550,7 @@ class StarSet(object):
                     star.efit.phase_lo = efit.phase_lo
                 if (efit.phase_hi > star.efit.phase_hi):
                     star.efit.phase_hi = efit.phase_hi
-            except AttributeError, e:
+            except AttributeError as e:
                 star.efit = efit
 
             if (trimStars == 1):
@@ -585,14 +585,14 @@ class StarSet(object):
 
                     # Make sure this star is in the Paumard star list
                     idx = paum.ourName.index(name)
-            except ValueError, e:
+            except ValueError as e:
                 # Couldn't find the star in our lists
                 continue
 
         # Set the starset's star list
         self.stars = stars
 
-        print 'Found %d young stars.' % len(stars)
+        print(('Found %d young stars.' % len(stars)))
 
 
     def getArray(self, varName):

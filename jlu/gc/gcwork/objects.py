@@ -26,116 +26,117 @@ class Star(object):
     """
     years = []
     def __init__(self, name):
-	self.name = name
-	self.e = [Epoch(year) for year in Star.years]
-	
+        self.name = name
+        self.e = [Epoch(year) for year in Star.years]
+        
     def getr2d(self):
-	return math.hypot(self.x, self.y)
+        return math.hypot(self.x, self.y)
     r2d = property(fget=getr2d, doc="2D projected distance from Sgr A*") 
 
     def getr2dErr(self):
-	tmp = np.sqrt((self.x * self.xerr)**2 + (self.y * self.yerr)**2)
+        tmp = np.sqrt((self.x * self.xerr)**2 + (self.y * self.yerr)**2)
         tmp /= self.getr2d()
+        return tmp
     r2dErr = property(fget=getr2dErr, doc="Error in 2D distance from Sgr A*") 
 
     def getDates(self):
-	return [str(math.floor(year)) for year in self.years]
+        return [str(math.floor(year)) for year in self.years]
     dates = property(fget=getDates, doc="String representation of years")
 
     # Linear Fit Properties from align
     def setFitXalign(self, t0, x0, x0err, vx, vxerr):
-	self.__fitXalign = Fit(t0, x0, x0err, vx, vxerr)
+        self.__fitXalign = Fit(t0, x0, x0err, vx, vxerr)
     def getFitXalign(self):
-	return self.__fitXalign
+        return self.__fitXalign
     fitXalign = property(fget=getFitXalign, fset=setFitXalign,
                          doc="X Fit from align")
 
     def setFitYalign(self, t0, y0, y0err, vy, vyerr):
-	self.__fitYalign = Fit(t0, y0, y0err, vy, vyerr)
+        self.__fitYalign = Fit(t0, y0, y0err, vy, vyerr)
     def getFitYalign(self):
-	return self.__fitYalign
+        return self.__fitYalign
     fitYalign = property(fget=getFitYalign, fset=setFitYalign,
                          doc="Y Fit from align")
 
     # Linear Fit Properties from align in pixels
     def setFitpXalign(self, t0, x0, x0err, vx, vxerr):
-	self.__fitpXalign = Fit(t0, x0, x0err, vx, vxerr)
+        self.__fitpXalign = Fit(t0, x0, x0err, vx, vxerr)
     def getFitpXalign(self):
-	return self.__fitpXalign
+        return self.__fitpXalign
     fitpXalign = property(fget=getFitpXalign, fset=setFitpXalign,
                          doc="X Fit from align in pixels")
 
     def setFitpYalign(self, t0, y0, y0err, vy, vyerr):
-	self.__fitpYalign = Fit(t0, y0, y0err, vy, vyerr)
+        self.__fitpYalign = Fit(t0, y0, y0err, vy, vyerr)
     def getFitpYalign(self):
-	return self.__fitpYalign
+        return self.__fitpYalign
     fitpYalign = property(fget=getFitpYalign, fset=setFitpYalign,
                          doc="Y Fit from align in pixels")
 
     # Linear Fit Properties from polyfit
     def setFitXv(self, t0, x0, x0err, vx, vxerr):
-	self.__fitXv = Fit(t0, x0, x0err, vx, vxerr)
+        self.__fitXv = Fit(t0, x0, x0err, vx, vxerr)
     def getFitXv(self):
-	return self.__fitXv
+        return self.__fitXv
     fitXv = property(fget=getFitXv, fset=setFitXv,
                      doc="X linear Fit from polyfit")
 
     def setFitYv(self, t0, y0, y0err, vy, vyerr):
-	self.__fitYv = Fit(t0, y0, y0err, vy, vyerr)
+        self.__fitYv = Fit(t0, y0, y0err, vy, vyerr)
     def getFitYv(self):
-	return self.__fitYv
+        return self.__fitYv
     fitYv = property(fget=getFitYv, fset=setFitYv,
                      doc="Y linear fit from polyfit")
 
     # Linear Fit Properties from polyfit in pixels
     def setFitpXv(self, t0, x0, x0err, vx, vxerr):
-	self.__fitpXv = Fit(t0, x0, x0err, vx, vxerr)
+        self.__fitpXv = Fit(t0, x0, x0err, vx, vxerr)
     def getFitpXv(self):
-	return self.__fitpXv
+        return self.__fitpXv
     fitpXv = property(fget=getFitpXv, fset=setFitpXv,
                      doc="X linear Fit from polyfit in pixels")
 
     def setFitpYv(self, t0, y0, y0err, vy, vyerr):
-	self.__fitpYv = Fit(t0, y0, y0err, vy, vyerr)
+        self.__fitpYv = Fit(t0, y0, y0err, vy, vyerr)
     def getFitpYv(self):
-	return self.__fitpYv
+        return self.__fitpYv
     fitpYv = property(fget=getFitpYv, fset=setFitpYv,
                      doc="Y linear fit from polyfit in pixels")
 
     # Acceleration Fit Properties from polyfit
     def setFitXa(self, t0, x0, x0err, vx, vxerr, ax, axerr):
-	self.__fitXa = AccelFit(t0, x0, x0err, vx, vxerr, ax, axerr)
+        self.__fitXa = AccelFit(t0, x0, x0err, vx, vxerr, ax, axerr)
     def getFitXa(self):
-	return self.__fitXa
+        return self.__fitXa
     fitXa = property(fget=getFitXa, fset=setFitXa,
                      doc="X accel fit from polyfit")
 
     def setFitYa(self, t0, y0, y0err, vy, vyerr, ay, ayerr):
-	self.__fitYa = AccelFit(t0, y0, y0err, vy, vyerr, ay, ayerr)
+        self.__fitYa = AccelFit(t0, y0, y0err, vy, vyerr, ay, ayerr)
     def getFitYa(self):
-	return self.__fitYa
+        return self.__fitYa
     fitYa = property(fget=getFitYa, fset=setFitYa,
                      doc="Y accel fit from polyfit")
 
     # Acceleration Fit Properties from polyfit in pixels
     def setFitpXa(self, t0, x0, x0err, vx, vxerr, ax, axerr):
-	self.__fitpXa = AccelFit(t0, x0, x0err, vx, vxerr, ax, axerr)
+        self.__fitpXa = AccelFit(t0, x0, x0err, vx, vxerr, ax, axerr)
     def getFitpXa(self):
-	return self.__fitpXa
+        return self.__fitpXa
     fitpXa = property(fget=getFitpXa, fset=setFitpXa,
                      doc="X accel fit from polyfit in pixels")
 
     def setFitpYa(self, t0, y0, y0err, vy, vyerr, ay, ayerr):
-	self.__fitpYa = AccelFit(t0, y0, y0err, vy, vyerr, ay, ayerr)
+        self.__fitpYa = AccelFit(t0, y0, y0err, vy, vyerr, ay, ayerr)
     def getFitpYa(self):
-	return self.__fitpYa
+        return self.__fitpYa
     fitpYa = property(fget=getFitpYa, fset=setFitpYa,
                      doc="Y accel fit from polyfit in pixels")
 
     def setR(self, r):
-	self.x = r[0]
-	self.y = r[1]
-	self.z = r[2]
+        self.x = r[0]
+        self.y = r[1]
+        self.z = r[2]
     def getR(self):
         return np.array([self.x, self.y, self.z])
     r = property(fget=getR, fset=setR, doc="3D positional vector")
@@ -165,66 +166,66 @@ class Star(object):
     verr = property(fget=getVerr, fset=setVerr, doc="3D vel. error vector")
 
     def getArrayAllEpochs(self, varName):
-	"""Turn an attribute hanging off the list of star's epochs
-	into an array. Collect the same variable from all epochs.
-	
-	@type varName String
-	@param varName A string of the requested variable name (e.g. 'x')
+        """Turn an attribute hanging off the list of star's epochs
+        into an array. Collect the same variable from all epochs.
+        
+        @type varName String
+        @param varName A string of the requested variable name (e.g. 'x')
 
-	@return objArray
-	@rtype Either list or Numarray array
-	"""
-	objNames = varName.split('.')
+        @return objArray
+        @rtype Either list or Numarray array
+        """
+        objNames = varName.split('.')
 
         epochCnt = len(self.years)
-	objList = [self.e[ee] for ee in range(epochCnt)]
-	for name in objNames:
-	    objList = [obj.__getattribute__(name) for obj in objList]
+        objList = [self.e[ee] for ee in range(epochCnt)]
+        for name in objNames:
+            objList = [obj.__getattribute__(name) for obj in objList]
 
-	try:
-	    objArray = np.array(objList)
-	except TypeError, e:
-	    objArray = objList
+        try:
+            objArray = np.array(objList)
+        except TypeError as e:
+            objArray = objList
 
-	return objArray
+        return objArray
 
 class Fit(object):
     "Linear fit."
     def __init__(self, t0, p, perr, v, verr):
-	self.t0 = t0
-	self.p = p
-	self.v = v
-	self.perr = perr
-	self.verr = verr
+        self.t0 = t0
+        self.p = p
+        self.v = v
+        self.perr = perr
+        self.verr = verr
 
     def getPosition(self, t):
-	return self.p + (self.v * (t - self.t0))
+        return self.p + (self.v * (t - self.t0))
 
     def getPositionError(self, t):
-	dt = t - self.t0
-	pos = self.p + (self.v * dt)
-	err = self.perr**2 + (dt**2 * self.verr**2)
-	return (pos, math.sqrt(err))
+        dt = t - self.t0
+        pos = self.p + (self.v * dt)
+        err = self.perr**2 + (dt**2 * self.verr**2)
+        return (pos, math.sqrt(err))
 
 class AccelFit(Fit):
     "Acceleration fit."
     def __init__(self, t0, p, perr, v, verr, a, aerr):
-	Fit.__init__(self, t0, p, perr, v, verr)
-	self.a = a
-	self.aerr = aerr
+        Fit.__init__(self, t0, p, perr, v, verr)
+        self.a = a
+        self.aerr = aerr
 
     def getPosition(self, t):
-	dt = (t - self.t0)
-	pos = self.p + (self.v * dt) + (0.5 * self.a * dt**2)
-	return pos
+        dt = (t - self.t0)
+        pos = self.p + (self.v * dt) + (0.5 * self.a * dt**2)
+        return pos
 
     def getPositionError(self, t):
-	dt = t - self.t0
-	pos = self.p + (self.v * dt) + (0.5 * self.a * dt**2)
-	err = self.perr**2 
-	err += (self.verr * dt)**2
-	err += (self.aerr * dt**2 * 0.5)**2
-	return (pos, math.sqrt(err))
+        dt = t - self.t0
+        pos = self.p + (self.v * dt) + (0.5 * self.a * dt**2)
+        err = self.perr**2 
+        err += (self.verr * dt)**2
+        err += (self.aerr * dt**2 * 0.5)**2
+        return (pos, math.sqrt(err))
 
 
 class Epoch(object):
@@ -233,7 +234,7 @@ class Epoch(object):
     r = [x, y, z]: the position in arcsec
     rpix = [xpix, ypix, zpix]" the position in pixels
     rorig = [xorig, yorig, zorig]" the position in pixels in the 
-	    original map.
+            original map.
     rerr_p = [xerr_p, yerr_p, zerr_p]: the positional error (arcsec)
     rerr_a = [xerr_a, yerr_a, zerr_a]: the alignment error (arcsec)
     mag = magnitude of star at this epoch
@@ -244,49 +245,49 @@ class Epoch(object):
     name = original name for this stars
     """
     def __init__(self, t):
-	self.t = t
+        self.t = t
 
     def setR(self, r):
-	self.x = r[0]
-	self.y = r[1]
-	self.z = r[2]
+        self.x = r[0]
+        self.y = r[1]
+        self.z = r[2]
     def getR(self):
-	return [self.x, self.y, self.z]
+        return [self.x, self.y, self.z]
     r = property(fget=getR, fset=setR, doc="3D position (arcsec)")
 
     def setRpix(self, r):
-	self.xpix = r[0]
-	self.ypix = r[1]
-	self.zpix = r[2]
+        self.xpix = r[0]
+        self.ypix = r[1]
+        self.zpix = r[2]
     def getRpix(self):
-	return [self.xpix, self.ypix, self.zpix]
+        return [self.xpix, self.ypix, self.zpix]
     rpix = property(fget=getRpix, fset=setRpix, doc="3D position (pixels)")
 
     def setRorig(self, r):
-	self.xorig = r[0]
-	self.yorig = r[1]
-	self.zorig = r[2]
+        self.xorig = r[0]
+        self.yorig = r[1]
+        self.zorig = r[2]
     def getRorig(self):
-	return [self.xorig, self.yorig, self.zorig]
+        return [self.xorig, self.yorig, self.zorig]
     rorig = property(fget=getRorig, fset=setRorig, doc="3D position (orig)")
 
     def setRerrPos(self, r):
-	self.xerr_p = r[0]
-	self.yerr_p = r[1]
-	self.zerr_p = r[2]
+        self.xerr_p = r[0]
+        self.yerr_p = r[1]
+        self.zerr_p = r[2]
     def getRerrPos(self):
-	return [self.xerr_p, self.yerr_p, self.zerr_p]
+        return [self.xerr_p, self.yerr_p, self.zerr_p]
     rerr_p = property(fget=getRerrPos, fset=setRerrPos, 
-		      doc="3D positional error")
+                      doc="3D positional error")
 
     def setRerrAlign(self, r):
-	self.xerr_a = r[0]
-	self.yerr_a = r[1]
-	self.zerr_a = r[2]
+        self.xerr_a = r[0]
+        self.yerr_a = r[1]
+        self.zerr_a = r[2]
     def getRerrAlign(self):
-	return [self.xerr_a, self.yerr_a, self.zerr_a]
+        return [self.xerr_a, self.yerr_a, self.zerr_a]
     rerr_a = property(fget=getRerrAlign, fset=setRerrAlign, 
-		      doc="3D alignment error")
+                      doc="3D alignment error")
 
 
 class Transform(object):
@@ -337,7 +338,7 @@ class Transform(object):
             self.sgraErr = [0.0, 0.0]
             self.angle = 0.0
             self.angleErr = 0.0
-	
+        
         scaleTab = open(root + '.scale', 'r')
         line = scaleTab.readline()
         self.scale = float(line)
@@ -400,75 +401,75 @@ class Transform(object):
             scale = 0.00995025
             #angle = 0.0
 
-	if (silent == 0):
-	    print 'Absolute astrometry:'
-	    print '\tScale: %8.5f +/- %7.5f (mas/pixel)' % \
-		(scale * 1000.0, scaleErr * 1000.0)
-	    print '\tAngle: %8.2f +/- %5.2f (degrees)' % \
-		(angle * 180.0 / math.pi, angleErr * 180.0 / math.pi)
-	    print '\tSgr A*: (%9.3f +/- %6.3f, %9.3f +/- %6.3f)' % \
-		(sgra[0], sgraErr[0], sgra[1], sgraErr[1])
-	    
-	self.sgra = sgra
-	self.sgraErr = sgraErr
-	self.angle = angle
-	self.angleErr = angleErr
-	self.scale = scale
-	self.scaleErr = scaleErr
+        if (silent == 0):
+            print('Absolute astrometry:')
+            print('\tScale: %8.5f +/- %7.5f (mas/pixel)' % \
+                (scale * 1000.0, scaleErr * 1000.0))
+            print('\tAngle: %8.2f +/- %5.2f (degrees)' % \
+                (angle * 180.0 / math.pi, angleErr * 180.0 / math.pi))
+            print('\tSgr A*: (%9.3f +/- %6.3f, %9.3f +/- %6.3f)' % \
+                (sgra[0], sgraErr[0], sgra[1], sgraErr[1]))
+            
+        self.sgra = sgra
+        self.sgraErr = sgraErr
+        self.angle = angle
+        self.angleErr = angleErr
+        self.scale = scale
+        self.scaleErr = scaleErr
 
     def linearToSphericalNew(self, silent=0):
-	sgra = [0.0, 0.0]
-	sgraErr = [0.0, 0.0]
+        sgra = [0.0, 0.0]
+        sgraErr = [0.0, 0.0]
 
-	scale = np.sqrt(self.a[1]**2 + self.a[2]**2)
-	scaleErr = (self.a[1] * self.aerr[1])**2 
-	scaleErr += (self.a[2] * self.aerr[2])**2
-	scaleErr = np.sqrt(scaleErr) / scale
+        scale = np.sqrt(self.a[1]**2 + self.a[2]**2)
+        scaleErr = (self.a[1] * self.aerr[1])**2 
+        scaleErr += (self.a[2] * self.aerr[2])**2
+        scaleErr = np.sqrt(scaleErr) / scale
 
         angle = math.atan2(self.a[2], self.a[1])
-	angleErr = (self.a[1] * self.aerr[2])**2 
-	angleErr += (self.a[2] * self.aerr[1])**2
-	angleErr = np.sqrt(angleErr) / scale**2
+        angleErr = (self.a[1] * self.aerr[2])**2 
+        angleErr += (self.a[2] * self.aerr[1])**2
+        angleErr = np.sqrt(angleErr) / scale**2
 
-	sgra[0] = -1 * (self.a[0] * self.a[1] - self.b[0] * self.a[2]) 
-	sgra[0] /= scale**2
-	sgra[1] = -1 * (self.a[0] * self.a[2] + self.b[0] * self.a[1]) 
-	sgra[1] /= scale**2
+        sgra[0] = -1 * (self.a[0] * self.a[1] - self.b[0] * self.a[2]) 
+        sgra[0] /= scale**2
+        sgra[1] = -1 * (self.a[0] * self.a[2] + self.b[0] * self.a[1]) 
+        sgra[1] /= scale**2
 
-	sgraErr[0] = (self.a[1] * self.aerr[0])**2 
-	sgraErr[0] += (self.a[2] * self.berr[0])**2
-	sgraErr[0] = np.sqrt(sgraErr[0]) / scale**2
+        sgraErr[0] = (self.a[1] * self.aerr[0])**2 
+        sgraErr[0] += (self.a[2] * self.berr[0])**2
+        sgraErr[0] = np.sqrt(sgraErr[0]) / scale**2
 
-	sgraErr[1] = (self.a[1]*self.berr[0])**2
- 	sgraErr[1] += (self.a[2]*self.aerr[0])**2
-	sgraErr[1] = np.sqrt(sgraErr[1]) / scale**2
+        sgraErr[1] = (self.a[1]*self.berr[0])**2
+        sgraErr[1] += (self.a[2]*self.aerr[0])**2
+        sgraErr[1] = np.sqrt(sgraErr[1]) / scale**2
 
-	if (silent == 0):
-	    print 'Absolute astrometry:'
-	    print '\tScale: %8.5f +/- %7.5f (mas/pixel)' % \
-		(scale * 1000.0, scaleErr * 1000.0)
-	    print '\tAngle: %8.2f +/- %5.2f (degrees)' % \
-		(angle * 180.0 / math.pi, angleErr * 180.0 / math.pi)
-	    print '\tSgr A*: (%9.3f +/- %6.3f, %9.3f +/- %6.3f)' % \
-		(sgra[0], sgraErr[0], sgra[1], sgraErr[1])
-	    
-	self.sgra = sgra
-	self.sgraErr = sgraErr
-	self.angle = angle
-	self.angleErr = angleErr
-	self.scale = scale
-	self.scaleErr = scaleErr
+        if (silent == 0):
+            print('Absolute astrometry:')
+            print('\tScale: %8.5f +/- %7.5f (mas/pixel)' % \
+                (scale * 1000.0, scaleErr * 1000.0))
+            print('\tAngle: %8.2f +/- %5.2f (degrees)' % \
+                (angle * 180.0 / math.pi, angleErr * 180.0 / math.pi))
+            print('\tSgr A*: (%9.3f +/- %6.3f, %9.3f +/- %6.3f)' % \
+                (sgra[0], sgraErr[0], sgra[1], sgraErr[1]))
+            
+        self.sgra = sgra
+        self.sgraErr = sgraErr
+        self.angle = angle
+        self.angleErr = angleErr
+        self.scale = scale
+        self.scaleErr = scaleErr
 
 class Efit(object):
     def __init__(self, name):
-	self.name = name
+        self.name = name
     
     def loadAcclim(cls, file):
         f_alim = open(file, 'r')
 
         set = []
-	for line in f_alim:
-	    _alim = line.split()
+        for line in f_alim:
+            _alim = line.split()
 
             efit = Efit(_alim[0])
             set.append(efit)
@@ -503,31 +504,31 @@ class Efit(object):
 
 
     def loadOrbits(cls, file, efitSet=None):
-	"""Load the .orbits file which contains orbital elements and
-	limits on those elements."""
+        """Load the .orbits file which contains orbital elements and
+        limits on those elements."""
         f_alim = open(file, 'r')
-	print file
+        print(file)
 
-	if (efitSet == None):
-	    set = []
-	else:
-	    set = efitSet
+        if (efitSet == None):
+            set = []
+        else:
+            set = efitSet
 
-	cnt = 0
-	for line in f_alim:
-	    _alim = line.split()
+        cnt = 0
+        for line in f_alim:
+            _alim = line.split()
 
-	    if (efitSet == None):
-		efit = Efit(_alim[0])
-		set.append(efit)
-	    else:
-		efit = set[cnt]
+            if (efitSet == None):
+                efit = Efit(_alim[0])
+                set.append(efit)
+            else:
+                efit = set[cnt]
 
-		# Double check that names agree
-		if (efit.name != _alim[0]):
-		    print 'Efit.loadOrbits: Name mismatch'
+                # Double check that names agree
+                if (efit.name != _alim[0]):
+                    print('Efit.loadOrbits: Name mismatch')
     
-	    cnt += 1
+            cnt += 1
             efit.sigma = float(_alim[1])
             efit.bigOmHi = float(_alim[2])
             efit.omega    = float(_alim[3])

@@ -59,8 +59,8 @@ def astroIsokin(root, outsuffix):
               (s0.ypix - 512.0) * s.t.scale]
     # Coords of field center relative to Sgr A*
     cenCoo = [s.stars[0].x - s0Coo[0], s.stars[0].y - s0Coo[1]]
-    print 'Coordinates of field center are (%6.2f, %6.2f)' % \
-          (cenCoo[0], cenCoo[1])
+    print('Coordinates of field center are (%6.2f, %6.2f)' % \
+          (cenCoo[0], cenCoo[1]))
 
     starCnt = len(s.stars)
 
@@ -234,8 +234,8 @@ def pairIsokin(root, outsuffix):
               (s0.ypix - 512.0) * s.t.scale]
     # Coords of field center relative to Sgr A*
     cenCoo = [s.stars[0].x - s0Coo[0], s.stars[0].y - s0Coo[1]]
-    print 'Coordinates of field center are (%6.2f, %6.2f)' % \
-          (cenCoo[0], cenCoo[1])
+    print('Coordinates of field center are (%6.2f, %6.2f)' % \
+          (cenCoo[0], cenCoo[1]))
 
     starCnt = len(s.stars)
     epochCnt = len(s.stars[0].e)
@@ -259,7 +259,7 @@ def pairIsokin(root, outsuffix):
     def factorial(n):
         if n:
             foo = n*factorial(n-1)
-            print n, foo
+            print(n, foo)
             return foo
         else:
             return 1.0
@@ -268,7 +268,7 @@ def pairIsokin(root, outsuffix):
     # Combination of "starCnt" things taken 2 at a time
     #combCnt = factorial(starCnt) / (factorial(starCnt - 2) * factorial(2))
     combCnt = starCnt * (starCnt - 1) / 2
-    print starCnt, combCnt
+    print(starCnt, combCnt)
     sepX = np.zeros(combCnt, float)
     sepY = np.zeros(combCnt, float)
     sepRtts = np.zeros(combCnt, float)
@@ -289,7 +289,7 @@ def pairIsokin(root, outsuffix):
     # Now for every epoch, compute the offset from the mean
     for ee in range(epochCnt):
         if ((ee % 20) == 0):
-            print 'Working on epoch ', ee
+            print('Working on epoch ', ee)
             
         xpix = s.getArrayFromEpoch(ee, 'xorig')
         ypix = s.getArrayFromEpoch(ee, 'yorig')
@@ -573,7 +573,7 @@ def isoplanatic(root, outsuffix, refSrc='S1-5'):
     #idx = (np.where(mag <= 15.0))[0]
     idx = (np.where((mag > 10.0) & (mag <= 14.5)))[0]
     idx = (np.where((mag > 10.5) & (mag <= 13)))[0]
-    print len(idx), ' out of ', starCnt
+    print(len(idx), ' out of ', starCnt)
 
 
     py.clf()
@@ -604,12 +604,12 @@ def isoplanatic(root, outsuffix, refSrc='S1-5'):
     tfit = np.poly1d(tparams)
     rmsTfit = tfit(r[idx])
 
-    print 'sqrt(3) = ', math.sqrt(3.)
-    print (rmsTfit / rmsRfit).mean()
-    print tparams / rparams
+    print('sqrt(3) = ', math.sqrt(3.))
+    print((rmsTfit / rmsRfit).mean())
+    print(tparams / rparams)
 
-    print 'Radial RMS error line fit: ', rparams
-    print 'Tangen RMS error line fit: ', tparams
+    print('Radial RMS error line fit: ', rparams)
+    print('Tangen RMS error line fit: ', tparams)
 
     py.clf()
     py.subplot(1, 1, 1)
@@ -717,7 +717,7 @@ def compareDetections(root1, root2):
 
     cnt1 = len(s1.stars)
     cnt2 = len(s2.stars)
-    print cnt1, cnt2
+    print(cnt1, cnt2)
     corrCnt1 = np.zeros(cnt1)
     corrCnt1_low = np.zeros(cnt1)
     corrCnt2 = np.zeros(cnt2)
@@ -768,8 +768,8 @@ def compareDetections(root1, root2):
 
     py.savefig('plots/compareDetections.png')
 
-    print corrCnt2
-    print corrCnt2_low
+    print(corrCnt2)
+    print(corrCnt2_low)
 
 def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
                  title=True):
@@ -937,12 +937,12 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     #
     ##########
     # Print out some summary information
-    print 'Number of detections: %4d' % len(mag)
-    print 'Median Pos Error (mas) for K < %2i, r < %4.1f:  %5.2f' % \
-          (magCutOff, radius, errMedian)
-    print 'Median Mag Error (mag) for K < %2i, r < %4.1f:  %5.2f' % \
-          (magCutOff, radius, np.median(merr[idx]))
-    print 'Turnover mag = %4.1f' % (maxBin)
+    print('Number of detections: %4d' % len(mag))
+    print('Median Pos Error (mas) for K < %2i, r < %4.1f:  %5.2f' % \
+          (magCutOff, radius, errMedian))
+    print('Median Mag Error (mag) for K < %2i, r < %4.1f:  %5.2f' % \
+          (magCutOff, radius, np.median(merr[idx])))
+    print('Turnover mag = %4.1f' % (maxBin))
 
 
     out = open('plotPosError%s.txt' % suffix, 'w')
@@ -1047,12 +1047,12 @@ def compDistort(root1, root2, refSrc='irs16SW-E', reqFrames=6, outsuffix=''):
             try:
                 tmp = names2.index(names1[j1])
                 if (tmp != j2):
-                    print 'Mismatch occurred: %s (old) vs. %s (new) sep=%f' % \
-                          (names1[j1], names2[j2], diff[j2])
+                    print('Mismatch occurred: %s (old) vs. %s (new) sep=%f' % \
+                          (names1[j1], names2[j2], diff[j2]))
             except ValueError:
                 # Do nothing
-                print 'This should never occur.', names1[j1], names2[j2], \
-                      diff[j2]
+                print('This should never occur.', names1[j1], names2[j2], \
+                      diff[j2])
             
                 stdX1[j1] = -1
 
@@ -1111,8 +1111,8 @@ def compDistort(root1, root2, refSrc='irs16SW-E', reqFrames=6, outsuffix=''):
         ydiff2 = ydiff2[idx]
 
         if (names1[j1] == 'irs16C'):
-            print xdiff1
-            print xdiff2
+            print(xdiff1)
+            print(xdiff2)
 
         numVals[j1] = len(xdiff2) 
 
@@ -1360,10 +1360,10 @@ def compDistort(root1, root2, refSrc='irs16SW-E', reqFrames=6, outsuffix=''):
     #for ii in range(len(stdX1p)):
     #    print '%15s  %4.2f   %4.2f' % (names1[ii], stdX1p[ii], stdX2p[ii])
 
-    print 'Median X,Y pos error for %3i stars - Old: %4.2f, %4.2f mas' % \
-          (len(stdX1p), np.median(stdX1p), np.median(stdY1p))
-    print 'Median X,Y pos error for %3i stars - New: %4.2f, %4.2f mas' % \
-          (len(stdX2p), np.median(stdX2p), np.median(stdY2p))
+    print('Median X,Y pos error for %3i stars - Old: %4.2f, %4.2f mas' % \
+          (len(stdX1p), np.median(stdX1p), np.median(stdY1p)))
+    print('Median X,Y pos error for %3i stars - New: %4.2f, %4.2f mas' % \
+          (len(stdX2p), np.median(stdX2p), np.median(stdY2p)))
 
 def stability(root, refSrc='S1-5', plotSrc='S1-17',
               imgRoot='/u/ghezgroup/data/gc/06maylgs1/clean/kp/',
@@ -1387,7 +1387,7 @@ def stability(root, refSrc='S1-5', plotSrc='S1-17',
         files.append(_data[0])
 
     # Get the Strehl, FWHM, and Wave front error for each image
-    print "Reading Strehl File"
+    print("Reading Strehl File")
     strehlFile = open(imgRoot + 'irs33N.strehl', 'r')
     _frameno = []
     _strehl = []
@@ -1584,8 +1584,8 @@ def stability(root, refSrc='S1-5', plotSrc='S1-17',
  
         errx = diffx[ii,edx].std()
         erry = diffy[ii,edx].std()
-        print 'pos=(%5.2f, %5.2f) asec   perr=(%5.2f, %5.2f) mas for %s (%4.1f)' % \
-              (x[ii], y[ii], errx, erry, names[ii], mag[ii])
+        print('pos=(%5.2f, %5.2f) asec   perr=(%5.2f, %5.2f) mas for %s (%4.1f)' % \
+              (x[ii], y[ii], errx, erry, names[ii], mag[ii]))
 
 
     #sdx = (np.where((mag > 10) & (mag < 14) & (r > 0) & (r < 0.55)))[0]
@@ -1610,14 +1610,14 @@ def stability(root, refSrc='S1-5', plotSrc='S1-17',
         #if ((errx > 0.5) or (erry > 0.5) or (errx == 0) or (erry == 0)):
         #    continue
 
-        print 'pos = (%5.2f, %5.2f) asec   perr = (%5.2f, %5.2f) mas for %s' % \
-              (x[idx], y[idx], errx, erry, source)
-        print 'Parallactic Angle range: %5.1f - %5.1f' % \
-              (parang.min(), parang.max())
-        print 'Airmass range:           %5.2f - %5.2f' % \
-              (airmass.min(), airmass.max())
-        print 'Elevation range:         %5.2f - %5.2f' % \
-              (elevation.min(), elevation.max())
+        print('pos = (%5.2f, %5.2f) asec   perr = (%5.2f, %5.2f) mas for %s' % \
+              (x[idx], y[idx], errx, erry, source))
+        print('Parallactic Angle range: %5.1f - %5.1f' % \
+              (parang.min(), parang.max()))
+        print('Airmass range:           %5.2f - %5.2f' % \
+              (airmass.min(), airmass.max()))
+        print('Elevation range:         %5.2f - %5.2f' % \
+              (elevation.min(), elevation.max()))
 
         c = colors[ss]
 
@@ -2117,7 +2117,7 @@ def gcDAR():
     
     sgra.compute(keck)
     transit = sgra.transit_time.tuple()
-    print 'Sgr A* Transit Time: ', sgra.transit_time
+    print('Sgr A* Transit Time: ', sgra.transit_time)
     
     lines = []
     colors = ['r', 'g', 'b', 'k']
@@ -2132,7 +2132,7 @@ def gcDAR():
         # Now step through the night at intervals of 10 minutes and 
         # calculate the DAR. Calc every 10 minutes for 4 hours centered
         # on the transit time.
-        timeRange = range(6*4 + 1)
+        timeRange = list(range(6*4 + 1))
         hour = transit[3] - 2
         minute = transit[4]
         
@@ -2176,9 +2176,9 @@ def gcDAR():
             deltaZtrue[ii] = deltaZobs[ii] + deltaR[ii]
             refAngle[ii] = R2 * 206265.0
             
-            print '%6.2f  %4.2f %6.3f  dZobs = %4.2f  dZtrue = %4.2f  dR = %4.2f' % \
+            print('%6.2f  %4.2f %6.3f  dZobs = %4.2f  dZtrue = %4.2f  dR = %4.2f' % \
                   (hourAngle[ii], airmass[ii], refAngle[ii],
-                   deltaZobs[ii]*1e3, deltaZtrue[ii]*1e3, deltaR[ii]*1e3)
+                   deltaZobs[ii]*1e3, deltaZtrue[ii]*1e3, deltaR[ii]*1e3))
             
         foo = py.semilogy(hourAngle, deltaR*1e3, colors[ss]+'.')
         lines.append(foo)
@@ -2393,7 +2393,7 @@ def plotPosDiff(align, epoch1, epoch2, noAlignErr=True):
     errRad = np.zeros(len(radBins), float)
 
     py.clf()
-    print '\n%4s  %s  %s' % ('Rad', 'Err (mas)', 'N Stars')
+    print('\n%4s  %s  %s' % ('Rad', 'Err (mas)', 'N Stars'))
     for rr in range(len(radBins)):
         rMin = radBins[rr] - (radStep / 2.0)
         rMax = radBins[rr] + (radStep / 2.0)
@@ -2402,7 +2402,7 @@ def plotPosDiff(align, epoch1, epoch2, noAlignErr=True):
         if (len(ridx) > 0):
             errRad[rr] = np.median(diff[ridx])
 
-        print '%4.2f  %5.2f  %4i' % (radBins[rr], errRad[rr], len(ridx))
+        print('%4.2f  %5.2f  %4i' % (radBins[rr], errRad[rr], len(ridx)))
 
 
     py.clf()
@@ -2447,7 +2447,7 @@ def plotScaleAngle(align):
     scaleErr *= 100.0
 
     py.clf()
-    frameno = range(tab.nrows)
+    frameno = list(range(tab.nrows))
 
     py.subplot(2, 1, 1)
     py.errorbar(frameno, scale, yerr=scaleErr, fmt='k.')
@@ -2476,7 +2476,7 @@ def movieClean():
 
     for ii in range(len(files)):
         ff = '%sc%d' % (root, files[ii])
-        print ff
+        print(ff)
         gcutil.rmall([ff + '_tmp.fits'])
 
         _coo = asciidata.open(ff + '.coo')
@@ -2566,8 +2566,8 @@ def posErrorFromAllStars(root):
     rmsXall = rmsX[idx].mean()
     rmsYall = rmsY[idx].mean()
 
-    print 'Number of Stars: %d' % len(idx)
-    print 'RMS error in X = %5.2f and Y = %5.2f' % (rmsXall, rmsYall)
+    print('Number of Stars: %d' % len(idx))
+    print('RMS error in X = %5.2f and Y = %5.2f' % (rmsXall, rmsYall))
     py.savefig('posErrors.eps')
 
 
@@ -2710,15 +2710,15 @@ def posErrorXvsY(starlist, radCut=1000, magCut=1000):
 
     # Print average X and Y errors
     idx = np.where(lis.mag < 15)[0]
-    print 'Mean X error: %4.2f mas' % xerr[idx].mean()
-    print 'Mean Y error: %4.2f mas' % yerr[idx].mean()
-    print ''
+    print('Mean X error: %4.2f mas' % xerr[idx].mean())
+    print('Mean Y error: %4.2f mas' % yerr[idx].mean())
+    print('')
 
     # Print out some stats about the difference distribution
-    print 'Differene between X and Y positional errors'
-    print '  mean   = %.4f +/- %.4f' % (meanDiff, meanDiffErr)
-    print '  std    = %.4f' % (meanStd)
-    print '  median = %.4f' % (meanMedian)
+    print('Differene between X and Y positional errors')
+    print('  mean   = %.4f +/- %.4f' % (meanDiff, meanDiffErr))
+    print('  std    = %.4f' % (meanStd))
+    print('  median = %.4f' % (meanMedian))
 
 
 
@@ -2905,9 +2905,9 @@ def comparePos_combo2submaps(epoch='10maylgs'):
     dx = sx_ave - cx
     dy = sy_ave - cy
 
-    print 'Average offset between submaps and combo map:'
-    print 'dx = %4.2f +- %4.2f pix' % (dx.mean(),dx.std(ddof=1))
-    print 'dy = %4.2f +- %4.2f pix' % (dy.mean(),dy.std(ddof=1))
+    print('Average offset between submaps and combo map:')
+    print('dx = %4.2f +- %4.2f pix' % (dx.mean(),dx.std(ddof=1)))
+    print('dy = %4.2f +- %4.2f pix' % (dy.mean(),dy.std(ddof=1)))
 
     # Plot a histogram of the differences
     py.figure(figsize=(7,7))

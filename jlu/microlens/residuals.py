@@ -486,6 +486,11 @@ def ResVectorPlot(root='./', align='align/align_t',
             y_fit[i] = fitLineY
             residsX[i] = x[i] - fitLineX
             residsY[i] = y[i] - fitLineY
+
+        # Average residuals
+        av_residsX = np.mean(residsX)
+        av_residsY = np.mean(residsY)
+        av_resids = np.sqrt(av_residsX**2 + av_residsY**2)
         
         idx = np.where((np.abs(residsX) < 10.0) & (np.abs(residsY) < 10.0))[0]
         print ("Trimmed {0:d} stars with too-large residuals (>10 pix)".format(len(idx)))
@@ -500,6 +505,8 @@ def ResVectorPlot(root='./', align='align/align_t',
         q = py.quiver(x_fit[good], y_fit[good], residsX[good], residsY[good], scale_units='width', scale=0.5, color='red')
         py.quiver([850, 0], [100, 0], [0.05, 0.05], [0, 0], color='red', scale=0.5, scale_units='width')
         py.text(600, 100, '0.5 mas', color='red', fontsize=8)
+        py.text(600, 50, r'$\bar{x}$:%.3f  $\bar{y}$:%.3f' %(av_residsX, av_residsY), color='red', fontsize=8)
+        py.text(600, 0, 'av. res: %.3f' %av_resids, color='red', fontsize=8)
         # py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontsize=6)
 
    

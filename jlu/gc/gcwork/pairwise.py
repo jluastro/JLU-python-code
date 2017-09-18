@@ -38,7 +38,7 @@ class Pairwise(object):
             self.files.append(_data[0])
 
         # Get the Strehl, FWHM, and Wave front error for each image
-        print "Reading Strehl File"
+        print("Reading Strehl File")
         strehlFile = open(imgRoot + 'irs33N.strehl', 'r')
         _frameno = []
         _strehl = []
@@ -293,13 +293,13 @@ def plotRmsSep(pairwise):
     py.savefig('plots/rmsZenithSeparation_'+pw.refSrc+'.png')
     py.savefig('plots/rmsZenithSeparation_'+pw.refSrc+'.eps')
 
-    print 'All Sources with rmsX and rmsY < 0.7 mas'
+    print('All Sources with rmsX and rmsY < 0.7 mas')
     idx = np.where((pw.rmsx < 0.7) & (pw.rmsy < 0.7))[0]
 
     for i in idx:
-        print '%13s  pos = [%6.3f, %6.3f]  r = %6.3f  avgZ = %6.3f  rmsX = %4.2f  rmsY = %4.2f' % \
+        print('%13s  pos = [%6.3f, %6.3f]  r = %6.3f  avgZ = %6.3f  rmsX = %4.2f  rmsY = %4.2f' % \
               (pw.names[i], x[i], y[i], pw.r[i], avgz[i],
-               pw.rmsx[i], pw.rmsy[i])
+               pw.rmsx[i], pw.rmsy[i]))
 
 def plotSepVsParang(pairwise, src):
     """
@@ -331,7 +331,7 @@ def plotSepVsParang(pairwise, src):
     sepObs = np.hypot(dzObs, dhObs)
     sepTrue = np.hypot(dzTrue, dhObs)
 
-    print dzTrue.mean(), dzObs.mean(), dzObsAvg.mean(), dR.mean()
+    print(dzTrue.mean(), dzObs.mean(), dzObsAvg.mean(), dR.mean())
 
 
     py.clf()
@@ -342,8 +342,8 @@ def plotSepVsParang(pairwise, src):
     #py.plot(parang, sepObs, 'k.')
     #py.plot(parang, sepTrue, 'r-')
 
-    print 'Separation = %7.4f +/- %6.4f from %d points' % \
-          (sepObs.mean(), sepObs.std(), len(sepObs))
+    print('Separation = %7.4f +/- %6.4f from %d points' % \
+          (sepObs.mean(), sepObs.std(), len(sepObs)))
 
 
 def plotSepVsStrehl(pairwise, src):
@@ -368,8 +368,8 @@ def plotSepVsStrehl(pairwise, src):
     py.clf()
     py.plot(strehl, sepObs, 'k.')
 
-    print 'Separation = %7.4f +/- %6.4f from %d points' % \
-          (sepObs.mean(), sepObs.std(), len(sepObs))
+    print('Separation = %7.4f +/- %6.4f from %d points' % \
+          (sepObs.mean(), sepObs.std(), len(sepObs)))
 
 def plotZHvsParang(pairwise, src):
     """
@@ -439,14 +439,14 @@ def plotPairwise(pairwise, src, fixDarOn=True, ylim=1.5):
     errx = pw.diffx[idx,edx].std()
     erry = pw.diffy[idx,edx].std()
 
-    print 'pos = (%5.2f, %5.2f) asec   perr = (%5.2f, %5.2f) mas for %s' % \
-          (pw.avgx[idx], pw.avgy[idx], errx, erry, src)
-    print 'Parallactic Angle range: %5.1f - %5.1f' % \
-          (pw.parang.min(), pw.parang.max())
-    print 'Airmass range:           %5.2f - %5.2f' % \
-          (pw.airmass.min(), pw.airmass.max())
-    print 'Elevation range:         %5.2f - %5.2f' % \
-          (pw.elevation.min(), pw.elevation.max())
+    print('pos = (%5.2f, %5.2f) asec   perr = (%5.2f, %5.2f) mas for %s' % \
+          (pw.avgx[idx], pw.avgy[idx], errx, erry, src))
+    print('Parallactic Angle range: %5.1f - %5.1f' % \
+          (pw.parang.min(), pw.parang.max()))
+    print('Airmass range:           %5.2f - %5.2f' % \
+          (pw.airmass.min(), pw.airmass.max()))
+    print('Elevation range:         %5.2f - %5.2f' % \
+          (pw.elevation.min(), pw.elevation.max()))
 
     c = 'k'
 
@@ -943,8 +943,8 @@ def vectorSeps(pairwise, strehlLim=0.30):
     xdiff = xHi - xLo
     ydiff = yHi - yLo
 
-    print xdiff.mean()
-    print ydiff.mean()
+    print(xdiff.mean())
+    print(ydiff.mean())
 
     py.clf()
     py.quiver(xHi, yHi, xdiff, ydiff, scale=0.04)
@@ -1058,19 +1058,19 @@ def histZHrms(pairwise, plot=True, outdir='./'):
     peakx2 = binsx2[datax2.argmax()]
     peaky2 = binsy2[datay2.argmax()]
 
-    print 'RMS error in separation vector (mas): '
-    print 'Horizon: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsh.mean(), np.median(rmsh), peakh)
-    print 'Zenith:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsz.mean(), np.median(rmsz), peakz)
-    print 'x-axis:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsx.mean(), np.median(rmsx), peakx)
-    print 'y-axis:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsy.mean(), np.median(rmsy), peaky)
-    print 'x-axis2: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsx2.mean(), np.median(rmsx2), peakx2)
-    print 'y-axis2: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
-          (rmsy2.mean(), np.median(rmsy2), peaky2)
+    print('RMS error in separation vector (mas): ')
+    print('Horizon: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsh.mean(), np.median(rmsh), peakh))
+    print('Zenith:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsz.mean(), np.median(rmsz), peakz))
+    print('x-axis:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsx.mean(), np.median(rmsx), peakx))
+    print('y-axis:  mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsy.mean(), np.median(rmsy), peaky))
+    print('x-axis2: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsx2.mean(), np.median(rmsx2), peakx2))
+    print('y-axis2: mean = %4.2f  median = %4.2f  peak = %4.2f' % \
+          (rmsy2.mean(), np.median(rmsy2), peaky2))
     
     if (plot == True):
         py.clf()
@@ -1109,7 +1109,7 @@ def plotAstErrorvsTime(pairwise, outdir=''):
                    (pw.r < 2) &
                    (pw.hasData.sum(axis=1) == (pw.epochCnt-1)))[0]    
     starCnt = len(idx)
-    print 'Number of Stars', starCnt
+    print('Number of Stars', starCnt)
 
     # Trim off the first epoch cuz it was the "main-map".
     # Might as well trim down to just the stars of interest also.
@@ -1191,8 +1191,8 @@ def plotAstErrorvsTime(pairwise, outdir=''):
         fooy = np.sqrt(fooy)
 
         allan2[:,n] = np.sqrt(foox * fooy)
-        print '%2d  %8.2e  %8.2e  %8.2e' % \
-              (nCnt, allan2[0,n]*10**3, allan1[0,n]*10**3, allan3[0,n]*10**3)
+        print('%2d  %8.2e  %8.2e  %8.2e' % \
+              (nCnt, allan2[0,n]*10**3, allan1[0,n]*10**3, allan3[0,n]*10**3))
 
     colors = ['orange', 'red', 'blue', 'green',
               'purple', 'cyan', 'magenta', 'purple']
@@ -1215,7 +1215,7 @@ def plotAstErrorvsTime(pairwise, outdir=''):
     py.xlabel('Number of Images Averaged Over')
     py.ylabel('Astrometric Error (mas)')
 
-    print pw.r[idx], pw.mag[idx]
+    print(pw.r[idx], pw.mag[idx])
             
     py.savefig(outdir + 'plots/allan_variance.eps')
     py.savefig(outdir + 'plots/allan_variance.png')

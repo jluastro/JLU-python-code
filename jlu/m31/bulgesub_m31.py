@@ -345,8 +345,8 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
     fluxrat = 10.**(magdiff/(-2.5))
 
     if verbose:
-        print "Flux ratio at 0.25 arcsec is ", fluxrat
-        print "Bulge percentage at 0.25 arcsec is ", 1./fluxrat
+        print("Flux ratio at 0.25 arcsec is ", fluxrat)
+        print("Bulge percentage at 0.25 arcsec is ", 1./fluxrat)
 
     # get flux ratio (not SB ratio), integrated over center arcsec
     # observed flux, center arcsec
@@ -363,11 +363,11 @@ def plotNIRC2profile(mask=True,wide=False,matchR=None,bulgeProfile='C11E',toplot
     inrat_D13 = influx/inD13F
 
     if verbose:
-        print "Flux ratio (from C11_E) within the inner arcsec is ", inrat_C11e
-        print "Bulge percentage (KB99) within the inner arcsec is ", 1./inrat_KB99
-        print "Bulge percentage (C11_E) within the inner arcsec is ", 1./inrat_C11e
-        print "Bulge percentage (C11_M) within the inner arcsec is ", 1./inrat_C11m
-        print "Bulge percentage (D13) within the inner arcsec is ", 1./inrat_D13
+        print("Flux ratio (from C11_E) within the inner arcsec is ", inrat_C11e)
+        print("Bulge percentage (KB99) within the inner arcsec is ", 1./inrat_KB99)
+        print("Bulge percentage (C11_E) within the inner arcsec is ", 1./inrat_C11e)
+        print("Bulge percentage (C11_M) within the inner arcsec is ", 1./inrat_C11m)
+        print("Bulge percentage (D13) within the inner arcsec is ", 1./inrat_D13)
 
     # for testing and plotting
     return binin, binsbmag
@@ -389,10 +389,10 @@ def dist_circle(n=None,cent=None):
     # output: returns array with distance from cent (in units of pixels)
     
     if n is None:
-        print 'Please enter the size of the array.'
+        print('Please enter the size of the array.')
         return
     if cent is None:
-        print 'Please enter the coordinates to calculate distance from.'
+        print('Please enter the coordinates to calculate distance from.')
         return
 
     if len(n)==2:
@@ -402,7 +402,7 @@ def dist_circle(n=None,cent=None):
         nx = n
         ny = n
     else:
-        print '2D arrays only'
+        print('2D arrays only')
         return
 
     xcen = cent[0]

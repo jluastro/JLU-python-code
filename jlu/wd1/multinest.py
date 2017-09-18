@@ -166,12 +166,12 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
         imf_multi = None
         new_imf = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers, imf_multi)
 
-        print 'Getting Isochrone'
+        print('Getting Isochrone')
         new_iso = synthetic.IsochronePhot(par['LogAge'], par['AKs'], par['distance'],
                                           evo_model=evo_model, atm_func=atm_func,
                                           red_law=red_law)
         
-        print 'Getting Cluster'
+        print('Getting Cluster')
         cluster = synthetic.ResolvedClusterDiffRedden(new_iso, new_imf, Mcl_sim, 
                                                       par['dAKs'], red_law=red_law)
 
@@ -236,7 +236,7 @@ def multinest_run(root_dir='/Users/jlu/work/wd1/analysis_2015_01_05/',
         mcc_cluster = 1
 
 
-        print likei.sum()
+        print(likei.sum())
         return likei.sum()
 
     num_dims = 8
@@ -267,7 +267,7 @@ def plot_results_detail(rootdir):
 
     titles = [plotStuff[ii][0] for ii in range(len(plotStuff))]
     values = [plotStuff[ii][1] for ii in range(len(plotStuff))]
-    print titles
+    print(titles)
 
     py.figure(1, figsize=(22,12))
     py.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95)

@@ -81,14 +81,14 @@ x-1]
     np1 = len(phi) 
 
     if (np0 != np1):
-        print 'inconsistent theta and phi'
+        print('inconsistent theta and phi')
 
     if ((min(theta) < 0.0) or (max(theta) > math.pi)):
-        print 'theta out of range'
+        print('theta out of range')
 
     ipring = numpy.zeros(np0, dtype=numpy.long)
 
-    nside  = long(nside)
+    nside  = int(nside)
     pion2 = math.pi * 0.5
     twopi = math.pi * 2.0
     nl2   = 2*nside
@@ -263,7 +263,7 @@ def pix2ang_ring(nside, ipix):
 
     npix = nside2npix(nside)
 
-    nside = long(nside)
+    nside = int(nside)
     nl2 = 2*nside
     nl3 = 3*nside
     nl4 = 4*nside
@@ -278,12 +278,12 @@ def pix2ang_ring(nside, ipix):
     min_pix = ipix.min()
     max_pix = ipix.max()
     if (min_pix < 0):
-        print 'pixel index : %10d' % min_pix
-        print 'is out of range : %2d %8d' % (0, npix-1)
+        print('pixel index : %10d' % min_pix)
+        print('is out of range : %2d %8d' % (0, npix-1))
 
     if (max_pix > npix-1):
-        print 'pixel index : %10d' % max_pix
-        print 'is out of range : %2d %8d' % (0,npix-1)
+        print('pixel index : %10d' % max_pix)
+        print('is out of range : %2d %8d' % (0,npix-1))
 
 
     # north polar cap
@@ -330,7 +330,7 @@ def pix2ang_ring(nside, ipix):
     n_sp = len(pix_sp)   
 
     if ((n_np + n_sp + n_eq) != np):
-        print 'Error!'
+        print('Error!')
 
     if (n_sp > 0):
        ip =  numpy.array(npix - ipix[pix_sp], dtype=numpy.long)
@@ -367,6 +367,6 @@ def nside2npix(nside):
     ;     v1.1, EH, Caltech, 2002-08-16 : uses !Healpix structure
     ;-
     """
-    npix = 12 * long(nside)**2
+    npix = 12 * int(nside)**2
 
     return npix

@@ -23,10 +23,10 @@ def imagerLimitingMag(tint):
 
     mag = m0 - 2.5 * math.log10( (snr/f0) * math.sqrt( bkg / tint))
 
-    print 'Limiting Magnitude '
-    print '    is K = %5.2f ' % mag
-    print '    in tint = %d seconds' % tint
-    print '    at SNR  = %d' % snr
+    print('Limiting Magnitude ')
+    print('    is K = %5.2f ' % mag)
+    print('    in tint = %d seconds' % tint)
+    print('    at SNR  = %d' % snr)
 
     
     

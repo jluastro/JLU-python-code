@@ -1,8 +1,8 @@
-import pyfits
+from astropy.io import fits as pyfits
 import math
 import pylab as py
 import numpy as np
-from PyAstronomy import pyasl
+# from PyAstronomy import pyasl
 import pdb
 
 def extract1d(cube, center, boxsize=5, combine='sum', header=None):
@@ -38,13 +38,13 @@ def extract1d(cube, center, boxsize=5, combine='sum', header=None):
         # Cube is already a cube (3D array)
         hdr = header
         if header == None:
-            print 'ERROR in extract1d: A header must be passed in when ' + \
-                'passing in a cube as a 3d array.'
+            print('ERROR in extract1d: A header must be passed in when ' + \
+                'passing in a cube as a 3d array.')
             return
     
     # Check for a sensible combine method
     if (combine != 'sum' and combine != 'median' and combine != 'average'):
-        print 'ERROR in extract1d: Invalid combine method - ' + combine
+        print('ERROR in extract1d: Invalid combine method - ' + combine)
         return
 
     # We will describe the image in 3 dimensions:
@@ -130,7 +130,7 @@ def extract1d(cube, center, boxsize=5, combine='sum', header=None):
     
     # Check for a sensible combine method
     if (combine != 'sum' and combine != 'median' and combine != 'average'):
-        print 'ERROR in extract1d: Invalid combine method - ' + combine
+        print('ERROR in extract1d: Invalid combine method - ' + combine)
         return
 
     # We will describe the image in 3 dimensions:
@@ -204,7 +204,7 @@ def collapse_to_image(cubefile, combine='sum'):
 
     # Check for a sensible combine method
     if (combine != 'sum' and combine != 'median' and combine != 'average'):
-        print 'ERROR in collapse_to_image: Invalid combine method - ' + combine
+        print('ERROR in collapse_to_image: Invalid combine method - ' + combine)
         return
 
     # We will describe the image in 3 dimensions:
@@ -242,7 +242,7 @@ def extractTelluric(cubefile, savefile=None, boxsize=5):
 
     if (boxsize % 2 is not 1):
         # This is an even number
-        print 'ERROR in extractTelluric(): Boxsize must be an odd number.'
+        print('ERROR in extractTelluric(): Boxsize must be an odd number.')
         return
     
     w, s = extract1d(cube, maxPixel, header=hdr, boxsize=boxsize)

@@ -4,7 +4,7 @@ from scipy import stats
 from jlu.microlens import residuals
 from matplotlib.ticker import ScalarFormatter, FormatStrFormatter, MultipleLocator, NullFormatter
 
-def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='', plot_dir=''):
+def align_residuals_vs_order(analysis_dirs, firstorder=1, only_stars_in_fit=True, out_suffix='', plot_dir=''):
     data_all = []
 
     for aa in range(len(analysis_dirs)):
@@ -12,10 +12,11 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
 
         data_all.append(data)
 
-    order = np.arange(1, len(data_all)+1)
+    order = np.arange(firstorder, len(data_all)+firstorder)
     N_order = len(data_all)
 
     year = data_all[0]['year']
+    
     scale = 9.952  # mas / pixel
 
     N_plots = len(year)
@@ -58,7 +59,7 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
         ares_e *= scale
 
         if only_stars_in_fit and np.isnan(xres[0]):
-            print( 'Skipping Ref Epoch', ee)
+            print( 'Skipping Ref Epoch %.3f' %year[ee])
             continue
 
         idx_subplot += 1
@@ -72,7 +73,7 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
         plt.errorbar(order, yres, yerr=yres_e, fmt='b.--', label='Y')
         plt.errorbar(order, ares, yerr=ares_e, fmt='g.--', label='Both')
         plt.title(data_all[0]['year'][ee])
-        plt.xlim(0, 3.9)
+        plt.xlim(order[0]-1, order[-1]+0.9)
         ax = plt.gca()
         ax.xaxis.set_major_locator(majorLoc)
         ax.xaxis.set_major_formatter(majorFmt)
@@ -120,7 +121,7 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
         N_stars = np.array([data_all[oo]['N_stars_'+end][ee] for oo in range(N_order)])
 
         if only_stars_in_fit and (N_stars[0] == 0):
-            print( 'Skipping Ref Epoch', ee)
+            print( 'Skipping Ref Epoch %.3f' %year[ee])
             continue
 
         idx_subplot += 1
@@ -134,7 +135,7 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
         plt.plot(order, chi2y, 'b.--', label='Y')
         plt.plot(order, chi2, 'g.--', label='Both')
         plt.title(data_all[0]['year'][ee])
-        plt.xlim(0, 3.9)
+        plt.xlim(order[0]-1, order[-1]+0.9)
         ax = plt.gca()
         ax.xaxis.set_major_locator(majorLoc)
         ax.xaxis.set_major_formatter(majorFmt)
@@ -171,14 +172,14 @@ def align_residuals_vs_order(analysis_dirs, only_stars_in_fit=True, out_suffix='
         N_stars = np.array([data_all[oo]['N_stars_'+end][ee] for oo in range(N_order)])
 
         if only_stars_in_fit and (N_stars[0] == 0):
-            print( 'Skipping Ref Epoch', ee)
+            print( 'Skipping Ref Epoch %.3f' %year[ee])
             continue
 
         # Print out some values for this epoch and each order.
         print( '')
-        print( 'Epoch: {0:8.3f}'.format(year[ee]))
+        print( 'Epoch: {0:8.3f} '.format(year[ee]))
         _out.write('\n')
-        _out.write('Epoch: {0:8.3f}'.format(year[ee]))
+        _out.write('Epoch: {0:8.3f}\n'.format(year[ee]))
         for mm in range(N_order):
             fmt = 'N_stars = {0:3d}  N_par = {1:3d}  N_dof = {2:3d}  Chi^2 X = {3:5.1f}  Chi^2 Y = {4:5.1f}  Chi^2 Tot = {5:5.1f}'
             print( fmt.format(int(N_stars[mm]), int(N_par[mm]), int(N_stars[mm] - N_par[mm]),

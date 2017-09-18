@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-import pyfits
+from astropy.io import fits as pyfits
 
 def plotSpectrum(fitsfile):
     """
@@ -9,7 +9,7 @@ def plotSpectrum(fitsfile):
     data, head = pyfits.getdata(fitsfile, header=True)
 
     if (len(data.shape) > 1):
-        print 'Data is not 1D... cannot plot.'
+        print('Data is not 1D... cannot plot.')
         return
 
     pixels = np.arange(0, len(data))
