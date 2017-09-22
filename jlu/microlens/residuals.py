@@ -1,6 +1,7 @@
 import shutil, os, sys
 import pylab as py
 import numpy as np
+import math
 import scipy
 import scipy.stats
 # from jlu.gc.gcwork import starset
@@ -26,7 +27,7 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     if Nstars <= Ncols/2:
         Nrows = 3
     else:
-        Nrows = (Nstars // (Ncols / 2)) * 3
+        Nrows = math.ceil(Nstars / (Ncols / 2)) * 3
 
     py.close('all')
     py.figure(2, figsize=figsize)
@@ -136,15 +137,15 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
         #             clf()
 
         dateTicLoc = py.MultipleLocator(3)
-        dateTicRng = [2006, 2017]
+        dateTicRng = [2006, 2018]
         # dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
-        dateTics = np.array([2015, 2016, 2017])
+        dateTics = np.array([2015, 2016, 2017, 2018])
         DateTicsLabel = dateTics-2000
 
         # See if we are using MJD instead.
         if time[0] > 50000:
             dateTicLoc = py.MultipleLocator(1000)
-            dateTicRng = [56000, 58000]
+            dateTicRng = [57000, 58200]
             dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
             DateTicsLabel = dateTics
 
@@ -443,7 +444,8 @@ def ResVectorPlot(root='./', align='align/align_t',
     
     py.clf()
     py.close(1)
-    py.figure(1, figsize=(10, 10))
+    py.figure(1, figsize=(15, 15))
+    py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     for ee in range(numEpochs):
         # Observed data
         x = s.getArrayFromEpoch(ee, 'xpix')
@@ -454,7 +456,7 @@ def ResVectorPlot(root='./', align='align/align_t',
 
         good = np.where(isUsed == True)
         stars = s.stars
-        
+
         # good = (rad < radCut_pix) & (m < magCut)
         # idx = np.where(good)[0]
         # stars = [s.stars[i] for i in idx]
@@ -469,10 +471,14 @@ def ResVectorPlot(root='./', align='align/align_t',
         residsX = np.zeros(Nstars, dtype=float)
         residsY = np.zeros(Nstars, dtype=float)
         idx2 = []
+        tdx = -1
         for i in range(Nstars):
             fitx = stars[i].fitXv
             fity = stars[i].fitYv 
             StarName = stars[i].name
+
+            if StarName == TargetName:
+                tdx = i
 
             dt = times[ee] - fitx.t0
             fitLineX = fitx.p + (fitx.v * dt)
@@ -494,24 +500,25 @@ def ResVectorPlot(root='./', align='align/align_t',
         
         idx = np.where((np.abs(residsX) < 10.0) & (np.abs(residsY) < 10.0))[0]
         print ("Trimmed {0:d} stars with too-large residuals (>10 pix)".format(len(idx)))
-        py.subplot(3, 3, ee+1)
-        py.ylim(0, 1100)
-        py.xlim(0, 1100)
+        py.subplot(3, 4, ee+1)
         py.yticks(fontsize=10)
         py.xticks([200,400,600,800,1000], fontsize=10)
         # q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5)
         q = py.quiver(x_fit, y_fit, residsX, residsY, scale_units='width', scale=0.5, color='gray')
         q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5, color='black')
         q = py.quiver(x_fit[good], y_fit[good], residsX[good], residsY[good], scale_units='width', scale=0.5, color='red')
+        q = py.quiver(x_fit[tdx], y_fit[tdx], residsX[tdx], residsY[tdx], scale_units='width', scale=0.5, color='cyan')
         py.quiver([850, 0], [100, 0], [0.05, 0.05], [0, 0], color='red', scale=0.5, scale_units='width')
         py.text(600, 100, '0.5 mas', color='red', fontsize=8)
         py.text(600, 50, r'$\bar{x}$:%.3f  $\bar{y}$:%.3f' %(av_residsX, av_residsY), color='red', fontsize=8)
         py.text(600, 0, 'av. res: %.3f' %av_resids, color='red', fontsize=8)
         # py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontsize=6)
+        py.axis('equal')
+        py.ylim(0, 1100)
+        py.xlim(0, 1100)
 
    
     fname = 'quiverplot_all.png'
-    py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     if os.path.exists(root + 'plots/' + fname):
         os.remove(root + 'plots/' + fname)
     py.show()

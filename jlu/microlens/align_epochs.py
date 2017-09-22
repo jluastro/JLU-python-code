@@ -13,6 +13,7 @@ from flystar import align
 from flystar import match
 from flystar import starlists
 from flystar import transforms
+from nirc2.reduce import calibrate
 import glob
 
 def make_align_list(root='/Users/jlu/work/microlens/OB120169/',
@@ -275,24 +276,17 @@ def GetDirNames(a, m, w, o, Ntrials, target, date, prefix, nMC):
         
 
 def makeVectorPlot(root, DirName, magCut, target):  
-    residuals.ResVectorPlot(root=root + DirName + '/', align='align/align_t',poly='polyfit_d/fit', useAccFits=False, TargetName=target, magCut=magCut)
+    residuals.ResVectorPlot(root=root + DirName + '/', align='align/align_t',poly='polyfit_d/fit', useAccFits=False,
+                                TargetName=target, magCut=magCut)
     plt.show()
+    return
 
 
 def makeResPlot(stars, root, DirName):
-#       residuals.plotStar(['ob110022', 'p001_14_1.8', 'p002_16_1.0', 's000_16_1.1', 'p003_16_2.3', 's002_17_1.5'], 
-#                         rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-#                         radial=False, NcolMax=3, figsize=(15,15))
-#     residuals.plotStar(['ob110125', 'S1_16_3.9', 'S6_17_3.8', 'S13_18_1.7', 'S14_18_2.7', 'p004_18_3.0'], 
-#                        rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-#                        radial=False, NcolMax=3, figsize=(15,15))     
-    # residuals.plotStar(['OB120169', 'p005_15_3.5', 'S2_16_2.5', 'p000_16_3.6', 'S6_17_2.4', 'OB120169_L'], 
-    #                    rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-    #                    radial=False, NcolMax=3, figsize=(15,15))
     numStars = int(len(stars))
     residuals.plotStar(starNames=stars, 
                        rootDir=root + DirName + '/', align='align/align_t', poly='polyfit_d/fit', points='/points_d/', 
-                       radial=False, NcolMax=numStars, figsize=(15,numStars*10))
+                       radial=False, NcolMax=numStars, figsize=(numStars*10,15))
     plt.show()
 
 
@@ -729,8 +723,6 @@ def calc_transform_ref_poly(d, target_name, poly_deg, ref_mag_lim, ref_radius_li
         xt_epo[idx], xet_epo[idx], yt_epo[idx], yet_epo[idx] = trans_tmp.evaluate_errors(x_epo[idx], xe_epo[idx],
                                                                                          y_epo[idx], ye_epo[idx],
                                                                                          nsim=100)
-        pdb.set_trace()
-
         d['xt_{0:d}'.format(ee)] = xt_epo
         d['yt_{0:d}'.format(ee)] = yt_epo
         d['xet_{0:d}'.format(ee)] = xet_epo
@@ -1010,3 +1002,29 @@ def plot_quiver_residuals(x_t, y_t, x_ref, y_ref, good_idx, ref_idx, title):
 
     return
     
+def calibrate_starlists(root='/Users/jlu/work/microlens/OB120169/',
+                        prefix='analysis', date='2016_06_22', target='ob120169'):
+    """
+    Run calibrate on each star list.
+    """
+    an_dir = root + prefix + '_' + date + '/'
+    aln_dir = an_dir + prefix + '_' + target + '_' + date + '/'
+    lis_dir = aln_dir + 'lis/'
+    starlists = glob.glob(lis_dir + '*named.lis')
+
+    photo_calib_file = aln_dir + 'source_list/' + target + '_photo.dat'
+    wave_col = 1
+
+    # Calibrate flags
+    cal_flags_fmt = '-f 2 -R -N {0} -M {1} -T {2} -c 4 --searchMag=2.0 -I ' + target + ' '
+    cal_flags = cal_flags_fmt.format(photo_calib_file, wave_col, 0)
+                
+    for e in range(len(starlists)):
+        print( '*** calibrating ', starlists[e] )
+
+        # Call calibrate on the main map
+        args = cal_flags + starlists[e]
+        print( 'calibrate ' + args )
+        calibrate.main(args.split())
+
+    return

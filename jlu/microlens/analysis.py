@@ -43,7 +43,7 @@ class OB170095(analysis.Analysis):
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
-        self.calFlags = '-f 1 -R -s 1 '
+        self.calFlags = '-f 1 -R -s 1 --searchMag=2.0 '
         self.calFile = self.rootDir + 'source_list/ob170095_photo.dat'
 
         self.labellist = self.rootDir + 'source_list/ob170095_label.dat'
@@ -82,8 +82,8 @@ class OB170019(analysis.Analysis):
 
         # Set up some extra starfinder keywords to optimize PSF handling.
         self.stf_extra_args = ', psfSize=2.0, trimfake=0' # 2 arcsec
-        self.corrMain = 0.7
-        self.corrSub = 0.5
+        self.corrMain = 0.9
+        self.corrSub = 0.7
 
         ##########
         # Setup the appropriate calibration stuff.
@@ -194,7 +194,7 @@ class OB140613(analysis.Analysis):
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
-        self.calFlags = '-f 1 -R -s 1 --searchMag=2.0 '
+        self.calFlags = '-f 1 -R -s 1 --searchMag=4.0'
         self.calFile = rootDir + 'source_list/ob140613_photo.dat'
 
         self.labellist = rootDir + 'source_list/ob140613_label.dat'

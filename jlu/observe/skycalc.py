@@ -8,7 +8,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import pdb
 
-def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png'):
+def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
     dec = Dec. value of target (e.g. '-29:00:28.12')
@@ -16,6 +16,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     months = array of months (integers) where each month will have a curve.
     days = array of days (integers), of same length as months.
     observatory = Either 'keck1' or 'keck2'
+    date_idx = Index of day to use for twilight dashed lines.  Defaults to first day.
 
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
@@ -44,7 +45,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
 
     # Get sunset and sunrise times on the first specified day
-    midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[0], days[0])) - utc_offset
+    midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[date_idx], days[date_idx])) - utc_offset
     delta_midnight = np.arange(-12, 12, 0.01) * u.hour
     times = midnight + delta_midnight
     altaz_frame = AltAz(obstime=times, location=keck)
@@ -99,21 +100,26 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         py.plot(times, airmass, colors[ii] + '-')
 
         py.text(times[12] - 0.3,
-                airmass[12] + 0.4 + (ii*0.1),
+                airmass[12] + (ii*0.1),
                 labels[ii], color=colors[ii])
-            
 
-    py.title('RA = %s, DEC = %s' % (ra, dec), fontsize=14)
+    # Make observatory name nice for title
+    if observatory == "keck1":
+        observatory = 'Keck I'
+    if observatory == "keck2":
+        observatory = 'Keck II'
+
+    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
     py.xlabel('Local Time in Hours (0 = midnight)')
     py.ylabel('Air Mass')
 
     loAirmass = 1
-    hiAirmass = 3
+    hiAirmass = 2.5
 
     # Draw on the 12-degree twilight limits
-    py.plot([splittime, splittime], [loAirmass, hiAirmass], 'k--')
-    py.plot([twilite1 + 0.5, twilite1 + 0.5], [loAirmass, hiAirmass], 'k--')
-    py.plot([twilite2, twilite2], [loAirmass, hiAirmass], 'k--')
+    py.axvline(splittime, color='k', linestyle='--')
+    py.axvline(twilite1 + 0.5, color='k', linestyle='--')
+    py.axvline(twilite2, color='k', linestyle='--')
 
     py.axis([sunset, sunrise, loAirmass, hiAirmass])
     py.savefig(outfile)

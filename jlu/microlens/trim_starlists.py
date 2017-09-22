@@ -3,7 +3,8 @@ from astropy.table import Table
 from astropy.io import fits
 import os
 
-def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120169_2014_03_22/lis/',   
+def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120169_2014_03_22/lis/',
+                   FileSuffix = '_kp_rms_named.lis',
                    TargetName = 'ob120169',
                    epochs = ['12may', '12jun', '12jul', '13apr', '13jul', '15may', '15jun07'],
                    radius_cut_in_mas=4000.0):
@@ -11,7 +12,7 @@ def trim_in_radius(Readpath = '/Users/jlu/work/microlens/OB120169/analysis_ob120
     Nepochs = len(epochs)
     for i in range(Nepochs):
         # Read in coords from PSF list 
-        Readfile = 'mag' + epochs[i]+ '_' + TargetName +'_kp_rms_named.lis' 
+        Readfile = 'mag' + epochs[i]+ '_' + TargetName + FileSuffix
         Starlist = Readpath + Readfile 
         PSFtab = Table.read(Starlist, format='ascii')
         names = PSFtab[PSFtab.colnames[0]]
