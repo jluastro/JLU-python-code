@@ -18,13 +18,14 @@ import pdb
 root_dir = '/u/nijaid/work/OB140613/a_2017_09_21/'
 
 an_dir1 = root_dir + 'a_ob140613_2017_09_21_a3_m22_w4_MC100/'
-an_dir2 = root_dir + 'a_ob140613_2017_09_21_a4_m22_w4_MC100/'
+#an_dir2 = root_dir + 'a_ob140613_2017_09_21_a4_m22_w4_MC100/'
+an_dir2 = root_dir + 'prop/'
 
 an_dir = an_dir1
 points_dir = an_dir + 'points_d/'
 poly_dir = an_dir + 'polyfit_d/'
 
-targets = ['ob140613', 'S20_14_2.4', 'S23_15_1.7']
+targets = ['ob140613', 'S002_15_0.7', 'S001_15_0.9']
 
 def compare_align_order(only_stars_in_fit=True):
     plot_dir = root_dir + 'plots/'
@@ -851,3 +852,4 @@ def plot_three_stars():
              poly='polyfit_d/fit', points='points_d/', radial=False, NcolMax=3, figsize=(15,15))
 
     return
+

@@ -853,3 +853,12 @@ def plot_three_stars():
              poly='polyfit_d/fit', points='points_d/', radial=False, NcolMax=3, figsize=(15,15))
 
     return
+
+def plot_three_stars_18A():
+    starNames = ['ob150029', 'S002_16_0.3', 'S003_16_0.9', 'S005_16_1.1']
+    prop_root = '/Users/jlu/work/microlens/OB150029/a_2017_09_21/prop/'
+
+    residuals.plotStar(starNames, rootDir=prop_root, align='align/align_t',
+             poly='polyfit_d/fit', points='points_d/', radial=False, NcolMax=3, figsize=(15,15))
+
+    return

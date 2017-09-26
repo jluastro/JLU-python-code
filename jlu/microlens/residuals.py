@@ -1206,3 +1206,136 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     return return_val
 
     
+def plot_3_targs(targNames, an_dirs, aligns, polys, points, figsize=(15,4), filename=''):
+
+    
+    ps = 9.942
+    
+    py.figure(1, figsize=figsize)
+    
+    Ntarg = len(targNames)
+    for i in range(Ntarg):
+        rootDir = an_dirs[i]
+        starName = targNames[i]
+        align = aligns[i]
+        poly = polys[i]
+        point = points[i]
+    
+        s = starset.StarSet(rootDir + align)
+        s.loadPolyfit(rootDir + poly, accel=0, arcsec=0)
+
+
+        names = s.getArray('name')
+        mag = s.getArray('mag')
+        x = s.getArray('x') 
+        y = s.getArray('y') 
+
+        ii = names.index(starName)
+        star = s.stars[ii]
+
+        pointsTab = Table.read(rootDir + point + starName + '.points', format='ascii')
+
+        time = pointsTab[pointsTab.colnames[0]]
+        x = pointsTab[pointsTab.colnames[1]]
+        y = pointsTab[pointsTab.colnames[2]]
+        xerr = pointsTab[pointsTab.colnames[3]]
+        yerr = pointsTab[pointsTab.colnames[4]]
+
+        idx_2015 = np.where(time-2015<1)
+        idx_2016 = np.where((time-2016<1) & (time-2016>0))
+        idx_2017 = np.where((time-2017<1) & (time-2017>0))
+
+        fitx = star.fitXv
+        fity = star.fitYv
+        dt = time - fitx.t0
+        fitLineX = fitx.p + (fitx.v * dt)
+        fitSigX = np.sqrt( fitx.perr**2 + (dt * fitx.verr)**2 )
+
+        fitLineY = fity.p + (fity.v * dt)
+        fitSigY = np.sqrt( fity.perr**2 + (dt * fity.verr)**2 )
+
+
+        diffX = x - fitLineX
+        diffY = y - fitLineY
+        diff = np.hypot(diffX, diffY)
+        rerr = np.sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
+        sigX = diffX / xerr
+        sigY = diffY / yerr
+        sig = diff / rerr
+
+
+            # Determine if there are points that are more than 5 sigma off
+        idxX = np.where(abs(sigX) > 4)
+        idxY = np.where(abs(sigY) > 4)
+        idx = np.where(abs(sig) > 4)
+
+        dateTicLoc = py.MultipleLocator(3)
+        dateTicRng = [2006, 2018]
+            # dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
+        dateTics = np.array([2015, 2016, 2017, 2018])
+        DateTicsLabel = dateTics-2000
+
+            # See if we are using MJD instead.
+        if time[0] > 50000:
+            dateTicLoc = py.MultipleLocator(1000)
+            dateTicRng = [57000, 58200]
+            dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
+            DateTicsLabel = dateTics
+
+
+        maxErr = np.array([xerr, yerr]).max()
+        resTicRng = [-1.1*maxErr, 1.1*maxErr]
+
+        from matplotlib.ticker import FormatStrFormatter
+        fmtX = FormatStrFormatter('%5i')
+        fmtY = FormatStrFormatter('%6.2f')
+        fontsize1 = 16
+
+        
+        x*=ps
+        y*=ps
+        xerr*=ps
+        yerr*=ps
+        fitLineX*=ps
+        fitLineY*=ps
+        fitSigX*=ps
+        fitSigY*=ps
+        x0 = np.mean(x)
+        y0 = np.mean(y)
+        x-= x0
+        y -= y0
+        fitLineX -= x0
+        fitLineY -= y0
+        
+        paxes = py.subplot(1, 3, i+1)
+        py.errorbar(x[idx_2015], y[idx_2015], xerr=xerr[idx_2015], yerr=yerr[idx_2015], fmt='r.', label='2015')  
+        py.errorbar(x[idx_2016], y[idx_2016], xerr=xerr[idx_2016], yerr=yerr[idx_2016], fmt='g.', label='2016')  
+        py.errorbar(x[idx_2017], y[idx_2017], xerr=xerr[idx_2017], yerr=yerr[idx_2017], fmt='b.', label='2017')  
+
+        if i==1:
+            py.yticks(np.arange(np.min(y-yerr-0.1*ps), np.max(y+yerr+0.1*ps), 0.3*ps))
+            py.xticks(np.arange(np.min(x-xerr-0.1*ps), np.max(x+xerr+0.1*ps), 0.25*ps))
+        else:
+            py.yticks(np.arange(np.min(y-yerr-0.1*ps), np.max(y+yerr+0.1*ps), 0.15*ps))
+            py.xticks(np.arange(np.min(x-xerr-0.1*ps), np.max(x+xerr+0.1*ps), 0.15*ps))
+        py.axis('square')
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        paxes.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        py.xlabel('X offset (mas)', fontsize=fontsize1)
+        py.ylabel('Y offset (mas)', fontsize=fontsize1)
+        py.plot(fitLineX, fitLineY, 'k-', label='_nolegend_')    
+        py.plot(fitLineX + fitSigX, fitLineY + fitSigY, 'k--', label='_nolegend_')
+        py.plot(fitLineX - fitSigX, fitLineY - fitSigY, 'k--',label='_nolegend_')
+        #title = rootDir.split('/')[-2]
+        py.title(starName.upper())
+        if i==0:
+            py.legend(loc=2)
+
+    
+    py.subplots_adjust(wspace=0.6, hspace=0.6, left = 0.08, bottom = 0.05, right=0.95, top=0.90)
+    py.tight_layout()
+    py.show()
+    py.savefig(filename)
+        
+        

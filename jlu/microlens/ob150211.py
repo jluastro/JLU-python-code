@@ -780,3 +780,12 @@ def plot_three_stars(targets=targets):
              poly='polyfit_d/fit', points='points_d/', radial=False, NcolMax=3, figsize=(15,15))
 
     return
+
+def plot_three_stars_18A(targets=targets):
+    targets = ['OB150211', 'S001_11_1.8', 'S003_14_0.8']
+    prop_root = '/Users/jlu/work/microlens/OB150211/a_2017_09_19/prop/'
+    
+    residuals.plotStar(targets, rootDir=prop_root, align='align/align_t',
+             poly='polyfit_a/fit', points='points_a/', radial=False, NcolMax=3, figsize=(15,15))
+
+    return
