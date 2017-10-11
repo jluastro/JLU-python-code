@@ -305,7 +305,7 @@ def run():
     pickle.dump(tweights, output)
     output.close()
     
-def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mid=False,twocomp=False,selectTemp=None,flagWave=False):
+def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mid=False,twocomp=False,selectTemp=None,flagWave=False,moments=4):
     """
     Run the PPXF analysis the M31 OSIRIS data cube, using the Python implementation of pPXF.
     """
@@ -477,7 +477,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mi
     job_server = pp.Server()
     print "Starting pp with", job_server.get_ncpus(), "workers"
     t1=time.time()
-    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
+    jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,moments,i), (), ('numpy as np','time','ppxf'))) for i in allxxyy]
     #test=np.array([(0,0),(0,5),(10,30)])
     #test=np.array([(10,30)])
     #jobs = [(i, job_server.submit(run_once, (newCube[i[0],i[1],:],newErrors[i[0],i[1],:],templates,velScale,start,goodPixels,dv,twocomp,i), (), ('numpy as np','time','ppxf','pdb'))) for i in test]
@@ -519,8 +519,9 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mi
                 solution = job.result.sol
                 velocity[xx, yy] = solution[0]
                 sigma[xx, yy] = solution[1]
-                h3[xx, yy] = solution[2]
-                h4[xx, yy] = solution[3]
+                if moments == 4:
+                    h3[xx, yy] = solution[2]
+                    h4[xx, yy] = solution[3]
             #h5[xx, yy] = solution[4]
             #h6[xx, yy] = solution[5]
             chi2red[xx, yy] = job.result.chi2
@@ -537,8 +538,9 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mi
     output = open(outfile, 'w')
     pickle.dump(velocity, output)
     pickle.dump(sigma, output)
-    pickle.dump(h3, output)
-    pickle.dump(h4, output)
+    if moments == 4:
+        pickle.dump(h3, output)
+        pickle.dump(h4, output)
     if twocomp:
         pickle.dump(velocity2, output)
         pickle.dump(sigma2, output)
@@ -555,7 +557,7 @@ def run_py(inputFile=None,verbose=True,newTemplates=True,blue=False,red=False,mi
 
     print "Time elapsed: ", time.time() - t1, "s"
 
-def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,allxxyy,verbose=False):
+def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,moments,allxxyy,verbose=False):
     xx = allxxyy[0]
     yy = allxxyy[1]
 
@@ -583,8 +585,7 @@ def run_once(newCube,errors,templates,velScale,start,goodPixels,vsyst,twocomp,al
     else:
         #outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, mdegree=4, vsyst=vsyst)
         #start = [0.,236.]
-        outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=4, vsyst=vsyst)
-
+        outppxf = ppxf.ppxf(templates, galaxy, error, velScale, start, goodpixels=goodPixels, plot=False, moments=moments, vsyst=vsyst)
 
     #pdb.set_trace()
     return outppxf
@@ -1012,14 +1013,15 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     #pdb.set_trace()
     
 class PPXFresults(object):
-    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False,twocomp=False):
+    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False,twocomp=False,moments=4):
         self.inputFile = inputFile
         
         input = open(inputFile, 'r')
         self.velocity = pickle.load(input)
         self.sigma = pickle.load(input)
-        self.h3 = pickle.load(input)
-        self.h4 = pickle.load(input)
+        if moments == 4:
+            self.h3 = pickle.load(input)
+            self.h4 = pickle.load(input)
         if twocomp:
             self.velocity2 = pickle.load(input)
             self.sigma2 = pickle.load(input)
@@ -1289,12 +1291,12 @@ def plotResults2(inputFile):
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
-def plotResults3(inputFile,zoom=False,twocomp=False):
+def plotResults3(inputFile,zoom=False,twocomp=False,moments=4):
     #cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     #cubeimg = pyfits.getdata('/Users/kel/Documents/Projects/M31/data/081021/SPEC/reduce_new/cleanrecmat/m31/woscalecont/ppxf/m31_081021_mosaic_woscalecont_img.fits')
     #cubeimg=pyfits.getdata('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_telshift/woscalecont/m31_mosaic_telshift_woscalecont_img.fits')
       
-    p = PPXFresults(inputFile,twocomp=twocomp)
+    p = PPXFresults(inputFile,twocomp=twocomp,moments=moments)
 
     xaxis = (np.arange(len(p.velocity[0])) - bhpos_pix[0]) * 0.05
     yaxis = (np.arange(len(p.velocity)) - bhpos_pix[1]) * 0.05
@@ -1362,42 +1364,43 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
     cbar = py.colorbar(orientation='vertical',ticks=[0.,150.,300])
     cbar.set_label('Dispersion (km/s)')
 
-    ##########
-    # Plot h3
-    ##########
-    py.subplot(2, 2, 3)
-    if twocomp:
-        h3img = p.h3_2.transpose()
-    else:
-        h3img = p.h3.transpose()
-    plh3 = np.rot90(h3img,3)
-    py.imshow(py.ma.masked_where(plh3[y0:y1,x0:x1]==0, plh3[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
-              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
-    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
-    py.ylabel('Y (arcsec)')
-    py.xlabel('X (arcsec)')
-    py.gca().get_xaxis().set_major_locator(xtickLoc)
-    py.axis('image')
-    cbar = py.colorbar(orientation='vertical',ticks=[-.2,0.,.2])
-    cbar.set_label('h3')
+    if moments == 4:
+        ##########
+        # Plot h3
+        ##########
+        py.subplot(2, 2, 3)
+        if twocomp:
+            h3img = p.h3_2.transpose()
+        else:
+            h3img = p.h3.transpose()
+        plh3 = np.rot90(h3img,3)
+        py.imshow(py.ma.masked_where(plh3[y0:y1,x0:x1]==0, plh3[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
+                extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
+        py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
+        py.ylabel('Y (arcsec)')
+        py.xlabel('X (arcsec)')
+        py.gca().get_xaxis().set_major_locator(xtickLoc)
+        py.axis('image')
+        cbar = py.colorbar(orientation='vertical',ticks=[-.2,0.,.2])
+        cbar.set_label('h3')
 
-    ##########
-    # Plot h4
-    ##########
-    py.subplot(2, 2, 4)
-    if twocomp:
-        h4img = p.h4_2.transpose()
-    else:
-        h4img = p.h4.transpose()
-    plh4 = np.rot90(h4img,3)
-    py.imshow(py.ma.masked_where(plh4[y0:y1,x0:x1]==0, plh4[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
-              extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
-    py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
-    py.xlabel('X (arcsec)')
-    py.gca().get_xaxis().set_major_locator(xtickLoc)
-    py.axis('image')
-    cbar = py.colorbar(orientation='vertical',ticks=[-.2,0.,.2])
-    cbar.set_label('h4')
+        ##########
+        # Plot h4
+        ##########
+        py.subplot(2, 2, 4)
+        if twocomp:
+            h4img = p.h4_2.transpose()
+        else:
+            h4img = p.h4.transpose()
+        plh4 = np.rot90(h4img,3)
+        py.imshow(py.ma.masked_where(plh4[y0:y1,x0:x1]==0, plh4[y0:y1,x0:x1]),vmin=-.2,vmax=.2, 
+                extent=[xaxis[x0], xaxis[x1], yaxis[y0], yaxis[y1]])
+        py.plot([0], 'ko', markeredgewidth=2,markerfacecolor='None')
+        py.xlabel('X (arcsec)')
+        py.gca().get_xaxis().set_major_locator(xtickLoc)
+        py.axis('image')
+        cbar = py.colorbar(orientation='vertical',ticks=[-.2,0.,.2])
+        cbar.set_label('h4')
 
     #py.tight_layout()
     pdb.set_trace()
@@ -2946,10 +2949,16 @@ def plotL98(incubeimg=None):
     # clip everything to rad~2" (90 pix = 2.052" at 0.0228"/pix)
     rado = 74.
     cubepl = cubecomp[obhrot[0]-rado:obhrot[0]+rado,obhrot[1]-rado:obhrot[1]+rado]
-    l98opl = l98oclip[obhrot[0]-rado:obhrot[0]+rado,obhrot[1]-rado:obhrot[1]+rado]
+    l98oplorg = l98oclip[obhrot[0]-rado:obhrot[0]+rado,obhrot[1]-rado:obhrot[1]+rado]
     npl = nclip[lbh[0]-rado:lbh[0]+rado,lbh[1]-rado:lbh[1]+rado]
     l98pl = l98[lbh[0]-rado:lbh[0]+rado,lbh[1]-rado:lbh[1]+rado]
     modpl = modflux[modbh[0]-rado:modbh[0]+rado,modbh[1]-rado:modbh[1]+rado]
+
+    # convolve L98 data to OSIRIS resolution
+    PSFparams = readPSFparams('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_NIRC2_CC_DTOTOFF_2/no100828/data/osiris_perf/sig_1.05/params.txt',twoGauss=False)
+    PSFsig = PSFparams.sig1[0] * (opix/lpix)
+    psf = ifu.gauss_kernel(PSFsig, PSFparams.amp1[0],half_box=PSFsig*5.)
+    l98opl = signal.convolve(l98oplorg, psf, mode='same')
     
     #pdb.set_trace()
     # plot OSIRIS comparison
@@ -2961,6 +2970,7 @@ def plotL98(incubeimg=None):
     py.subplots_adjust(left=0.01, right=0.88, top=0.95, hspace=0.3)
     py.clf()
     py.subplot(3,1,1)
+    py.ylabel('Y (arcsec)')
     py.rc('axes', labelsize=15)
     py.rc('xtick', labelsize=15)    
     py.rc('ytick', labelsize=15)
@@ -2969,7 +2979,6 @@ def plotL98(incubeimg=None):
     py.autoscale(False)
     py.xticks([-1.5,0,1.5])
     py.yticks([-1.5,0,1.5])
-    py.ylabel('Y (arcsec)')
     py.plot([0], [0], 'ko', markeredgewidth=1,markerfacecolor='None')
     
     cbar = py.colorbar(orientation='vertical',ticks=[0.,.5,1.])
@@ -3778,6 +3787,7 @@ def plotSTIS(inData=workdir+'ppxf_tess_bs_2_20160825.dat',inData2=None,inErr=Non
         # FWHM of B01 data (M8 mosaic) = .5 arcsec = 210 mas dispersion = 5 OSIRIS pixels
         disp_B01 = 5
         gaussB01 = ifu.gauss_kernel1D(disp_B01,1,half_box=disp_B01*3.)
+        pdb.set_trace()
         v_c_B01 = np.convolve(vel[bhpos_pix[1],:],gaussB01,mode='same')
         ax1 = py.subplot(211)
         py.plot(xaxis,vel[bhpos_pix[1],:],'ro')
@@ -4014,6 +4024,8 @@ def plotDataModelResiduals(inputData=workdir+'ppxf.dat',inputModel=modeldir+'non
         py.savefig(modelworkdir + 'plots/residuals_velocity.eps')
     py.show()
 
+    pdb.set_trace()
+    
     ##########
     # Plot sigma
     ##########  
