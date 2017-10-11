@@ -468,7 +468,7 @@ class Orbit(object):
         # set default values
 
         if (ecc < 0. or ecc >= 1.):
-            print 'Eccentricity must be 0<= ecc. < 1'
+            print('Eccentricity must be 0<= ecc. < 1')
             
         #
         # Range reduction of m to -pi < m <= pi

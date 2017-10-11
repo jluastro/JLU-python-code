@@ -1,6 +1,5 @@
 import numpy as np
 import scipy as sp
-import pylab as plt
 import scipy.stats
 import os, sys
 import math
@@ -173,11 +172,97 @@ class PSPL(object):
         return mag_model
 
     def get_astrometry(self, t_obs):
+        '''
+        Position of the observed source position in arcsec.
+        '''
         srce_pos_model = self.xS0 + np.outer((t_obs - self.t0) / days_per_year, self.muS) * 1e-3
         pos_model = srce_pos_model + (self.get_centroid_shift(t_obs) * 1e-3)
 
         return pos_model
+    
+    def get_astrometry_unlensed(self, t_obs):
+        """Get the astrometry of the source if the lens didn't exist.
+
+        Return
+        -------
+        xS_unlensed : numpy array, dtype=float, shape = len(t_obs) x 2
+            The unlensed positions of the source in arcseconds. 
+        """
+        # Equation of motion for just the background source.
+        dt_in_years = (t_obs - self.t0) / days_per_year
+        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3
+
+        return xS_unlensed
+    
+    def get_lens_astrometry(self, t_obs):
+        # Equation of motion for just the background source.
+        dt_in_years = (t_obs - self.t0) / days_per_year
+        xL_unlensed = self.xL0 + np.outer(dt_in_years, self.muL) * 1e-3
+
+        return xL_unlensed
         
+        
+    def get_resolved_shift(self, t_obs):
+        dt_in_years = (t_obs - self.t0) / days_per_year
+            
+        # Equation of motion for the relative angular separation between the background source and lens.
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel)  # mas
+        u_vec = thetaS / self.thetaE_amp
+        u_amp = np.linalg.norm(u_vec, axis=1)
+        u_hat = (u_vec.T / u_amp).T
+
+        u_plus = ((u_amp + np.sqrt(u_amp**2 + 4)) / 2.0) * u_hat.T
+        u_minus = ((u_amp - np.sqrt(u_amp**2 + 4)) / 2.0) * u_hat.T
+        u_plus = u_plus.T
+        u_minus = u_minus.T
+
+        shift_plus = u_plus * self.thetaE_amp   # in mas
+        shift_minus = u_minus * self.thetaE_amp # in mas
+
+        return (shift_plus, shift_minus)
+        
+    def get_resolved_amplification(self, t):
+        """Get the photometric amplification term at a set of times, t for both the
+        plus and minus images.
+
+        Inputs
+        ----------
+        t: Array of times in MJD.DDD
+        """
+        # Equation of relative motion (angular on sky) Eq. 16 from Hog+ 1995
+        dt_in_years = (t - self.t0) / days_per_year
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel) # mas
+        u = thetaS / self.thetaE_amp
+        u_amp = np.linalg.norm(u, axis=1)
+        
+        A_plus = 0.5 * ((u_amp**2 + 2) / (u_amp * np.sqrt(u_amp**2 + 4)) + 1)
+        A_minus = 0.5 * ((u_amp**2 + 2) / (u_amp * np.sqrt(u_amp**2 + 4)) - 1)
+
+        return (A_plus, A_minus)
+    
+    def get_resolved_astrometry(self, t_obs):
+        """Get the x, y astrometry for each of the two source images, 
+        which we label plus and minus.
+
+        Returns
+        --------
+        [xS_plus, xS_minus] : list of numpy arrays
+            xS_plus is the vector position of the plus image in arcsec
+            xS_minus is the vector position of the plus image in arcsec
+        
+        """
+        # Things we will need.
+        dt_in_years = (t_obs - self.t0) / days_per_year
+            
+        # Equation of motion for just the background source.
+        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3
+
+        shift_plus, shift_minus = self.get_resolved_shift(t_obs)
+
+        xS_plus = xS_unlensed + (shift_plus * 1e-3) # arcsec
+        xS_minus = xS_unlensed + (shift_minus * 1e-3) # arcsec
+
+        return (xS_plus, xS_minus)
 
     def likely_photometry(self, t_obs, mag_obs, mag_err_obs):
         mag_model = self.get_photometry(t_obs)
@@ -242,7 +327,9 @@ class PSPL_parallax(PSPL):
 
         # Equation of relative motion (angular on sky) Eq. 16 from Hog+ 1995
         dt_in_years = (t - self.t0) / days_per_year
-        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel)  - (self.piRel * parallax_vec) # mas
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel) # mas
+        thetaS -= (self.piRel * parallax_vec)                     # mas
+
         u = thetaS / self.thetaE_amp
         u_amp = np.linalg.norm(u, axis=1)
         
@@ -314,8 +401,73 @@ class PSPL_parallax(PSPL):
         xS = xS_unlensed + (shift * 1e-3) # arcsec
 
         return xS
+
+    def get_resolved_shift(self, t_obs):
+        # Equation of motion for the relative angular separation between the background source and lens.
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel)  # mas
+        thetaS -= (self.piRel * parallax_vec)                      # mas
+        u_vec = thetaS / self.thetaE_amp
+        u_amp = np.linalg.norm(u_vec, axis=1)
+        u_hat = (u_vec.T / u_amp).T
+
+        u_plus = ((u_amp + np.sqrt(u_amp**2 + 4)) / 2.0) * u_hat
+        u_minus = ((u_amp - np.sqrt(u_amp**2 + 4)) / 2.0) * u_hat
+
+        shift_plus = u_plus * self.thetaE_amp   # in mas
+        shift_minus = u_minus * self.thetaE_amp # in mas
+
+        return (shift_plus, shift_minus)
+        
+    def get_resolved_amplification(self, t):
+        """Get the photometric amplification term at a set of times, t for both the
+        plus and minus images.
+
+        Inputs
+        ----------
+        t: Array of times in MJD.DDD
+        """
+        # Get the parallax vector for each date.
+        parallax_vec = parallax_in_direction(self.raL, self.decL, t)
+
+        # Equation of relative motion (angular on sky) Eq. 16 from Hog+ 1995
+        dt_in_years = (t - self.t0) / days_per_year
+        thetaS = self.thetaS0 + np.outer(dt_in_years, self.muRel)  - (self.piRel * parallax_vec) # mas
+        u = thetaS / self.thetaE_amp
+        u_amp = np.linalg.norm(u, axis=1)
+        
+        A_plus = 0.5 * ((u_amp**2 + 2) / (u_amp * np.sqrt(u_amp**2 + 4)) + 1)
+        A_minus = 0.5 * ((u_amp**2 + 2) / (u_amp * np.sqrt(u_amp**2 + 4)) - 1)
+
+        return (A_plus, A_minus)
     
-    
+    def get_resolved_astrometry(self, t_obs):
+        """Get the x, y astrometry for each of the two source images, 
+        which we label plus and minus.
+
+        Returns
+        --------
+        [xS_plus, xS_minus] : list of numpy arrays
+            xS_plus is the vector position of the plus image.
+            xS_minus is the vector position of the plus image.
+        
+        """
+        # Things we will need.
+        dt_in_years = (t_obs - self.t0) / days_per_year
+            
+        # Get the parallax vector for each date.
+        parallax_vec = parallax_in_direction(self.raL, self.decL, t_obs)
+
+        # Equation of motion for just the background source.
+        xS_unlensed = self.xS0 + np.outer(dt_in_years, self.muS) * 1e-3
+        xS_unlensed += (self.piS * parallax_vec) * 1e-3 # arcsec
+
+        shift_plus, shift_minus = self.get_resolved_shift(t_obs)
+
+        xS_plus = xS_unlensed + (shift_plus * 1e-3) # arcsec
+        xS_minus = xS_unlensed + (shift_minus * 1e-3) # arcsec
+
+        return (xS_plus, xS_minus)
+        
         
 def parallax_in_direction(RA, Dec, mjd):
     """

@@ -2,7 +2,7 @@ import os, sys
 from numpy import *
 import numpy as np
 import asciidata
-import starTables as tabs
+from . import starTables as tabs
 from jlu.gc.gcwork import starset
 from jlu.gc.gcwork import objects
 import sqlite3 as sqlite
@@ -182,18 +182,18 @@ def loadYoungStars(root, align='align/align_d_rms_1000_abs_t',
                     stars.remove(star)
 
             if (verbose == True):
-                print 'Matched %15s to %12s' % (name, star.rv_ref)
+                print('Matched %15s to %12s' % (name, star.rv_ref))
 
 	    star.jz = (star.x * star.vy) - (star.y * star.vx)
 	    star.jz /= (star.r2d * hypot(star.vx, star.vy))	    
-	except ValueError, e:
+	except ValueError as e:
 	    # Couldn't find the star in our lists
 	    continue
 
     # Set the starset's star list
     s.stars = stars
 
-    print 'Found %d young stars' % len(stars)
+    print('Found %d young stars' % len(stars))
     return s
     
 
@@ -222,7 +222,7 @@ def loadAllYoungStars(root, radiusCut=0.8, withRVonly=False):
             star.paumDiffX = paum.x[idx] - star.fitXa.p
             star.paumDiffY = paum.y[idx] - star.fitYa.p
             star.paumDiff = sqrt(star.paumDiffX**2 + star.paumDiffY**2)
-	except ValueError, e:
+	except ValueError as e:
             continue
     
     # We now have young stars that are not in Paumard, so must account
@@ -230,7 +230,7 @@ def loadAllYoungStars(root, radiusCut=0.8, withRVonly=False):
     diff = ours.getArray('paumDiff')
     mtch = np.where(diff > 0)[0] # This will find all but the NaN's
     avgDiff = diff[mtch].mean()
-    print 'The average error in Paumard distances is', avgDiff
+    print('The average error in Paumard distances is', avgDiff)
 
     # Loop through all the young stars in Paumard's list.
     for ii in range(len(paum.name)):
@@ -240,7 +240,7 @@ def loadAllYoungStars(root, radiusCut=0.8, withRVonly=False):
 	    #idx = ourNames.index(name)
 	    idx = np.where(ourNames == name)[0]
 	    star = ours.stars[idx]
-	except ValueError, e:
+	except ValueError as e:
 	    # Couldn't find the star in our lists. Use Paumard info.
             if (name == ' ' or name == ''):
                 name = 'paum' + paum.name[ii]
@@ -318,16 +318,16 @@ def idNewYoung(alignRoot):
         idx = (where((dr < 0.5) & (abs(dm) < 0.5)))[0]
 
         if (len(idx) > 0):
-            print 'Possible matches for:'
-            print '  %-14s  %4.1f  %7.3f  %7.3f (%s)' % \
+            print('Possible matches for:')
+            print('  %-14s  %4.1f  %7.3f  %7.3f (%s)' % \
                   (paum.name[i], paum.mag[i], paum.x[i], paum.y[i],
-                   paum.ourName[i])
+                   paum.ourName[i]))
             for k in idx:
-                print '  %-14s  %4.1f  %7.3f  %7.3f   %5.2f  %5.2f  %3.1f' % \
-                      (ourName[k], mag[k], x[k], y[k], dx[k], dy[k], dm[k])
+                print('  %-14s  %4.1f  %7.3f  %7.3f   %5.2f  %5.2f  %3.1f' % \
+                      (ourName[k], mag[k], x[k], y[k], dx[k], dy[k], dm[k]))
 
         else:
-            print 'No match for: %s' % (paum.name[i])
+            print('No match for: %s' % (paum.name[i]))
 
 
 def makeYoungDat():

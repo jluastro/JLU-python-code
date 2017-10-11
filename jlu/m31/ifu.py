@@ -1,11 +1,11 @@
 import math
-import pyfits
+from astropy.io import fits as pyfits
 import numpy as np
 import pylab as py
 import scipy
-import asciidata
+# import asciidata
 from scipy import signal
-from pyraf import iraf as ir
+# from pyraf import iraf as ir
 from jlu.osiris import cube as cube_code
 from jlu.osiris import spec
 from jlu.m31 import ppxf_m31
@@ -72,7 +72,7 @@ def osiris_performance_all(year):
     cubes = get_all_cubes(year)
 
     for cube in cubes:
-        print 'Calling osiris_peformance for ' + cube
+        print('Calling osiris_peformance for ' + cube)
         osiris_performance(cube)
 
 def make_cube_image(cubefile, rootdir=datadir, clobber=False):
@@ -122,9 +122,9 @@ def tweakShifts(rootdir=datadir, frameimgdir=datadir, inCubeImg=None, frameShift
         # frame and the NIRC2 frame - all other OSIRIS frame offsets are w.r.t. the 0th frame
         ycent = int(round((img.shape[0] / 2.0)  - (3.*5) + (inyshift*5.0) ))
         xcent = int(round((img.shape[1] / 2.0)  + (1.*5) + (inxshift*5.0) ))
-        print ''
-        print 'Comparing OSIRIS with NIRC2 Image:'
-        print '  NIRC2 xcent = ', xcent, '  ycent = ', ycent
+        print('')
+        print('Comparing OSIRIS with NIRC2 Image:')
+        print('  NIRC2 xcent = ', xcent, '  ycent = ', ycent)
 
         yhalf = (osirisimg.shape[0] / 2.) * 5 # Make the image the same size
         xhalf = (osirisimg.shape[1] / 2.) * 5 # as the OSIRIS cube image
@@ -170,8 +170,8 @@ def tweakShifts(rootdir=datadir, frameimgdir=datadir, inCubeImg=None, frameShift
         dy = testcorr[0] - corr[0]
         
         
-        print "dx = ", dx,
-        print "dy = ", dy
+        print("dx = ", dx, end=' ')
+        print("dy = ", dy)
 
         # testing the new shift
         ycentnew = int(round((imgorg.shape[0] / 2.0)  - (3.*5) + ((yshift+dy)*5.0) ))
@@ -284,7 +284,7 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
 
     #cubeimg = make_cube_image(cubefile, rootdir=rootdir)
     #if cubeimg == None:
-    print 'Opening previosly existing cube image.'
+    print('Opening previosly existing cube image.')
     #cubeimg = pyfits.getdata(rootdir + cubefile.replace(".fits", '_img.fits'))
     cubeimg, cubeimghdr = pyfits.getdata(cubefile.replace(".fits", '_img.fits'), header=True)
         #cubeimg = pyfits.getdata(cubeimgfile)
@@ -361,7 +361,7 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
 
             frameimg = make_cube_image(filerr, rootdir=frameimgdir)
             if frameimg == None:
-                print 'Opening previosly existing cube image.'
+                print('Opening previosly existing cube image.')
                 frameimg = pyfits.getdata(frameimgdir + filerr.replace(".fits", '_img.fits'))
         else:
             frameimg = cubeimg
@@ -387,10 +387,10 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
         residuals = specCrop / scipy.polyval(coeffs, waveCrop)
         specSNR = (residuals.mean() / residuals.std())
 
-        print 'OSIRIS Signal-to-Noise:'
-        print '   X = %d  Y = %d' % (xpixSNR, ypixSNR)
-        print '   wavelength = [%5.3f - %5.3f]' % (2.160, 2.175)
-        print '   SNR = %f' % specSNR
+        print('OSIRIS Signal-to-Noise:')
+        print('   X = %d  Y = %d' % (xpixSNR, ypixSNR))
+        print('   wavelength = [%5.3f - %5.3f]' % (2.160, 2.175))
+        print('   SNR = %f' % specSNR)
 
         img = imgorg
         # Trim down the NIRC2 image to the same size as the OSIRIS image.
@@ -401,9 +401,9 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
         # frame and the NIRC2 frame - all other OSIRIS frame offsets are w.r.t. the 0th frame
         ycent = int(round((img.shape[0] / 2.0)  - (3.*5) + (yshift*5.0) ))
         xcent = int(round((img.shape[1] / 2.0)  + (1.*5) + (xshift*5.0) ))
-        print ''
-        print 'Comparing OSIRIS with NIRC2 Image:'
-        print '  NIRC2 xcent = ', xcent, '  ycent = ', ycent
+        print('')
+        print('Comparing OSIRIS with NIRC2 Image:')
+        print('  NIRC2 xcent = ', xcent, '  ycent = ', ycent)
 
         #yhalf = int(frameimg.shape[0] / 2.) * 5 # Make the image the same size
         #xhalf = int(frameimg.shape[1] / 2.) * 5 # as the OSIRIS cube image.
@@ -459,11 +459,11 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
 
             img2 = img.astype(float)
             if verbose:
-                print 'fitfunc shapes:',
-                print ' cubeimg = ', frameimg.shape, 
-                print ' psf = ', psf.shape,
-                print ' newimg = ', newimg.shape
-                print ' img = ', img.shape
+                print('fitfunc shapes:', end=' ')
+                print(' cubeimg = ', frameimg.shape, end=' ') 
+                print(' psf = ', psf.shape, end=' ')
+                print(' newimg = ', newimg.shape)
+                print(' img = ', img.shape)
 
             newimg[cidx] = 0
             newimg[midx] = 0
@@ -481,13 +481,13 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
 
             if verbose:
                 if twoGauss:
-                    print 'Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2),
-                    print ' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2)
+                    print('Parameters: sig1 = %5.2f  sig2 = %5.2f ' % (sigma1, sigma2), end=' ')
+                    print(' amp1 = %9.2e  amp2 = %9.2e' % (amp1, amp2))
                 else:
-                    print 'Parameters: sig1 = %5.2f ' % (sigma1),
-                    print ' amp1 = %9.2e ' % (amp1)
-                print 'Residuals:  ', math.sqrt((residuals*residuals).sum())
-                print '' 
+                    print('Parameters: sig1 = %5.2f ' % (sigma1), end=' ')
+                    print(' amp1 = %9.2e ' % (amp1))
+                print('Residuals:  ', math.sqrt((residuals*residuals).sum()))
+                print('') 
 
             if plot:
                 py.close(1)
@@ -558,17 +558,17 @@ def osiris_performance(cubefile, rootdir=datadir, plotdir=workdir, framedir=data
             params[1] = 1.05
        
 
-        print 'Fitting PSF: '
-        print ''
-        print 'Initial: '
+        print('Fitting PSF: ')
+        print('')
+        print('Initial: ')
         fitfunction(params, plot=True, verbose=True)
 
         p, cov, infodict, errmsg, success = scipy.optimize.leastsq(fitfunction, 
                                                                params, 
                                                                full_output=1,
                                                                maxfev=100)
-        print ''
-        print 'Results:'
+        print('')
+        print('Results:')
         residuals = fitfunction(p, plot=True, verbose=True)
 
         if twoGauss:
@@ -692,7 +692,7 @@ def compPSF(inPSFpath=datadir+'data/osiris_perf/',twoGauss=False,toTxt=False,num
         fwhm = fwhm[idx]
         
     fwhmmed = np.median(fwhm)
-    print 'Median FWHM is ', fwhmmed
+    print('Median FWHM is ', fwhmmed)
 
     if toTxt:
         np.savetxt(datadir + 'data/osiris_perf/sig1_all_wfilename.txt', np.c_[sigall, filename],
@@ -714,8 +714,8 @@ def twogauss_kernel(sigma1, sigma2, amplitude1, amplitude2, half_box=50):
     we assume circular symmetry.
     """
     if (half_box < 3*sigma1):
-        print 'PSF width is too big (%5.2f pixels) for the ' % sigma1
-        print 'box size (%3d pixels). Change sigma1.'  % (2*half_box)
+        print('PSF width is too big (%5.2f pixels) for the ' % sigma1)
+        print('box size (%3d pixels). Change sigma1.'  % (2*half_box))
         return
 
     # Create a 2D grid of X and Y positions in our PSF
@@ -734,8 +734,8 @@ def twogauss_kernel(sigma1, sigma2, amplitude1, amplitude2, half_box=50):
 def gauss_kernel(sigma1, amplitude1, half_box=50):
 
     if (half_box < 3*sigma1):
-        print 'PSF width is too big (%5.2f pixels) for the ' % sigma1
-        print 'box size (%3d pixels). Change sigma1.'  % (2*half_box)
+        print('PSF width is too big (%5.2f pixels) for the ' % sigma1)
+        print('box size (%3d pixels). Change sigma1.'  % (2*half_box))
         return
 
     # Create a 2D grid of X and Y positions in our PSF
@@ -753,8 +753,8 @@ def gauss_kernel(sigma1, amplitude1, half_box=50):
 def gauss_kernel1D(sigma1, amplitude1, half_box=50):
 
     if (half_box < 3*sigma1):
-        print 'PSF width is too big (%5.2f pixels) for the ' % sigma1
-        print 'box size (%3d pixels). Change sigma1.'  % (2*half_box)
+        print('PSF width is too big (%5.2f pixels) for the ' % sigma1)
+        print('box size (%3d pixels). Change sigma1.'  % (2*half_box))
         return
 
     # Create an x array
@@ -847,8 +847,8 @@ def integrated_spectrum():
     limits = py.axis()
     
     # Label lines
-    lineWave = lineList.keys()
-    lineName = lineList.values()
+    lineWave = list(lineList.keys())
+    lineName = list(lineList.values())
     for ll in range(len(lineWave)):
         xhash = [lineWave[ll], lineWave[ll]]
         yhash = [limits[3]*0.82, limits[3]*0.85]
@@ -1143,9 +1143,9 @@ def extract_spec2():
     specInfo, hdr = pyfits.getdata(infile, header=True)
     wave = specInfo[0,:] * 1e3  # in nm
     spec = specInfo[1,:]
-    print wave[0:10]
-    print wave[-10:]
-    print spec
+    print(wave[0:10])
+    print(wave[-10:])
+    print(spec)
 
     crpix1 = 1
     crval1 = wave[0]
@@ -1154,8 +1154,8 @@ def extract_spec2():
 
     tmp = np.arange(len(spec), dtype=float)
     tmp = tmp*cdelt1 + crval1
-    print tmp[0:10]
-    print tmp[-10:]
+    print(tmp[0:10])
+    print(tmp[-10:])
 
 
     hdr.update('CRPIX1', crpix1)
@@ -1302,9 +1302,9 @@ def makeResolutionMapCO():
                 #     pdb.set_trace()
 
                 if (sigma > 0.0008):
-                    print 'Invalid for xx = %2d, yy = %2d, niter = %d' % \
-                        (xx, yy, out[1])
-                    print '    ', out[0]
+                    print('Invalid for xx = %2d, yy = %2d, niter = %d' % \
+                        (xx, yy, out[1]))
+                    print('    ', out[0])
                     continue
                 
                 lineCount += 1.0
@@ -1321,39 +1321,39 @@ def makeResolutionMapCO():
     idx2 = np.where(centAll[:,:,1] != 0)
     idx3 = np.where(centAll[:,:,2] != 0)
 
-    print 'Line Information: '
-    print '      Center:  %8.5f  %8.5f  %8.5f' % \
+    print('Line Information: ')
+    print('      Center:  %8.5f  %8.5f  %8.5f' % \
         (centAll[idx1[0],idx1[1],0].mean(), 
          centAll[idx2[0],idx2[1],1].mean(), 
-         centAll[idx3[0],idx3[1],2].mean())
-    print '            :  %8.5f  %8.5f  %8.5f' % \
+         centAll[idx3[0],idx3[1],2].mean()))
+    print('            :  %8.5f  %8.5f  %8.5f' % \
         (centAll[idx1[0],idx1[1],0].std(), 
          centAll[idx2[0],idx2[1],1].std(), 
-         centAll[idx3[0],idx3[1],2].std())
-    print '  Amplitudes:  %8.2e  %8.2e  %8.2e' % \
+         centAll[idx3[0],idx3[1],2].std()))
+    print('  Amplitudes:  %8.2e  %8.2e  %8.2e' % \
         (ampAll[idx1[0],idx1[1],0].mean(), 
          ampAll[idx2[0],idx2[1],1].mean(), 
-         ampAll[idx3[0],idx3[1],2].mean())
-    print '            :  %8.2e  %8.2e  %8.2e' % \
+         ampAll[idx3[0],idx3[1],2].mean()))
+    print('            :  %8.2e  %8.2e  %8.2e' % \
         (ampAll[idx1[0],idx1[1],0].std(), 
          ampAll[idx2[0],idx2[1],1].std(), 
-         ampAll[idx3[0],idx3[1],2].std())
-    print '  Resolution:  %8d  %8d  %8d' % \
+         ampAll[idx3[0],idx3[1],2].std()))
+    print('  Resolution:  %8d  %8d  %8d' % \
         (resAll[idx1[0],idx1[1],0].mean(), 
          resAll[idx2[0],idx2[1],1].mean(), 
-         resAll[idx3[0],idx3[1],2].mean())
-    print '            :  %8d  %8d  %8d' % \
+         resAll[idx3[0],idx3[1],2].mean()))
+    print('            :  %8d  %8d  %8d' % \
         (resAll[idx1[0],idx1[1],0].std(), 
          resAll[idx2[0],idx2[1],1].std(), 
-         resAll[idx3[0],idx3[1],2].std())
-    print '    Constant:  %8.2e  %8.2e  %8.2e' % \
+         resAll[idx3[0],idx3[1],2].std()))
+    print('    Constant:  %8.2e  %8.2e  %8.2e' % \
         (constAll[idx1[0],idx1[1],0].mean(), 
          constAll[idx2[0],idx2[1],1].mean(), 
-         constAll[idx3[0],idx3[1],2].mean())
-    print '            :  %8.2e  %8.2e  %8.2e' % \
+         constAll[idx3[0],idx3[1],2].mean()))
+    print('            :  %8.2e  %8.2e  %8.2e' % \
         (constAll[idx1[0],idx1[1],0].std(), 
          constAll[idx2[0],idx2[1],1].std(), 
-         constAll[idx3[0],idx3[1],2].std())
+         constAll[idx3[0],idx3[1],2].std()))
 
     py.clf()
     py.subplot(1, 2, 1)
@@ -1441,7 +1441,7 @@ def compare_with_nirc2(cube_ii, xshift, yshift,
     xhi = np.int(xlo + imag_new_size[1])
     ylo = np.int(np.round(imag_center[0] - (imag_new_size[0] / 2.0) + (yshift / imag_scale)))
     yhi = np.int(ylo + imag_new_size[0])
-    print (yhi-ylo)/spec2imag, (xhi-xlo)/spec2imag, cube.shape
+    print((yhi-ylo)/spec2imag, (xhi-xlo)/spec2imag, cube.shape)
     
     # Resize the NIRC2 image to get rid of a useless regions.
     # This is also where we apply the shifts
@@ -1488,15 +1488,15 @@ def compare_with_nirc2(cube_ii, xshift, yshift,
 
     diff_flat = diff.flatten()
 
-    print '############################'
-    print ''
-    print 'Differenced Image Properites'
-    print '   STD = %.1f' % (diff_flat.std())
-    print '   AVG = %.1f' % (diff_flat.mean())
-    print '   MED = %.1f' % (np.median(diff_flat))
-    print ''
-    print '%s  %5.1f  %5.1f' % (cubefile.replace('_img', ''), xshift/spec_scale, yshift/spec_scale)
-    print '############################'
+    print('############################')
+    print('')
+    print('Differenced Image Properites')
+    print('   STD = %.1f' % (diff_flat.std()))
+    print('   AVG = %.1f' % (diff_flat.mean()))
+    print('   MED = %.1f' % (np.median(diff_flat)))
+    print('')
+    print('%s  %5.1f  %5.1f' % (cubefile.replace('_img', ''), xshift/spec_scale, yshift/spec_scale))
+    print('############################')
 
 def recompare_with_nirc2_2010():
     shifts = atpy.Table(datadir2010 + 'shifts.txt', type='ascii')
@@ -1505,7 +1505,7 @@ def recompare_with_nirc2_2010():
     for ii in range(len(shifts)):
         cube_name = shifts.col1[ii]
         idx = cubes.index(cube_name)
-        print idx
+        print(idx)
         
         compare_with_nirc2(idx, shifts.col2[ii]*-0.05, shifts.col3[ii]*0.05)
 
@@ -1524,11 +1524,11 @@ def convert_pixel_shifts_for_mosaic(origShiftsFile, newShiftsFile, refFile):
     idx = np.where(shifts.name == refFile)[0]
     if len(idx) == 0:
         ref = 0
-        print 'Could not find specified reference file, using the first file in the list:'
+        print('Could not find specified reference file, using the first file in the list:')
     else:
         ref = idx[0]
-        print 'Using the following reference file:'
-    print '    %s' % shifts.name[ref]
+        print('Using the following reference file:')
+    print('    %s' % shifts.name[ref])
 
     # Modify shifts to be relative to the first frame.
     x0 = shifts.X[ref]
@@ -1547,12 +1547,12 @@ def convert_pixel_shifts_for_mosaic(origShiftsFile, newShiftsFile, refFile):
     shifts.X *= -1.0
 
     # More spot checking
-    print 'Check Coords for %s' % shifts.name[ii]
-    print 'Ref Coords (pixels):  %5.1f  %5.1f' % (x0, y0)
-    print 'Orig Shifts (pixels): %5.1f  %5.1f' % (orig_dx, orig_dy)
-    print 'New Shifts (pixels):  %5.1f  %5.1f' % (shifts.X[ii], shifts.Y[ii])
-    print '   Sum Check: %5.2f  %5.2f' % (math.hypot(shifts.X[ii], shifts.Y[ii]),
-                                          math.hypot(orig_dx, orig_dy))
+    print('Check Coords for %s' % shifts.name[ii])
+    print('Ref Coords (pixels):  %5.1f  %5.1f' % (x0, y0))
+    print('Orig Shifts (pixels): %5.1f  %5.1f' % (orig_dx, orig_dy))
+    print('New Shifts (pixels):  %5.1f  %5.1f' % (shifts.X[ii], shifts.Y[ii]))
+    print('   Sum Check: %5.2f  %5.2f' % (math.hypot(shifts.X[ii], shifts.Y[ii]),
+                                          math.hypot(orig_dx, orig_dy)))
 
     refImg, refHdr = pyfits.getdata(refFile.replace('.fits', '_img.fits'), header=True)
     testImg = pyfits.getdata(shifts.name[ii].replace('.fits', '_img.fits'))
@@ -1789,6 +1789,6 @@ def rebin(a, newshape):
         ['newshape[%d],factor[%d],'%(i,i) for i in range(lenShape)] + \
         [')'] + ['.sum(%d)'%(i+1) for i in range(lenShape)]# + \
         #['/factor[%d]'%i for i in range(lenShape)]
-    print ''.join(evList)
+    print(''.join(evList))
 
     return eval(''.join(evList))

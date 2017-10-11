@@ -130,9 +130,9 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs, isoDir='iso',
                                 distance=defaultDist, verbose=False):
     startTime = time.time()
 
-    print 'Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
-        (logAge, AKs, distance)
-    print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
+    print('Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
+        (logAge, AKs, distance))
+    print('     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes')
 
     outFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
     outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
@@ -207,8 +207,8 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs, isoDir='iso',
         mag160w[ii] = mag_in_filter(star, filt160w, red160w)
 
         if verbose:
-            print 'M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F814W = %4.2f  F125W = %4.2f  F139M = %4.2f  F160W = %4.2f' % \
-                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag814w[ii], mag125w[ii], mag139m[ii], mag160w[ii])
+            print('M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F814W = %4.2f  F125W = %4.2f  F139M = %4.2f  F160W = %4.2f' % \
+                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag814w[ii], mag125w[ii], mag139m[ii], mag160w[ii]))
 
 
     iso = objects.DataHolder()
@@ -235,7 +235,7 @@ def make_observed_isochrone_hst(logAge, AKs=defaultAKs, isoDir='iso',
     _out.close()
 
     endTime = time.time()
-    print '      Time taken: %d seconds' % (endTime - startTime)
+    print('      Time taken: %d seconds' % (endTime - startTime))
 
 
 # Little helper utility to get all the bandpass/zeropoint info.
@@ -274,9 +274,9 @@ def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
     
     startTime = time.time()
 
-    print 'Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
-        (logAge, AKs, distance)
-    print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
+    print('Making isochrone: log(t) = %.2f  AKs = %.2f  dist = %d' % \
+        (logAge, AKs, distance))
+    print('     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes')
 
     outFile = '/u/jlu/work/wd1/models/' + isoDir + '/'
     outFile += 'iso_%.2f_hst_%4.2f_%4s.pickle' % (logAge, AKs,
@@ -294,13 +294,13 @@ def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
 
     idx = np.where(evol.mass > 10)[0]
     mass_rnd[idx] = np.round(evol.mass[idx], decimals=0)
-    print mass_rnd[0:10]
+    print(mass_rnd[0:10])
 
     mass_rnd = np.round(mass_rnd, decimals=1)
-    print mass_rnd[0:10]
+    print(mass_rnd[0:10])
 
     tmp, idx = np.unique(mass_rnd, return_index=True)
-    print 'Number of stars {0}'.format(len(idx))
+    print('Number of stars {0}'.format(len(idx)))
 
     mass = evol.mass[idx]
     logT = evol.logT[idx]
@@ -360,8 +360,8 @@ def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
         mag160w[ii] = mag_in_filter(star, filt160w, red160w)
 
         if verbose:
-            print 'M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F814W = %4.2f  F125W = %4.2f  F139M = %4.2f  F160W = %4.2f' % \
-                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag814w[ii], mag125w[ii], mag139m[ii], mag160w[ii])
+            print('M = %7.3f Msun  T = %5d K  R = %2.1f Rsun  logg = %4.2f  F814W = %4.2f  F125W = %4.2f  F139M = %4.2f  F160W = %4.2f' % \
+                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag814w[ii], mag125w[ii], mag139m[ii], mag160w[ii]))
 
 
     iso = objects.DataHolder()
@@ -388,7 +388,7 @@ def make_observed_isochrone_hst_test(logAge, AKs=defaultAKs, k=3,
     _out.close()
 
     endTime = time.time()
-    print '      Time taken: %d seconds' % (endTime - startTime)
+    print('      Time taken: %d seconds' % (endTime - startTime))
 
 def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance,
                    iso_dir='/Users/jlu/work/wd1/models/iso_2015/'):
@@ -399,7 +399,7 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance,
              '125w': 'wfc3,ir,f125w',
              '160w': 'wfc3,ir,f160w'}
 
-    print 'Using Red Law = ', synthetic.redlaw.name
+    print('Using Red Law = ', synthetic.redlaw.name)
     iso = synthetic.load_isochrone(logAge=logAge, AKs=AKs, distance=tmp_dist,
                                    iso_dir=iso_dir, massSampling=1,
                                    filters=filters)
@@ -409,7 +409,7 @@ def load_isochrone(logAge=wd1_logAge, AKs=wd1_AKs, distance=wd1_distance,
     for cc in range(len(col_names)):
         if col_names[cc].startswith('mag'):
             delta_DM = 5.0 * math.log10(float(distance) / tmp_dist)
-            print 'Changing distance: delta_DM = ', delta_DM
+            print('Changing distance: delta_DM = ', delta_DM)
             
             iso[col_names[cc]] += delta_DM
 

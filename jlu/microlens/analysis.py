@@ -1,6 +1,168 @@
 from nirc2.reduce import analysis
 import pdb
 
+class OB170095(analysis.Analysis):
+    def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
+        """
+        For OB170095 reduction:
+
+        epoch -- '11may' for example
+        filt -- 'kp', 'lp', or 'h'
+        """
+        # Setup some W51a specific parameters
+        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+
+        filt_field = 'ob170095_' + filt
+
+        # Initialize the Analysis object
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
+                                     rootDir=rootDir,
+                                     epochDirSuffix=epochDirSuffix,
+                                     cleanList=cleanList)
+
+        # Use the field to set the psf starlist
+        self.starlist = self.rootDir + 'source_list/ob170095_psf.list'
+
+        # Set up some extra starfinder keywords to optimize PSF handling.
+        self.stf_extra_args = ', psfSize=2.0, trimfake=0' # 2 arcsec
+        self.corrMain = 0.7
+        self.corrSub = 0.5
+
+        ##########
+        # Setup the appropriate calibration stuff.
+        ##########
+        # Use the default stars
+        self.calStars = None
+
+        # Choose the column based on the filter
+        self.calColumn = self.mapFilter2Cal[filt]
+
+        # Set the coo star
+        self.cooStar = 'ob170095'
+        self.calCooStar = self.cooStar
+
+        # Override some of the default parameters
+        self.calFlags = '-f 1 -R -s 1 --searchMag=2.0 '
+        self.calFile = self.rootDir + 'source_list/ob170095_photo.dat'
+
+        self.labellist = self.rootDir + 'source_list/ob170095_label.dat'
+        self.orbitlist = None
+
+        # Fix align flags. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
+
+        self.plotPosMagCut = 20.0
+
+        return
+
+
+class OB170019(analysis.Analysis):
+    def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
+        """
+        For OB170019 reduction:
+
+        epoch -- '11may' for example
+        filt -- 'kp', 'lp', or 'h'
+        """
+        # Setup some W51a specific parameters
+        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
+
+        filt_field = 'ob170019_' + filt
+
+        # Initialize the Analysis object
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
+                                     rootDir=rootDir,
+                                     epochDirSuffix=epochDirSuffix,
+                                     cleanList=cleanList)
+
+        # Use the field to set the psf starlist
+        self.starlist = self.rootDir + 'source_list/ob170019_psf.list'
+
+        # Set up some extra starfinder keywords to optimize PSF handling.
+        self.stf_extra_args = ', psfSize=2.0, trimfake=0' # 2 arcsec
+        self.corrMain = 0.9
+        self.corrSub = 0.7
+
+        ##########
+        # Setup the appropriate calibration stuff.
+        ##########
+        # Use the default stars
+        self.calStars = None
+
+        # Choose the column based on the filter
+        self.calColumn = self.mapFilter2Cal[filt]
+
+        # Set the coo star
+        self.cooStar = 'ob170019'
+        self.calCooStar = self.cooStar
+
+        # Override some of the default parameters
+        self.calFlags = '-f 1 -R -s 1 '
+        self.calFile = self.rootDir + 'source_list/ob170019_photo.dat'
+
+        self.labellist = self.rootDir + 'source_list/ob170019_label.dat'
+        self.orbitlist = None
+
+        # Fix align flags. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
+
+        self.plotPosMagCut = 20.0
+
+        return
+
+class MB980006(analysis.Analysis): # Made using OB120169 as reference
+    def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
+        """
+        For MB980006 reduction:
+
+        epoch -- '11may' for example
+        filt -- 'kp'  or 'h'
+        """
+        filt_field = 'mb980006_' + filt
+
+        # Initialize the Analysis object
+        analysis.Analysis.__init__(self, epoch, filt=filt_field,
+                                     rootDir=rootDir,
+                                     epochDirSuffix=epochDirSuffix,
+                                     cleanList=cleanList)
+        
+        # Setup some MB980006 specific parameters.
+        self.mapFilter2Cal = {'kp': 4, 'h': 3, 'j': 2}
+
+        # Use the field to set the psf starlist
+        self.starlist = self.rootDir + 'source_list/mb980006_psf.list'
+
+        ##########
+        # Setup the appropriate calibration stuff.
+        ##########
+        # Use the default stars
+        self.calStars = None
+
+        # Choose the column based on the filter
+        self.calColumn = self.mapFilter2Cal[filt]
+        print(filt, self.calColumn)
+
+        # Set the coo star
+        self.cooStar = 'MB980006'
+        self.calCooStar = self.cooStar
+
+        # Override some of the default parameters
+        self.calFlags = '-f 1 -R -s 1 '
+        self.calFile = self.rootDir + 'source_list/mb980006_photo.dat'
+
+        self.labellist = self.rootDir + 'source_list/mb980006_label.dat'
+        self.orbitlist = None
+
+        # Fix align flags. Otherwise, align is using too many faint stars.
+        self.alignFlags = '-R 3 -v -p -a 2 ' + alignMagCut
+
+        self.plotPosMagCut = 17.0
+
+        return
+
 class OB140613(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
                  epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
@@ -32,7 +194,7 @@ class OB140613(analysis.Analysis):
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
-        self.calFlags = '-f 1 -R -s 1 --searchMag=2.0 '
+        self.calFlags = '-f 1 -R -s 1 --searchMag=4.0'
         self.calFile = rootDir + 'source_list/ob140613_photo.dat'
 
         self.labellist = rootDir + 'source_list/ob140613_label.dat'
@@ -48,7 +210,7 @@ class OB140613(analysis.Analysis):
 
 class OB150211(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
-                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 17 '):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
 
@@ -93,7 +255,7 @@ class OB150211(analysis.Analysis):
 
 class OB150029(analysis.Analysis):
     def __init__(self, epoch, filt, rootDir='/u/jlu/data/microlens/',
-                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 20 '):
+                 epochDirSuffix=None, cleanList='c.lis', alignMagCut=' -m 19.5 '):
         # Setup some W51a specific parameters
         self.mapFilter2Cal = {'kp': 1, 'h': 2, 'j': 3}
 

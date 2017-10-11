@@ -87,15 +87,15 @@ def mags(age=None,mag435=None,plot=False):
         tmpmag = mag435 - tmp
         calmag[i] = tmpmag
 
-    print 'Filter: F435W-X color, mag'
-    print 'F330W: %5.2f, %5.2f' % (colors[0],calmag[0])
-    print 'F435W: %5.2f, %5.2f' % (colors[1],calmag[1])
-    print 'F555W: %5.2f, %5.2f' % (colors[2],calmag[2])
-    print 'F814W: %5.2f, %5.2f' % (colors[3],calmag[3])
-    print 'F1042M: %5.2f, %5.2f' % (colors[4],calmag[4])
-    print 'J: %5.2f, %5.2f' % (colors[5],calmag[5])
-    print 'H: %5.2f, %5.2f' % (colors[6],calmag[6])
-    print 'Kp: %5.2f, %5.2f' % (colors[7],calmag[7])
+    print('Filter: F435W-X color, mag')
+    print('F330W: %5.2f, %5.2f' % (colors[0],calmag[0]))
+    print('F435W: %5.2f, %5.2f' % (colors[1],calmag[1]))
+    print('F555W: %5.2f, %5.2f' % (colors[2],calmag[2]))
+    print('F814W: %5.2f, %5.2f' % (colors[3],calmag[3]))
+    print('F1042M: %5.2f, %5.2f' % (colors[4],calmag[4]))
+    print('J: %5.2f, %5.2f' % (colors[5],calmag[5]))
+    print('H: %5.2f, %5.2f' % (colors[6],calmag[6]))
+    print('Kp: %5.2f, %5.2f' % (colors[7],calmag[7]))
 
     magdiff = intmag[1] - mag435
     plfilt = [3300.,4350.,5550.,8140.,10420.,12490.,16330.,21250.]

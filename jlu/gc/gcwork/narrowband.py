@@ -167,14 +167,14 @@ def plotBrg(root):
     sc_s15H221 = s_s15H221 / nb_s15H221
     sc_s15Co = s_s15Co / nb_s15Co
 
-    print 'Scale factors: '
-    print '%4s  %7s  %7s  %7s  %7s' % ('', 'H210', 'Brg', 'H221', 'Co')
-    print '%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
-          ('S0-2', sc_s02H210, sc_s02Brg, sc_s02H221, sc_s02Co)
-    print '%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
-          ('S0-6', sc_s06H210, sc_s06Brg, sc_s06H221, sc_s06Co)
-    print '%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
-          ('S1-5', sc_s15H210, sc_s15Brg, sc_s15H221, sc_s15Co)
+    print('Scale factors: ')
+    print('%4s  %7s  %7s  %7s  %7s' % ('', 'H210', 'Brg', 'H221', 'Co'))
+    print('%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
+          ('S0-2', sc_s02H210, sc_s02Brg, sc_s02H221, sc_s02Co))
+    print('%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
+          ('S0-6', sc_s06H210, sc_s06Brg, sc_s06H221, sc_s06Co))
+    print('%4s  %7.4f  %7.4f  %7.4f  %7.4f' % \
+          ('S1-5', sc_s15H210, sc_s15Brg, sc_s15H221, sc_s15Co))
 
     ##########
     # Take the average of the scale parameters
@@ -242,10 +242,10 @@ def plotBrg(root):
     #print '%6.4f  %7.2e %7.2e' % (waveBrg, fBrg[id], flatBrg)
     #print '%6.4f  %7.2e %7.2e' % (waveH221, fH221[id], flatH221)
     #print '%6.4f  %7.2e %7.2e' % (waveCo, fCo[id], flatCo)
-    print '%6.4f - %6.4f' % (filt[0]["on"], filt[0]["off"])
-    print '%6.4f - %6.4f' % (filt[1]["on"], filt[1]["off"])
-    print '%6.4f - %6.4f' % (filt[2]["on"], filt[2]["off"])
-    print '%6.4f - %6.4f' % (filt[3]["on"], filt[3]["off"])
+    print('%6.4f - %6.4f' % (filt[0]["on"], filt[0]["off"]))
+    print('%6.4f - %6.4f' % (filt[1]["on"], filt[1]["off"]))
+    print('%6.4f - %6.4f' % (filt[2]["on"], filt[2]["off"]))
+    print('%6.4f - %6.4f' % (filt[3]["on"], filt[3]["off"]))
     
     #fBrg /= flatBrg
     #fCo /= flatCo
@@ -273,15 +273,15 @@ def plotBrg(root):
     contCo = interc + (slopes * waveCo)
     
     i = 0
-    print 'flux = %e + wave * %e' % (interc[i], slopes[i])
-    print '%6.4f  %e  %e' % (waveH210, fH210[i], 
-			     interc[i]+(slopes[i] * waveH210)) 
-    print '%6.4f  %e  %e' % (waveBrg, fBrg[i],
-			     interc[i]+(slopes[i] * waveBrg)) 
-    print '%6.4f  %e  %e' % (waveH221, fH221[i],
-			     interc[i]+(slopes[i] * waveH221)) 
-    print '%6.4f  %e  %e' % (waveCo, fCo[i],
-			     interc[i]+(slopes[i] * waveCo)) 
+    print('flux = %e + wave * %e' % (interc[i], slopes[i]))
+    print('%6.4f  %e  %e' % (waveH210, fH210[i], 
+			     interc[i]+(slopes[i] * waveH210))) 
+    print('%6.4f  %e  %e' % (waveBrg, fBrg[i],
+			     interc[i]+(slopes[i] * waveBrg))) 
+    print('%6.4f  %e  %e' % (waveH221, fH221[i],
+			     interc[i]+(slopes[i] * waveH221))) 
+    print('%6.4f  %e  %e' % (waveCo, fCo[i],
+			     interc[i]+(slopes[i] * waveCo))) 
 
     
     # Plot in fluxes
@@ -620,14 +620,14 @@ def plotCo(root):
     sc_s15H221 = s_s15H221 / nb_s15H221
     sc_s15Co = s_s15Co / nb_s15Co
 
-    print 'Scale factors: '
-    print '%4s  %7s  %7s  %7s ' % ('', 'H210', 'H221', 'Co')
-    print '%4s  %7.4f  %7.4f  %7.4f' % \
-          ('S0-2', sc_s02H210, sc_s02H221, sc_s02Co)
-    print '%4s  %7.4f  %7.4f  %7.4f' % \
-          ('S0-6', sc_s06H210, sc_s06H221, sc_s06Co)
-    print '%4s  %7.4f  %7.4f  %7.4f' % \
-          ('S1-5', sc_s15H210, sc_s15H221, sc_s15Co)
+    print('Scale factors: ')
+    print('%4s  %7s  %7s  %7s ' % ('', 'H210', 'H221', 'Co'))
+    print('%4s  %7.4f  %7.4f  %7.4f' % \
+          ('S0-2', sc_s02H210, sc_s02H221, sc_s02Co))
+    print('%4s  %7.4f  %7.4f  %7.4f' % \
+          ('S0-6', sc_s06H210, sc_s06H221, sc_s06Co))
+    print('%4s  %7.4f  %7.4f  %7.4f' % \
+          ('S1-5', sc_s15H210, sc_s15H221, sc_s15Co))
 
     ##########
     # Take the average of the scale parameters
@@ -687,9 +687,9 @@ def plotCo(root):
     #print '%6.4f  %7.2e %7.2e' % (waveH210, fH210[id], flatH210)
     #print '%6.4f  %7.2e %7.2e' % (waveH221, fH221[id], flatH221)
     #print '%6.4f  %7.2e %7.2e' % (waveCo, fCo[id], flatCo)
-    print '%6.4f - %6.4f' % (filt[0]["on"], filt[0]["off"])
-    print '%6.4f - %6.4f' % (filt[1]["on"], filt[1]["off"])
-    print '%6.4f - %6.4f' % (filt[2]["on"], filt[2]["off"])
+    print('%6.4f - %6.4f' % (filt[0]["on"], filt[0]["off"]))
+    print('%6.4f - %6.4f' % (filt[1]["on"], filt[1]["off"]))
+    print('%6.4f - %6.4f' % (filt[2]["on"], filt[2]["off"]))
     
     #fCo /= flatCo
     #fH210 /= flatH210
@@ -714,13 +714,13 @@ def plotCo(root):
     contCo = interc + (slopes * waveCo)
     
     i = 0
-    print 'flux = %e + wave * %e' % (interc[i], slopes[i])
-    print '%6.4f  %e  %e' % (waveH210, fH210[i], 
-			     interc[i]+(slopes[i] * waveH210)) 
-    print '%6.4f  %e  %e' % (waveH221, fH221[i],
-			     interc[i]+(slopes[i] * waveH221)) 
-    print '%6.4f  %e  %e' % (waveCo, fCo[i],
-			     interc[i]+(slopes[i] * waveCo)) 
+    print('flux = %e + wave * %e' % (interc[i], slopes[i]))
+    print('%6.4f  %e  %e' % (waveH210, fH210[i], 
+			     interc[i]+(slopes[i] * waveH210))) 
+    print('%6.4f  %e  %e' % (waveH221, fH221[i],
+			     interc[i]+(slopes[i] * waveH221))) 
+    print('%6.4f  %e  %e' % (waveCo, fCo[i],
+			     interc[i]+(slopes[i] * waveCo))) 
 
     
     # Plot in fluxes
@@ -831,7 +831,7 @@ def plotCo2(root):
 	try:
 	    ndx = names.index(oldname)
 	    cdx.append(ndx)
-            print oldname, names[ndx]
+            print(oldname, names[ndx])
 	except ValueError:
 	    # Do nothing
 	    foo = 0.0
@@ -933,15 +933,15 @@ def plotSensitivity():
     savefig('nb_sensitivity.png')
 
     # Print out some info in a table for 3 sigma limits
-    print 'For sigma = %5.3f mags we get EW = -%5.3f Angs' % \
-	(0.028*1.086, EWmatch(0.028, 3.0))
-    print '%12s\t %12s' % ('Sigma (mag)', 'EQ (Ang)')
-    print '%12s\t %12s' % ('-----------', '--------')
+    print('For sigma = %5.3f mags we get EW = -%5.3f Angs' % \
+	(0.028*1.086, EWmatch(0.028, 3.0)))
+    print('%12s\t %12s' % ('Sigma (mag)', 'EQ (Ang)'))
+    print('%12s\t %12s' % ('-----------', '--------'))
     for i in range(len(photErr)):
 	if (photErr[i] > 0.06):
 	    break
 
-	print '%12.3f\t %12.1f' % (photErr[i] * 1.086, -ewSigma3[i])
+	print('%12.3f\t %12.1f' % (photErr[i] * 1.086, -ewSigma3[i]))
     
 
 # These functions are defined based on the following assumptions
@@ -1135,10 +1135,10 @@ def plotCoNew(root, suffix=''):
     eH210 *= scaleH210
     eH221 *= scaleH221
 
-    print 'Scale Parameters Used for Flux Calibration:'
-    print '   CO scale = ', scaleCo
-    print ' H210 scale = ', scaleH210
-    print ' H221 scale = ', scaleH221
+    print('Scale Parameters Used for Flux Calibration:')
+    print('   CO scale = ', scaleCo)
+    print(' H210 scale = ', scaleH210)
+    print(' H221 scale = ', scaleH221)
 
     w = [waveH210, waveH221]
 
@@ -1158,13 +1158,13 @@ def plotCoNew(root, suffix=''):
                       (eH221 * (waveCo - waveH210) / (waveH210 - waveH221))**2)
     
     i = 0
-    print 'flux = %e + wave * %e' % (interc[i], slopes[i])
-    print '%6.4f  %e  %e' % (waveH210, fH210[i], 
-			     interc[i]+(slopes[i] * waveH210)) 
-    print '%6.4f  %e  %e' % (waveH221, fH221[i],
-			     interc[i]+(slopes[i] * waveH221)) 
-    print '%6.4f  %e  %e' % (waveCo, fCo[i],
-			     interc[i]+(slopes[i] * waveCo)) 
+    print('flux = %e + wave * %e' % (interc[i], slopes[i]))
+    print('%6.4f  %e  %e' % (waveH210, fH210[i], 
+			     interc[i]+(slopes[i] * waveH210))) 
+    print('%6.4f  %e  %e' % (waveH221, fH221[i],
+			     interc[i]+(slopes[i] * waveH221))) 
+    print('%6.4f  %e  %e' % (waveCo, fCo[i],
+			     interc[i]+(slopes[i] * waveCo))) 
 
     
     # Plot in fluxes
@@ -1241,9 +1241,9 @@ def plotCoNew(root, suffix=''):
     coLocus = eqwCo[tdx].mean()
     coLimit = coLocus
     magLimit = 13.5
-    print 'CO Locus:  %5.2f' % coLocus
-    print 'CO Limit:  %5.2f' % coLimit
-    print 'Mag Limit: %5.2f' % magLimit
+    print('CO Locus:  %5.2f' % coLocus)
+    print('CO Limit:  %5.2f' % coLimit)
+    print('Mag Limit: %5.2f' % magLimit)
 
     rdx = (where((magH221 < magLimit) & (eqwCo < coLimit)))[0]
     bdx = (where((magH221 < magLimit) & (eqwCo > coLimit)))[0]
@@ -1253,9 +1253,9 @@ def plotCoNew(root, suffix=''):
     _reg.write('global color=green font="helvetica 10 normal"')
     _reg.write('edit=1 move=1 delete=1 include=1 fixed=0\n')
 
-    print ''
-    print '%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
-          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix')
+    print('')
+    print('%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
+          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix'))
 
     cntEarlyCand = 0
     cntLateCand = 0
@@ -1318,15 +1318,15 @@ def plotCoNew(root, suffix=''):
 
 
         if ((ii in rdx) or (ii in bdx) or (ii in idx) or (ii in cdx)):
-            print '%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
+            print('%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
                   (names[ii], magH221[ii], eqwCo[ii], 
-                   xarc[ii], yarc[ii], x[ii], y[ii], msg)
+                   xarc[ii], yarc[ii], x[ii], y[ii], msg))
 
-    print ''
-    print 'Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
-          (cntEarlyCand, cntEarlyConf, cntEarlyWrong)
-    print 'Late;   %2d candidates; %2d confirmed; %2d wrong' % \
-          (cntLateCand, cntLateConf, cntLateWrong)
+    print('')
+    print('Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
+          (cntEarlyCand, cntEarlyConf, cntEarlyWrong))
+    print('Late;   %2d candidates; %2d confirmed; %2d wrong' % \
+          (cntLateCand, cntLateConf, cntLateWrong))
     _reg.close()
     
 
@@ -1358,8 +1358,8 @@ def plot05junlgs(root, suffix='_05junlgs'):
     # We need to convert magnitudes to fluxes first
     fCo   = s.getArrayFromEpoch(0, 'fwhm')
     fKcont = s.getArrayFromEpoch(1, 'fwhm')
-    print fCo[0:10]
-    print fKcont[0:10]
+    print(fCo[0:10])
+    print(fKcont[0:10])
 
     # We need to get errors out
     eCo   = s.getArrayFromEpoch(0, 'snr')
@@ -1396,9 +1396,9 @@ def plot05junlgs(root, suffix='_05junlgs'):
     eCo *= scaleCo
     eKcont *= scaleKcont
 
-    print 'Scale Parameters Used for Flux Calibration:'
-    print '   CO scale = ', scaleCo
-    print ' Kcont scale = ', scaleKcont
+    print('Scale Parameters Used for Flux Calibration:')
+    print('   CO scale = ', scaleCo)
+    print(' Kcont scale = ', scaleKcont)
 
     # Plot in fluxes
     eqwCoSingle = 1.0 - (fCo  / fKcont)
@@ -1453,9 +1453,9 @@ def plot05junlgs(root, suffix='_05junlgs'):
     coLocus = eqwCoSingle[tdx].mean()
     coLimit = coLocus
     magLimit = 13.5
-    print 'CO Locus:  %5.2f' % coLocus
-    print 'CO Limit:  %5.2f' % coLimit
-    print 'Mag Limit: %5.2f' % magLimit
+    print('CO Locus:  %5.2f' % coLocus)
+    print('CO Limit:  %5.2f' % coLimit)
+    print('Mag Limit: %5.2f' % magLimit)
 
     rdx = (where((magKcont < magLimit) & (eqwCoSingle < coLimit)))[0]
     bdx = (where((magKcont < magLimit) & (eqwCoSingle > coLimit)))[0]
@@ -1465,9 +1465,9 @@ def plot05junlgs(root, suffix='_05junlgs'):
     _reg.write('global color=green font="helvetica 10 normal"')
     _reg.write('edit=1 move=1 delete=1 include=1 fixed=0\n')
 
-    print ''
-    print '%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
-          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix')
+    print('')
+    print('%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
+          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix'))
 
     cntEarlyCand = 0
     cntLateCand = 0
@@ -1530,15 +1530,15 @@ def plot05junlgs(root, suffix='_05junlgs'):
 
 
         if ((ii in rdx) or (ii in bdx) or (ii in idx) or (ii in cdx)):
-            print '%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
+            print('%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
                   (names[ii], magKcont[ii], eqwCoSingle[ii], 
-                   xarc[ii], yarc[ii], x[ii], y[ii], msg)
+                   xarc[ii], yarc[ii], x[ii], y[ii], msg))
 
-    print ''
-    print 'Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
-          (cntEarlyCand, cntEarlyConf, cntEarlyWrong)
-    print 'Late;   %2d candidates; %2d confirmed; %2d wrong' % \
-          (cntLateCand, cntLateConf, cntLateWrong)
+    print('')
+    print('Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
+          (cntEarlyCand, cntEarlyConf, cntEarlyWrong))
+    print('Late;   %2d candidates; %2d confirmed; %2d wrong' % \
+          (cntLateCand, cntLateConf, cntLateWrong))
     _reg.close()
     
 
@@ -1624,10 +1624,10 @@ def plot06maylgs1(root, suffix='_06maylgs1'):
     eH210 *= scaleH210
     eH221 *= scaleH221
 
-    print 'Scale Parameters Used for Flux Calibration:'
-    print '   CO scale = ', scaleCo
-    print ' H210 scale = ', scaleH210
-    print ' H221 scale = ', scaleH221
+    print('Scale Parameters Used for Flux Calibration:')
+    print('   CO scale = ', scaleCo)
+    print(' H210 scale = ', scaleH210)
+    print(' H221 scale = ', scaleH221)
 
     w = [waveH210, waveH221]
 
@@ -1647,13 +1647,13 @@ def plot06maylgs1(root, suffix='_06maylgs1'):
                       (eH221 * (waveCo - waveH210) / (waveH210 - waveH221))**2)
     
     i = 0
-    print 'flux = %e + wave * %e' % (interc[i], slopes[i])
-    print '%6.4f  %e  %e' % (waveH210, fH210[i], 
-			     interc[i]+(slopes[i] * waveH210)) 
-    print '%6.4f  %e  %e' % (waveH221, fH221[i],
-			     interc[i]+(slopes[i] * waveH221)) 
-    print '%6.4f  %e  %e' % (waveCo, fCo[i],
-			     interc[i]+(slopes[i] * waveCo)) 
+    print('flux = %e + wave * %e' % (interc[i], slopes[i]))
+    print('%6.4f  %e  %e' % (waveH210, fH210[i], 
+			     interc[i]+(slopes[i] * waveH210))) 
+    print('%6.4f  %e  %e' % (waveH221, fH221[i],
+			     interc[i]+(slopes[i] * waveH221))) 
+    print('%6.4f  %e  %e' % (waveCo, fCo[i],
+			     interc[i]+(slopes[i] * waveCo))) 
 
     
     # Plot in fluxes
@@ -1744,9 +1744,9 @@ def plot06maylgs1(root, suffix='_06maylgs1'):
     coLocus = eqwCo[tdx].mean()
     coLimit = coLocus
     magLimit = 13.5
-    print 'CO Locus:  %5.2f' % coLocus
-    print 'CO Limit:  %5.2f' % coLimit
-    print 'Mag Limit: %5.2f' % magLimit
+    print('CO Locus:  %5.2f' % coLocus)
+    print('CO Limit:  %5.2f' % coLimit)
+    print('Mag Limit: %5.2f' % magLimit)
 
     rdx = (where((magH221 < magLimit) & (eqwCo < coLimit)))[0]
     bdx = (where((magH221 < magLimit) & (eqwCo > coLimit)))[0]
@@ -1756,9 +1756,9 @@ def plot06maylgs1(root, suffix='_06maylgs1'):
     _reg.write('global color=green font="helvetica 10 normal"')
     _reg.write('edit=1 move=1 delete=1 include=1 fixed=0\n')
 
-    print ''
-    print '%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
-          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix')
+    print('')
+    print('%-13s  %4s  %5s  %7s  %7s (%4s, %4s)  CandidateType' % \
+          ('#Name', 'Mag', 'eqwCO', 'x(")', 'y(")', 'xpix', 'ypix'))
 
     cntEarlyCand = 0
     cntLateCand = 0
@@ -1821,14 +1821,14 @@ def plot06maylgs1(root, suffix='_06maylgs1'):
 
 
         if ((ii in rdx) or (ii in bdx) or (ii in idx) or (ii in cdx)):
-            print '%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
+            print('%-13s  %4.1f  %5.2f  %7.3f  %7.3f (%4d, %4d)   ## %s' % \
                   (names[ii], magH221[ii], eqwCo[ii], 
-                   xarc[ii], yarc[ii], x[ii], y[ii], msg)
+                   xarc[ii], yarc[ii], x[ii], y[ii], msg))
 
-    print ''
-    print 'Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
-          (cntEarlyCand, cntEarlyConf, cntEarlyWrong)
-    print 'Late;   %2d candidates; %2d confirmed; %2d wrong' % \
-          (cntLateCand, cntLateConf, cntLateWrong)
+    print('')
+    print('Early:  %2d canddiates; %2d confirmed; %2d wrong' % \
+          (cntEarlyCand, cntEarlyConf, cntEarlyWrong))
+    print('Late;   %2d candidates; %2d confirmed; %2d wrong' % \
+          (cntLateCand, cntLateConf, cntLateWrong))
     _reg.close()
     

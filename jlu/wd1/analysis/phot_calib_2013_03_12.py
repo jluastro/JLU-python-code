@@ -237,7 +237,7 @@ def matchup_lists(imgRoot, filt):
     cmd += '{0}_{1}_a.txt {0}_{1}_b.txt {0}_{1}_c.txt '.format(imgRoot, filt)
     cmd += '12 0.99'
 
-    print cmd
+    print(cmd)
     os.system(cmd)
 
 def matchup_lists_brite(imgRoot, filt):
@@ -250,7 +250,7 @@ def matchup_lists_brite(imgRoot, filt):
     cmd += '{0}_{1}_a_brite.txt {0}_{1}_b_brite.txt {0}_{1}_c_brite.txt '.format(imgRoot, filt)
     cmd += '12 0.99'
 
-    print cmd
+    print(cmd)
     os.system(cmd)
 
 def combine_matched_lists(filt, brite=False):
@@ -332,17 +332,17 @@ def plot_mag_offsets(matchup_file, mag_range=None):
             iso.append(ii)
 
     iso = np.array(iso)
-    print len(stars), len(iso)
+    print(len(stars), len(iso))
 
     out_root = matchup_file.split('.')[0]
     out_file = out_root + '_stats.txt'
 
     stats = ZP_stats(fluxRatio)
-    print stats
+    print(stats)
     stats.save_to_file(out_file, mode='w')
     
     stats_iso = ZP_stats(fluxRatio[iso], note='Isolated')
-    print stats_iso
+    print(stats_iso)
     stats_iso.save_to_file(out_file, mode='a')
 
     py.figure(4)
@@ -386,11 +386,11 @@ def plot_mag_offsets(matchup_file, mag_range=None):
         idx_iso = np.where(stars.img_id[iso] == tmp[ii])[0]
 
         stats_ii = ZP_stats(fluxRatio[idx], note='Image {0}'.format(ii+1))
-        print stats_ii
+        print(stats_ii)
         stats_ii.save_to_file(out_file, mode='a')
 
         stats_ii_iso = ZP_stats(fluxRatio[iso][idx_iso], note='Image {0} Isolated'.format(ii+1))
-        print stats_ii_iso
+        print(stats_ii_iso)
         stats_ii.save_to_file(out_file, mode='a')
 
         py.plot(stars.m_ks2[idx], fluxRatio[idx], 'k.', ms=2, color=colors[ii])
@@ -417,8 +417,8 @@ def plot_mag_offsets(matchup_file, mag_range=None):
     final_iso += 'Final Iso: m(DRZ) = m(KS2) + {0:6.3f} +/- {1:6.3f}\n'.format(ZP_pos_iso.mean(), ZP_pos_iso.std())
     final_iso += '*****\n'
 
-    print final
-    print final_iso
+    print(final)
+    print(final_iso)
 
     _out = open(out_file, 'a')
     _out.write(final)

@@ -8,7 +8,7 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import pdb
 
-def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png'):
+def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
     dec = Dec. value of target (e.g. '-29:00:28.12')
@@ -16,6 +16,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     months = array of months (integers) where each month will have a curve.
     days = array of days (integers), of same length as months.
     observatory = Either 'keck1' or 'keck2'
+    date_idx = Index of day to use for twilight dashed lines.  Defaults to first day.
 
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
@@ -44,7 +45,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
 
     # Get sunset and sunrise times on the first specified day
-    midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[0], days[0])) - utc_offset
+    midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[date_idx], days[date_idx])) - utc_offset
     delta_midnight = np.arange(-12, 12, 0.01) * u.hour
     times = midnight + delta_midnight
     altaz_frame = AltAz(obstime=times, location=keck)
@@ -60,8 +61,8 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     # Get the half-night split times
     splittime = twilite1 + ((twilite2 - twilite1) / 2.0)
 
-    print 'Sunrise %4.1f   Sunset %4.1f  (hours around midnight HST)' % (sunrise, sunset)
-    print '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2)
+    print( 'Sunrise %4.1f   Sunset %4.1f  (hours around midnight HST)' % (sunrise, sunset))
+    print( '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2))
 
     py.close(3)
     py.figure(3, figsize=(10, 10))
@@ -94,26 +95,31 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
             aboveDeck = (np.where(((times <= transitTime) & (airmass < 1.8)) |
                             (times > transitTime)))[0]
             
-        py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w', mec=colors[ii])
-        py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii])
+        py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w', mec=colors[ii], ms=12)
+        py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii], ms=12)
         py.plot(times, airmass, colors[ii] + '-')
 
-        py.text(times[12] - 0.3,
-                airmass[12] + 0.4 + (ii*0.1),
+        py.text(times[15] - 0.2,
+                airmass[15] + (ii*0.1),
                 labels[ii], color=colors[ii])
-            
 
-    py.title('RA = %s, DEC = %s' % (ra, dec), fontsize=14)
+    # Make observatory name nice for title
+    if observatory == "keck1":
+        observatory = 'Keck I'
+    if observatory == "keck2":
+        observatory = 'Keck II'
+
+    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
     py.xlabel('Local Time in Hours (0 = midnight)')
     py.ylabel('Air Mass')
 
     loAirmass = 1
-    hiAirmass = 3
+    hiAirmass = 2.2
 
     # Draw on the 12-degree twilight limits
-    py.plot([splittime, splittime], [loAirmass, hiAirmass], 'k--')
-    py.plot([twilite1 + 0.5, twilite1 + 0.5], [loAirmass, hiAirmass], 'k--')
-    py.plot([twilite2, twilite2], [loAirmass, hiAirmass], 'k--')
+    py.axvline(splittime, color='k', linestyle='--')
+    py.axvline(twilite1 + 0.5, color='k', linestyle='--')
+    py.axvline(twilite2, color='k', linestyle='--')
 
     py.axis([sunset, sunrise, loAirmass, hiAirmass])
     py.savefig(outfile)
@@ -125,7 +131,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     for one specified month
     """
     # Setup local time.
-    utc_offset = -10 * u.hour   # Hawaii Standard Time
+    utc_offset = 10 * u.hour   # Hawaii Standard Time
         
     month_labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -148,7 +154,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
 
     # Labels and colors for different months.
     labels = []
-    label_fmt = '{0:s} {1:d} (HST)'
+    label_fmt = '{0:s} {1:d}'
     for ii in range(len(months)):
         label = label_fmt.format(month_labels[months[ii]-1], year)
         labels.append(label)
@@ -183,8 +189,8 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
             moondist[dd] = sep
             moonillum[dd] = moon.phase
 
-            print 'Day: %2d   Moon Illum: %4.1f   Moon Dist: %4.1f' % \
-                  (daysInMonth[dd], moonillum[dd], moondist[dd])
+            print( 'Day: %2d   Moon Illum: %4.1f   Moon Dist: %4.1f' % \
+                  (daysInMonth[dd], moonillum[dd], moondist[dd]))
 
         py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
 
@@ -195,7 +201,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     py.plot([0,31], [30,30], 'k')
     py.legend(loc=2, numpoints=1)
     py.title('Moon distance and %% Illumination (RA = %s, DEC = %s)' % (ra, dec), fontsize=14)
-    py.xlabel('Day of Month')
+    py.xlabel('Day of Month (UT)')
     py.ylabel('Moon Distance (degrees)')
     py.axis([0, 31, 0, 200])
 

@@ -1,6 +1,7 @@
 import shutil, os, sys
 import pylab as py
 import numpy as np
+import math
 import scipy
 import scipy.stats
 # from jlu.gc.gcwork import starset
@@ -26,7 +27,7 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
     if Nstars <= Ncols/2:
         Nrows = 3
     else:
-        Nrows = (Nstars // (Ncols / 2)) * 3
+        Nrows = math.ceil(Nstars / (Ncols / 2)) * 3
 
     py.close('all')
     py.figure(2, figsize=figsize)
@@ -136,15 +137,15 @@ def plotStar(starNames, rootDir='./', align='align/align_d_rms_1000_abs_t',
         #             clf()
 
         dateTicLoc = py.MultipleLocator(3)
-        dateTicRng = [2006, 2017]
+        dateTicRng = [2006, 2018]
         # dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
-        dateTics = np.array([2015, 2016, 2017])
+        dateTics = np.array([2015, 2016, 2017, 2018])
         DateTicsLabel = dateTics-2000
 
         # See if we are using MJD instead.
         if time[0] > 50000:
             dateTicLoc = py.MultipleLocator(1000)
-            dateTicRng = [56000, 58000]
+            dateTicRng = [57000, 58200]
             dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
             DateTicsLabel = dateTics
 
@@ -443,7 +444,8 @@ def ResVectorPlot(root='./', align='align/align_t',
     
     py.clf()
     py.close(1)
-    py.figure(1, figsize=(10, 10))
+    py.figure(1, figsize=(15, 15))
+    py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     for ee in range(numEpochs):
         # Observed data
         x = s.getArrayFromEpoch(ee, 'xpix')
@@ -454,7 +456,7 @@ def ResVectorPlot(root='./', align='align/align_t',
 
         good = np.where(isUsed == True)
         stars = s.stars
-        
+
         # good = (rad < radCut_pix) & (m < magCut)
         # idx = np.where(good)[0]
         # stars = [s.stars[i] for i in idx]
@@ -469,10 +471,14 @@ def ResVectorPlot(root='./', align='align/align_t',
         residsX = np.zeros(Nstars, dtype=float)
         residsY = np.zeros(Nstars, dtype=float)
         idx2 = []
+        tdx = -1
         for i in range(Nstars):
             fitx = stars[i].fitXv
             fity = stars[i].fitYv 
             StarName = stars[i].name
+
+            if StarName == TargetName:
+                tdx = i
 
             dt = times[ee] - fitx.t0
             fitLineX = fitx.p + (fitx.v * dt)
@@ -486,25 +492,33 @@ def ResVectorPlot(root='./', align='align/align_t',
             y_fit[i] = fitLineY
             residsX[i] = x[i] - fitLineX
             residsY[i] = y[i] - fitLineY
+
+        # Average residuals
+        av_residsX = np.mean(residsX)
+        av_residsY = np.mean(residsY)
+        av_resids = np.sqrt(av_residsX**2 + av_residsY**2)
         
         idx = np.where((np.abs(residsX) < 10.0) & (np.abs(residsY) < 10.0))[0]
         print ("Trimmed {0:d} stars with too-large residuals (>10 pix)".format(len(idx)))
-        py.subplot(3, 3, ee+1)
-        py.ylim(0, 1100)
-        py.xlim(0, 1100)
+        py.subplot(3, 4, ee+1)
         py.yticks(fontsize=10)
         py.xticks([200,400,600,800,1000], fontsize=10)
         # q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5)
         q = py.quiver(x_fit, y_fit, residsX, residsY, scale_units='width', scale=0.5, color='gray')
         q = py.quiver(x_fit[idx], y_fit[idx], residsX[idx], residsY[idx], scale_units='width', scale=0.5, color='black')
         q = py.quiver(x_fit[good], y_fit[good], residsX[good], residsY[good], scale_units='width', scale=0.5, color='red')
+        q = py.quiver(x_fit[tdx], y_fit[tdx], residsX[tdx], residsY[tdx], scale_units='width', scale=0.5, color='cyan')
         py.quiver([850, 0], [100, 0], [0.05, 0.05], [0, 0], color='red', scale=0.5, scale_units='width')
         py.text(600, 100, '0.5 mas', color='red', fontsize=8)
+        py.text(600, 50, r'$\bar{x}$:%.3f  $\bar{y}$:%.3f' %(av_residsX, av_residsY), color='red', fontsize=8)
+        py.text(600, 0, 'av. res: %.3f' %av_resids, color='red', fontsize=8)
         # py.quiverkey(q, 0.85, 0.1, 0.02, '0.2 mas', color='red', fontsize=6)
+        py.axis('equal')
+        py.ylim(0, 1100)
+        py.xlim(0, 1100)
 
    
     fname = 'quiverplot_all.png'
-    py.subplots_adjust(bottom=0.1, right=0.97, top=0.97, left=0.05)	
     if os.path.exists(root + 'plots/' + fname):
         os.remove(root + 'plots/' + fname)
     py.show()
@@ -1192,3 +1206,136 @@ def chi2_dist_all_epochs(align_root, root_dir='./', poly_root='polyfit_d/fit',
     return return_val
 
     
+def plot_3_targs(targNames, an_dirs, aligns, polys, points, figsize=(15,4), filename=''):
+
+    
+    ps = 9.942
+    
+    py.figure(1, figsize=figsize)
+    
+    Ntarg = len(targNames)
+    for i in range(Ntarg):
+        rootDir = an_dirs[i]
+        starName = targNames[i]
+        align = aligns[i]
+        poly = polys[i]
+        point = points[i]
+    
+        s = starset.StarSet(rootDir + align)
+        s.loadPolyfit(rootDir + poly, accel=0, arcsec=0)
+
+
+        names = s.getArray('name')
+        mag = s.getArray('mag')
+        x = s.getArray('x') 
+        y = s.getArray('y') 
+
+        ii = names.index(starName)
+        star = s.stars[ii]
+
+        pointsTab = Table.read(rootDir + point + starName + '.points', format='ascii')
+
+        time = pointsTab[pointsTab.colnames[0]]
+        x = pointsTab[pointsTab.colnames[1]]
+        y = pointsTab[pointsTab.colnames[2]]
+        xerr = pointsTab[pointsTab.colnames[3]]
+        yerr = pointsTab[pointsTab.colnames[4]]
+
+        idx_2015 = np.where(time-2015<1)
+        idx_2016 = np.where((time-2016<1) & (time-2016>0))
+        idx_2017 = np.where((time-2017<1) & (time-2017>0))
+
+        fitx = star.fitXv
+        fity = star.fitYv
+        dt = time - fitx.t0
+        fitLineX = fitx.p + (fitx.v * dt)
+        fitSigX = np.sqrt( fitx.perr**2 + (dt * fitx.verr)**2 )
+
+        fitLineY = fity.p + (fity.v * dt)
+        fitSigY = np.sqrt( fity.perr**2 + (dt * fity.verr)**2 )
+
+
+        diffX = x - fitLineX
+        diffY = y - fitLineY
+        diff = np.hypot(diffX, diffY)
+        rerr = np.sqrt((diffX*xerr)**2 + (diffY*yerr)**2) / diff
+        sigX = diffX / xerr
+        sigY = diffY / yerr
+        sig = diff / rerr
+
+
+            # Determine if there are points that are more than 5 sigma off
+        idxX = np.where(abs(sigX) > 4)
+        idxY = np.where(abs(sigY) > 4)
+        idx = np.where(abs(sig) > 4)
+
+        dateTicLoc = py.MultipleLocator(3)
+        dateTicRng = [2006, 2018]
+            # dateTics = np.array([2011, 2012, 2013, 2014, 2015, 2016, 2017])
+        dateTics = np.array([2015, 2016, 2017, 2018])
+        DateTicsLabel = dateTics-2000
+
+            # See if we are using MJD instead.
+        if time[0] > 50000:
+            dateTicLoc = py.MultipleLocator(1000)
+            dateTicRng = [57000, 58200]
+            dateTics = np.arange(dateTicRng[0], dateTicRng[-1]+1, 1000)
+            DateTicsLabel = dateTics
+
+
+        maxErr = np.array([xerr, yerr]).max()
+        resTicRng = [-1.1*maxErr, 1.1*maxErr]
+
+        from matplotlib.ticker import FormatStrFormatter
+        fmtX = FormatStrFormatter('%5i')
+        fmtY = FormatStrFormatter('%6.2f')
+        fontsize1 = 16
+
+        
+        x*=ps
+        y*=ps
+        xerr*=ps
+        yerr*=ps
+        fitLineX*=ps
+        fitLineY*=ps
+        fitSigX*=ps
+        fitSigY*=ps
+        x0 = np.mean(x)
+        y0 = np.mean(y)
+        x-= x0
+        y -= y0
+        fitLineX -= x0
+        fitLineY -= y0
+        
+        paxes = py.subplot(1, 3, i+1)
+        py.errorbar(x[idx_2015], y[idx_2015], xerr=xerr[idx_2015], yerr=yerr[idx_2015], fmt='r.', label='2015')  
+        py.errorbar(x[idx_2016], y[idx_2016], xerr=xerr[idx_2016], yerr=yerr[idx_2016], fmt='g.', label='2016')  
+        py.errorbar(x[idx_2017], y[idx_2017], xerr=xerr[idx_2017], yerr=yerr[idx_2017], fmt='b.', label='2017')  
+
+        if i==1:
+            py.yticks(np.arange(np.min(y-yerr-0.1*ps), np.max(y+yerr+0.1*ps), 0.3*ps))
+            py.xticks(np.arange(np.min(x-xerr-0.1*ps), np.max(x+xerr+0.1*ps), 0.25*ps))
+        else:
+            py.yticks(np.arange(np.min(y-yerr-0.1*ps), np.max(y+yerr+0.1*ps), 0.15*ps))
+            py.xticks(np.arange(np.min(x-xerr-0.1*ps), np.max(x+xerr+0.1*ps), 0.15*ps))
+        py.axis('square')
+        paxes.tick_params(axis='both', which='major', labelsize=fontsize1)
+        paxes.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        paxes.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+        py.xlabel('X offset (mas)', fontsize=fontsize1)
+        py.ylabel('Y offset (mas)', fontsize=fontsize1)
+        py.plot(fitLineX, fitLineY, 'k-', label='_nolegend_')    
+        py.plot(fitLineX + fitSigX, fitLineY + fitSigY, 'k--', label='_nolegend_')
+        py.plot(fitLineX - fitSigX, fitLineY - fitSigY, 'k--',label='_nolegend_')
+        #title = rootDir.split('/')[-2]
+        py.title(starName.upper())
+        if i==0:
+            py.legend(loc=2)
+
+    
+    py.subplots_adjust(wspace=0.6, hspace=0.6, left = 0.08, bottom = 0.05, right=0.95, top=0.90)
+    py.tight_layout()
+    py.show()
+    py.savefig(filename)
+        
+        

@@ -69,17 +69,17 @@ def plotWithHST(rotateFITS=True):
         paF814 = f814hdr['ORIENTAT']
         scaleF814 = 0.1
 
-        print 'scaleK = ', scaleK
-        print 'scaleF330 = ', scaleF330
-        print 'scaleF435 = ', scaleF435
-        print 'scaleF555 = ', scaleF555
-        print 'scaleF814 = ', scaleF814
+        print('scaleK = ', scaleK)
+        print('scaleF330 = ', scaleF330)
+        print('scaleF435 = ', scaleF435)
+        print('scaleF555 = ', scaleF555)
+        print('scaleF814 = ', scaleF814)
 
-        print 'paK = ', paK
-        print 'paF330 = ', paF330
-        print 'paF435 = ', paF435
-        print 'paF555 = ', paF555
-        print 'paF814 = ', paF814
+        print('paK = ', paK)
+        print('paF330 = ', paF330)
+        print('paF435 = ', paF435)
+        print('paF555 = ', paF555)
+        print('paF814 = ', paF814)
 
         gcutil.rmall([f330FileRot, f435FileRot, f555FileRot, f814FileRot])
 

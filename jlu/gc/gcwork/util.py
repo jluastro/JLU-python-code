@@ -33,14 +33,14 @@ def rPix2Arc(xpix, ypix, trans, absolute=0, relErr=1):
 
     # Handle angles but only if requested by absolute=1 keyword
     if absolute == 1:
-	cosa = math.cos(trans.angle)
-	sina = math.sin(trans.angle)
+        cosa = math.cos(trans.angle)
+        sina = math.sin(trans.angle)
 
-	x3 = (x2 * cosa) + (y2 * sina)
-	y3 = -(x2 * sina) + (y2 * cosa)
+        x3 = (x2 * cosa) + (y2 * sina)
+        y3 = -(x2 * sina) + (y2 * cosa)
     else:
-	x3 = x2
-	y3 = y2
+        x3 = x2
+        y3 = y2
 
     # Get proper errors (take sqrt)
     x = x3
@@ -80,8 +80,8 @@ def rerrPix2Arc(xpix, ypix, xpixErr, ypixErr, trans, absolute=0, relErr=1):
     xerr1 = xpixErr**2
     yerr1 = ypixErr**2
     if relErr != 1:
-	xerr1 += trans.sgraErr[0]**2
-	yerr1 += trans.sgraErr[1]**2
+        xerr1 += trans.sgraErr[0]**2
+        yerr1 += trans.sgraErr[1]**2
 
     # Now handle scaling
     x2 = x1 * -trans.scale
@@ -90,27 +90,27 @@ def rerrPix2Arc(xpix, ypix, xpixErr, ypixErr, trans, absolute=0, relErr=1):
     xerr2 = xerr1 * trans.scale**2
     yerr2 = yerr1 * trans.scale**2
     if relErr != 1:
-	xerr2 += (x1 * trans.scaleErr)**2
-	yerr2 += (y1 * trans.scaleErr)**2
+        xerr2 += (x1 * trans.scaleErr)**2
+        yerr2 += (y1 * trans.scaleErr)**2
     
     # Handle angles but only if requested by absolute=1 keyword
     if absolute == 1:
-	cosa = math.cos(trans.angle)
-	sina = math.sin(trans.angle)
+        cosa = math.cos(trans.angle)
+        sina = math.sin(trans.angle)
 
-	x3 = (x2 * cosa) + (y2 * sina)
-	y3 = -(x2 * sina) + (y2 * cosa)
+        x3 = (x2 * cosa) + (y2 * sina)
+        y3 = -(x2 * sina) + (y2 * cosa)
 
-	xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
-	yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
-	if relErr != 1:
-	    xerr3 += (trans.angleErr * y2)**2
-	    yerr3 += (trans.angleErr * x2)**2
+        xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
+        yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
+        if relErr != 1:
+            xerr3 += (trans.angleErr * y2)**2
+            yerr3 += (trans.angleErr * x2)**2
     else:
-	x3 = x2
-	y3 = y2
-	xerr3 = xerr2
-	yerr3 = yerr2
+        x3 = x2
+        y3 = y2
+        xerr3 = xerr2
+        yerr3 = yerr2
 
     # Get proper errors (take sqrt)
     x = x3
@@ -134,14 +134,14 @@ def vPix2Arc(xpix, ypix, trans, absolute=0, relErr=1):
 
     # Handle angles but only if requested by absolute=1 keyword
     if absolute == 1:
-	cosa = math.cos(trans.angle)
-	sina = math.sin(trans.angle)
+        cosa = math.cos(trans.angle)
+        sina = math.sin(trans.angle)
 
-	x3 = (x2 * cosa) + (y2 * sina)
-	y3 = -(x2 * sina) + (y2 * cosa)
+        x3 = (x2 * cosa) + (y2 * sina)
+        y3 = -(x2 * sina) + (y2 * cosa)
     else:
-	x3 = x2
-	y3 = y2
+        x3 = x2
+        y3 = y2
 
     # Get proper errors (take sqrt)
     x = x3
@@ -171,19 +171,19 @@ def verrPix2Arc(xpix, ypix, xpixErr, ypixErr, trans, absolute=0, relErr=1):
         cosa = math.cos(trans.angle)
         sina = math.sin(trans.angle)
 
-	x3 = (x2 * cosa) + (y2 * sina)
-	y3 = -(x2 * sina) + (y2 * cosa)
+        x3 = (x2 * cosa) + (y2 * sina)
+        y3 = -(x2 * sina) + (y2 * cosa)
 
-	xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
-	yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
-	if relErr != 1:
-	    xerr3 += (trans.angleErr * y2)**2
-	    yerr3 += (trans.angleErr * x2)**2
+        xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
+        yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
+        if relErr != 1:
+            xerr3 += (trans.angleErr * y2)**2
+            yerr3 += (trans.angleErr * x2)**2
     else:
-	x3 = x2
-	y3 = y2
-	xerr3 = xerr2
-	yerr3 = yerr2
+        x3 = x2
+        y3 = y2
+        xerr3 = xerr2
+        yerr3 = yerr2
 
     # Get proper errors 
     x = x3
@@ -207,27 +207,27 @@ def aerrPix2Arc(xpix, ypix, xpixErr, ypixErr, trans, absolute=0, relErr=1):
     xerr2 = (xerr1 * trans.scale)**2
     yerr2 = (yerr1 * trans.scale)**2
     if relErr != 1:
-	xerr2 += (x1 * trans.scaleErr)**2
-	yerr2 += (y1 * trans.scaleErr)**2
+        xerr2 += (x1 * trans.scaleErr)**2
+        yerr2 += (y1 * trans.scaleErr)**2
     
     # Handle angles but only if requested by absolute=1 keyword
     if absolute == 1:
-	cosa = math.cos(trans.angle)
-	sina = math.sin(trans.angle)
+        cosa = math.cos(trans.angle)
+        sina = math.sin(trans.angle)
 
-	x3 = (x2 * cosa) + (y2 * sina)
-	y3 = -(x2 * sina) + (y2 * cosa)
+        x3 = (x2 * cosa) + (y2 * sina)
+        y3 = -(x2 * sina) + (y2 * cosa)
 
-	xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
-	yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
-	if relErr != 1:
-	    xerr3 += (trans.angleErr * y2)**2
-	    yerr3 += (trans.angleErr * x2)**2
+        xerr3 = (xerr2 * cosa**2) + (yerr2 * sina**2)
+        yerr3 = (xerr2 * sina**2) + (yerr2 * cosa**2)
+        if relErr != 1:
+            xerr3 += (trans.angleErr * y2)**2
+            yerr3 += (trans.angleErr * x2)**2
     else:
-	x3 = x2
-	y3 = y2
-	xerr3 = xerr2
-	yerr3 = yerr2
+        x3 = x2
+        y3 = y2
+        xerr3 = xerr2
+        yerr3 = yerr2
 
     # Get proper errors 
     x = x3
@@ -242,7 +242,7 @@ def errPix2Arc(value, error, trans, relErr=1):
     newval = value * trans.scale
     newerr = (error * trans.scale)**2
     if relErr != 1:
-	newerr += (value * trans.scaleErr)**2
+        newerr += (value * trans.scaleErr)**2
 
     newerr = math.sqrt(newerr)
 

@@ -99,8 +99,8 @@ def fit(root=None, silent=False, label=False, outsuffix=''):
             if (diskProbs[idx] > 2.7e-3):
                 indisk[i] = 1
                 indiskNames.append(names[i])
-        except ValueError, e:
-            print 'Failed'
+        except ValueError as e:
+            print('Failed')
             foo = 0
 
     # Filter that starlist in our starset so that it
@@ -155,7 +155,7 @@ def fit(root=None, silent=False, label=False, outsuffix=''):
 
     m = mpfit.mpfit(fitfunc, n0, functkw=functargs, parinfo=pinfo, quiet=1)
     if (m.status <= 0): 
-	print 'error message = ', m.errmsg
+	print('error message = ', m.errmsg)
 
     n = m.params / sqrt( vdot(m.params, m.params) )
     chisq = m.fnorm
@@ -363,20 +363,20 @@ def fit(root=None, silent=False, label=False, outsuffix=''):
     amag = amag * cc.sec_in_yr / 1.0e5
 
     if (silent == False):
-	print 'MPFIT: Nstars = %d\tNiter=%d\tStatus = %d\t' % \
-	    (len(names), m.niter, m.status)
-        print "Normal vector:  [%5.2f, %5.2f, %5.2f]" % \
-	    (n[0], n[1], n[2])
-        print "Chi-Square:  %f" % (chisq / (len(x)-1.0))
-        print 'Angle to Ascending Node: %f' % (bigOm_deg)
-        print "Inclination:  %f" % (incl_deg)
+	print('MPFIT: Nstars = %d\tNiter=%d\tStatus = %d\t' % \
+	    (len(names), m.niter, m.status))
+        print("Normal vector:  [%5.2f, %5.2f, %5.2f]" % \
+	    (n[0], n[1], n[2]))
+        print("Chi-Square:  %f" % (chisq / (len(x)-1.0)))
+        print('Angle to Ascending Node: %f' % (bigOm_deg))
+        print("Inclination:  %f" % (incl_deg))
 
 	devs = (fitfunc(n, fjac=None, yng=yng))[1]
 	newChi2 = (devs**2).sum() / (len(x) - 1.0)
-        print "\nChi-Square of Orbit Disk:  %f" % (newChi2)
+        print("\nChi-Square of Orbit Disk:  %f" % (newChi2))
 
-        print '\nDisk Residuals Mean = %4.1f, Stddev = %4.1f' % \
-              (pVel[:,2].mean(), pVel[:,2].std())
+        print('\nDisk Residuals Mean = %4.1f, Stddev = %4.1f' % \
+              (pVel[:,2].mean(), pVel[:,2].std()))
 
 #     clf()
 #     hist(pVel[:,2], arange(-300, 300, 50))

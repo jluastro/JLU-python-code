@@ -45,7 +45,7 @@ def plotRadial():
     ratioKeck = resKeckK / posErrKeck
 
     posErrTMT = resTMTZ / ratioKeck
-    print 'Estimated positional error for TMT at Z-band: %5.3f' % (posErrTMT)
+    print('Estimated positional error for TMT at Z-band: %5.3f' % (posErrTMT))
 
     # 1 years, 3 sigma
     velLo1 = 3.0 * posErrTMT
@@ -55,11 +55,11 @@ def plotRadial():
     velLo3 = posErrTMT
     velLoKms3 = velLo3 * masyr_kms
 
-    print 'Lowest detectable velocities in:'
-    print '\t 1 year, 3 sigma -- low vel = %4.2f mas/yr = %4d km/s' % \
-          (velLo1, velLoKms1)
-    print '\t 3 year, 3 sigma -- low vel = %4.2f mas/yr = %4d km/s' % \
-          (velLo3, velLoKms3)
+    print('Lowest detectable velocities in:')
+    print('\t 1 year, 3 sigma -- low vel = %4.2f mas/yr = %4d km/s' % \
+          (velLo1, velLoKms1))
+    print('\t 3 year, 3 sigma -- low vel = %4.2f mas/yr = %4d km/s' % \
+          (velLo3, velLoKms3))
 
     ##########
     #
@@ -153,10 +153,10 @@ def ttsRadius():
     idx = diff.argsort()
 
     for i in idx:
-	print '%10s   %2d %2d %4.1f  %2d %2d %4.1f  %4d  %4d %4d' % \
+	print('%10s   %2d %2d %4.1f  %2d %2d %4.1f  %4d  %4d %4d' % \
 	    (name[i], ra_hr[i], ra_min[i], ra_sec[i], 
 	     dec_deg[i], dec_min[i], dec_sec[i],
-	     diff[i], ra_diff[i], dec_diff[i])
+	     diff[i], ra_diff[i], dec_diff[i]))
 
 	if (diff[i] < 65.0):
 	    os.system('grep %s tts_clust.txt' % name[i])

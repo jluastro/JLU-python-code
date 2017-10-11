@@ -1,6 +1,10 @@
 import numpy as np
 import pylab as py
 import math
+from astropy.io import fits
+from astropy.table import Table
+from imaka.reduce import reduce_fli
+
 
 def plot_strehl_vs_angle():
     """
@@ -32,4 +36,26 @@ def plot_strehl_vs_angle():
     py.savefig('strehl_vs_angle_anisoplanatism.jpg')
 
     
+def test_for_jitter(img_nums, outfile='test_for_jitter.png'):
+    """
+    Read in a stack of starlists from images that weren't dithered.
+    The image list should be produced by imaka.reduce.reduce_fli.find_stars()
+    """
+    star_lists = ['n{0:04d}_stars.txt'.format(ii) for ii in img_nums]
     
+    shift_trans = reduce_fli.get_transforms_from_starlists(star_lists)
+    
+    shiftx = [st.px[0] for st in shift_trans]
+    shifty = [st.py[0] for st in shift_trans]
+
+    py.clf()
+    py.plot(img_nums, shiftx, 'r.', label='X')
+    py.plot(img_nums, shifty, 'b.', label='Y')
+    py.legend(loc='upper right')
+    py.xlim(img_nums.min() - 1, img_nums.max() + 1)
+    py.ylim(-10, 10)
+    py.xlabel('Image Number')
+    py.ylabel('Shift (pixels)')
+    py.savefig(outfile)
+    
+    return

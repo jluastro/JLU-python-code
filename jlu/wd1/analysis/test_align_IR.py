@@ -3,7 +3,7 @@ import pylab as py
 import atpy
 import os
 import shutil
-import cPickle as pickle
+import pickle as pickle
 
 xym_dir = '/u/jlu/data/Wd1/hst/reduce_2013_03_12/2010_F160W/01.XYM'
 mat_dir = '/u/jlu/data/Wd1/hst/reduce_2013_03_12/02.PMA/2010_160'
@@ -20,7 +20,7 @@ def xym2bar_singles():
 
     This needs to be run in the test_overlap directory.
     """
-    images = range(301, 328+1)
+    images = list(range(301, 328+1))
     # images = range(301, 302)
 
 
@@ -58,7 +58,7 @@ def make_catalog():
     ye_mast = master.col5
     me_mast = master.col6
 
-    images = range(301, 328+1)
+    images = list(range(301, 328+1))
 
     # Make output arrays.
     x = np.zeros((len(images)+1, len(x_mast)), dtype=np.float32)
@@ -81,7 +81,7 @@ def make_catalog():
     # Load up all the other lists
     for ii in range(len(images)):
         match_file = 'MATCHUP.XYMEEE.{0}'.format(images[ii])
-        print 'Processing ' + match_file
+        print('Processing ' + match_file)
         
         stars = atpy.Table(match_file, type='ascii')
 
@@ -95,7 +95,7 @@ def make_catalog():
 
     # Trim down to everything that is in at least 7 exposures
     idx = np.where(cnt >= 7)[0]
-    print 'Keeping {0} of {1} stars in 7 or more lists.'.format(len(idx), len(cnt))
+    print('Keeping {0} of {1} stars in 7 or more lists.'.format(len(idx), len(cnt)))
     x = x[:,idx]
     y = y[:,idx]
     m = m[:,idx]
@@ -157,6 +157,6 @@ def plot_vector_diff_F160W():
         py.xlim(0, 4500)
         py.ylim(0, 4500)
 
-        foo = raw_input('Continue?')
+        foo = input('Continue?')
         if foo == 'q' or foo == 'Q':
             break

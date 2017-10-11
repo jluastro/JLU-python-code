@@ -12,12 +12,12 @@ database = '/u/ghezgroup/data/gc/database/stars.sqlite'
 
 class StarTable(object):
     def fixNames(self):
-	for i in range(len(self.ourName)):
-	    self.ourName[i] = self.ourName[i].strip()
-	    self.name[i] = self.name[i].strip()
+        for i in range(len(self.ourName)):
+            self.ourName[i] = self.ourName[i].strip()
+            self.name[i] = self.name[i].strip()
 
-	    if self.ourName[i] == '-':
-		self.ourName[i] = ''
+            if self.ourName[i] == '-':
+                self.ourName[i] = ''
 
     def take(self, indices):
         """
@@ -127,48 +127,48 @@ class StarfinderList(StarTable):
 
 class Genzel2000(StarTable):
     def __init__(self):
-	self.file = tablesDir + 'ucla_genzel2000.dat'
-	tab = Table.read(self.file)
+        self.file = tablesDir + 'ucla_genzel2000.dat'
+        tab = Table.read(self.file)
 
-	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
-	self.r = tab[2].tonumpy()
-	self.x = tab[3].tonumpy()
-	self.y = tab[4].tonumpy()
-	self.vx1 = tab[5].tonumpy()
-	self.vx1err = tab[6].tonumpy()
-	self.vy1 = tab[7].tonumpy()
-	self.vy1err = tab[8].tonumpy()
-	self.vx2 = tab[9].tonumpy()
-	self.vx2err = tab[10].tonumpy()
-	self.vy2 = tab[11].tonumpy()
-	self.vy2err = tab[12].tonumpy()
-	self.vx = tab[13].tonumpy()
-	self.vxerr = tab[14].tonumpy()
-	self.vy = tab[15].tonumpy()
-	self.vyerr = tab[16].tonumpy()
-	self.vz = tab[17].tonumpy()
-	self.vzerr = tab[18].tonumpy()
+        self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.name = [tab[1][d].strip() for d in range(tab.nrows)]
+        self.r = tab[2].tonumpy()
+        self.x = tab[3].tonumpy()
+        self.y = tab[4].tonumpy()
+        self.vx1 = tab[5].tonumpy()
+        self.vx1err = tab[6].tonumpy()
+        self.vy1 = tab[7].tonumpy()
+        self.vy1err = tab[8].tonumpy()
+        self.vx2 = tab[9].tonumpy()
+        self.vx2err = tab[10].tonumpy()
+        self.vy2 = tab[11].tonumpy()
+        self.vy2err = tab[12].tonumpy()
+        self.vx = tab[13].tonumpy()
+        self.vxerr = tab[14].tonumpy()
+        self.vy = tab[15].tonumpy()
+        self.vyerr = tab[16].tonumpy()
+        self.vz = tab[17].tonumpy()
+        self.vzerr = tab[18].tonumpy()
 
-	self.fixNames()
+        self.fixNames()
 
 class Paumard2001(StarTable):
     def __init__(self):
-	self.file = tablesDir + 'ucla_paumard2001.dat'
-	tab = Table.read(self.file)
+        self.file = tablesDir + 'ucla_paumard2001.dat'
+        tab = Table.read(self.file)
 
-	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
-	self.x = tab[2].tonumpy()
-	self.y = tab[3].tonumpy()
-	self.vz = tab[4].tonumpy()
-	self.vzerr = tab[5].tonumpy()
+        self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.name = [tab[1][d].strip() for d in range(tab.nrows)]
+        self.x = tab[2].tonumpy()
+        self.y = tab[3].tonumpy()
+        self.vz = tab[4].tonumpy()
+        self.vzerr = tab[5].tonumpy()
 
-	x = self.x
-	y = self.y
-	self.r = np.sqrt(x**2 + y**2)
+        x = self.x
+        y = self.y
+        self.r = np.sqrt(x**2 + y**2)
 
-	self.fixNames()
+        self.fixNames()
 
 def loadColumnFromDB(dbColumn, dbTable, dbCursor):
     sqlCommand = 'select ' + dbColumn + ' from ' + dbTable
@@ -269,7 +269,7 @@ class Paumard2006(StarTable):
         self.t0_astrom = loadColumnFromDB('t0_astrometry', 'paumard2006', cur)
         self.t0_spectra = loadColumnFromDB('t0_spectra', 'paumard2006', cur)
 
-	self.fixNames()
+        self.fixNames()
 
     def matchNames(self, labelFile=tablesDir+'label.dat'):
         cc = objects.Constants()
@@ -304,64 +304,64 @@ class Paumard2006(StarTable):
             # Find thoses sources within 0.1"
             cdx = np.where(dr < 0.1)[0]
 
-            print ''
-            print 'Match %10s at [%5.2f, %5.2f] and mag = %5.2f (ourName = %s)' % \
+            print('')
+            print('Match %10s at [%5.2f, %5.2f] and mag = %5.2f (ourName = %s)' % \
                 (self.name[ii], xPaum[ii], yPaum[ii], self.Kmag[ii],
-                 self.ourName[ii])
-            print '   Closest Star:'
-            print '      %10s at [%5.2f, %5.2f] and mag = %5.2f' % \
-                (labels.name[rdx], xOurs[rdx], yOurs[rdx], labels.mag[rdx])
-            print '   Stars within 0.1"'
+                 self.ourName[ii]))
+            print('   Closest Star:')
+            print('      %10s at [%5.2f, %5.2f] and mag = %5.2f' % \
+                (labels.name[rdx], xOurs[rdx], yOurs[rdx], labels.mag[rdx]))
+            print('   Stars within 0.1"')
             for kk in cdx:
-                print '      %10s at [%5.2f, %5.2f] and mag = %5.2f' % \
-                    (labels.name[kk], xOurs[kk], yOurs[kk], labels.mag[kk])
+                print('      %10s at [%5.2f, %5.2f] and mag = %5.2f' % \
+                    (labels.name[kk], xOurs[kk], yOurs[kk], labels.mag[kk]))
 
 class Ott2003(StarTable):
     def __init__(self):
-	self.file = tablesDir + 'ucla_ott2003.dat'
-	tab = Table.read(self.file)
+        self.file = tablesDir + 'ucla_ott2003.dat'
+        tab = Table.read(self.file)
 
-	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.id = [tab[1][d].strip() for d in range(tab.nrows)]
-	self.name = [tab[2][d].strip() for d in range(tab.nrows)]
-	self.r = tab[3].tonumpy()
-	self.x = tab[4].tonumpy()
-	self.y = tab[5].tonumpy()
-	self.xerr = tab[6].tonumpy()
-	self.yerr = tab[7].tonumpy()
-	self.mag = tab[8].tonumpy()
-	self.magerr = tab[9].tonumpy()
-	self.mHK = tab[10].tonumpy()
-	self.mCO = tab[11].tonumpy()
-	self.vx = tab[12].tonumpy()
-	self.vy = tab[13].tonumpy()
-	self.vz = tab[14].tonumpy()
-	self.vxerr = tab[15].tonumpy()
-	self.vyerr = tab[16].tonumpy()
-	self.vzerr = tab[17].tonumpy()
-	self.type = tab[18].tonumpy()
+        self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.id = [tab[1][d].strip() for d in range(tab.nrows)]
+        self.name = [tab[2][d].strip() for d in range(tab.nrows)]
+        self.r = tab[3].tonumpy()
+        self.x = tab[4].tonumpy()
+        self.y = tab[5].tonumpy()
+        self.xerr = tab[6].tonumpy()
+        self.yerr = tab[7].tonumpy()
+        self.mag = tab[8].tonumpy()
+        self.magerr = tab[9].tonumpy()
+        self.mHK = tab[10].tonumpy()
+        self.mCO = tab[11].tonumpy()
+        self.vx = tab[12].tonumpy()
+        self.vy = tab[13].tonumpy()
+        self.vz = tab[14].tonumpy()
+        self.vxerr = tab[15].tonumpy()
+        self.vyerr = tab[16].tonumpy()
+        self.vzerr = tab[17].tonumpy()
+        self.type = tab[18].tonumpy()
 
-	self.fixNames()
+        self.fixNames()
 
 class Tanner2006(StarTable):
     def __init__(self):
-	self.file = tablesDir + 'ucla_tanner2006.dat'
-	tab = Table.read(self.file)
+        self.file = tablesDir + 'ucla_tanner2006.dat'
+        tab = Table.read(self.file)
 
-	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.name = [tab[1][d].strip() for d in range(tab.nrows)]
-	self.x = tab[2].tonumpy()
-	self.y = tab[3].tonumpy()
-	self.xerr = tab[4].tonumpy()
-	self.yerr = tab[5].tonumpy()
-	self.vx = tab[6].tonumpy()
-	self.vxerr = tab[7].tonumpy()
-	self.vy = tab[8].tonumpy()
-	self.vyerr = tab[9].tonumpy()
-	self.vz = tab[10].tonumpy()
-	self.vzerr = tab[11].tonumpy()
+        self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.name = [tab[1][d].strip() for d in range(tab.nrows)]
+        self.x = tab[2].tonumpy()
+        self.y = tab[3].tonumpy()
+        self.xerr = tab[4].tonumpy()
+        self.yerr = tab[5].tonumpy()
+        self.vx = tab[6].tonumpy()
+        self.vxerr = tab[7].tonumpy()
+        self.vy = tab[8].tonumpy()
+        self.vyerr = tab[9].tonumpy()
+        self.vz = tab[10].tonumpy()
+        self.vzerr = tab[11].tonumpy()
 
-	self.fixNames()
+        self.fixNames()
 
 def youngStarNames(datfile='/u/ghezgroup/data/gc/source_list/young.dat'):
     """Load list of young stars.
@@ -373,9 +373,9 @@ def youngStarNames(datfile='/u/ghezgroup/data/gc/source_list/young.dat'):
 
     names = []
     for line in f_yng:
-	_yng = line.split()
+        _yng = line.split()
 
-	names.append(_yng[0])
+        names.append(_yng[0])
 
     names.sort()
     return names
@@ -390,9 +390,9 @@ def lateStarNames(datfile='/u/ghezgroup/data/gc/source_list/late.dat'):
 
     names = []
     for line in f_yng:
-	_yng = line.split()
+        _yng = line.split()
 
-	names.append(_yng[0])
+        names.append(_yng[0])
 
     names.sort()
     return names
@@ -406,19 +406,19 @@ class Orbits(StarTable):
     orbitFile: Default is 'orbits.dat'
     """
     def __init__(self, orbitFile='orbits.dat'):
-	self.file = tablesDir + orbitFile
-	tab = Table.read(self.file)
+        self.file = tablesDir + orbitFile
+        tab = Table.read(self.file)
 
-	self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.name = [tab[0][d].strip() for d in range(tab.nrows)]
-	self.p = tab[1].tonumpy()
-	self.a = tab[2].tonumpy()
-	self.t0 = tab[3].tonumpy()
-	self.e = tab[4].tonumpy()
-	self.i = tab[5].tonumpy()
-	self.o = tab[6].tonumpy()
-	self.w = tab[7].tonumpy()
-	self.searchRadius = tab[8].tonumpy()
+        self.ourName = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.name = [tab[0][d].strip() for d in range(tab.nrows)]
+        self.p = tab[1].tonumpy()
+        self.a = tab[2].tonumpy()
+        self.t0 = tab[3].tonumpy()
+        self.e = tab[4].tonumpy()
+        self.i = tab[5].tonumpy()
+        self.o = tab[6].tonumpy()
+        self.w = tab[7].tonumpy()
+        self.searchRadius = tab[8].tonumpy()
 
 class Labels(StarTable):
     """
@@ -692,7 +692,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
         if addNewStars:
             def filterFunction(i):
                 return (alnLabels.r[i] < oldLabels.r[nn]) and ('star' in alnLabels.name[i])
-            idx = filter(filterFunction, range(len(alnLabels.name)))
+            idx = list(filter(filterFunction, list(range(len(alnLabels.name)))))
 
             for ii in idx:
                 rAnnulus = int(math.floor(alnLabels.r[ii]))
@@ -732,7 +732,7 @@ def makeLabelDat(root='./', align='align/align_d_rms_t', poly='polyfit_d/fit',
     # Quick verification that we don't have repeat names.
     uniqueNames = np.unique(newLabels.name)
     if len(uniqueNames) != len(newLabels.name):
-        print 'Problem, we have a repeat name!!'
+        print('Problem, we have a repeat name!!')
 
     # Write to output
     newLabels.saveToFile(root + 'source_list/' + newLabelFile)
@@ -744,8 +744,8 @@ def calcNewNumbers(oldNames, newNames):
     newNumber = np.zeros(len(rRange))
     for rr in range(len(rRange)):
         substring = 'S%d-' % rr
-        rNameOld = filter(lambda x: x.find(substring) != -1, oldNames)
-        rNameNew = filter(lambda x: x.find(substring) != -1, newNames)
+        rNameOld = [x for x in oldNames if x.find(substring) != -1]
+        rNameNew = [x for x in newNames if x.find(substring) != -1]
 
         if (len(rNameOld) == 0):
             newNumber[rr] = 1
@@ -767,7 +767,7 @@ def calcNewNumbers(oldNames, newNames):
 
             newNumber[rr] = max([rNumberOld[-1], rNumberNew[-1]]) + 1
 
-        print 'First New Number is S%d-%d' % (rRange[rr], newNumber[rr])
+        print('First New Number is S%d-%d' % (rRange[rr], newNumber[rr]))
 
     return newNumber
 
@@ -819,10 +819,10 @@ def makeOrbitsDat(root='./', efit='efit3_d/output/efit3.log',
     _out = open(root + 'source_list/orbits_new.dat', 'w')
     _out.write('# Python gcwork.starTables.makeOrbitsDat()\n')
     _out.write('%-10s  %7s  %7s  %8s  %7s  %7s  %7s  %7s  %7s\n' % \
-	       ('#Star', 'P', 'A', 't0', 'e', 'i', 'Omega', 'omega', 'search'))
+               ('#Star', 'P', 'A', 't0', 'e', 'i', 'Omega', 'omega', 'search'))
     _out.write('%-10s  %7s  %7s  %8s  %7s  %7s  %7s  %7s  %7s\n' % \
-	       ('#Name', '(yrs)', '(mas)', '(yrs)', '()',
-		'(deg)', '(deg)', '(deg)', '(pix)'))
+               ('#Name', '(yrs)', '(mas)', '(yrs)', '()',
+                '(deg)', '(deg)', '(deg)', '(pix)'))
 
 
     # Loop through every src and if it is named, output into a
@@ -836,13 +836,13 @@ def makeOrbitsDat(root='./', efit='efit3_d/output/efit3.log',
 
         # Skip if this isn't a named source
         if (('star' in srcs[ss]) and (onlyHighAccel == True)):
-	    continue
+            continue
 
-	# Write output
-	_out.write('%-10s  ' % (srcs[ss]))
-	_out.write('%7.2f  %7.1f  %8.3f  ' % (p[idx], a[idx], t0[idx]))
-	_out.write('%7.5f  %7.3f  %7.3f  ' % (e[idx], i[idx], o[idx]))
-	_out.write('%7.3f  %7d\n' % (w[idx], 2))
+        # Write output
+        _out.write('%-10s  ' % (srcs[ss]))
+        _out.write('%7.2f  %7.1f  %8.3f  ' % (p[idx], a[idx], t0[idx]))
+        _out.write('%7.5f  %7.3f  %7.3f  ' % (e[idx], i[idx], o[idx]))
+        _out.write('%7.3f  %7d\n' % (w[idx], 2))
 
     _out.close()
 
@@ -875,12 +875,12 @@ def labelNoYoung(input_labels, output_labels):
         if (labels.name[i] in yng):
             labels.useToAlign[i] = 0   # Don't use for alignment
 
-	_out.write('%-10s  %5.1f   ' % (labels.name[i], labels.mag[i]))
-	_out.write('%7.3f %7.3f ' % (labels.x[i], labels.y[i]))
+        _out.write('%-10s  %5.1f   ' % (labels.name[i], labels.mag[i]))
+        _out.write('%7.3f %7.3f ' % (labels.x[i], labels.y[i]))
         _out.write('%7.3f %7.3f   ' % (labels.xerr[i], labels.yerr[i]))
-	_out.write('%8.3f %8.3f ' % (labels.vx[i], labels.vy[i]))
+        _out.write('%8.3f %8.3f ' % (labels.vx[i], labels.vy[i]))
         _out.write('%8.3f %8.3f   ' % (labels.vxerr[i], labels.vyerr[i]))
-	_out.write('%8.3f %4d %7.3f\n' %  \
+        _out.write('%8.3f %4d %7.3f\n' %  \
                    (labels.t0[i], labels.useToAlign[i], labels.r[i]))
 
 
@@ -948,10 +948,10 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
     numStars = len(names)
     numEpochs = len(s.stars[0].years)
 
-    print 'Initial:  Nstars = %4d  Nepochs = %2d' % (numStars, numEpochs)
-    print 'Number of Epochs of Type:'
-    print '   Speckle = %d' % len(spEpochs)
-    print '   AO      = %d' % len(aoEpochs)
+    print('Initial:  Nstars = %4d  Nepochs = %2d' % (numStars, numEpochs))
+    print('Number of Epochs of Type:')
+    print('   Speckle = %d' % len(spEpochs))
+    print('   AO      = %d' % len(aoEpochs))
 
 
     aoCnt = np.zeros(numStars)
@@ -994,8 +994,8 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
                 use = '0'
 
                 if (spCnt[foo] >= numSpeck):
-                    print '%-13s is in all speckle epochs, but use=0' % \
-                          names[foo]
+                    print('%-13s is in all speckle epochs, but use=0' % \
+                          names[foo])
             else:
                 if (spCnt[foo] >= numSpeck):
                     use = '2'
@@ -1017,19 +1017,19 @@ def labelRestrict(inputLabel, outputLabel, alignInput,
             use = str(labels.useToAlign[i])
 
 
-	_out.write('%-10s  %5.1f   ' % (labels.name[i], labels.mag[i]))
-	_out.write('%7.3f %7.3f ' % (labels.x[i], labels.y[i]))
+        _out.write('%-10s  %5.1f   ' % (labels.name[i], labels.mag[i]))
+        _out.write('%7.3f %7.3f ' % (labels.x[i], labels.y[i]))
         _out.write('%7.3f %7.3f   ' % (labels.xerr[i], labels.yerr[i]))
-	_out.write('%8.3f %8.3f ' % (labels.vx[i], labels.vy[i]))
+        _out.write('%8.3f %8.3f ' % (labels.vx[i], labels.vy[i]))
         _out.write('%8.3f %8.3f   ' % (labels.vxerr[i], labels.vyerr[i]))
-	_out.write('%8.3f %-4s %7.3f\n' %  \
+        _out.write('%8.3f %-4s %7.3f\n' %  \
                    (labels.t0[i], use, labels.r[i]))
 
 
     _out.close()
 
-    print 'Final:   Nstars Speckle = %4d  AO = %4d' % \
-          (spNumStars, aoNumStars)
+    print('Final:   Nstars Speckle = %4d  AO = %4d' % \
+          (spNumStars, aoNumStars))
 
 
 
@@ -1053,8 +1053,8 @@ def updateLabelInfoWithAbsRefs(oldLabelFile, newLabelFile, outputFile,
     """
     old = Labels(oldLabelFile)
     new = Labels(newLabelFile)
-    print '%5d stars in list with old velocities' % len(old.name)
-    print '%5d stars in list with new velocities' % len(new.name)
+    print('%5d stars in list with old velocities' % len(old.name))
+    print('%5d stars in list with new velocities' % len(new.name))
 
     if oldUse != None:
         old.useToAlign[:] = oldUse
@@ -1107,9 +1107,9 @@ def updateLabelInfoWithAbsRefs(oldLabelFile, newLabelFile, outputFile,
                 old.useToAlign = np.append(old.useToAlign, newUse)
 
                 newCount += 1
-    print '%5d stars in the NEW starlist created' % len(old.name)
-    print '   %5d updated' % updateCount
-    print '   %5d added'   % newCount
+    print('%5d stars in the NEW starlist created' % len(old.name))
+    print('   %5d updated' % updateCount)
+    print('   %5d added'   % newCount)
 
 
     old.saveToFile(outputFile)
@@ -1144,18 +1144,18 @@ def checkLabelsForDuplicates(labels='/u/ghezgroup/data/gc/source_list/label.dat'
         if len(rdx) > 1:
             duplicateCnt += 1
 
-            print ''
-            print 'Found stars close to %s' % lab.name[ii]
-            print '    %-13s  %5s  %7s %7s  %7s %7s' % \
-                ('Name', 'mag', 'x', 'y', 'vx', 'vy')
+            print('')
+            print('Found stars close to %s' % lab.name[ii])
+            print('    %-13s  %5s  %7s %7s  %7s %7s' % \
+                ('Name', 'mag', 'x', 'y', 'vx', 'vy'))
 
             for rr in rdx:
-                print '    %-13s  %5.2f  %7.3f %7.3f   %7.3f %7.3f' % \
+                print('    %-13s  %5.2f  %7.3f %7.3f   %7.3f %7.3f' % \
                     (lab.name[rr], lab.mag[rr], lab.x[rr], lab.y[rr],
-                     lab.vx[rr], lab.vy[rr])
+                     lab.vx[rr], lab.vy[rr]))
 
-    print ''
-    print 'Found %d duplicates' % duplicateCnt
+    print('')
+    print('Found %d duplicates' % duplicateCnt)
 
 def updateLabelInfoWithDeepMosaic(oldLabelFile, dpMscAlignDir, outputFile,
                                   alignRoot='align/align_d_rms_100_abs_t',

@@ -17,7 +17,7 @@ def findOverlapStars(mosaicRoot, mosaicStars,
 
     # Read in the shifts file and extract shifts for the two frames
     shiftsFile = mosaicRoot + '.shifts'
-    print shiftsFile
+    print(shiftsFile)
 
     shiftsTable = asciidata.open(shiftsFile)
     cleanFiles = shiftsTable[0]._data
@@ -32,21 +32,21 @@ def findOverlapStars(mosaicRoot, mosaicStars,
         if cleanRoot2 in cleanFiles[cc]:
             idx2 = cc
 
-    print idx1, idx2, cleanFiles[idx1], cleanFiles[idx2]
+    print(idx1, idx2, cleanFiles[idx1], cleanFiles[idx2])
     xshift1 = xshifts[idx1]
     xshift2 = xshifts[idx2]
     yshift1 = yshifts[idx1]
     yshift2 = yshifts[idx2]
-    print 'Shifts:'
-    print cleanFiles[idx1], xshift1, yshift1
-    print cleanFiles[idx2], xshift2, yshift2
+    print('Shifts:')
+    print(cleanFiles[idx1], xshift1, yshift1)
+    print(cleanFiles[idx2], xshift2, yshift2)
 
     # Read in the mosaic fits file to get the size of the mosaic.
     # Then define coordinates for the mosaic
     fitsFile = mosaicRoot + '.fits'
     fitsImg = pyfits.getdata(fitsFile)
     mosaicSize = fitsImg.shape
-    print 'Mosaic Size: ', mosaicSize
+    print('Mosaic Size: ', mosaicSize)
 
     (ym, xm) = np.meshgrid(np.arange(mosaicSize[0]), np.arange(mosaicSize[1]))
     mosaicHalfX = mosaicSize[1] / 2.0
@@ -75,8 +75,8 @@ def findOverlapStars(mosaicRoot, mosaicStars,
     yo_min = yo.min()
     yo_max = yo.max()
 
-    print 'Overlap Range:'
-    print xo_min, xo_max, yo_min, yo_max
+    print('Overlap Range:')
+    print(xo_min, xo_max, yo_min, yo_max)
     box3x = np.array([xo_min, xo_max, xo_max, xo_min, xo_min])
     box3y = np.array([yo_min, yo_min, yo_max, yo_max, yo_min])
 
@@ -108,7 +108,7 @@ def findOverlapStars(mosaicRoot, mosaicStars,
         idxIn1.append(match1)
         idxIn2.append(match2)
 
-        print stars1.name[match1], stars2.name[match2]
+        print(stars1.name[match1], stars2.name[match2])
 
 def mosaicDistortionErrors(rootDir, ep, mosaicRoot, mosaicStarlist,
                            addResid=True, distResid=0.11):
@@ -152,7 +152,7 @@ def mosaicDistortionErrors(rootDir, ep, mosaicRoot, mosaicStarlist,
     """
     # Read in the shifts file
     shiftsFile = mosaicRoot + '.shifts'
-    print shiftsFile
+    print(shiftsFile)
 
     shiftsTable = asciidata.open(shiftsFile)
     singleFiles = shiftsTable[0]._data
@@ -183,9 +183,9 @@ def mosaicDistortionErrors(rootDir, ep, mosaicRoot, mosaicStarlist,
     mosaicHalfY = mosaicSize[0] / 2.0
     singleHalfX = xerrOrig.shape[1] / 2.0
     singleHalfY = xerrOrig.shape[0] / 2.0
-    print 'Mosaic Size: ', mosaicSize
-    print 'Mosaic Half: ', mosaicHalfX, mosaicHalfY
-    print 'Single Half: ', singleHalfX, singleHalfY
+    print('Mosaic Size: ', mosaicSize)
+    print('Mosaic Half: ', mosaicHalfX, mosaicHalfY)
+    print('Single Half: ', singleHalfX, singleHalfY)
 
     # Loop through the individual frames and add them in 
     # quadrature to the final distortion error map. Remember that we
@@ -217,8 +217,8 @@ def mosaicDistortionErrors(rootDir, ep, mosaicRoot, mosaicStarlist,
         ylo = round(mosaicHalfY + yshifts[ii] - singleHalfY)
         yhi = round(mosaicHalfY + yshifts[ii] + singleHalfY)
 
-        print singleFiles[ii], xshifts[ii], yshifts[ii]
-        print '  xrange = [%4d:%4d]  yrange = [%4d:%4d]' % (xlo, xhi, ylo, yhi)
+        print(singleFiles[ii], xshifts[ii], yshifts[ii])
+        print('  xrange = [%4d:%4d]  yrange = [%4d:%4d]' % (xlo, xhi, ylo, yhi))
 
         xdistErrMap[ylo:yhi,xlo:xhi] += xerrOrig**2
         ydistErrMap[ylo:yhi,xlo:xhi] += yerrOrig**2
@@ -244,7 +244,7 @@ def mosaicDistortionErrors(rootDir, ep, mosaicRoot, mosaicStarlist,
     
     # Check that this starlist properly has error columns
     if starlist.nrows < 11:
-        print 'Starlist does not have error columns: %s' % mosaicStarlist
+        print('Starlist does not have error columns: %s' % mosaicStarlist)
 
     # Now for each star, add the distortion errors in quadrature
     for rr in range(starlist.nrows):
