@@ -657,7 +657,7 @@ def plot_quiver_align(pos, orig='', catalog='catalog_align_a4_t.fits'):
     Set orig='orig' to plot xorig and yorig (straight from ks2) rather than
     x and y from align output.
     """
-    t = Table.read(work_dir + '50.ALIGN_KS2/catalog_align_a4_t.fits')
+    t = Table.read(work_dir + '50.ALIGN_KS2/' + catalog)
 
     epoch_names = t.meta['EPNAMES']
     ast_epochs = []
@@ -694,6 +694,9 @@ def plot_quiver_align(pos, orig='', catalog='catalog_align_a4_t.fits'):
     plot_dir = work_dir + '50.ALIGN_KS2/plots/quiver_' + catalog.replace('.fits', '/')
     fileUtil.mkdir(plot_dir)
     _out = open(plot_dir + 'stats_' + pos + orig + '.txt', 'w')
+
+    py.close(1)
+    py.figure(1, figsize=(6,6))
     
     for ia in range(len(ast_epochs)):
         for ib in range(ia + 1, len(ast_epochs)):
@@ -2082,7 +2085,7 @@ def combine_mosaic_pos(catalog_name_in, catalog_name_out):
     t.write(work_dir + '50.ALIGN_KS2/' + catalog_name_out,
             format='fits', overwrite=True)
 
-def add_velocities_to_catalog(catalog_in, catalog_out):
+def add_velocities_to_catalog(catalog_in, catalog_out, bootstrap=0, use_RMSE=True, vel_weight=True):
     """
     Call after make_catalog_from_align(). 
     """
@@ -2090,7 +2093,8 @@ def add_velocities_to_catalog(catalog_in, catalog_out):
     catalog_out = work_dir + '50.ALIGN_KS2/' + catalog_out
     use_columns = ['2005_F814W', '2010_F160W', '2013_F160W', '2015_F160W']
 
-    ast.fit_velocity(catalog_in, catalog_out, use_columns=use_columns)
+    ast.fit_velocity(catalog_in, catalog_out, use_columns=use_columns,
+                     bootstrap=bootstrap, use_RMSE=use_RMSE, vel_weight=vel_weight)
     
     return
     
@@ -2112,18 +2116,28 @@ def make_new_labels_with_members():
     first_star = np.where(t['name'].data == label_old['name'][0])[0]
     print(first_star)
 
+    # Find the named stars that match in label_old. We need to preserve these
+    # no matter what. (but we can set use=0 if they aren't members).
+    in_old = np.zeros(len(t), dtype=bool)
+    for oo in range(len(label_old)):
+        ndx = np.where(t['name'] == label_old['name'][oo])[0]
+        in_old[ndx] = True
+
     # Convert coords. +x increases to the East/left.
     t['fit_x0'] = (t['fit_x0'] - t['fit_x0'][first_star]) * ast.scale['WFC'] * -1.0
     t['fit_y0'] = (t['fit_y0'] - t['fit_y0'][first_star]) * ast.scale['WFC']
 
     # Get rid of the big outliers first. We know cluster members should be within.
-    # 0.1 pix/yr. Also get rid of anything with large uncertainties. 
-    idx = np.where( ( np.abs(t['fit_vx']) < 0.1 ) &
-                    ( np.abs(t['fit_vy']) < 0.1 ) &
-                    ( t['fit_vxe'] < 0.008)  &
-                    ( t['fit_vye'] < 0.008) )[0]
+    # 0.1 pix/yr. Also get rid of anything with large uncertainties. Note, if it is
+    # in our old list, we keep it no matter what.
+    idx = np.where( (in_old == True) | 
+                    (( np.abs(t['fit_vx']) < 0.1 ) &
+                     ( np.abs(t['fit_vy']) < 0.1 ) &
+                     ( t['fit_vxe'] < 0.008)  &
+                     ( t['fit_vye'] < 0.008)) )[0]
 
     t = t[idx]
+    in_old = in_old[ndx]
 
     # Determine the mean and std of the velocities. We really want to iter
     vx_clip = sigma_clip(t['fit_vx'], sigma=2, iters=20)
@@ -2154,21 +2168,32 @@ def make_new_labels_with_members():
     vel_cut *= ast.scale['WFC'] * 10**3
     
     # Make a figure to illustrated the membership cut.
+    py.close(1)
     py.figure(figsize=(6,6))
-    py.clf()
     py.plot(t['fit_vx'], t['fit_vy'], 'k.', ms=2, alpha=0.5)
     circ = py.Circle([0, 0], radius=vel_cut, color='red', fill=False)
     py.gca().add_artist(circ)
     lim = 2.5
     py.axis([-lim, lim, -lim, lim])
     py.show()
-    py.savefig(work_dir + '50.ALIGN_KS2/plots/make_new_labels_with_members.png')
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/make_new_labels_with_members_vpd.png')
 
     # Make the membership cut.
     vtot = np.hypot(t['fit_vx'], t['fit_vy'])
-    idx = np.where(vtot < vel_cut)
+    idx = np.where((in_old == True) | (vtot < vel_cut))
     t = t[idx]
     print('Saving {0:d} Wd 1 members'.format(len(idx[0])))
+
+    # Make a plot to show the distribution of members. This can
+    # effect our alignment process.
+    py.close(2)
+    py.figure(2, figsize=(6,6))
+    py.plot(t['fit_x0'], t['fit_y0'], 'k.', ms=4)
+    py.xlabel('X (")')
+    py.xlabel('Y (")')
+    py.show()
+    py.savefig(work_dir + '50.ALIGN_KS2/plots/make_new_labels_with_members_xy.png')
+    
 
     # Make the new label.dat ... we can make it straight from our
     # astropy table, after some modifications.
@@ -2185,7 +2210,7 @@ def make_new_labels_with_members():
     vxe = Column(data = t['fit_vxe'], name = 'vxe')
     vye = Column(data = t['fit_vye'], name = 'vye')
     t0 = Column(data = t['fit_t0'], name = 't0')
-    use = Column(data = np.ones(len(x0), dtype=int), name = 'use')
+    use = Column(data = np.ones(len(x0), dtype=int)*18, name = 'use')
     r0 = Column(data = np.hypot(x0, y0), name = 'r0')
 
     label_new = Table([name, m, x0, y0, x0e, y0e, vx, vy, vxe, vye, t0, use, r0])

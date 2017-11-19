@@ -80,13 +80,13 @@ def loadYoungStars(root, align='align/align_d_rms_1000_abs_t',
     names = [star.name for star in s.stars]
 
     for name in yng:
-	# Find the star in our star lists
-	try:
-	    idx = names.index(name)
-	    star = s.stars[idx]
+        # Find the star in our star lists
+        try:
+            idx = names.index(name)
+            star = s.stars[idx]
 
-	    if (star.r2d >= radiusCut):
-		stars.append(star)
+            if (star.r2d >= radiusCut):
+                stars.append(star)
 
             # Number of Epochs Detected should be corrected
             # for epochs trimmed out of the *.points files.

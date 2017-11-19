@@ -1011,7 +1011,7 @@ def run_once_mc(newCube,errors,templates,velScale,start,goodPixels,vsyst,nsim,mc
     #pdb.set_trace()
     
 class PPXFresults(object):
-    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False,twocomp=False):
+    def __init__(self, inputFile=workdir+'ppxf.dat',bestfit=False, twocomp=False):
         self.inputFile = inputFile
         
         input = open(inputFile, 'rb')
@@ -1288,12 +1288,12 @@ def plotResults2(inputFile):
     py.savefig(workdir + 'plots/kinematic_maps2.eps')
     py.show()
 
-def plotResults3(inputFile,zoom=False,twocomp=False):
+def plotResults3(inputFile,zoom=False,twocomp=False, out_suffix=''):
     #cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
     #cubeimg = pyfits.getdata('/Users/kel/Documents/Projects/M31/data/081021/SPEC/reduce_new/cleanrecmat/m31/woscalecont/ppxf/m31_081021_mosaic_woscalecont_img.fits')
     #cubeimg=pyfits.getdata('/Users/kel/Documents/Projects/M31/data/osiris_mosaics/drf/sigclip/all_telshift/woscalecont/m31_mosaic_telshift_woscalecont_img.fits')
       
-    p = PPXFresults(inputFile,twocomp=twocomp)
+    p = PPXFresults(inputFile=inputFile, twocomp=twocomp)
 
     xaxis = (np.arange(len(p.velocity[0])) - bhpos_pix[0]) * 0.05
     yaxis = (np.arange(len(p.velocity)) - bhpos_pix[1]) * 0.05
@@ -1399,14 +1399,14 @@ def plotResults3(inputFile,zoom=False,twocomp=False):
     cbar.set_label('h4')
 
     #py.tight_layout()
-    pdb.set_trace()
+    # pdb.set_trace()
 
     if zoom:
-        py.savefig(workdir + 'plots/kinematic_maps3_zoom.png')
-        py.savefig(workdir + 'plots/kinematic_maps3_zoom.eps')
+        py.savefig(workdir + 'plots/kinematic_maps3_zoom' + out_suffix + '.png')
+        py.savefig(workdir + 'plots/kinematic_maps3_zoom' + out_suffix + '.eps')
     else:
-        py.savefig(workdir + 'plots/kinematic_maps3.png')
-        py.savefig(workdir + 'plots/kinematic_maps3.eps')
+        py.savefig(workdir + 'plots/kinematic_maps3' + out_suffix + '.png')
+        py.savefig(workdir + 'plots/kinematic_maps3' + out_suffix + '.eps')
     py.show()
 
 def plotSpaxResults(inputResults=workdir+'ppxf.dat',inSpax=[20,40],blue=False,losvd=False,bs=True,mask=False):
