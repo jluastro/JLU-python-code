@@ -1038,24 +1038,24 @@ class PPXFresultsMC(object):
         self.inputFile = inputFile
 
         input = open(inputFile, 'rb')
-        self.velocity = pickle.load(input)
-        self.velocityErr = pickle.load(input)
-        self.sigma = pickle.load(input)
-        self.sigmaErr = pickle.load(input)
-        self.h3 = pickle.load(input)
-        self.h3Err = pickle.load(input)
-        self.h4 = pickle.load(input)
-        self.h4Err = pickle.load(input)
-        self.h5 = pickle.load(input)
-        self.h5Err = pickle.load(input)
-        self.h6 = pickle.load(input)
-        self.h6Err = pickle.load(input)
-        self.chi2red = pickle.load(input)
-        self.chi2redErr = pickle.load(input)
-        self.pweights = pickle.load(input)
-        self.pweightsErr = pickle.load(input)
-        self.tweights = pickle.load(input)
-        self.tweightsErr = pickle.load(input)
+        self.velocity = pickle.load(input, encoding='latin1')
+        self.velocityErr = pickle.load(input, encoding='latin1')
+        self.sigma = pickle.load(input, encoding='latin1')
+        self.sigmaErr = pickle.load(input, encoding='latin1')
+        self.h3 = pickle.load(input, encoding='latin1')
+        self.h3Err = pickle.load(input, encoding='latin1')
+        self.h4 = pickle.load(input, encoding='latin1')
+        self.h4Err = pickle.load(input, encoding='latin1')
+        self.h5 = pickle.load(input, encoding='latin1')
+        self.h5Err = pickle.load(input, encoding='latin1')
+        self.h6 = pickle.load(input, encoding='latin1')
+        self.h6Err = pickle.load(input, encoding='latin1')
+        self.chi2red = pickle.load(input, encoding='latin1')
+        self.chi2redErr = pickle.load(input, encoding='latin1')
+        self.pweights = pickle.load(input, encoding='latin1')
+        self.pweightsErr = pickle.load(input, encoding='latin1')
+        self.tweights = pickle.load(input, encoding='latin1')
+        self.tweightsErr = pickle.load(input, encoding='latin1')
 
 def plotResults(inputFile):
     cubeimg = pyfits.getdata(datadir + cuberoot + '_img.fits')
@@ -5230,7 +5230,7 @@ def create_model_templates(tWeights,IDL=False,norm=False,normmask=None,rebinWave
         
 def load_templates(velScale, resolution=3241, IDL=True, selectTemp=None, rebinWave=True):
     # IDL and Python versions of pPXF require different formats for the input templates
-    templateDir = '/Users/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
+    templateDir = '/u/kel/Documents/Library/IDL/ppxf/templates/GNIRS/library_v15_gnirs_combined/'
 
     files = glob.glob(templateDir + '*.fits')
     
