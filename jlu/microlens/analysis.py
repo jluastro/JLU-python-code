@@ -194,7 +194,7 @@ class OB140613(analysis.Analysis):
         self.calCooStar = self.cooStar
 
         # Override some of the default parameters
-        self.calFlags = '-f 1 -R -s 1 --searchMag=4.0'
+        self.calFlags = '-f 1 -R -s 1 --searchMag=4.0 '
         self.calFile = rootDir + 'source_list/ob140613_photo.dat'
 
         self.labellist = rootDir + 'source_list/ob140613_label.dat'
