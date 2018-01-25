@@ -744,7 +744,7 @@ def plotChiSqMap(inMap=None,sum=False,save=False):
     #py.figure(2,figsize=(11,7))
     #py.figure(2,figsize=(3,9))
     py.figure(2,figsize=(13,9))
-    py.subplots_adjust(left=0.1, right=0.85, top=0.95)
+    py.subplots_adjust(left=0.1, right=0.85, top=0.9)
     if sum:
         nM = 1
     else:
@@ -761,41 +761,60 @@ def plotChiSqMap(inMap=None,sum=False,save=False):
                 #else:
                 if sum:
                     lo = np.min(chiSq[:,:])
-                    hitmp = np.max(chiSq[:,:])
-                    hi = (hitmp-lo)/4 + lo
+                    #hitmp = np.max(chiSq[:,:])
+                    #hi = (hitmp-lo)/4 + lo
                     #hi = np.max(chiSq[:,:])
+                    hi = 8.3
                     py.imshow(chiSq[(nI*i):(nI*(i+1)),(nL*j):(nL*(j+1))],vmin=lo,vmax=hi)
                 else:
                     lo = np.min(chiSq[:,:,m])
-                    hitmp = np.max(chiSq[:,:,m])
-                    hi = (hitmp-lo)/4 + lo
-                    #hi = np.max(chiSq[:,:,m])
+                    #hitmp = np.max(chiSq[:,:,m])
+                    #hi = (hitmp-lo)/4 + lo
+                    hi = np.max(chiSq[:,:,m])
                     py.imshow(chiSq[(nI*i):(nI*(i+1)),(nL*j):(nL*(j+1)),m],vmin=lo,vmax=hi)
                 py.xticks([])
                 py.yticks([])
                 # label the leftmost subplots with the correct thetaA values and the yticks
                 if (nPlot-1)%nP == 0:
                     if nPlot  > (nP*(nA-1)):
-                        tmplab = '$\Theta_A$=%.1f' % thetaA[i]
+                        #tmplab = '$\Theta_A$=%.1f' % thetaA[i]
+                        tmplab = '$\Theta_I$'
                     else:
-                        tmplab = '%.1f' % thetaA[i]
+                        #tmplab = '%.1f' % thetaA[i]
+                        tmplab = '$\Theta_I$'
                     py.ylabel(tmplab)
-                    py.yticks([0,nI/2,nI-1],[thetaI[0],thetaI[nI/2],thetaI[nI-1]])
+                    tmp1 = '%2.0f' % thetaI[0]
+                    tmp2 = '%2.0f' % thetaI[nI/2]
+                    tmp3 = '%2.0f' % thetaI[nI-1]
+                    py.yticks([0,nI/2,nI-1],[tmp1,tmp2,tmp3])
+                if nPlot%nP == 0:
+                    if i == 7:
+                        tmplab = '%2.0f' % thetaA[i]
+                        py.gcf().text(0.89, .52 , '$\Theta_A$',rotation=-90.,fontsize=20)
+                    else:
+                        tmplab = '%2.0f' % thetaA[i]
+                    py.gcf().text(0.85, (.8/nA) * i +.16 , tmplab,rotation=-90.)
+                    
                 # label the topmost subplots with the correct precession values
                 if nPlot <= nP:
                     if nPlot == 1:
-                        tmplab = '$\Omega_P$=%.1f' % precess[j]
+                        #tmplab = '$\Omega_P$=%.1f' % precess[j]
+                        tmplab = '%2.0f' % precess[j]
+                        py.gcf().text(0.47, .96 , '$\Omega_P$',fontsize=20)
                     else:
-                        tmplab = '%.1f' % precess[j]
+                        tmplab = '%2.0f' % precess[j]
                     py.title(tmplab)
                 # label the bottommost subplots with the xticks
                 if nPlot > (nP*(nA-1)):
-                    py.xticks([0,nL/2,nL-1],[thetaL[0],thetaL[nL/2],thetaL[nL-1]],rotation='vertical')
+                    tmp1 = '%2.0f' % thetaL[0]
+                    tmp2 = '%2.0f' % thetaL[nL/2]
+                    tmp3 = '%2.0f' % thetaL[nL-1]
+                    py.xticks([0,nL/2,nL-1],[tmp1,tmp2,tmp3],rotation='vertical')
                     py.xlabel('$\Theta_L$')
                 # add the colorbar to the bottom right subplot
                 if nPlot == nA*nP:
                     box = ax.get_position()
-                    axColor = py.axes([box.x0 + box.width * 1.05, box.y0, 0.01, box.height])
+                    axColor = py.axes([box.x0 + box.width * 1.25, 0.05, 0.01, box.height])
                     #axColor = py.axes([box.x0 + box.width * .7, box.y0, 0.01, box.height])
                     cbar=py.colorbar(cax = axColor,orientation='vertical',ticks=[lo,((hi-lo)/2.)+lo,hi])
                     cbar.set_label('$\chi^2$')
@@ -899,13 +918,16 @@ def plot1Dchi2(inMap=None):
     # plot
     # st. dev on weighted chi2 is 0.01, from model_fit.chi2MCerr (7x7x7 grid)
     ytickLoc = py.MultipleLocator(1.0)
-    err = 0.01
+    #err = 0.01
+    #err = 0.07
+    err = 0.08
     err3sig = 3.*err
     py.close(2)
-    py.figure(2,figsize=(6,14))
-    py.subplots_adjust(left=0.18, right=0.94, top=0.95,bottom=0.1,hspace=.45)
+    #py.figure(2,figsize=(6,14))
+    py.figure(2,figsize=(15,7))
+    py.subplots_adjust(left=0.1, right=0.94, top=0.95,bottom=0.13,hspace=.3)
 
-    py.subplot(411)
+    py.subplot(221)
     py.plot(angleMap[idxL[0],idxL[1],:][:,0],chiSq[idxL[0],idxL[1]],'ko')
     py.axhline(np.min(chiSq[idxL[0],idxL[1]]) + err,color='green',linestyle='--',label='1$\sigma$ error')
     py.axhline(np.min(chiSq[idxL[0],idxL[1]]) + err3sig,color='blue',linestyle=':',label='3$\sigma$ error')
@@ -916,7 +938,7 @@ def plot1Dchi2(inMap=None):
     #pdb.set_trace()
 
     #py.clf()
-    py.subplot(412)
+    py.subplot(222)
     py.plot(angleMap[idxI[0],idxI[1],:][:,1],chiSq[idxI[0],idxI[1]],'ko')
     py.axhline(np.min(chiSq[idxI[0],idxI[1]]) + err,color='green',linestyle='--',label='1$\sigma$ error')
     py.axhline(np.min(chiSq[idxI[0],idxI[1]]) + err3sig,color='blue',linestyle=':',label='3$\sigma$ error')
@@ -926,7 +948,7 @@ def plot1Dchi2(inMap=None):
     #pdb.set_trace()
 
     #py.clf()
-    py.subplot(413)
+    py.subplot(223)
     py.plot(angleMap[idxA[0],idxA[1],:][:,2],chiSq[idxA[0],idxA[1]],'ko')
     py.axhline(np.min(chiSq[idxA[0],idxA[1]]) + err,color='green',linestyle='--',label='1$\sigma$ error')
     py.axhline(np.min(chiSq[idxA[0],idxA[1]]) + err3sig,color='blue',linestyle=':',label='3$\sigma$ error')
@@ -936,7 +958,7 @@ def plot1Dchi2(inMap=None):
     #pdb.set_trace()
 
     #py.clf()
-    py.subplot(414)
+    py.subplot(224)
     py.plot(angleMap[idxP[0],idxP[1],:][:,3],chiSq[idxP[0],idxP[1]],'ko')
     py.axhline(np.min(chiSq[idxP[0],idxP[1]]) + err,color='green',linestyle='--',label='1$\sigma$ error')
     py.axhline(np.min(chiSq[idxP[0],idxP[1]]) + err3sig,color='blue',linestyle=':',label='3$\sigma$ error')
@@ -944,7 +966,7 @@ def plot1Dchi2(inMap=None):
     py.ylabel('$\~{\chi}^2$')
     py.yticks([3,4,5,6,7])
     py.xlim(-35,35)
-    #pdb.set_trace()
+    pdb.set_trace()
             
 def modelBHFitGrid(inFolder=None,plotOnly=False,incubeimg=None):
     # routine to conduct a grid search over SMBH positions
@@ -1319,6 +1341,37 @@ def chi2MCerr(inFolder=None):
 
     pdb.set_trace()
 
+def chi2MC_JLu(inFolder=None):
+    # hard-coded scale factors, from previous
+    scl_f = 95.6
+    scl_v = 11.3
+    scl_s = 3.1
+    scl_h3 = 7.7
+    scl_h4 = 6.5
+
+    numiter = 100
+    chisq = np.zeros((numiter,5))
+    for i in np.arange(numiter):
+        infile = inFolder+'/sim_0%02d/nonaligned_OSIRIScoords_fit_full_smooth_-33.0_44.0_-15.0_-56.0_0.0_chisq.txt' % i
+        tmp = pandas.read_csv(infile,header=None,names=['f','v','s','h3','h4'])
+        chisq[i,0] = float(str.split(tmp['f'][0])[1])
+        chisq[i,1] = float(str.split(tmp['v'][0])[1])
+        chisq[i,2] = float(str.split(tmp['s'][0])[1])
+        chisq[i,3] = float(str.split(tmp['h3'][0])[1])
+        chisq[i,4] = float(str.split(tmp['h4'][0])[1])
+
+    chisq[:,0] /= scl_f
+    chisq[:,1] /= scl_v
+    chisq[:,2] /= scl_s
+    chisq[:,3] /= scl_h3
+    chisq[:,4] /= scl_h4
+
+    totChi2 = chisq[:,0:3].sum(axis=1)
+    err = np.std(totChi2)
+
+    pdb.set_trace()
+        
+
 def plotTWcal():
     # plotting the TW precession vs. input precession for a bunch of models, plus predicting the
     # precession for the data from the TW precession
@@ -1525,7 +1578,7 @@ def litPrecess():
     data = np.array([0,1,2,0,1,4])
     # theory (1)/data (0) papers
     theory = np.array([1,0,1,1,1,1])
-    err = [5,0,0,0,0,4.2,5]
+    err = [5,0,0,0,0,4.2,3.9]
     lituplims = [1,0,0,0,0,0,0]
 
     idx0 = np.where(data == 0)
@@ -1534,22 +1587,51 @@ def litPrecess():
     idx4 = np.where(data == 4)
 
     py.close(3)
-    py.figure(3,figsize=(9,7))
+    py.figure(3,figsize=(15,7))
     py.subplots_adjust(left=0.1, right=0.94, top=0.95)
-    py.errorbar([0,1,1,1,2,4,7],[34.*sin77sini,3.,16.,13.6,16.,36.5,0],yerr=err,ecolor='black',fmt='none',uplims=lituplims)
+    py.errorbar([0,1,1,1,2,4,6],[34.*sin77sini,3.,16.,13.6,16.,36.5,0],yerr=err,ecolor='black',fmt='none',uplims=lituplims)
     py.plot(year[idx0],precess[idx0],'ko',label='HST/FOC',markersize=14)
-    py.plot(year[idx2],precess[idx2],'m^',label='CFHT/SIS',markersize=14)
+    py.plot(year[idx2],precess[idx2],'ms',label='CFHT/SIS',markersize=14)
     py.plot(year[idx4],precess[idx4],'bD',label='CFHT/SIS + HST/STIS',markersize=14)
-    py.plot(year[idx1],precess[idx1],'gs',label='OASIS IFS',markersize=14)
-    py.plot(7,0+.4,'r*',label='OSIRIS IFS',markersize=20)
+    py.plot(year[idx1],precess[idx1],'g<',label='OASIS IFS',markersize=14)
+    py.plot(6,0,'r>',label='OSIRIS IFS',markersize=14)
+    
     
     
 
-    py.xticks([0,1,2,3,4,5,6,7],['2000','2001','2002','2003','2004',' ',' ','2017'])
+    py.xticks([0,1,2,3,4,5,6],['2000','2001','2002','2003','2004',' ','2017'])
     py.xlabel('Year published')
     py.ylabel('Precession (km s$^{-1}$ pc$^{-1}$)')
-    py.axhspan(0,10, alpha=0.15, color='gray')
-    py.xlim(-1,8)
-    py.ylim(0,50)
+    py.axhspan(-10,10, alpha=0.15, color='gray')
+    py.xlim(-1,7)
+    py.ylim(-5,50)
     py.legend(loc=0)
+
+
+def rotationCurve():
+    # plots the rotation curve for the best-fit orientation for
+    # several values of the precession
+    
+    mod0 = ppxf_m31.modelFitResults('/Users/kel/Documents/Projects/M31/models/Peiris/2003/nonaligned_grid_rotate_20170701_combined/nonaligned_OSIRIScoords_fit_full_smooth_-32.8_44.1_-14.5_-56.0_0.0.dat')
+    #mod1 = ppxf_m31.modelFitResults('/Users/kel/Documents/Projects/M31/models/Peiris/2003/nonaligned_grid_rotate_20170701_combined/nonaligned_OSIRIScoords_fit_full_smooth_-32.8_44.1_-14.5_-56.0_1.0.dat')
+    mod5 = ppxf_m31.modelFitResults('/Users/kel/Documents/Projects/M31/models/Peiris/2003/nonaligned_grid_rotate_20170701_combined/nonaligned_OSIRIScoords_fit_full_smooth_-32.8_44.1_-14.5_-56.0_5.0.dat')
+    #mod20 = ppxf_m31.modelFitResults('/Users/kel/Documents/Projects/M31/models/Peiris/2003/nonaligned_grid_rotate_20170701_combined/nonaligned_OSIRIScoords_fit_full_smooth_-32.8_44.1_-14.5_-56.0_20.0.dat')
+
+    vel0 = np.rot90(mod0.velocity.T,3)
+    #vel1 = np.rot90(mod1.velocity.T,3)
+    vel5 = np.rot90(mod5.velocity.T,3)
+    #vel20 = np.rot90(mod20.velocity.T,3)
+
+    xaxis = (np.arange(mod0.velocity.shape[1]) - ppxf_m31.bhpos_pix[0]) * 0.05
+
+    py.close(1)
+    py.figure(1,figsize=(8,7))
+    py.plot(xaxis,vel0[ppxf_m31.bhpos_pix[1],:],label='0 km s$^{-1}$ pc$^{-1}$')
+    py.plot(xaxis,vel5[ppxf_m31.bhpos_pix[1],:],label='5 km s$^{-1}$ pc$^{-1}$')
+    py.xlabel('X (arcsec)')
+    py.ylabel('Velocity (km s$^{-1}$)')
+    py.xlim(xaxis[0],xaxis[-1])
+    py.legend(loc=0)
+
+    #pdb.set_trace()
     
