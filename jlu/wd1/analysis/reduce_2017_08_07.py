@@ -2244,6 +2244,13 @@ def make_new_labels_with_members():
     
     return
 
+
+
+
+
+##################################################
+# OLD STUFF
+##################################################
                     
 def make_catalog(use_RMSE=True, vel_weight=None):
     """

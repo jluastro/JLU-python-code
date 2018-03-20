@@ -17,8 +17,8 @@ def plot_airmass_moon():
     # coordinates to center of OGLE field BLG502 (2017 objects)
     ra = "18:00:00"
     dec = "-30:00:00"
-    months = np.array([8])
-    days = np.array([1])
+    months = np.array([8, 8])
+    days = np.array([1, 30])
     outdir = '/Users/fatima/Desktop/keck_prop_18B_mlens/'
     
     # Keck 2

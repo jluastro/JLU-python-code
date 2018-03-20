@@ -1,6 +1,14 @@
+import time
 import numpy as np
 import pylab as py
 from astropy.table import Table
+from popstar import synthetic as syn
+from popstar import atmospheres as atm
+from popstar import evolution
+from popstar import reddening
+from popstar.imf import imf
+from popstar.imf import multiplicity
+import pickle
 
 def plot_sim_cluster():
     yng_file = '/Users/jlu/work/gc/jwst/iso_6.60_2.70_08000_JWST.fits'
@@ -76,3 +84,73 @@ def plot_sim_cluster():
     py.savefig(out_dir + 'gc_ccd_F125W_F212N_F323N.png')
     
     return yng
+
+
+def make_sim_cluster():
+    work_dir = '/u/jlu/work/gc/jwst/2018_03_19/'
+    
+    ages = [4e6, 1e8, 8e9]
+    cluster_mass = [1e4, 1e4, 1e7]
+    AKs = 2.7
+    deltaAKs = 1.0
+    distance = 8000
+    mass_sampling = 5
+
+    isochrones = []
+    clusters = []
+    
+    evo = evolution.MergedBaraffePisaEkstromParsec()
+    atm_func = atm.get_merged_atmosphere
+    red_law = reddening.RedLawHosek18()
+    multi = multiplicity.MultiplicityUnresolved()
+
+    imf_mass_limits = np.array([0.07, 0.5, 1, np.inf])
+    imf_powers_old = np.array([-1.3, -2.3, -2.3])
+    imf_powers_yng = np.array([-1.3, -1.8, -1.8])
+    my_imf_old = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers_old,
+                                         multiplicity=multi)
+    my_imf_yng = imf.IMF_broken_powerlaw(imf_mass_limits, imf_powers_yng,
+                                         multiplicity=multi)
+
+    # Test all filters
+    filt_list = ['wfc3,ir,f127m', 'wfc3,ir,f139m', 'wfc3,ir,f153m', 'acs,wfc1,f814w',
+                     'wfc3,ir,f125w', 'wfc3,ir,f160w', 
+                     'jwst,F090W', 'jwst,F115W', 
+                     'jwst,F164N', 'jwst,F187N', 'jwst,F212N', 'jwst,F323N',
+                     'jwst,F405N', 'jwst,F466N', 'jwst,F470N',
+                     'jwst,F140M', 'jwst,F162M', 'jwst,F182M', 'jwst,F210M', 'jwst,F250M',
+                     'jwst,F300M', 'jwst,F335M', 'jwst,F360M', 'jwst,F410M', 'jwst,F430M',
+                     'jwst,F460M', 'jwst,F480M',
+                     'nirc2,J', 'nirc2,H', 'nirc2,Kp',
+                     'nirc2,Lp', 'nirc2,Ms']
+    
+    startTime = time.time()
+    for ii in range(len(ages)):
+        logAge = np.log10(ages[ii])
+        
+        iso = syn.IsochronePhot(logAge, AKs, distance,
+                                evo_model=evo, atm_func=atm_func,
+                                red_law=red_law, filters=filt_list,
+                                mass_sampling=mass_sampling, iso_dir=work_dir)
+
+        print( 'Constructed isochrone: %d seconds' % (time.time() - startTime))
+
+        if ii < 2:
+            imf_ii = my_imf_yng
+        else:
+            imf_ii = my_imf_old
+            
+        cluster = syn.ResolvedClusterDiffRedden(iso, imf_ii, cluster_mass[ii], deltaAKs)
+
+        # Save generated clusters to file.
+        save_file_fmt = '{0}/clust_{1:.2f}_{2:4.2f}_{3:4s}.fits'
+        save_file_txt = save_file_fmt.format(work_dir, logAge, AKs, str(distance).zfill(5))
+        save_file = open(save_file_txt, 'wb')
+        pickle.dump( cluster, save_file )
+
+    return
+        
+        
+    
+
+    return
