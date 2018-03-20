@@ -1,4 +1,4 @@
-import asciidata
+#import asciidata
 import numpy as np
 import pylab as py
 from gcwork import starset
@@ -71,7 +71,7 @@ def plotAllAOvsMag(radius=4):
     for e in range(len(epochs)):
         message = '%10s - Median Precision for K=11-14: %5.2f' % \
             (legends[e], errMedian[e])
-        print message
+        print( message)
         _logfile.write(message + '\n')
     _logfile.close()
 
@@ -229,8 +229,8 @@ def accuracyFromResiduals(radiusCut=4):
     py.savefig(outdir + 'accuracy_from_residuals_lin.png')
 
     foo = np.where((mag >= 11) & (mag <= 14))[0]
-    print 'Median Precisions for K=11-14: ', np.median(medErr[foo])
-    print 'Median Accuracy for K=11-14: ', np.median(medRes[foo])
+    print( 'Median Precisions for K=11-14: ', np.median(medErr[foo]))
+    print( 'Median Accuracy for K=11-14: ', np.median(medRes[foo]))
 
     _logfile = open(outdir + 'accuracy_from_residuals.log', 'w')
     _logfile.write('Median Precisions for K=11-14: %5.2f\n' %
@@ -242,11 +242,11 @@ def accuracyFromResiduals(radiusCut=4):
 def calc_vel_err(t, pos_err):
     vel_err = pos_err / math.sqrt( ((t - t.mean())**2).sum() )
 
-    print vel_err
+    print( vel_err)
 
 def calc_pos_err(t, vel_err):
     pos_err = vel_err * math.sqrt( ((t - t.mean())**2).sum() )
 
-    print pos_err
+    print( pos_err)
     
     
