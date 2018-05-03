@@ -25,7 +25,7 @@ work_dir = '/Users/jlu/work/wd1/analysis_2017_08_07/'
 iso_dir_nishi09 = '/Users/jlu/work/wd1/models/iso_2015/nishi09/'
 iso_dir_wd1 = '/Users/jlu/work/wd1/models/iso_2015/wd1/'
 
-synthetic.redlaw = reddening.RedLawHosek17()
+synthetic.redlaw = reddening.RedLawHosek18()
 #synthetic.redlaw = reddening.RedLawNishiyama09()
 
 # On Laptop
@@ -116,7 +116,6 @@ def plot_err_vs_mag(epoch):
     py.savefig(plot_dir + 'err_vs_mag_' + epoch + '.png')
     
     
-
 def map_of_errors(epoch, pos_err_cut=3.0):
     """
     pos_err_cut - Positional error cut in milli-arcseconds.
