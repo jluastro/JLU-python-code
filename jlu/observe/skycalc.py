@@ -65,7 +65,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     print( '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2))
 
     py.close(3)
-    py.figure(3, figsize=(10, 10))
+    py.figure(3, figsize=(7, 7))
     py.clf()
     py.subplots_adjust(left=0.1)
     for ii in range(len(days)):
@@ -99,8 +99,8 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii], ms=12)
         py.plot(times, airmass, colors[ii] + '-')
 
-        py.text(times[15] - 0.2,
-                airmass[15] + (ii*0.1),
+        py.text(-3.5,
+                airmass[15] + (ii*0.1) - 0.65,
                 labels[ii], color=colors[ii])
 
     # Make observatory name nice for title
@@ -110,8 +110,8 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         observatory = 'Keck II'
 
     py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
-    py.xlabel('Local Time in Hours (0 = midnight)')
-    py.ylabel('Air Mass')
+    py.xlabel('Local Time in Hours (0 = midnight)', fontsize=16)
+    py.ylabel('Air Mass', fontsize=16)
 
     loAirmass = 1
     hiAirmass = 2.2
@@ -170,7 +170,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     moon = ephem.Moon()
 
     py.close(3)
-    py.figure(3, figsize=(10, 10))
+    py.figure(3, figsize=(7, 7))
     py.clf()
     py.subplots_adjust(left=0.1)
 
@@ -201,8 +201,8 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     py.plot([0,31], [30,30], 'k')
     py.legend(loc=2, numpoints=1)
     py.title('Moon distance and %% Illumination (RA = %s, DEC = %s)' % (ra, dec), fontsize=14)
-    py.xlabel('Day of Month (UT)')
-    py.ylabel('Moon Distance (degrees)')
+    py.xlabel('Day of Month (UT)', fontsize = 16)
+    py.ylabel('Moon Distance (degrees)', fontsize = 16)
     py.axis([0, 31, 0, 200])
 
     py.savefig(outfile)
