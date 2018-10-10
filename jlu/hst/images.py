@@ -42,3 +42,33 @@ def calc_mean_year(fitsFiles, verbose=False):
 
     return meanYear
 
+def print_pa_v3(fitsFiles):
+    """
+    Print position angle (PA_V3) for a set of *_flt.fits images
+    """
+    for ii in range(len(fitsFiles)):
+        hdr = pyfits.getheader(fitsFiles[ii])    
+
+        print('{0}: PA_V3 = {1}'.format(fitsFiles[ii], hdr['PA_V3']))
+
+    return
+
+def total_expTime(fitsFiles, verbose=True):
+    """
+    Calculate total exposure time for a group of images
+    """
+    expTime = 0
+    
+    for ii in range(len(fitsFiles)):
+        hdr = pyfits.getheader(fitsFiles[ii])
+
+        if verbose:
+            print('{0}: Exposure Time = {1} s'.format(fitsFiles[ii], hdr['EXPTIME']))
+
+        expTime += hdr['EXPTIME']
+
+    print('**** Total Exposure Time: {0} ****'.format(expTime))
+
+    return
+
+    
