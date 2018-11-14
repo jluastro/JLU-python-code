@@ -108,8 +108,9 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         observatory = 'Keck I'
     if observatory == "keck2":
         observatory = 'Keck II'
-
-    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
+        
+    py.title('Obs. RA = 18:00, DEC = -30:00 from %s' %observatory, fontsize = 18)
+#    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
     py.xlabel('Local Time in Hours (0 = midnight)', fontsize=16)
     py.ylabel('Air Mass', fontsize=16)
 
