@@ -1,6 +1,8 @@
 import numpy as np
+import pylab as plt
 import math
 import os
+import pdb
 from astropy import table
 from astropy.table import Table, vstack
 from astropy.modeling import models, fitting
@@ -49,181 +51,236 @@ def psf_stats(img_files = filenames, output='psf_stats.fits'):
     '''
     Calculate statistics for simulated PSFs.
     '''
-    
-    N_files = len(img_files)
-    
-    # radial bins for the EE curves
 
-    num_wavelengths = 7
+    N_files = len(img_files)
+
+    # Load up the first file to get the number of
+    # wavelength samples. We assume they are all the same.
+    hdu_list = fits.open(img_files[0])
+    N_wavelengths = len(hdu_list)
+
+    # The total number of entries we expect in our final table.
+    N_tot = N_files * N_wavelengths
     
     # Initialize all column arrays
-    samps = np.zeros(N_files*num_wavelengths, dtype=float)
-    int_time = np.zeros(N_files*num_wavelengths, dtype=float)
-    file = []
-    wl = np.zeros(N_files*num_wavelengths, dtype=float)
-    ee50 = np.zeros(N_files*num_wavelengths, dtype=float)
-    NEA = np.zeros(N_files*num_wavelengths, dtype=float)
-    emp_fwhm = np.zeros(N_files*num_wavelengths, dtype=float)
-    mof_fwhm_maj = np.zeros(N_files*num_wavelengths, dtype=float)
-    mof_fwhm_min = np.zeros(N_files*num_wavelengths, dtype=float)
-    x_position = np.zeros(N_files*num_wavelengths, dtype=float)
-    y_position = np.zeros(N_files*num_wavelengths, dtype=float)
-    phi = np.zeros(N_files*num_wavelengths, dtype=float)
-    beta = np.zeros(N_files*num_wavelengths, dtype=float)
-    scale = np.zeros(N_files*num_wavelengths, dtype=float)
+    files = []
+    wavelength = np.zeros(N_tot, dtype=float)
+    scale = np.zeros(N_tot, dtype=float)
+    samp = np.zeros(N_tot, dtype=float)
+    ee50_rad = np.zeros(N_tot, dtype=float)
+    NEA = np.zeros(N_tot, dtype=float)
+    emp_fwhm = np.zeros(N_tot, dtype=float)
+    mof_fwhm_maj = np.zeros(N_tot, dtype=float)
+    mof_fwhm_min = np.zeros(N_tot, dtype=float)
+    mof_phi = np.zeros(N_tot, dtype=float)
+    mof_beta = np.zeros(N_tot, dtype=float)
+    x_pos = np.zeros(N_tot, dtype=float)
+    y_pos = np.zeros(N_tot, dtype=float)
+    ao_on = np.zeros(N_tot, dtype=int)
     
-    # Iterate through files
-    for ii in range(N_files):
+    # Iterate through files. We will add them to one big table.
+    ii = 0
+    
+    for nn in range(N_files):
         # Load up the image to work on.
-        filename = img_files[ii]
-        filename = filename[len(directory):]
+        hdu_list = fits.open(img_files[nn])
+
+        # SET the filename.
+        filename = img_files[nn][len(directory):]
         print("Working on image: ", filename)
-        hdu_list = fits.open(img_files[ii])
-        
         
         # Iterate through images within file
         for jj in range(len(hdu_list)):
+            files.append(filename)
             img = hdu_list[jj].data
             hdr = hdu_list[jj].header
-    #         img, hdr = fits.getdata(img_files[ii], header=True)
-            size = np.shape(img)[0] #edge length of a given frame
+
+            # Normalize the PSF.
+            img /= img.sum()
+
+            # SET the AO status
+            if ('psfc' in filename):
+                ao_on[ii] = 1
+
+            # SET the wavelength
+            wavelength[ii] = hdr['WAVEL'] * 1e9   # units? 
+            scale[ii] = hdr['PIXSCALE']           # arcsec/pix^2
             
-            max_radius = size/2
-            radii = np.arange(0.05, max_radius, 0.05)
-            
-            coords = np.array([img.shape[0]/2, img.shape[1]/2])
-
-            # Define the background annuli (typically from 2"-3"). Calculate mean background for each star.
-            bkg_annuli = CircularAnnulus(coords, max_radius, (max_radius + 1))
-            bkg = aperture_photometry(img, bkg_annuli)
-            bkg_mean = bkg['aperture_sum'] / bkg_annuli.area()
-            enc_energy = np.zeros((1, len(radii)), dtype=float)
-            int_psf2_all = np.zeros(1, dtype=float)
-
-            # Loop through radial bins and calculate EE
-            for rr in range(len(radii)):
-                radius_pixel = radii[rr]
-                apertures = CircularAperture(coords, r=radius_pixel)
-                phot_table = aperture_photometry(img, apertures)
-                energy = phot_table['aperture_sum']
-                bkg_sum = apertures.area() * bkg_mean
-                enc_energy[:, rr] = energy - bkg_sum
-
-                # Calculate the sum((PSF - bkg))^2 -- have to do this for each star.
-                # Only do this on the last radius measurement.
-                if rr == (len(radii)):
-    #                 for ss in range(N_stars):
-                    aperture = CircularAperture(coords, r=radius_pixel)
-                    phot2_table = aperture_photometry((img - bkg_mean)**2, aperture)
-                    int_psf2 = phot2_table['aperture_sum'][0]
-                    int_psf2 /= enc_energy[rr]**2 # normalize
-                    int_psf2_all = int_psf2
-
-            # Normalize all the curves so that the mean of the last 5 bins = 1
-            enc_energy /= np.tile(enc_energy[:, -5:].mean(axis=1), (len(radii), 1)).T
-            enc_energy_final = np.median(enc_energy, axis=0)
-            ee50_rad = radii[ np.where(enc_energy_final >= 0.5)[0][0]]
-
-
-            # Calculate NEA
-            nea = 1.0 / (np.diff(enc_energy_final)**2 / (2.0 * math.pi * radii[1:] * np.diff(radii))).sum()
-
-
-            # Calculate FWHM
-            x_cent = int(round(float(coords[0])))
-            y_cent = int(round(float(coords[1])))
-            one_star = img[int(y_cent-size*.45) : int(y_cent+size*.45), int(x_cent-size*.45) : int(x_cent+size*.45)]  # Odd box, with center in middle pixel.
-            over_samp_5 = scipy.ndimage.zoom(one_star, 5, order = 1)
-
-            # Find the pixels where the flux is a above half max value.
-            max_flux = np.amax(over_samp_5)
-            half_max = max_flux / 2.0
-            idx = np.where(over_samp_5 >= half_max)
-
-            # Find the equivalent circle diameter for the area of pixels.
-            area_count = len(idx[0]) / 5**2   # area in pix**2 -- note we went back to raw pixels (not oversampled)
-            emp_FWHM = 2.0 * (area_count / np.pi)**0.5
-            med_emp_FWHM = np.median(emp_FWHM)
-
-
-            # Fit with Moffat function
-            y, x = np.mgrid[:size, :size]
-            z = img
-            m_init = Elliptical_Moffat2D(x_0 = coords[0], y_0 = coords[1], amplitude=np.amax(z),
-                                         width_x = emp_FWHM, width_y = emp_FWHM)
-            fit_m = fitting.LevMarLSQFitter()
-            m = fit_m(m_init, x, y, z)
-            
-#             N_sky[(ii + jj)]     = m.N_sky.value
-#             amplitude[(ii + jj)] = m.amplitude.value
-#             power[(ii + jj)]     = m.power.value
-#             x_0[(ii + jj)]       = m.x_0.value
-#             y_0[(ii + jj)]       = m.y_0.value
-#             if m.width_x.value < m.width_y.value:
-#                 width_x[(ii + jj)]    = m.width_x.value
-#                 width_y[(ii + jj)]    = m.width_y.value
-#                 phi[(ii + jj)]       = m.phi.value
-#             else:
-#                 width_x[(ii + jj)]    = m.width_y.value
-#                 width_y[(ii + jj)]    = m.width_x.value
-#                 phi[(ii + jj)]       = m.phi.value + (np.pi/2)
-            
-            if m.width_x.value < m.width_y.value:
-                alpha_min = m.width_x.value
-                alpha_maj = m.width_y.value
-                phi[(ii * num_wavelengths + jj)]       = m.phi.value
-            else:
-                alpha_maj = m.width_y.value
-                alpha_min = m.width_x.value
-                phi[(ii * num_wavelengths + jj)] = m.phi.value + (np.pi/2)
-    
-#             alpha_min = m.width_x.value
-#             alpha_max = m.width_y.value
-            
-            # Fit Moffat, Calculate Moffat-FWHM
-#             alpha = m.emp_fwhm.value
-            beta[(ii * num_wavelengths + jj)] = m.power.value
-            FWHM_min = 2 * alpha_min * np.sqrt((2**(1/m.power.value))-1)
-            FWHM_maj = 2 * alpha_maj * np.sqrt((2**(1/m.power.value))-1)
-            
-            # Get position
+            # SET position of the PSF in the FOV
             x = hdr['COMMENT'][0].split()[3]
             x = x.replace('(', '')
             x = int(x.replace(',', ''))
             y = hdr['COMMENT'][0].split()[4]
             y = y.replace(')', '')
             y = int(y.replace(',', ''))
-            
-            # Sampling
-            samp = float(hdr['COMMENT'][5].split()[2])
-            
-            # Compile data table
-            scale[(ii * num_wavelengths + jj)] = hdr['PIXSCALE']
-            print(filename)
-            file.append(filename)
-            wl[(ii * num_wavelengths + jj)] = hdr['WAVEL'] * 1e9
-            ee50[(ii * num_wavelengths + jj)] = ee50_rad * scale[(ii * num_wavelengths + jj)]
-            NEA[(ii * num_wavelengths + jj)] = nea * scale[(ii * num_wavelengths + jj)] * scale[(ii * num_wavelengths + jj)]
-            emp_fwhm[(ii * num_wavelengths + jj)] = med_emp_FWHM * scale[(ii * num_wavelengths + jj)]
-            mof_fwhm_maj[(ii * num_wavelengths + jj)] = np.abs(FWHM_maj * scale[(ii * num_wavelengths + jj)])
-            mof_fwhm_min[(ii * num_wavelengths + jj)] = np.abs(FWHM_min * scale[(ii * num_wavelengths + jj)])
-            x_position[(ii * num_wavelengths + jj)] = x
-            y_position[(ii * num_wavelengths + jj)] = y
-#             x_position[(ii * num_wavelengths + jj)] = m.x_0.value * scale
-#             y_position[(ii * num_wavelengths + jj)] = m.y_0.value * scale
 
-    stats = table.Table([file, x_position, y_position, wl, ee50, NEA, emp_fwhm, mof_fwhm_min, mof_fwhm_maj, beta, phi, scale],
-                        names = ('Image', 'x_position[arcsec]', 'y_position[arcsec]', 'wavelength[nm]',
-                                 'EE50[arcsec]', 'NEA[arcsec^2]', 'emp_fwhm[arcsec]', 'mof_fwhm_min[arcsec]',
-                                 'mof_fwhm_maj[arcsec]', 'beta', 'phi[rad]', 'pixscale'),
-                        meta={'name':'Stats Table'})
+            x_pos[ii] = x
+            y_pos[ii] = y
+            
+            # SET Sampling
+            samp[ii] = float(hdr['COMMENT'][5].split()[2])
+            
+            # Edge length of this PSF, coords of center.
+            size = img.shape[0] 
+            coords = np.array(img.shape) / 2
 
-    stats['EE50[arcsec]'].format = '7.3f'
-    stats['NEA[arcsec^2]'].format = '7.3f'
-    stats['emp_fwhm[arcsec]'].format = '7.3f'
-    stats['mof_fwhm_min[arcsec]'].format = '7.3f'
-    stats['mof_fwhm_maj[arcsec]'].format = '7.3f'
+            # Calculate the curve-of-growth... i.e. EE for a bunch of different radii.
+            y, x = np.mgrid[:size, :size]
+            r = np.hypot(x - coords[0], y - coords[1]).flatten()
+            flux = img.flatten()
+
+            ridx = r.argsort()
+            r = r[ridx]
+            flux = flux[ridx]
+
+            enc_energy = np.cumsum(flux)
+
+            # SET the EE50 radius.
+            ee50_rad[ii] = r[ np.where(enc_energy >= 0.5)[0][0] ]
+
+            # SET and calculate the NEA
+            NEA[ii] = 1.0 / np.sum(img**2)
+
+            # Calculate the empircal FWHM
+            # Find the pixels where the flux is a above half max value.
+            max_flux = np.amax(img)
+            half_max = max_flux / 2.0
+            idx = np.where(img >= half_max)[0]
+
+            # Find the equivalent circle diameter for the area of pixels.
+            area_HM = len(idx)   # area in pix**2
+            emp_fwhm[ii] = 2.0 * (area_HM / np.pi)**0.5
+
+            # Fit with Moffat function
+            y, x = np.mgrid[:size, :size]
+            z = img
+            m_init = Elliptical_Moffat2D(x_0 = coords[0], y_0 = coords[1], amplitude=np.amax(z),
+                                         width_x = emp_fwhm[ii], width_y = emp_fwhm[ii])
+            fit_m = fitting.LevMarLSQFitter()
+            m = fit_m(m_init, x, y, z)
+            
+            if np.abs(m.width_x.value) < np.abs(m.width_y.value):
+                alpha_min = np.abs(m.width_x.value)
+                alpha_maj = np.abs(m.width_y.value)
+                phi = np.degrees(m.phi.value % (2.0 * np.pi))
+            else:
+                alpha_maj = np.abs(m.width_y.value)
+                alpha_min = np.abs(m.width_x.value)
+                phi = np.degrees((m.phi.value % (2.0 * np.pi)) + (np.pi/2))
     
+            # SET the Moffat fit parameters
+            mof_beta[ii] = m.power.value
+            mof_phi[ii] = phi
+            mof_fwhm_min[ii] = 2 * alpha_min * np.sqrt((2**(1/m.power.value))-1)
+            mof_fwhm_maj[ii] = 2 * alpha_maj * np.sqrt((2**(1/m.power.value))-1)
+
+            # Finished! Iterate our index for the next entry.
+            ii += 1
+
+
+    # Do a little house-keeping to convert to arcsec.
+    NEA *= scale**2
+    ee50_rad *= scale
+    emp_fwhm *= scale
+    mof_fwhm_maj *= scale
+    mof_fwhm_min *= scale
+
+    stats = table.Table([files, x_pos, y_pos, wavelength, ee50_rad, NEA, emp_fwhm,
+                             mof_fwhm_min, mof_fwhm_maj, mof_beta, mof_phi,
+                             scale, samp, ao_on],
+                        names = ('Image', 'x_pos', 'y_pos', 'wavelength', 'ee50_rad', 'nea', 'emp_fwhm',
+                                 'mof_fwhm_min', 'mof_fwhm_maj', 'mof_beta', 'mof_phi', 'scale', 'samp', 'ao_on'),
+                        meta={'name': 'Stats Table'})
+    stats['x_pos'].unit = 'arcsec'
+    stats['x_pos'].format = '4.0f'
+    stats['y_pos'].unit = 'arcsec'
+    stats['y_pos'].format = '4.0f'
+    stats['wavelength'].unit = 'nm'
+    stats['wavelength'].format = '7.2f'
+    stats['ee50_rad'].unit = 'arcsec'
+    stats['ee50_rad'].format = '5.3f'
+    stats['nea'].unit = 'arcsec^2'
+    stats['nea'].format = '7.3f'
+    stats['emp_fwhm'].unit = 'arcsec'
+    stats['emp_fwhm'].format = '5.3f'
+    stats['mof_fwhm_min'].unit = 'arcsec'
+    stats['mof_fwhm_min'].format = '7.3f'
+    stats['mof_fwhm_maj'].unit = 'arcsec'
+    stats['mof_fwhm_maj'].format = '7.3f'
+    stats['mof_beta'].unit = ''
+    stats['mof_beta'].format = '7.3f'
+    stats['mof_phi'].unit = 'deg'
+    stats['mof_phi'].format = '7.3f'
+    stats['scale'].unit = 'arcsec pix^-1'
+    stats['samp'].unit = ''
+            
     stats.write(output, overwrite=True)
                         
+    return
+
+def plot_psf_profiles(xpos, ypos):
+    """
+    Plot a 1D azimuthally averaged PSF at the designated X and Y position
+    in the field. 
+
+    xpos : int
+        X Position in arceconds. This needs to match the filename.
+    ypos : int
+        Y Position in arceconds. This needs to match the filename.
+
+    """
+    pos_str = '_x{0:d}_y{1:d}'.format(xpos, ypos)
+    print(pos_str)
+
+    glao_idx = [i for i, elem in enumerate(filenames) if pos_str in elem][0]
+    noao_idx = [i for i, elem in enumerate(filenames) if 'psfo' in elem][0]
+
+    # glao_idx = filenames.index(pos_str)
+    # noao_idx = filenames.index('psfo')
+
+    glao_hdu = fits.open(filenames[glao_idx])
+    noao_hdu = fits.open(filenames[noao_idx])
+
+    # Define the radial bins we will use 
+    
+    # Iterate through the different wavelengths.
+    color_idx = np.linspace(0, 1, len(glao_hdu))
+    
+    for jj in range(len(glao_hdu)):
+        g_img = glao_hdu[jj].data
+        g_hdr = glao_hdu[jj].header
+
+        n_img = noao_hdu[jj].data
+        n_hdr = noao_hdu[jj].header
+
+        n_scale = n_hdr['PIXSCALE']           # arcsec/pix^2
+        g_scale = g_hdr['PIXSCALE']           # arcsec/pix^2
+        
+        # Lets double check that the images are
+        # the same size. 
+        if (g_img.shape != n_img.shape):
+            print('Problem with mis-matched image sizes! ')
+            print('jj = ', jj)
+            print('n_img.shape = ', n_img.shape)
+            print('g_img.shape = ', g_img.shape)
+
+        center = np.round(np.array(n_img.shape) / 2.0)
+            
+        # Make radial mean of the GLAO and NO-AO PSF.
+        y, x = np.indices(n_img.shape)
+        r = np.hypot(x - center[0], y - center[1])
+        r = r.astype(np.int)
+
+        n_tbin = np.bincount(r.ravel(), n_img.ravel())
+        g_tbin = np.bincount(r.ravel(), g_img.ravel())
+        num_r = np.bincount(r.ravel())
+        n_radialprofile = n_tbin / num_r
+        g_radialprofile = g_tbin / num_r
+        n_rad = r * n_scale
+        g_rad = r * g_scale
+
+        plt.semilogy(n_rad, n_radialprofile, 'k--', color=plt.cm.jet(color_idx[jj]))
+        plt.semilogy(g_rad, g_radialprofile, 'k-', color=plt.cm.jet(color_idx[jj]))
+
+        
     return
