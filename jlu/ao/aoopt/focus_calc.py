@@ -202,7 +202,7 @@ def test_otf_to_psf(rms_wfe, wavelength=2120.0, pad_factor=1, circular_pupil=Fal
     idx = np.where(pad_ampli > 0)
     print(np.size(idx[0]))
     strehl = np.abs((complex_aperture[idx].sum() / np.size(idx[0])))**2
-    print('Strehl: ', strehl)
+    print('Strehl: {0:.2f}'.format(strehl))
     print('Peak Pixel Value: ', psf.max())
 
     # Unpad the PSF:
@@ -214,7 +214,11 @@ def test_otf_to_psf(rms_wfe, wavelength=2120.0, pad_factor=1, circular_pupil=Fal
              
     psf_center = np.array(psf.shape) / 2.0
     
-    psf_file = test_dir + 'psf_defocus_{0:.0f}.fits'.format(rms_wfe)
+    psf_file = test_dir + 'psf_defocus_{0:.0f}'.format(rms_wfe)
+    if circular_pupil:
+        psf_file += '_circ'
+    psf_file += '.fits'
+    
     fits.writeto(psf_file, psf, overwrite=True)
 
     plot_psf(rms_wfe)
