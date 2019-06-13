@@ -29,9 +29,13 @@ epochs = {'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150
 
 paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
 
+a_dir = {'ob140613': '/u/jlu/work/microlens/OB140613/a_2019_04_19/',
+         'ob150029': '/u/jlu/work/microlens/OB150029/a_2019_04_19/',
+         'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/'}
+
 astrom_data = {'ob140613': '',
-               'ob150029': '/u/jlu/work/microlens/OB150029/a_2019_04_19/ob150029_astrom_p3_2019_04_19.fits',
-               'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/ob150211_astrom_p3_2019_05_04.fits'}
+               'ob150029': a_dir['ob150029'] + 'ob150029_astrom_p3_2019_04_19.fits',
+               'ob150211': a_dir['ob150211'] + 'ob150211_astrom_p3_2019_05_04.fits'}
 
 comp_stars = {'ob140613': [],
               'ob150029': ['S002_16_0.3', 'S003_16_0.9'],
@@ -39,8 +43,12 @@ comp_stars = {'ob140613': [],
 
 pspl_ast_phot = {'ob140613': '',
                  'ob150029': '',
-                 'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/model_fits/4_fit_phot_astrom_parallax/bb_'}
+                 'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/bb_'}
 
+pspl_phot = {'ob140613': '',
+             'ob150029': '',
+             'ob150211': a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_'}
+    
 def make_obs_table():
     """
     Make a LaTeX table for all of the observations of the three targets from 2014/2015.
@@ -1236,9 +1244,9 @@ def make_ob150211_tab():
     """
 
     # Get the photometry-only data
-    mnest_dir_phot_only = '/g/lu/scratch/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/'
-    mnest_root_phot_only = 'aa_'
-    best_arr_phot_only = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'summary.txt')
+    mnest_root_phot_only = pspl_phot['ob150211']
+    
+    best_arr_phot_only = np.loadtxt(mnest_root_phot_only + 'summary.txt')
     best_phot_only_sol1 = best_arr_phot_only[1][14:21]
     logZ_phot_only_sol1 = best_arr_phot_only[1][28]
     maxL_phot_only_sol1 = best_arr_phot_only[1][29]
@@ -1247,13 +1255,13 @@ def make_ob150211_tab():
     maxL_phot_only_sol2 = best_arr_phot_only[2][29]
 
     # FIXME: Make these files and make sure they match up with the old indices.
-    mnest_tab_phot_only_sol1 = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'mode0.dat')
-    mnest_tab_phot_only_sol2 = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'mode1.dat')
+    mnest_tab_phot_only_sol1 = np.loadtxt(mnest_root_phot_only + 'mode0.dat')
+    mnest_tab_phot_only_sol2 = np.loadtxt(mnest_root_phot_only + 'mode1.dat')
     
     # Get the phot+astrom data
-    mnest_dir_phot_astr = '/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/4_fit_phot_astrom_parallax/'
-    mnest_root_phot_astr = 'bb_'
-    best_arr_phot_astr = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'summary.txt')
+    mnest_root_phot_astr = pspl_ast_phot['ob150211']
+    
+    best_arr_phot_astr = np.loadtxt(mnest_root_phot_astr + 'summary.txt')
     best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
     logZ_phot_astr_sol1 = best_arr_phot_astr[1][84]
     maxL_phot_astr_sol1 = best_arr_phot_astr[1][85]
@@ -1262,8 +1270,8 @@ def make_ob150211_tab():
     maxL_phot_astr_sol2 = best_arr_phot_astr[2][85]
 
     # FIXME: Make these files and make sure they match up with the old indices.
-    mnest_tab_phot_astr_sol1 = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'mode0.dat')
-    mnest_tab_phot_astr_sol2 = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'mode1.dat')
+    mnest_tab_phot_astr_sol1 = np.loadtxt(mnest_root_phot_astr + 'mode0.dat')
+    mnest_tab_phot_astr_sol2 = np.loadtxt(mnest_root_phot_astr + 'mode1.dat')
 
     # SUPER DUPER STUPID... have to find the separation of the two different modes 
     # in the post_separate file by hand and hardcode in...........
@@ -1326,9 +1334,15 @@ def make_ob150211_tab():
             phot_astr_sol1 = '--'
             phot_astr_sol2 = '--'
 
-        output.write(p[0] + ' & ' + phot_only_sol1 + ' & ' + phot_astr_sol2 + ' & ' + phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
+        output.write(p[0] + ' & ' +
+                         phot_only_sol1 + ' & ' + phot_astr_sol2 + ' & ' +
+                         phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
 
-    output.write('log$\mathcal{Z}$' + ' & ' + '{:.2f}'.format(logZ_phot_only_sol1) + '& ' + '{:.2f}'.format(logZ_phot_astr_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
+    output.write('log$\mathcal{Z}$' + ' & ' +
+                     '{:.2f}'.format(logZ_phot_only_sol1) + '& ' +
+                     '{:.2f}'.format(logZ_phot_astr_sol2) + ' & ' +
+                     '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' +
+                     '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
 
     output.close()
 
