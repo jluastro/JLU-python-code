@@ -39,7 +39,7 @@ comp_stars = {'ob140613': [],
 
 pspl_ast_phot = {'ob140613': '',
                  'ob150029': '',
-                 'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/4_fit_phot_astrom_parallax/bb_'}
+                 'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/model_fits/4_fit_phot_astrom_parallax/bb_'}
 
 def make_obs_table():
     """
