@@ -9,7 +9,7 @@ from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 import os
 from scipy.ndimage import gaussian_filter as norm_kde
-from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, model
+from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
 import dynesty.utils as dyutil
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
@@ -28,6 +28,7 @@ ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
 epochs = {'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
 
 paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
+# paper_dir = '/u/casey/scratch/papers/2015_bh_lenses/'
 
 astrom_data = {'ob140613': '',
                'ob150029': '/u/jlu/work/microlens/OB150029/a_2019_04_19/ob150029_astrom_p3_2019_04_19.fits',
@@ -677,18 +678,77 @@ def plot_ob150211_mass_posterior():
     plt.axvline(mass_quants[3], color='k', linestyle='--')
     plt.axvline(mass_quants[-1], color='k', linestyle='--')
     plt.show()
-
-    ##########                                                                                                           
-    # Save figure                                                                                                     
-    ##########                                                                                                            
-    
-#    outfile =  outdir + outfile
-#    fileUtil.mkdir(outdir)
-#    print( 'writing plot to file ' + outfile)
-#
-#    plt.savefig(outfile)
+    plt.savefig(paper_dir + 'ob150211_mass_posterior.pdf')
+    plt.savefig(paper_dir + 'ob150211_mass_posterior.png')
 
     return
+
+def plot_ob150029_mass_posterior():
+    """
+    Lines are median, +/- 3 sigma.
+    """
+
+    fontsize1 = 18
+    fontsize2 = 14
+
+    tab = Table.read('/g/lu/scratch/jlu/work/microlens/OB150029/a_2019_04_19/notes/4_fit_phot_astrom_parallax/aa_.fits')
+    mmax = tab['mL'].max()
+    mmin = tab['mL'].min()
+
+    plt.figure(1)
+    plt.clf()
+    plt.subplots_adjust(bottom = 0.15)
+    xliml = 0.9 * mmin
+    xlimu = 1.1 * mmax
+#    bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
+    bins = np.linspace(xliml, xlimu, 500)
+
+    n, b = np.histogram(tab['mL'], bins = bins, 
+                        weights = tab['weights'], normed = True)
+
+    n = norm_kde(n, 10.)
+    b0 = 0.5 * (b[1:] + b[:-1])
+
+    n, b, _ = plt.hist(b0, bins = b, weights = n)
+
+    plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
+    plt.xlim(xliml, 2)
+    plt.ylabel('Relative probability', fontsize=fontsize1, labelpad=10)
+    plt.xticks(fontsize=fontsize2)
+    plt.yticks(fontsize=fontsize2)
+
+#    plt.xscale('log')
+
+    ##########                                                                                                              
+    # Calculate 3-sigma boundaries for mass limits.                                                                         
+    ##########                                                                                                              
+    sig1_hi = 0.682689
+    sig1_lo = 1.0 - sig1_hi
+    sig_med = 0.5
+    sig2_hi = 0.9545
+    sig2_lo = 1.0 - sig2_hi
+    sig3_hi = 0.9973
+    sig3_lo = 1.0 - sig3_hi
+
+    quantiles = [sig3_lo, sig2_lo, sig1_lo, sig_med, sig1_hi, sig2_hi, sig3_hi]
+
+    mass_quants = model_fitter.weighted_quantile(tab['mL'], quantiles,
+                                                 sample_weight=tab['weights'])
+
+    for qq in range(len(quantiles)):
+        print( 'Mass at {0:.1f}% quantiles:  M = {1:5.2f}'.format(quantiles[qq]*100, mass_quants[qq]))
+
+    ax = plt.axis()
+    # plot median and +/- 3 sigma
+    plt.axvline(mass_quants[0], color='k', linestyle='--')
+    plt.axvline(mass_quants[3], color='k', linestyle='--')
+    plt.axvline(mass_quants[-1], color='k', linestyle='--')
+    plt.show()
+    plt.savefig(paper_dir + 'ob150029_mass_posterior.pdf')
+    plt.savefig(paper_dir + 'ob150029_mass_posterior.png')
+
+    return
+
 
 def plot_ob150211_posterior_tE_piE_phot_astrom():
     span=None
@@ -1227,16 +1287,158 @@ def plot_ob150211_posterior_tE_piE_phot_only():
     plt.show()
 
     return
+
+def make_ob150029_tab():
+# For this one, the negative solutions much favored over the positive solutions 
+# Which are also super unphysical.
+
+    """
+    Documentation: https://github.com/JohannesBuchner/MultiNest
+    We want post_separate and not summary, since it separates out the two modes.
+    """
+
+    data = munge_ob150029.getdata()
+
+    # Get the photometry only data
+    mnest_dir_phot_only = '/u/jlu/work/microlens/OB150029/model_fits/3_fit_phot_parallax/u0_plusminus/'
+    mnest_root_phot_only = 'cc_'
+    fit_phot_only = model_fitter.PSPL_phot_parallax_Solver(data,
+                                                           outputfiles_basename = mnest_dir_phot_only + mnest_root_phot_only)
+
+    # Separate modes (FIXME: this doesn't have to happen every time...)
+    multinest_utils.separate_mode_files(mnest_dir_phot_only, mnest_root_phot_only)
+
+    # best_arr_phot_only[0] is global stuff... don't want
+    # best_arr_phot_only[1] is the crummy solution
+    # best_arr_phot_only[3] is the really crummy solution
+    best_arr_phot_only = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'summary.txt')
+#    best_phot_only_sol1 = best_arr_phot_only[1][14:21]
+#    logZ_phot_only_sol1 = best_arr_phot_only[1][28]
+#    maxL_phot_only_sol1 = best_arr_phot_only[1][29]
+    best_phot_only_sol2 = best_arr_phot_only[2][14:21]
+    logZ_phot_only_sol2 = best_arr_phot_only[2][28]
+    maxL_phot_only_sol2 = best_arr_phot_only[2][29]
+
+    mnest_tab_phot_only_sol1, mnest_tab_phot_only_sol2, mnest_tab_phot_only_sol3 = fit_phot_only.load_mnest_modes()
+
+    # Get the photometry and astrometry data
+    mnest_dir_phot_astr = '/u/jlu/work/microlens/OB150029/model_fits/4_fit_phot_astrom_parallax/'
+    mnest_root_phot_astr = 'aa_'
+    fit_phot_astr = model_fitter.PSPL_parallax_Solver(data,
+                                                      outputfiles_basename = mnest_dir_phot_astr + mnest_root_phot_astr)
+
+    # Separate modes (FIXME: this doesn't have to happen every time...)
+    multinest_utils.separate_mode_files(mnest_dir_phot_astr, mnest_root_phot_astr)
+                             
+    # best_arr_phot_astr[2] is a crummy solution
+    best_arr_phot_astr = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'summary.txt')
+    best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
+    logZ_phot_astr_sol1 = best_arr_phot_astr[1][84]
+    maxL_phot_astr_sol1 = best_arr_phot_astr[1][85]
+#    best_phot_astr_sol2 = best_arr_phot_astr[2][42:63]
+#    logZ_phot_astr_sol2 = best_arr_phot_astr[2][84]
+#    maxL_phot_astr_sol2 = best_arr_phot_astr[2][85]
+
+    mnest_tab_phot_astr_sol1, mnest_tab_phot_astr_sol2 = fit_phot_astr.load_mnest_modes()
+
+    # Get 1sigma errors
+#    phot_only_pars1, phot_only_med_vals1 = model_fitter.quantiles(mnest_tab_phot_only_sol1)
+    phot_only_pars2, phot_only_med_vals2 = model_fitter.quantiles(mnest_tab_phot_only_sol2)
+
+    phot_astr_pars1, phot_astr_med_vals1 = model_fitter.quantiles(mnest_tab_phot_astr_sol1)
+#    phot_astr_pars2, phot_astr_med_vals2 = model_fitter.quantiles(mnest_tab_phot_astr_sol2)
+    
+    params_list = ['t0', 'u0_amp', 'tE', 
+                   'piE_E', 'piE_N', 'b_sff', 'mag_src',
+                   'mL', 'xS0_E', 'xS0_N', 'beta',
+                   'muL_E', 'muL_N', 'muS_E', 'muS_N',
+                   'dL', 'dL_dS', 'dS', 'thetaE', 'muRel_E', 'muRel_N']
+
+    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'u0_amp' : [r'$u_0$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
+              'tE' : [r'$t_E$ (days)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'piE_E' : [r'$\pi_{E,E}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
+              'piE_N' : [r'$\pi_{E,N}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
+              'b_sff' : [r'$b_{SFF}$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
+              'mL' : [r'$M_L (M_\odot$)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'beta' : [r'$\beta$ (mas)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
+              'muL_E' : [r'$\mu_{L,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'muL_N' : [r'$\mu_{L,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'muS_E' : [r'$\mu_{S,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'muS_N' : [r'$\mu_{S,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'dL' : [r'$d_L$ (pc)', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
+              'dS' : [r'$d_S$ (pc) $^\dagger$', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
+              'dL_dS' : [r'$d_L/d_S$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
+              'thetaE' : [r'$\theta_E$ (mas)$^\dagger$', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
+              'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
+              'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
+    
+    output = open(paper_dir + 'ob150029_param_fits_table.txt', 'w')
+    for pp in params_list:
+        p = params[pp]
+        if pp in phot_only_pars2:
+#            phot_only_sol1 = p[1].format(phot_only_med_vals1[pp][0],
+#                                         phot_only_med_vals1[pp][2],
+#                                         phot_only_med_vals1[pp][1])
+            phot_only_sol2 = p[1].format(phot_only_med_vals2[pp][0],
+                                         phot_only_med_vals2[pp][2],
+                                         phot_only_med_vals2[pp][1])
+        
+        else:
+#            phot_only_sol1 = '--'
+            phot_only_sol2 = '--'
+        if pp in phot_astr_pars1:
+            phot_astr_sol1 = p[1].format(phot_astr_med_vals1[pp][0],
+                                         phot_astr_med_vals1[pp][2],
+                                         phot_astr_med_vals1[pp][1])
+#            phot_astr_sol2 = p[1].format(phot_astr_med_vals2[pp][0],
+#                                         phot_astr_med_vals2[pp][2],
+#                                         phot_astr_med_vals2[pp][1])
+        else:
+            phot_astr_sol1 = '--'
+#            phot_astr_sol2 = '--'
+
+#        output.write(p[0] + ' & ' + phot_only_sol1 + ' & ' + phot_astr_sol2 + ' & ' + phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
+
+#    output.write('log$\mathcal{Z}$' + ' & ' + '{:.2f}'.format(logZ_phot_only_sol1) + '& ' + '{:.2f}'.format(logZ_phot_astr_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
+        
+        output.write(p[0] + ' & ' + phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
+
+    output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
+    
+    output.close()
  
 def make_ob150211_tab():
     """
     Documentation: https://github.com/JohannesBuchner/MultiNest
     We want post_separate and not summary, since it separates out the two modes.
     """
+    
+    data = munge_ob150211.getdata()
 
-    # Get the photometry-only data
+    # Get the photometry only data
     mnest_dir_phot_only = '/g/lu/scratch/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/'
     mnest_root_phot_only = 'aa_'
+    fit_phot_only = model_fitter.PSPL_phot_parallax_Solver(data,
+                                                           outputfiles_basename = mnest_dir_phot_only + mnest_root_phot_only)
+    # working on this stuff
+    ####### 
+    pspl = model.PSPL(params['mL'], params['t0'], np.array([params['xS0_E'], params['xS0_N']]),
+                      params['beta'], np.array([params['muL_E'], params['muL_N']]),
+                      np.array([params['muS_E'], params['muS_N']]),
+                      params['dL'], params['dS'],
+                      params['b_sff'], params['mag_src'])
+
+    lnL_phot = pspl.likely_photometry(self.data['t_phot'], self.data['mag'], self.data['mag_err'])
+    lnL_ast = pspl.likely_astrometry(self.data['t_ast'], self.data['xpos'], self.data['ypos'],
+                                     self.data['xpos_err'], self.data['ypos_err'])
+    #######
+
+
+    # best_arr_phot_only[0] is global stuff... don't want
     best_arr_phot_only = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'summary.txt')
     best_phot_only_sol1 = best_arr_phot_only[1][14:21]
     logZ_phot_only_sol1 = best_arr_phot_only[1][28]
@@ -1245,13 +1447,14 @@ def make_ob150211_tab():
     logZ_phot_only_sol2 = best_arr_phot_only[2][28]
     maxL_phot_only_sol2 = best_arr_phot_only[2][29]
 
-    # FIXME: Make these files and make sure they match up with the old indices.
-    mnest_tab_phot_only_sol1 = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'mode0.dat')
-    mnest_tab_phot_only_sol2 = np.loadtxt(mnest_dir_phot_only + mnest_root_phot_only + 'mode1.dat')
-    
-    # Get the phot+astrom data
+    mnest_tab_phot_only_sol1, mnest_tab_phot_only_sol2 = fit_phot_only.load_mnest_modes()
+
+    # Get the photometry and astrometry data
     mnest_dir_phot_astr = '/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/4_fit_phot_astrom_parallax/'
     mnest_root_phot_astr = 'bb_'
+    fit_phot_astr = model_fitter.PSPL_parallax_Solver(data,
+                                                      outputfiles_basename = mnest_dir_phot_astr + mnest_root_phot_astr)
+                                                      
     best_arr_phot_astr = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'summary.txt')
     best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
     logZ_phot_astr_sol1 = best_arr_phot_astr[1][84]
@@ -1260,13 +1463,9 @@ def make_ob150211_tab():
     logZ_phot_astr_sol2 = best_arr_phot_astr[2][84]
     maxL_phot_astr_sol2 = best_arr_phot_astr[2][85]
 
-    # FIXME: Make these files and make sure they match up with the old indices.
-    mnest_tab_phot_astr_sol1 = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'mode0.dat')
-    mnest_tab_phot_astr_sol2 = np.loadtxt(mnest_dir_phot_astr + mnest_root_phot_astr + 'mode1.dat')
+    mnest_tab_phot_astr_sol1, mnest_tab_phot_astr_sol2 = fit_phot_astr.load_mnest_modes()
 
-    # SUPER DUPER STUPID... have to find the separation of the two different modes 
-    # in the post_separate file by hand and hardcode in...........
-    # Get 2sigma errors
+    # Get 1sigma errors
     phot_only_pars1, phot_only_med_vals1 = model_fitter.quantiles(mnest_tab_phot_only_sol1)
     phot_only_pars2, phot_only_med_vals2 = model_fitter.quantiles(mnest_tab_phot_only_sol2)
 
@@ -1297,11 +1496,11 @@ def make_ob150211_tab():
               'dL' : [r'$d_L$ (pc)', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
               'dS' : [r'$d_S$ (pc) $^\dagger$', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
               'dL_dS' : [r'$d_L/d_S$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'thetaE' : [r'$\theta_E$ (mas)^\dagger', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
+              'thetaE' : [r'$\theta_E$ (mas)$^\dagger$', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
-
-    output = open('ob150211_param_fits_table.txt', 'w')
+                                     
+    output = open(paper_dir + 'ob150211_param_fits_table.txt', 'w')
     for pp in params_list:
         p = params[pp]
         if pp in phot_only_pars1:
@@ -1324,115 +1523,17 @@ def make_ob150211_tab():
         else:
             phot_astr_sol1 = '--'
             phot_astr_sol2 = '--'
-
+                                     
         output.write(p[0] + ' & ' + phot_only_sol1 + ' & ' + phot_astr_sol2 + ' & ' + phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
-
+                                     
     output.write('log$\mathcal{Z}$' + ' & ' + '{:.2f}'.format(logZ_phot_only_sol1) + '& ' + '{:.2f}'.format(logZ_phot_astr_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
 
     output.close()
 
-def make_ob150211_tab_old():
-    # FIXMES:
-    # 1. Don't use multinest_utils.load_mnest_results_to_tab
-    """
-    Documentation: https://github.com/JohannesBuchner/MultiNest
-    We want post_separate and not summary, since it separates out the two modes.
-    """
+                                     
 
-    # Get the photometry-only data
-    best_arr_phot_only = np.loadtxt('/g/lu/scratch/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/aa_summary.txt')
-    best_phot_only_sol1 = best_arr_phot_only[1][14:21]
-    logZ_phot_only_sol1 = best_arr_phot_only[1][28]
-    maxL_phot_only_sol1 = best_arr_phot_only[1][29]
-    best_phot_only_sol2 = best_arr_phot_only[2][14:21]
-    logZ_phot_only_sol2 = best_arr_phot_only[2][28]
-    maxL_phot_only_sol2 = best_arr_phot_only[2][29]
-    mnest_tab_phot_only = multinest_utils.load_mnest_results_to_tab('/g/lu/scratch/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/aa_post_separate')
-    
-    # Get the phot+astrom data
-    best_arr_phot_astr = np.loadtxt('/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/4_fit_phot_astrom_parallax/bb_summary.txt')
-    best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
-    logZ_phot_astr_sol1 = best_arr_phot_astr[1][84]
-    maxL_phot_astr_sol1 = best_arr_phot_astr[1][85]
-    best_phot_astr_sol2 = best_arr_phot_astr[2][42:63]
-    logZ_phot_astr_sol2 = best_arr_phot_astr[2][84]
-    maxL_phot_astr_sol2 = best_arr_phot_astr[2][85]
-    mnest_tab_phot_astr = multinest_utils.load_mnest_results_to_tab('/g/lu/scratch/jlu/work/microlens/OB150211/a_2019_05_04/notes/4_fit_phot_astrom_parallax/bb_post_separate')
 
-    # SUPER DUPER STUPID... have to find the separation of the two different modes 
-    # in the post_separate file by hand and hardcode in...........
-    # Get 2sigma errors
-    phot_only_pars1, phot_only_med_vals1 = model_fitter.quantiles(mnest_tab_phot_only[:9387])
-    phot_only_pars2, phot_only_med_vals2 = model_fitter.quantiles(mnest_tab_phot_only[9387:])
-
-    phot_astr_pars1, phot_astr_med_vals1 = model_fitter.quantiles(mnest_tab_phot_astr[:13041])
-    phot_astr_pars2, phot_astr_med_vals2 = model_fitter.quantiles(mnest_tab_phot_astr[13041:])
-
-#    params_list = ['mL', 't0', 'xS0_E', 'xS0_N', 'beta',
-#                   'muL_E', 'muL_N', 'muS_E', 'muS_N',
-#                   'dL', 'dL_dS', 'dS', 'thetaE',
-#                   'muRel_E', 'muRel_N', 'u0_amp', 'tE', 
-#                   'piE_E', 'piE_N', 'b_sff', 'mag_src']
-
-    params_list = ['t0', 'u0_amp', 'tE', 
-                   'piE_E', 'piE_N', 'b_sff', 'mag_src',
-                   'mL', 'xS0_E', 'xS0_N', 'beta',
-                   'muL_E', 'muL_N', 'muS_E', 'muS_N',
-                   'dL', 'dL_dS', 'dS', 'thetaE', 'muRel_E', 'muRel_N']
-
-    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'u0_amp' : [r'$u_0$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'tE' : [r'$t_E$ (days)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'piE_E' : [r'$\pi_{E,E}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
-              'piE_N' : [r'$\pi_{E,N}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'b_sff' : [r'$b_{SFF}$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
-              'mL' : [r'$M_L (M_\odot$)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'beta' : [r'$\beta$ (mas)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'muL_E' : [r'$\mu_{L,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'muL_N' : [r'$\mu_{L,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'muS_E' : [r'$\mu_{S,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'muS_N' : [r'$\mu_{S,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'dL' : [r'$d_L$ (pc)', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
-              'dS' : [r'$d_S$ (pc) $^\dagger$', '${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'],
-              'dL_dS' : [r'$d_L/d_S$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'thetaE' : [r'$\theta_E$ (mas)^\dagger', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
-              'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
-
-    output = open('ob150211_param_fits_table.txt', 'w')
-    for pp in params_list:
-        p = params[pp]
-        if pp in phot_only_pars1:
-            phot_only_sol1 = p[1].format(phot_only_med_vals1[pp][0],
-                                         phot_only_med_vals1[pp][2],
-                                         phot_only_med_vals1[pp][1])
-            phot_only_sol2 = p[1].format(phot_only_med_vals2[pp][0],
-                                         phot_only_med_vals2[pp][2],
-                                         phot_only_med_vals2[pp][1])
-        else:
-            phot_only_sol1 = '--'
-            phot_only_sol2 = '--'
-        if pp in phot_astr_pars1:
-            phot_astr_sol1 = p[1].format(phot_astr_med_vals1[pp][0],
-                                         phot_astr_med_vals1[pp][2],
-                                         phot_astr_med_vals1[pp][1])
-            phot_astr_sol2 = p[1].format(phot_astr_med_vals2[pp][0],
-                                         phot_astr_med_vals2[pp][2],
-                                         phot_astr_med_vals2[pp][1])
-        else:
-            phot_astr_sol1 = '--'
-            phot_astr_sol2 = '--'
-
-        output.write(p[0] + ' & ' + phot_only_sol1 + ' & ' + phot_astr_sol2 + ' & ' + phot_only_sol2 + ' & ' + phot_astr_sol1 + ' \\\\\n')
-
-    output.write('log$\mathcal{Z}$' + ' & ' + '{:.2f}'.format(logZ_phot_only_sol1) + '& ' + '{:.2f}'.format(logZ_phot_astr_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
-
-    output.close()
-
-def plot_ob150211_phot():
+def plot_ob150211_phot():                                         
     data = munge_ob150211.getdata()
 
     mnest_dir = '/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/'
@@ -1446,3 +1547,27 @@ def plot_ob150211_phot():
     multinest_plot.plot_phot_fit(data, mnest_dir, mnest_root, outdir=mnest_dir, parallax=True)
 
     return
+
+# TEMPORARY HOLDING PLACE... FIND A DIFFERENT PLACE TO PUT IT
+def make_all_comparison_plots():
+    data_150029 = munge_ob150029.getdata()
+    data_150211 = munge_ob150211.getdata()
+
+    fit_ob150211_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150211,
+                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/3_fit_phot_parallax/u0_plusminus/aa_')
+
+    fit_ob150211_phot_astr = model_fitter.PSPL_parallax_Solver(data_150211,
+                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/4_fit_phot_astrom_parallax/bb_')
+
+    fit_ob150029_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150029,
+                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/3_fit_phot_parallax/u0_plusminus/cc_')
+
+    fit_ob150029_phot_astr = model_fitter.PSPL_parallax_Solver(data_150029,
+                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/4_fit_phot_astrom_parallax/aa_')
+
+    # Best fit = median
+#    fit_ob150211_phot_only.plot_model_and_data_modes()    
+#    fit_ob150211_phot_astr.plot_model_and_data_modes()  
+#    fit_ob150029_phot_only.plot_model_and_data_modes()  
+    fit_ob150029_phot_astr.plot_model_and_data_modes()
+ 
