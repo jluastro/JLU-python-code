@@ -112,8 +112,8 @@ def mainplot(output_dir):
     axins.set_ylim(axins.get_ylim()[0]-1, axins.get_ylim()[1]+1)
     axins.set_aspect('equal')
     # Plot the scale in the inset
-    axins.plot([-2.1, 0.1], [5, 5], color=color1)
-    axins.text(-0.6, 5.4, '2"', color=color1, fontsize=14)
+    axins.plot([-1.8, 0.2], [5, 5], color=color1)
+    axins.text(0.8, 5.4, '2 mas', color=color1, fontsize=14)
 
     # Tweak the limits of the fake axes to fit the inset markers
     axf.set_xlim((axins.get_xlim()[0]+0.15)/1e3, (axins.get_xlim()[1]-1)/1e3)
