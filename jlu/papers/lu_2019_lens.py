@@ -1344,36 +1344,64 @@ def make_ob150211_tab():
 
     output.close()
 
-def make_ob150211_astrom_fit_tab():
+def make_ob150211_astrom_fit_tab(recalc=True):
     """
     Make a table with only the astrometric + photometric fit solution.
     """
     # Get the phot+astrom data
 
-    mnest_root = pspl_ast_phot['ob150211']
-    data = munge_ob150211.getdata()
+    table_root = paper_dir + 'ob150211_params_ast_phot'
 
-    mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
-    best_fit_list = mfit.get_best_fit_modes(use_median=False)
+    if os.path.exists(table_root + '.fits') and recalc=False:
+        _in = open(table_root + '.fits', 'r')
+        
+        pars1 = pickle.load(_in)
+        values1 = pickle.load(_in)
+        logZ_sol1 = pickle.load(_in)
+        maxL_sol1 = pickle.load(_in)
+        
+        pars2 = pickle.load(_in)
+        values2 = pickle.load(_in)
+        logZ_sol2 = pickle.load(_in)
+        maxL_sol2 = pickle.load(_in)
 
-    # We also need to fetch the logZ and maxL... pull from the summary plot.
-    # But are these the same solutions? 
-    best_arr = np.loadtxt(mnest_root + 'summary.txt')
-    best_sol1 = best_arr[1][42:63]
-    logZ_sol1 = best_arr[1][84]
-    maxL_sol1 = best_arr[1][85]
-    best_sol2 = best_arr[2][42:63]
-    logZ_sol2 = best_arr[2][84]
-    maxL_sol2 = best_arr[2][85]
+        _in.close()
+    else:
+        mnest_root = pspl_ast_phot['ob150211']
+        data = munge_ob150211.getdata()
 
-    # FIXME: Make these files and make sure they match up with the old indices.
-    mnest_tab_list = mfit.load_mnest_modes()
-    mnest_tab_sol1 = mnest_tab_list[0]
-    mnest_tab_sol2 = mnest_tab_list[1]
+        mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
 
-    # Get 1sigma errors
-    pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
-    pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
+        # We also need to fetch the logZ and maxL... pull from the summary plot.
+        # But are these the same solutions? 
+        best_arr = np.loadtxt(mnest_root + 'summary.txt')
+        best_sol1 = best_arr[1][42:63]
+        logZ_sol1 = best_arr[1][84]
+        maxL_sol1 = best_arr[1][85]
+        best_sol2 = best_arr[2][42:63]
+        logZ_sol2 = best_arr[2][84]
+        maxL_sol2 = best_arr[2][85]
+        
+        # FIXME: Make these files and make sure they match up with the old indices.
+        mnest_tab_list = mfit.load_mnest_modes()
+        mnest_tab_sol1 = mnest_tab_list[0]
+        mnest_tab_sol2 = mnest_tab_list[1]
+
+        # Get 1sigma errors
+        pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
+        pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
+
+        # Save to a picle file for easy reloading.
+        _out = open(paper_dir + 'ob150211_params_ast_phot.fits', 'w')
+        pickle.dump(pars1, _out)
+        pickle.dump(values1, _out)
+        pickle.dump(logZ_sol1, _out)
+        pickle.dump(maxL_sol1, _out)
+        pickle.dump(pars2, _out)
+        pickle.dump(values2, _out)
+        pickle.dump(logZ_sol2, _out)
+        pickle.dump(maxL_sol2, _out)
+        _out.close()
 
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
@@ -1454,3 +1482,5 @@ def plot_ob150211_phot():
     multinest_plot.plot_phot_fit(data, mnest_dir, mnest_root, outdir=mnest_dir, parallax=True)
 
     return
+
+def calculate
