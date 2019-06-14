@@ -10,12 +10,14 @@ from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
 from mpl_toolkits.axes_grid1.colorbar import colorbar
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, model
 
+paper_dir = '/u/jlu/doc/papers/ob150211/'
+
 combo_dir = '/g/lu/data/microlens/17jun05/combo/'
 lis_file = combo_dir + '/starfinder/mag17jun05_ob150211_kp_rms_named.lis'
 astrom_data = '/u/jlu/work/microlens/OB150211/a_2019_05_04/ob150211_astrom_p3_2019_05_04.fits'
 pspl_ast_phot = '/u/jlu/work/microlens/OB150211/a_2019_05_04/model_fits/4_fit_phot_astrom_parallax/bb_'
 
-def mainplot(output_dir):
+def mainplot():
     
     # Get the image and stars 
     img = fits.getdata(combo_dir + 'mag17jun05_ob150211_kp.fits')
@@ -152,5 +154,5 @@ def mainplot(output_dir):
 
     fig.subplots_adjust(left=0.05, hspace=0, wspace=0.05)
 
-    plt.savefig(output_dir + 'ob150211_mainplot.pdf')
+    plt.savefig(paper_dir + 'ob150211_mainplot.pdf')
     plt.show()
