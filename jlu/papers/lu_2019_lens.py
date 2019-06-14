@@ -1503,9 +1503,6 @@ def make_ob150211_astrom_fit_tab():
     output.close()
     
 
-                                     
-
-
 def plot_ob150211_phot():                                         
     data = munge_ob150211.getdata()
 
