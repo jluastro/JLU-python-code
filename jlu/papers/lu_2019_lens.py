@@ -1392,7 +1392,7 @@ def make_ob150211_astrom_fit_tab(recalc=True):
         pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
 
         # Save to a picle file for easy reloading.
-        _out = open(paper_dir + 'ob150211_params_ast_phot.fits', 'w')
+        _out = open(table_root + '.fits', 'w')
         pickle.dump(pars1, _out)
         pickle.dump(values1, _out)
         pickle.dump(logZ_sol1, _out)
