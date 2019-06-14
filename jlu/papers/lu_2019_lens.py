@@ -13,6 +13,8 @@ from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_o
 import dynesty.utils as dyutil
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
+import pickle
+import math
 
 ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
                '16jul14', '16aug02', '17jun05', '17jun08', '17jul19', 
@@ -1405,64 +1407,36 @@ def make_ob150029_tab():
     output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
     
 
-def make_ob150211_astrom_fit_tab(recalc=True):
+def make_ob150211_astrom_fit_tab():
     """
     Make a table with only the astrometric + photometric fit solution.
     """
     # Get the phot+astrom data
 
-    table_root = paper_dir + 'ob150211_params_ast_phot'
+    mnest_root = pspl_ast_phot['ob150211']
+    data = munge_ob150211.getdata()
 
-    if os.path.exists(table_root + '.fits') and recalc=False:
-        _in = open(table_root + '.fits', 'r')
-        
-        pars1 = pickle.load(_in)
-        values1 = pickle.load(_in)
-        logZ_sol1 = pickle.load(_in)
-        maxL_sol1 = pickle.load(_in)
-        
-        pars2 = pickle.load(_in)
-        values2 = pickle.load(_in)
-        logZ_sol2 = pickle.load(_in)
-        maxL_sol2 = pickle.load(_in)
+    mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
+    best_fit_list = mfit.get_best_fit_modes(use_median=False)
 
-        _in.close()
-    else:
-        mnest_root = pspl_ast_phot['ob150211']
-        data = munge_ob150211.getdata()
+    # We also need to fetch the logZ and maxL... pull from the summary plot.
+    # But are these the same solutions? 
+    best_arr = np.loadtxt(mnest_root + 'summary.txt')
+    best_sol1 = best_arr[1][42:63]
+    logZ_sol1 = best_arr[1][84]
+    maxL_sol1 = best_arr[1][85]
+    best_sol2 = best_arr[2][42:63]
+    logZ_sol2 = best_arr[2][84]
+    maxL_sol2 = best_arr[2][85]
 
-        mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
+    # FIXME: Make these files and make sure they match up with the old indices.
+    mnest_tab_list = mfit.load_mnest_modes()
+    mnest_tab_sol1 = mnest_tab_list[0]
+    mnest_tab_sol2 = mnest_tab_list[1]
 
-        # We also need to fetch the logZ and maxL... pull from the summary plot.
-        # But are these the same solutions? 
-        best_arr = np.loadtxt(mnest_root + 'summary.txt')
-        best_sol1 = best_arr[1][42:63]
-        logZ_sol1 = best_arr[1][84]
-        maxL_sol1 = best_arr[1][85]
-        best_sol2 = best_arr[2][42:63]
-        logZ_sol2 = best_arr[2][84]
-        maxL_sol2 = best_arr[2][85]
-        
-        # FIXME: Make these files and make sure they match up with the old indices.
-        mnest_tab_list = mfit.load_mnest_modes()
-        mnest_tab_sol1 = mnest_tab_list[0]
-        mnest_tab_sol2 = mnest_tab_list[1]
-
-        # Get 1sigma errors
-        pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
-        pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
-
-        # Save to a picle file for easy reloading.
-        _out = open(table_root + '.fits', 'w')
-        pickle.dump(pars1, _out)
-        pickle.dump(values1, _out)
-        pickle.dump(logZ_sol1, _out)
-        pickle.dump(maxL_sol1, _out)
-        pickle.dump(pars2, _out)
-        pickle.dump(values2, _out)
-        pickle.dump(logZ_sol2, _out)
-        pickle.dump(maxL_sol2, _out)
-        _out.close()
+    # Get 1sigma errors
+    pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
+    pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
 
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
@@ -1547,7 +1521,6 @@ def plot_ob150211_phot():
 
     return
 
-# TEMPORARY HOLDING PLACE... FIND A DIFFERENT PLACE TO PUT IT
 def make_all_comparison_plots():
     data_150029 = munge_ob150029.getdata()
     data_150211 = munge_ob150211.getdata()
