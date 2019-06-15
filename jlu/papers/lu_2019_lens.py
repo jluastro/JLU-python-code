@@ -18,6 +18,8 @@ from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_o
 import dynesty.utils as dyutil
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
+import pickle
+import math
 
 mpl_o = '#ff7f0e'
 mpl_b = '#1f77b4'
@@ -1415,13 +1417,14 @@ def make_ob150029_tab():
     output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
     
 
-def make_ob150211_astrom_fit_tab(recalc=True):
+def make_ob150211_astrom_fit_tab():
     """
     Make a table with only the astrometric + photometric fit solution.
     """
     # Get the phot+astrom data
 
-    table_root = paper_dir + 'ob150211_params_ast_phot'
+    mnest_root = pspl_ast_phot['ob150211']
+    data = munge_ob150211.getdata()
 
     if os.path.exists(table_root + '.fits') and recalc is False:
         _in = open(table_root + '.fits', 'r')
@@ -1702,7 +1705,6 @@ def calc_pythag_err(A, sigA, B, sigB):
 
     return sigf
 
-# TEMPORARY HOLDING PLACE... FIND A DIFFERENT PLACE TO PUT IT
 def make_all_comparison_plots():
     data_150029 = munge_ob150029.getdata()
     data_150211 = munge_ob150211.getdata()
