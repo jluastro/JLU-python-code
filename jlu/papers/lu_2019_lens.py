@@ -5,14 +5,24 @@ from astropy.io import fits
 #from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit, least_squares
+import matplotlib.ticker
+import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+from mpl_toolkits.axes_grid1.colorbar import colorbar
+from matplotlib.ticker import NullFormatter
 import os
 from scipy.ndimage import gaussian_filter as norm_kde
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
 import dynesty.utils as dyutil
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
+
+mpl_o = '#ff7f0e'
+mpl_b = '#1f77b4'
+mpl_g = '#2ca02c'
+mpl_r = '#d62728'
 
 ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
                '16jul14', '16aug02', '17jun05', '17jun08', '17jul19', 
@@ -1413,7 +1423,7 @@ def make_ob150211_astrom_fit_tab(recalc=True):
 
     table_root = paper_dir + 'ob150211_params_ast_phot'
 
-    if os.path.exists(table_root + '.fits') and recalc=False:
+    if os.path.exists(table_root + '.fits') and recalc is False:
         _in = open(table_root + '.fits', 'r')
         
         pars1 = pickle.load(_in)
@@ -1527,10 +1537,6 @@ def make_ob150211_astrom_fit_tab(recalc=True):
                      '{:.2f}'.format(logZ_sol1) + ' \\\\\n')
 
     output.close()
-    
-
-                                     
-
 
 def plot_ob150211_phot():                                         
     data = munge_ob150211.getdata()
@@ -1546,6 +1552,155 @@ def plot_ob150211_phot():
     multinest_plot.plot_phot_fit(data, mnest_dir, mnest_root, outdir=mnest_dir, parallax=True)
 
     return
+  
+def shift_vs_piE():
+    # This assumes blending from source and lens.
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+
+    u0_arr = t['u0']
+    thetaE_arr = t['theta_E']
+    
+    # Stores the maximum astrometric shift
+    final_delta_arr = np.zeros(len(u0_arr))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    final_u_arr = np.zeros(len(u0_arr))
+
+    # Sort by whether the maximum astrometric shift happens
+    # before or after the maximum photometric amplification
+    big_idx = np.where(u0_arr > np.sqrt(2))[0]
+    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+    dark_L_idx = np.where(t['ubv_i_app_L'] == -99)
+    g_arr[dark_L_idx] = 0
+
+    # Uncomment next line if want to do this without blending
+    # g_arr = np.zeros(len(t['ubv_i_app_L']))
+
+    for i in np.arange(len(u0_arr)):
+        g = g_arr[i] 
+        thetaE = thetaE_arr[i]    
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        if u0_arr[i] < np.sqrt(2):
+            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+            delta_arr = np.zeros(len(u_arr))
+            for j in np.arange(len(u_arr)):
+                u = u_arr[j] 
+                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+                delta = (u * thetaE/(1 + g)) * (numer/denom)
+                delta_arr[j] = delta
+            max_idx = np.argmax(delta_arr)
+            final_delta_arr[i] = delta_arr[max_idx]
+            final_u_arr[i] = u_arr[max_idx]
+        # Maximum astrometric shift will occur at sqrt(2)
+        if u0_arr[i] > np.sqrt(2):
+            u = u0_arr[i]
+            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+            delta = (u * thetaE/(1 + g)) * (numer/denom)
+            final_delta_arr[i] = delta
+            final_u_arr[i] = u
+
+    mas_to_rad = 4.848 * 10**-9
+
+    bh_idx = np.where(t['rem_id_L'] == 103)[0]
+    other_idx = np.where(t['rem_id_L'] != 103)[0]
+
+    plt.figure(1)
+    plt.clf()
+    fig, ax = plt.subplots()
+    norm = matplotlib.colors.Normalize(np.log10(np.min(t['t_E'])), np.log10(np.max(t['t_E'])))
+    plt.subplots_adjust(bottom = 0.15, right = 0.95, top = 0.9)
+    plt.set_cmap('inferno_r')
+    im = ax.scatter(t['pi_E'][bh_idx]/mas_to_rad, final_delta_arr[bh_idx], 
+                    alpha = 0.1, c = np.log10(t['t_E'][bh_idx]), label = 'PopSyCLE BH', norm = norm)
+    ax.scatter(t['pi_E'][other_idx]/mas_to_rad, final_delta_arr[other_idx], 
+               alpha = 0.1, c = np.log10(t['t_E'][other_idx]), label = 'PopSyCLE Other', s = 2, norm = norm)
+    #############
+    # Add the observations
+    #############
+    # OB110022, astrometry solution
+    piEE_ob11 = -0.393
+    piEE_erru_ob11 = 0.013 
+    piEE_errl_ob11 = 0.012
+    piEN_ob11 = -0.071
+    piEN_erru_ob11 = 0.014
+    piEN_errl_ob11 = 0.014
+
+    piE_ob11 = np.hypot(piEE_ob11, piEN_ob11)
+    piE_ob11_erru = calc_pythag_err(piEE_ob11, piEE_erru_ob11, piEN_ob11, piEN_erru_ob11)
+    piE_ob11_errl = calc_pythag_err(piEE_ob11, piEE_errl_ob11, piEN_ob11, piEN_errl_ob11)
+
+    deltac_ob11 = 2.19/np.sqrt(8) # max shift calc'd from thetaE.
+    deltac_ob11_errl = 1.06/np.sqrt(8) 
+    deltac_ob11_erru = 1.17/np.sqrt(8) 
+    tE_ob11 = 61.4
+    ax.errorbar(piE_ob11, deltac_ob11, 
+                xerr = np.array([piE_ob11_errl, piE_ob11_erru]).reshape((2,1)),
+                yerr = np.array([deltac_ob11_errl, deltac_ob11_erru]).reshape((2,1)),
+                color = 'gray', alpha = 0.99, capsize=5)
+    ax.scatter(piE_ob11, deltac_ob11,
+               alpha = 0.99, c = np.log10(tE_ob11), label = 'OB110022', norm = norm,
+               marker = 's', s = 60)
+    # OB150211, larger logZ solution
+    # piE component, lower and upper errors
+    piEE_ob15 = 0.012
+    piEE_erru_ob15 = 0.007 
+    piEE_errl_ob15 = 0.007
+    piEN_ob15 = 0.012
+    piEN_erru_ob15 = 0.008
+    piEN_errl_ob15 = 0.006
+
+    piE_ob15 = np.hypot(piEE_ob15, piEN_ob15)
+    piE_ob15_erru = calc_pythag_err(piEE_ob15, piEE_erru_ob15, piEN_ob15, piEN_erru_ob15)
+    piE_ob15_errl = calc_pythag_err(piEE_ob15, piEE_errl_ob15, piEN_ob15, piEN_errl_ob15)
+
+    deltac_ob15 = 1.13/np.sqrt(8) # max shift calc'd from thetaE.
+    deltac_ob15_errl = 0.31/np.sqrt(8) 
+    deltac_ob15_erru = 0.26/np.sqrt(8) 
+    tE_ob15 = 137.5
+
+    ax.errorbar(piE_ob15, deltac_ob15, 
+                xerr = np.array([piE_ob15_errl, piE_ob15_erru]).reshape((2,1)),
+                yerr = np.array([deltac_ob15_errl, deltac_ob15_erru]).reshape((2,1)),
+                color = 'gray', alpha = 0.99, capsize=5)
+    ax.scatter(piE_ob15, deltac_ob15,
+               alpha = 0.99, c = np.log10(tE_ob15), label = 'OB150211', norm = norm,
+               marker = 'v', s = 60)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('$\pi_E$')
+    ax.set_ylabel('$\delta_{c,max}$ (mas)')
+    ax.set_xlim(5 * 10**-4, 1)
+    ax.set_ylim(5 * 10**-3, 4)
+    ax.legend(loc=3, fontsize=12)
+    ax_divider = make_axes_locatable(ax)
+    cax = ax_divider.append_axes("top", size = "5%", pad = "15%")
+    cb = colorbar(im, cax = cax, ticks = np.log10([1, 3, 10, 30, 100, 300]), orientation = 'horizontal')
+    cax.xaxis.set_ticks_position('top')
+    cax.set_xticklabels([1, 3, 10, 30, 100, 300])
+    cax.set_xlabel('$t_E$ (days)')
+#    plt.savefig('deltac_vs_piE_vs_tE.png')
+    plt.show()
+
+    return
+    
+def calc_pythag_err(A, sigA, B, sigB):
+    """
+    For a function of the form f = sqrt(A^2 + B^2) where
+    A and B have errors sigA and sigB, calculate the 
+    error on f, assuming A and B are uncorrelated.
+    """
+
+    f = np.hypot(A, B)
+    sigf = np.hypot(A * sigA, B * sigB)/f
+
+    return sigf
 
 # TEMPORARY HOLDING PLACE... FIND A DIFFERENT PLACE TO PUT IT
 def make_all_comparison_plots():
@@ -1569,4 +1724,4 @@ def make_all_comparison_plots():
 #    fit_ob150211_phot_astr.plot_model_and_data_modes()  
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
- 
+
