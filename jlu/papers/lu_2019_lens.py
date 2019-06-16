@@ -1620,10 +1620,10 @@ def shift_vs_piE():
     norm = matplotlib.colors.Normalize(np.log10(np.min(t['t_E'])), np.log10(np.max(t['t_E'])))
     plt.subplots_adjust(bottom = 0.15, right = 0.95, top = 0.9)
     plt.set_cmap('inferno_r')
-    im = ax.scatter(t['pi_E'][bh_idx]/mas_to_rad, final_delta_arr[bh_idx], 
-                    alpha = 0.1, c = np.log10(t['t_E'][bh_idx]), label = 'PopSyCLE BH', norm = norm)
+    ax.scatter(t['pi_E'][bh_idx]/mas_to_rad, final_delta_arr[bh_idx], 
+               alpha = 0.2, c = np.log10(t['t_E'][bh_idx]), label = 'PopSyCLE BH', norm = norm)
     ax.scatter(t['pi_E'][other_idx]/mas_to_rad, final_delta_arr[other_idx], 
-               alpha = 0.1, c = np.log10(t['t_E'][other_idx]), label = 'PopSyCLE Other', s = 2, norm = norm)
+               alpha = 0.2, c = np.log10(t['t_E'][other_idx]), label = 'PopSyCLE Other', s = 2, norm = norm)
     #############
     # Add the observations
     #############
@@ -1646,8 +1646,8 @@ def shift_vs_piE():
     ax.errorbar(piE_ob11, deltac_ob11, 
                 xerr = np.array([piE_ob11_errl, piE_ob11_erru]).reshape((2,1)),
                 yerr = np.array([deltac_ob11_errl, deltac_ob11_erru]).reshape((2,1)),
-                color = 'gray', alpha = 0.99, capsize=5)
-    ax.scatter(piE_ob11, deltac_ob11,
+                color = 'k', alpha = 0.99, capsize=5)
+    im = ax.scatter(piE_ob11, deltac_ob11,
                alpha = 0.99, c = np.log10(tE_ob11), label = 'OB110022', norm = norm,
                marker = 's', s = 60)
     # OB150211, larger logZ solution
@@ -1671,7 +1671,7 @@ def shift_vs_piE():
     ax.errorbar(piE_ob15, deltac_ob15, 
                 xerr = np.array([piE_ob15_errl, piE_ob15_erru]).reshape((2,1)),
                 yerr = np.array([deltac_ob15_errl, deltac_ob15_erru]).reshape((2,1)),
-                color = 'gray', alpha = 0.99, capsize=5)
+                color = 'k', alpha = 0.99, capsize=5)
     ax.scatter(piE_ob15, deltac_ob15,
                alpha = 0.99, c = np.log10(tE_ob15), label = 'OB150211', norm = norm,
                marker = 'v', s = 60)
