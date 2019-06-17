@@ -1426,8 +1426,8 @@ def make_ob150211_astrom_fit_tab():
     mnest_root = pspl_ast_phot['ob150211']
     data = munge_ob150211.getdata()
 
-    if os.path.exists(table_root + '.fits') and recalc is False:
-        _in = open(table_root + '.fits', 'r')
+    if os.path.exists(mnest_root + '_best.fits') and recalc is False:
+        _in = open(mnest_root + '_best.fits', 'r')
         
         pars1 = pickle.load(_in)
         values1 = pickle.load(_in)
@@ -1465,8 +1465,8 @@ def make_ob150211_astrom_fit_tab():
         pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
         pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
 
-        # Save to a picle file for easy reloading.
-        _out = open(table_root + '.fits', 'w')
+        # Save to a pickle file for easy reloading.
+        _out = open(mnest_root + '_best.fits', 'w')
         pickle.dump(pars1, _out)
         pickle.dump(values1, _out)
         pickle.dump(logZ_sol1, _out)
@@ -1727,3 +1727,41 @@ def make_all_comparison_plots():
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
 
+
+def calc_velocity():
+    import astropy.coordinates as coord
+    import astropy.units as u
+    
+    data = munge_ob150211.getdata()
+    mnest_root = pspl_ast_phot['ob150211']
+    
+    # Load up the best-fit data
+    _in = open(mnest_root + '_best.fits', 'r')
+        
+    pars1 = pickle.load(_in)
+    values1 = pickle.load(_in)
+    logZ_sol1 = pickle.load(_in)
+    maxL_sol1 = pickle.load(_in)
+    
+    pars2 = pickle.load(_in)
+    values2 = pickle.load(_in)
+    logZ_sol2 = pickle.load(_in)
+    maxL_sol2 = pickle.load(_in)
+
+    _in.close()
+
+    # Fetch the lens proper motions. Only for the 1st solution
+    # as this is the one we will adopt for the paper. 
+    dL = values1['dL'][0]
+    muL_E = values['muL_E'][0]
+    muL_N = values['muL_N'][0]
+
+    c1 = coord.ICRS(ra=data['raL'], dec=data['decL'],
+                distance=dL*u.pc,
+                pm_ra_cosdec=muL_E*u.mas/u.yr,
+                pm_dec=muL_N*u.mas/u.yr)
+
+
+    print(c1.transform_to(coord.Galactic))
+
+    return
