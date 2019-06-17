@@ -1417,7 +1417,7 @@ def make_ob150029_tab():
     output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
     
 
-def make_ob150211_astrom_fit_tab():
+def make_ob150211_astrom_fit_tab(recalc=False):
     """
     Make a table with only the astrometric + photometric fit solution.
     """
@@ -1736,7 +1736,7 @@ def calc_velocity():
     mnest_root = pspl_ast_phot['ob150211']
     
     # Load up the best-fit data
-    _in = open(mnest_root + '_best.fits', 'r')
+    _in = open(mnest_root + '_best.fits', 'rb')
         
     pars1 = pickle.load(_in)
     values1 = pickle.load(_in)
@@ -1752,16 +1752,48 @@ def calc_velocity():
 
     # Fetch the lens proper motions. Only for the 1st solution
     # as this is the one we will adopt for the paper. 
-    dL = values1['dL'][0]
-    muL_E = values['muL_E'][0]
-    muL_N = values['muL_N'][0]
+    dL = values2['dL'][0]
+    muL_E = values2['muL_E'][0]
+    muL_N = values2['muL_N'][0]
+    muLe_E = np.mean([values2['muL_E'][1], values2['muL_E'][2]])
+    muLe_N = np.mean([values2['muL_N'][1], values2['muL_N'][2]])
+    print(dL, muL_E, muL_N)
 
-    c1 = coord.ICRS(ra=data['raL'], dec=data['decL'],
+    c1 = coord.ICRS(ra=data['raL']*u.degree, dec=data['decL']*u.degree,
                 distance=dL*u.pc,
                 pm_ra_cosdec=muL_E*u.mas/u.yr,
                 pm_dec=muL_N*u.mas/u.yr)
 
+    galcen_distance = 8*u.kpc
+    pm_en = [muL_E, muL_N] * u.mas/u.yr
+    v_e, v_n = -(galcen_distance * pm_en).to(u.km/u.s, u.dimensionless_angles())
+    ve_e = -(galcen_distance * muLe_E * u.mas/u.yr).to(u.km/u.s, u.dimensionless_angles())
+    ve_n = -(galcen_distance * muLe_N * u.mas/u.yr).to(u.km/u.s, u.dimensionless_angles())
 
-    print(c1.transform_to(coord.Galactic))
+    gal = c1.transform_to(coord.Galactic)
+    muL_l = gal.pm_l_cosb
+    muL_b = gal.pm_b
+    v_l = -(galcen_distance * muL_l).to(u.km/u.s, u.dimensionless_angles())
+    v_b = -(galcen_distance * muL_b).to(u.km/u.s, u.dimensionless_angles())
+
+    fmt = '    {0:8s} = {1:8.3f} +/- {2:8.3f}  {3:8s}'
+    
+    print('Proper Motion for OB150322:')
+    print('  Celestial:')
+    print(fmt.format('muL_E', muL_E, muLe_E, 'mas/yr'))
+    print(fmt.format('muL_N', muL_N, muLe_N, 'mas/yr'))
+    print('  Galactic:')
+    print(fmt.format('muL_l', muL_l, 0.0, 'mas/yr'))
+    print(fmt.format('muL_b', muL_b, 0.0, 'mas/yr'))
+    
+    print('Velocity for OB150322 at dL=', dL)
+    print('  Celestial:')
+    print(fmt.format('vL_E', v_e, ve_e, 'km/s'))
+    print(fmt.format('vL_N', v_n, ve_n, 'km/s'))
+    print('  Galactic:')
+    print(fmt.format('vL_l', v_l, 0.0, 'km/s'))
+    print(fmt.format('vL_b', v_b, 0.0, 'km/s'))
+        
+
 
     return
