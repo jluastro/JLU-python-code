@@ -155,7 +155,7 @@ def mainplot():
     axdec.scatter(t_mod, ypos, c=t_mod, cmap=cmap, norm=norm, s=1)
     axdec.errorbar(data['t_ast'], (data['ypos'] - data['ypos'][refidx])*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
     axdec.set_ylabel(r'$\Delta \delta$ (mas)')
-    axdec.set_xlabel('t (MJD)')
+    axdec.set_xlabel('time (MJD)')
 
     fig.subplots_adjust(left=0.05, hspace=0, wspace=0.05)
 
@@ -206,7 +206,7 @@ def plot_onSky():
     axra.scatter((x_mod_no_pm - x_mod_no_pm), t_mod, c=t_mod, cmap=cmap, norm=norm, s=2)
     axra.errorbar((x_no_pm - x_no_pm_tdat)*1e3, data['t_ast'], xerr = data['xpos_err']*1e3,
                  fmt='k.', ecolor=smap.to_rgba(data['t_ast']))
-    axra.set_ylabel('t (MJD)')
+    axra.set_ylabel('time (MJD)')
     axra.yaxis.set_label_position('right')
     axra.yaxis.tick_right()
     axra.yaxis.set_tick_params(rotation=-25)
@@ -214,7 +214,7 @@ def plot_onSky():
     axdec.scatter(t_mod, (y_mod_no_pm - y_mod_no_pm), c=t_mod, cmap=cmap, norm=norm, s=2)
     axdec.errorbar(data['t_ast'], (y_no_pm - y_no_pm_tdat)*1e3, yerr = data['ypos_err']*1e3,
                  fmt='k.', ecolor=smap.to_rgba(data['t_ast']))
-    axdec.set_xlabel('t (MJD)')
+    axdec.set_xlabel('time (MJD)')
     axdec.xaxis.set_label_position('top')
     axdec.xaxis.tick_top()
     # axdec.locator_params(axis='x', nbins=6)
