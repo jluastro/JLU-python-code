@@ -68,6 +68,8 @@ def mainplot():
     t0idx = np.where((t_mod>=57909) & (t_mod<57910))[0][0]
     xpos = (pos_out[:, 0] - pos_out[t0idx, 0])*-1e3
     ypos = (pos_out[:, 1] - pos_out[t0idx, 1])*1e3
+    xpos_ins = xpos[(t_mod>=tast.min()) & (t_mod<=tast.max())]
+    ypos_ins = ypos[(t_mod>=tast.min()) & (t_mod<=tast.max())]
 
     # Get the photometric model
     mag = mymodel.get_photometry(t_mod)
@@ -98,7 +100,7 @@ def mainplot():
 
     # Fake inset axes to control the inset marking, hide its ticks
     axf = inset_axes(ax1, 1, 1)
-    axf.plot(xpos/1e3, ypos/1e3)
+    axf.plot(xpos_ins/1e3, ypos_ins/1e3)
     axf.set_xticks([])
     axf.set_yticks([])
     axf.set_aspect('equal')
@@ -106,7 +108,8 @@ def mainplot():
     # Plot the motion on the sky
     axins = inset_axes(ax1, 1.05, 1)
 
-    axins.scatter(xpos, ypos, c=t_mod, cmap=cmap, norm=norm, s=1)
+    axins.scatter(xpos_ins, ypos_ins, c=t_mod[(t_mod>=tast.min()) & (t_mod<=tast.max())],
+                  cmap=cmap, norm=norm, s=1)
     axins.errorbar((data['xpos'] - data['xpos'][refidx])*-1e3, (data['ypos'] - data['ypos'][refidx])*1e3,
                        xerr = data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='.k')
     axins.set_xticks([],[])
@@ -117,8 +120,8 @@ def mainplot():
     axins.set_ylim(axins.get_ylim()[0]-1, axins.get_ylim()[1]+1)
     axins.set_aspect('equal')
     # Plot the scale in the inset
-    axins.plot([-1.8, 0.2], [5, 5], color=color1)
-    axins.text(0.8, 5.4, '2 mas', color=color1, fontsize=14)
+    axins.plot([-1.8, 0.2], [3, 3], color=color1)
+    axins.text(0.5, 3.4, '2 mas', color=color1, fontsize=14)
 
     # Tweak the limits of the fake axes to fit the inset markers
     axf.set_xlim((axins.get_xlim()[0]+0.15)/1e3, (axins.get_xlim()[1]-1)/1e3)
@@ -135,7 +138,6 @@ def mainplot():
     # Plot the photometry
     axp = fig.add_subplot(gs[0, 1])
     axp.scatter(t_mod, mag, c=t_mod, cmap=cmap, norm=norm, s=1)
-    # Photometry data limited to only the beginning of the magnification
     axp.errorbar(data['t_phot'][data['t_phot']>tmin], data['mag'][data['t_phot']>tmin],
                      yerr=data['mag_err'][data['t_phot']>tmin], fmt='k.')
     axp.invert_yaxis()
@@ -222,13 +224,16 @@ def plot_onSky():
     plt.show()
 
 def plot_obs():
+    # Set the (0,0) point at 17jun05
+    xcenter = data['xpos'][7]
+    ycenter = data['ypos'][7]
     # Get the astrometric model
     pos_out = mymodel.get_astrometry(tast)
-    xpos = pos_out[:, 0]*-1e3
-    ypos = pos_out[:, 1]*1e3
+    xpos = (pos_out[:, 0] - xcenter)*-1e3
+    ypos = (pos_out[:, 1] - ycenter)*1e3
     pos_tdat = mymodel.get_astrometry(data['t_ast'])
-    xpos_tdat = pos_tdat[:, 0]*-1e3
-    ypos_tdat = pos_tdat[:, 1]*1e3
+    xpos_tdat = (pos_tdat[:, 0] - xcenter)*-1e3
+    ypos_tdat = (pos_tdat[:, 1] - ycenter)*1e3
 
     # Get the photometric model
     mag = mymodel.get_photometry(tphot)
@@ -250,21 +255,23 @@ def plot_obs():
     ax[1, 0].set_ylabel('residuals')
     
     ax[0, 1].scatter(tast, xpos, c=tast, cmap=cmap, norm=norm, s=4)
-    ax[0, 1].errorbar(data['t_ast'], data['xpos']*-1e3, yerr=data['xpos_err']*1e3, fmt='k.')
-    ax[0, 1].set_ylabel(r'$\alpha^*$ (mas)')
+    ax[0, 1].errorbar(data['t_ast'], (data['xpos'] - xcenter)*-1e3, yerr=data['xpos_err']*1e3, fmt='k.')
+    ax[0, 1].set_ylabel(r'$\Delta \alpha^*$ (mas)')
     ax[0, 1].set_xticks([])
     ax[1, 1].scatter(tast, xpos-xpos, c=tast, cmap=cmap, norm=norm, s=4)
-    ax[1, 1].errorbar(data['t_ast'], data['xpos']*-1e3 - xpos_tdat, yerr=data['xpos_err']*1e3, fmt='k.')
+    ax[1, 1].errorbar(data['t_ast'], (data['xpos'] - xcenter)*-1e3 - xpos_tdat,
+                          yerr=data['xpos_err']*1e3, fmt='k.')
     ax[1, 1].set_xlabel('time (MJD)')
     ax[1, 1].locator_params(axis='x', nbins=7)
     ax[1, 1].set_ylabel('residuals')
 
     ax[0, 2].scatter(tast, ypos, c=tast, cmap=cmap, norm=norm, s=4)
-    ax[0, 2].errorbar(data['t_ast'], data['ypos']*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
-    ax[0, 2].set_ylabel(r'$\delta$ (mas)')
+    ax[0, 2].errorbar(data['t_ast'], (data['ypos'] - ycenter)*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
+    ax[0, 2].set_ylabel(r'$\Delta \delta$ (mas)')
     ax[0, 2].set_xticks([])
     ax[1, 2].scatter(tast, ypos-ypos, c=tast, cmap=cmap, norm=norm, s=4)
-    ax[1, 2].errorbar(data['t_ast'], data['ypos']*1e3 - ypos_tdat, yerr=data['ypos_err']*1e3, fmt='k.')
+    ax[1, 2].errorbar(data['t_ast'], (data['ypos'] - ycenter)*1e3 - ypos_tdat,
+                          yerr=data['ypos_err']*1e3, fmt='k.')
     ax[1, 2].set_xlabel('time (MJD)')
     ax[1, 2].locator_params(axis='x', nbins=7)
     ax[1, 2].set_ylabel('residuals')
