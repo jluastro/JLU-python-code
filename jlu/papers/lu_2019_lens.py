@@ -1427,7 +1427,7 @@ def make_ob150211_astrom_fit_tab():
     data = munge_ob150211.getdata()
 
     if os.path.exists(mnest_root + '_best.fits') and recalc is False:
-        _in = open(mnest_root + '_best.fits', 'r')
+        _in = open(mnest_root + '_best.fits', 'rb')
         
         pars1 = pickle.load(_in)
         values1 = pickle.load(_in)
@@ -1466,7 +1466,7 @@ def make_ob150211_astrom_fit_tab():
         pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
 
         # Save to a pickle file for easy reloading.
-        _out = open(mnest_root + '_best.fits', 'w')
+        _out = open(mnest_root + '_best.fits', 'wb')
         pickle.dump(pars1, _out)
         pickle.dump(values1, _out)
         pickle.dump(logZ_sol1, _out)
