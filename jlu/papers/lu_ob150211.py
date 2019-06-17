@@ -25,10 +25,13 @@ fitter.load_mnest_results()
 mymodel = fitter.get_best_fit_model(use_median=True)
 
 # 1 day sampling over whole range
-# Find the first and last data date across both photometry and astrometry
-tmin = 56700 #np.min([data['t_ast'].min(),data['t_phot'].min()])
-tmax = np.max([data['t_ast'].max(),data['t_phot'].max()])
-t_mod = np.arange(tmin, tmax+100, 1)
+# Find the first and last data date across both photometry and astrometry,
+# and give both a 100 day window.
+tast = np.arange(data['t_ast'].min()-100, data['t_ast'].max()+100, 1)
+tphot = np.arange(data['t_phot'].min()-100, data['t_phot'].max()+100, 1)
+tmin = np.min([tast.min(), tphot.min()])
+tmax = np.max([tast.max(), tphot.max()])
+t_mod = np.arange(tmin, tmax, 1)
 
 # Prep the colorbar                                                                                
 cmap = plt.cm.viridis
@@ -216,4 +219,57 @@ def plot_onSky():
     axdec.xaxis.set_tick_params(rotation=25)
 
     plt.savefig(paper_dir + 'ob150029_onsky.pdf')
+    plt.show()
+
+def plot_obs():
+    # Get the astrometric model
+    pos_out = mymodel.get_astrometry(tast)
+    xpos = pos_out[:, 0]*-1e3
+    ypos = pos_out[:, 1]*1e3
+    pos_tdat = mymodel.get_astrometry(data['t_ast'])
+    xpos_tdat = pos_tdat[:, 0]*-1e3
+    ypos_tdat = pos_tdat[:, 1]*1e3
+
+    # Get the photometric model
+    mag = mymodel.get_photometry(tphot)
+    mag_tdat = mymodel.get_photometry(data['t_phot'])
+
+    fig, ax = plt.subplots(2, 3, gridspec_kw={'height_ratios': [2, 1]}, figsize=(20,6))
+
+    ax[0, 0].scatter(tphot, mag, c=tphot, cmap=cmap, norm=norm, s=4)
+    ax[0, 0].errorbar(data['t_phot'], data['mag'],
+                      yerr=data['mag_err'], fmt='k.')
+    ax[0, 0].invert_yaxis()
+    ax[0, 0].set_ylabel('I-band (mag)')
+    ax[0, 0].set_xticks([])
+    ax[1, 0].scatter(tphot, mag-mag, c=tphot, cmap=cmap, norm=norm, s=4)
+    ax[1, 0].errorbar(data['t_phot'], (data['mag'] - mag_tdat),
+                      yerr=data['mag_err'], fmt='k.')
+    ax[1, 0].invert_yaxis()
+    ax[1, 0].set_xlabel('time (MJD)')
+    ax[1, 0].set_ylabel('residuals')
+    
+    ax[0, 1].scatter(tast, xpos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[0, 1].errorbar(data['t_ast'], data['xpos']*-1e3, yerr=data['xpos_err']*1e3, fmt='k.')
+    ax[0, 1].set_ylabel(r'$\alpha^*$ (mas)')
+    ax[0, 1].set_xticks([])
+    ax[1, 1].scatter(tast, xpos-xpos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[1, 1].errorbar(data['t_ast'], data['xpos']*-1e3 - xpos_tdat, yerr=data['xpos_err']*1e3, fmt='k.')
+    ax[1, 1].set_xlabel('time (MJD)')
+    ax[1, 1].locator_params(axis='x', nbins=7)
+    ax[1, 1].set_ylabel('residuals')
+
+    ax[0, 2].scatter(tast, ypos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[0, 2].errorbar(data['t_ast'], data['ypos']*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
+    ax[0, 2].set_ylabel(r'$\delta$ (mas)')
+    ax[0, 2].set_xticks([])
+    ax[1, 2].scatter(tast, ypos-ypos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[1, 2].errorbar(data['t_ast'], data['ypos']*1e3 - ypos_tdat, yerr=data['ypos_err']*1e3, fmt='k.')
+    ax[1, 2].set_xlabel('time (MJD)')
+    ax[1, 2].locator_params(axis='x', nbins=7)
+    ax[1, 2].set_ylabel('residuals')
+
+    fig.subplots_adjust(left=0.08, hspace=0, wspace=0.35)
+    
+    plt.savefig(paper_dir + 'ob150211_data.pdf')
     plt.show()
