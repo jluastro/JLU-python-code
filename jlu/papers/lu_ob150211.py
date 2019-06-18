@@ -17,29 +17,45 @@ lis_file = combo_dir + '/starfinder/mag17jun05_ob150211_kp_rms_named.lis'
 astrom_data = '/u/jlu/work/microlens/OB150211/a_2019_05_04/ob150211_astrom_p3_2019_05_04.fits'
 pspl_ast_phot = '/u/jlu/work/microlens/OB150211/a_2019_05_04/model_fits/4_fit_phot_astrom_parallax/bb_'
 
-# Get the data and model
-data = munge_ob150211.getdata()
+def get_datmod():
+    # Get the data and model
+    data = munge_ob150211.getdata(astrom_file=astrom_data)
 
-fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_phot)
-fitter.load_mnest_results()
-mymodel = fitter.get_best_fit_model(use_median=True)
+    fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_phot)
+    fitter.load_mnest_results()
+    mymodel = fitter.get_best_fit_model(use_median=True)
 
-# 1 day sampling over whole range
-# Find the first and last data date across both photometry and astrometry,
-# and give both a 100 day window.
-tast = np.arange(data['t_ast'].min()-100, data['t_ast'].max()+100, 1)
-tphot = np.arange(data['t_phot'].min()-100, data['t_phot'].max()+100, 1)
-tmin = np.min([tast.min(), tphot.min()])
-tmax = np.max([tast.max(), tphot.max()])
-t_mod = np.arange(tmin, tmax, 1)
+    return data, mymodel
 
-# Prep the colorbar                                                                                
-cmap = plt.cm.viridis
-norm = plt.Normalize(vmin=tmin, vmax=tmax)
-smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-smap.set_array([])
+def sample_time(data):
+    # 1 day sampling over whole range
+    # Find the first and last data date across both photometry and astrometry,
+    # and give both a 100 day window.
+    tast = np.arange(data['t_ast'].min()-100, data['t_ast'].max()+100, 1)
+    tphot = np.arange(data['t_phot'].min()-100, data['t_phot'].max()+100, 1)
+    tmin = np.min([tast.min(), tphot.min()])
+    tmax = np.max([tast.max(), tphot.max()])
+    t_mod = np.arange(tmin, tmax, 1)
+
+    return t_mod, tast, tphot
+
+def setup():
+    data, mymodel = get_datmod()
+    t_mod, tast, tphot = sample_time(data)
+
+    return data, mymodel, t_mod, tast, tphot
+
+def get_cmap(t_mod):
+    # Prep the colorbar                                                                                
+    cmap = plt.cm.viridis
+    norm = plt.Normalize(vmin=t_mod.min(), vmax=t_mod.max())
+    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    smap.set_array([])
+
+    return cmap, norm, smap
 
 def mainplot():
+    data, mymodel, t_mod, tast, tphot = setup()
     
     # Get the image and stars 
     img = fits.getdata(combo_dir + 'mag17jun05_ob150211_kp.fits')
@@ -75,6 +91,7 @@ def mainplot():
     mag = mymodel.get_photometry(t_mod)
 
     ## PLOT ##
+    cmap, norm, smap = get_cmap(t_mod)
     fig = plt.figure(figsize=(16,6))
     gs = gridspec.GridSpec(3, 2)
 
@@ -138,8 +155,8 @@ def mainplot():
     # Plot the photometry
     axp = fig.add_subplot(gs[0, 1])
     axp.scatter(t_mod, mag, c=t_mod, cmap=cmap, norm=norm, s=1)
-    axp.errorbar(data['t_phot'][data['t_phot']>tmin], data['mag'][data['t_phot']>tmin],
-                     yerr=data['mag_err'][data['t_phot']>tmin], fmt='k.')
+    axp.errorbar(data['t_phot'][data['t_phot']>t_mod.min()], data['mag'][data['t_phot']>t_mod.min()],
+                     yerr=data['mag_err'][data['t_phot']>t_mod.min()], fmt='k.')
     axp.invert_yaxis()
     axp.set_ylabel('I-band (mag)')
     axp.set_xticks([])
@@ -167,6 +184,8 @@ def plot_onSky():
     Plots the on-sky motion (unlensed motion subtracted from the astrometry)
     of the centroid, with side plots of the residuals of the unlensed observations to the model.
     '''
+    data, mymodel, t_mod = setup()[:3]
+    
     # Model the unlensed motion
     dp_tmod_unlens = mymodel.get_astrometry(t_mod) - mymodel.get_astrometry_unlensed(t_mod)
     x_mod_no_pm = dp_tmod_unlens[:, 0]*-1
@@ -185,6 +204,7 @@ def plot_onSky():
     y_no_pm_tdat = dp_tdat_unlens[:, 1]
 
     # PLOT
+    cmap, norm, smap = get_cmap(t_mod)
     plt.figure(figsize=(8,8))
 
     # definitions for the axes
@@ -213,7 +233,7 @@ def plot_onSky():
     axra.set_ylabel('time (MJD)')
     axra.yaxis.set_label_position('right')
     axra.yaxis.tick_right()
-    axra.yaxis.set_tick_params(rotation=-25)
+    # axra.yaxis.set_tick_params(rotation=-25)
 
     axdec.scatter(t_mod, (y_mod_no_pm - y_mod_no_pm), c=t_mod, cmap=cmap, norm=norm, s=2)
     axdec.errorbar(data['t_ast'], (y_no_pm - y_no_pm_tdat)*1e3, yerr = data['ypos_err']*1e3,
@@ -222,7 +242,7 @@ def plot_onSky():
     axdec.xaxis.set_label_position('top')
     axdec.xaxis.tick_top()
     # axdec.locator_params(axis='x', nbins=6)
-    axdec.xaxis.set_tick_params(rotation=25)
+    # axdec.xaxis.set_tick_params(rotation=25)
 
     plt.savefig(paper_dir + 'ob150029_onsky.pdf')
     plt.show()
@@ -233,6 +253,8 @@ def plot_obs():
     and residuals to it.
     Centers the astrometry at 17jun05.
     '''
+    data, mymodel, t_mod, tast, tphot = setup()
+    
     # Set the (0,0) point at 17jun05
     xcenter = data['xpos'][7]
     ycenter = data['ypos'][7]
@@ -248,6 +270,8 @@ def plot_obs():
     mag = mymodel.get_photometry(tphot)
     mag_tdat = mymodel.get_photometry(data['t_phot'])
 
+    # PLOT
+    cmap, norm, smap = get_cmap(t_mod)
     fig, ax = plt.subplots(2, 3, gridspec_kw={'height_ratios': [2, 1]}, figsize=(20,6))
 
     ax[0, 0].scatter(tphot, mag, c=tphot, cmap=cmap, norm=norm, s=2)
