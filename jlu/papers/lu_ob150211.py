@@ -163,6 +163,10 @@ def mainplot():
     plt.show()
 
 def plot_onSky():
+    '''
+    Plots the on-sky motion (unlensed motion subtracted from the astrometry)
+    of the centroid, with side plots of the residuals of the unlensed observations to the model.
+    '''
     # Model the unlensed motion
     dp_tmod_unlens = mymodel.get_astrometry(t_mod) - mymodel.get_astrometry_unlensed(t_mod)
     x_mod_no_pm = dp_tmod_unlens[:, 0]*-1
@@ -224,6 +228,11 @@ def plot_onSky():
     plt.show()
 
 def plot_obs():
+    '''
+    Plots the three-panel figure of photometry, ra, and dec with overlaid model
+    and residuals to it.
+    Centers the astrometry at 17jun05.
+    '''
     # Set the (0,0) point at 17jun05
     xcenter = data['xpos'][7]
     ycenter = data['ypos'][7]
@@ -241,35 +250,35 @@ def plot_obs():
 
     fig, ax = plt.subplots(2, 3, gridspec_kw={'height_ratios': [2, 1]}, figsize=(20,6))
 
-    ax[0, 0].scatter(tphot, mag, c=tphot, cmap=cmap, norm=norm, s=4)
+    ax[0, 0].scatter(tphot, mag, c=tphot, cmap=cmap, norm=norm, s=2)
     ax[0, 0].errorbar(data['t_phot'], data['mag'],
-                      yerr=data['mag_err'], fmt='k.')
+                      yerr=data['mag_err'], fmt='k.', alpha=0.4)
     ax[0, 0].invert_yaxis()
     ax[0, 0].set_ylabel('I-band (mag)')
     ax[0, 0].set_xticks([])
-    ax[1, 0].scatter(tphot, mag-mag, c=tphot, cmap=cmap, norm=norm, s=4)
+    ax[1, 0].scatter(tphot, mag-mag, c=tphot, cmap=cmap, norm=norm, s=2)
     ax[1, 0].errorbar(data['t_phot'], (data['mag'] - mag_tdat),
-                      yerr=data['mag_err'], fmt='k.')
+                      yerr=data['mag_err'], fmt='k.', alpha=0.4)
     ax[1, 0].invert_yaxis()
     ax[1, 0].set_xlabel('time (MJD)')
     ax[1, 0].set_ylabel('residuals')
     
-    ax[0, 1].scatter(tast, xpos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[0, 1].scatter(tast, xpos, c=tast, cmap=cmap, norm=norm, s=2)
     ax[0, 1].errorbar(data['t_ast'], (data['xpos'] - xcenter)*-1e3, yerr=data['xpos_err']*1e3, fmt='k.')
     ax[0, 1].set_ylabel(r'$\Delta \alpha^*$ (mas)')
     ax[0, 1].set_xticks([])
-    ax[1, 1].scatter(tast, xpos-xpos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[1, 1].scatter(tast, xpos-xpos, c=tast, cmap=cmap, norm=norm, s=2)
     ax[1, 1].errorbar(data['t_ast'], (data['xpos'] - xcenter)*-1e3 - xpos_tdat,
                           yerr=data['xpos_err']*1e3, fmt='k.')
     ax[1, 1].set_xlabel('time (MJD)')
     ax[1, 1].locator_params(axis='x', nbins=7)
     ax[1, 1].set_ylabel('residuals')
 
-    ax[0, 2].scatter(tast, ypos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[0, 2].scatter(tast, ypos, c=tast, cmap=cmap, norm=norm, s=2)
     ax[0, 2].errorbar(data['t_ast'], (data['ypos'] - ycenter)*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
     ax[0, 2].set_ylabel(r'$\Delta \delta$ (mas)')
     ax[0, 2].set_xticks([])
-    ax[1, 2].scatter(tast, ypos-ypos, c=tast, cmap=cmap, norm=norm, s=4)
+    ax[1, 2].scatter(tast, ypos-ypos, c=tast, cmap=cmap, norm=norm, s=2)
     ax[1, 2].errorbar(data['t_ast'], (data['ypos'] - ycenter)*1e3 - ypos_tdat,
                           yerr=data['ypos_err']*1e3, fmt='k.')
     ax[1, 2].set_xlabel('time (MJD)')
