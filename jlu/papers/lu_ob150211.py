@@ -231,7 +231,7 @@ def plot_onSky():
     axra.errorbar(data['t_ast'], (x_dat_no_pm), yerr = data['xpos_err']*1e3,
                       fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
     axra.axhline(0, linestyle=':')
-    axra.set_ylabel(r'residuals in $\Delta \alpha^*$ (mas)')
+    axra.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     axra.set_xticks([])
 
     axdec = fig.add_subplot(gs[1, 1])
@@ -241,7 +241,7 @@ def plot_onSky():
                    fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
     axdec.axhline(0, linestyle=':')
     axdec.set_xlabel('time (MJD)')
-    axdec.set_ylabel(r'residuals in $\Delta \delta$ (mas)')
+    axdec.set_ylabel(r'$\Delta \delta$ (mas)')
 
     fig.subplots_adjust(left=0.12, wspace=0.45, hspace=0)
 
