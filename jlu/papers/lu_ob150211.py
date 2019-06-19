@@ -188,60 +188,82 @@ def plot_onSky(plot_residuals=True):
 
     # Model the unlensed motion
     dp_tmod_unlens = mymodel.get_astrometry(t_mod) - mymodel.get_astrometry_unlensed(t_mod)
-    x_mod_no_pm = dp_tmod_unlens[:, 0]*-1
-    y_mod_no_pm = dp_tmod_unlens[:, 1]
+    x_mod_no_pm = dp_tmod_unlens[:, 0]*-1e3
+    y_mod_no_pm = dp_tmod_unlens[:, 1]*1e3
 
     # Make the unlensed model for the data points
     p_mod_unlens_tdat = mymodel.get_astrometry_unlensed(data['t_ast'])
     x_mod_tdat = p_mod_unlens_tdat[:, 0]
     y_mod_tdat = p_mod_unlens_tdat[:, 1]
-    x_no_pm = (data['xpos'] - x_mod_tdat)*-1
-    y_no_pm = data['ypos'] - y_mod_tdat
+    x_dat_no_pm = (data['xpos'] - x_mod_tdat)*-1e3
+    y_dat_no_pm = (data['ypos'] - y_mod_tdat)*1e3
 
     # Model the unlensed astrometry at t_ast
     dp_tdat_unlens = mymodel.get_astrometry(data['t_ast']) - p_mod_unlens_tdat
     x_no_pm_tdat = (dp_tdat_unlens[:, 0])*-1
     y_no_pm_tdat = dp_tdat_unlens[:, 1]
 
+    # Get indices to isolate astrometry time
+    residx = np.where((t_mod>=tast.min()) & (t_mod<=tast.max()))[0]
+
     # PLOT
     cmap, norm, smap = get_cmap(t_mod)
+    fig = plt.figure(figsize=(12, 6))
     plt.clf()
-    plt.figure(1)
+    gs = gridspec.GridSpec(2, 2)
 
-    plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast'],
+    axSky = fig.add_subplot(gs[:, 0])
+    axSky.scatter(x_dat_no_pm, y_dat_no_pm, c=data['t_ast'],
                 cmap=cmap, norm=norm, s=10)
-    plt.errorbar(x_no_pm*1e3, y_no_pm*1e3,
+    axSky.errorbar(x_dat_no_pm, y_dat_no_pm,
                  xerr=data['xpos_err']*1e3, yerr=data['ypos_err']*1e3,
                  fmt='none', ecolor=smap.to_rgba(data['t_ast']))
-    plt.scatter(x_mod_no_pm*1e3, y_mod_no_pm*1e3, c=t_mod, cmap=cmap, norm=norm, s=4)
-    plt.gca().invert_xaxis()
-    plt.axis('equal')
-    plt.xlabel(r'$\Delta \alpha^*$ (mas)')
-    plt.ylabel(r'$\Delta \delta$ (mas)')
+    axSky.scatter(x_mod_no_pm, y_mod_no_pm, c=t_mod, cmap=cmap, norm=norm, s=4)
+    axSky.invert_xaxis()
+    axSky.axis('equal')
+    axSky.set_xlabel(r'$\Delta \alpha^*$ (mas)')
+    axSky.set_ylabel(r'$\Delta \delta$ (mas)')
+
+    axra = fig.add_subplot(gs[0, 1])
+    axra.scatter(t_mod[residx], (x_mod_no_pm)[residx],
+                 c=t_mod[residx], cmap=cmap, norm=norm, s=2)
+    axra.errorbar(data['t_ast'], (x_dat_no_pm), yerr = data['xpos_err']*1e3,
+                      fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
+    axra.axhline(0, linestyle=':')
+    axra.set_ylabel(r'residuals in $\Delta \alpha^*$ (mas)')
+    axra.set_xticks([])
+
+    axdec = fig.add_subplot(gs[1, 1])
+    axdec.scatter(t_mod[residx], (y_mod_no_pm)[residx],
+                  c=t_mod[residx], cmap=cmap, norm=norm, s=2)
+    axdec.errorbar(data['t_ast'], (y_dat_no_pm), yerr = data['ypos_err']*1e3,
+                   fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
+    axdec.axhline(0, linestyle=':')
+    axdec.set_xlabel('time (MJD)')
+    axdec.set_ylabel(r'residuals in $\Delta \delta$ (mas)')
+
+    fig.subplots_adjust(left=0.12, wspace=0.45, hspace=0)
 
     plt.savefig(paper_dir + 'ob150029_onsky.pdf')
     plt.show()
 
     if plot_residuals:
-        # Get indices to isolate astrometry time
-        residx = np.where((t_mod>=tast.min()) & (t_mod<=tast.max()))[0]
+        fig_res, (axra_res, axdec_res) = plt.subplots(2, 1, sharex=True, num=2)
 
-        figres, (axra, axdec) = plt.subplots(2, 1, sharex=True, num=2)
-
-        axra.scatter(t_mod[residx], (x_mod_no_pm - x_mod_no_pm)[residx],
-                     c=t_mod[residx], cmap=cmap, norm=norm, s=2)
-        axra.errorbar(data['t_ast'], (x_no_pm - x_no_pm_tdat)*1e3, yerr = data['xpos_err']*1e3,
+        axra_res.scatter(t_mod[residx], (x_mod_no_pm - x_mod_no_pm)[residx],
+                         c=t_mod[residx], cmap=cmap, norm=norm, s=2)
+        axra_res.errorbar(data['t_ast'], (x_dat_no_pm - x_no_pm_tdat), yerr = data['xpos_err']*1e3,
                           fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
-        axra.set_ylabel(r'residuals in $\alpha^*$ (mas)')
+        axra_res.set_ylabel(r'residuals in $\alpha^*$ (mas)')
 
-        axdec.scatter(t_mod[residx], (y_mod_no_pm - y_mod_no_pm)[residx],
-                      c=t_mod[residx], cmap=cmap, norm=norm, s=2)
-        axdec.errorbar(data['t_ast'], (y_no_pm - y_no_pm_tdat)*1e3, yerr = data['ypos_err']*1e3,
-                           fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
-        axdec.set_xlabel('time (MJD)')
-        axdec.set_ylabel(r'residuals in $\delta$ (mas)')
+        axdec_res.scatter(t_mod[residx], (y_mod_no_pm - y_mod_no_pm)[residx],
+                         c=t_mod[residx], cmap=cmap, norm=norm, s=2)
+        axdec_res.errorbar(data['t_ast'], (y_dat_no_pm - y_no_pm_tdat), yerr = data['ypos_err']*1e3,
+                          fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
+        axdec_res.set_ylabel(r'residuals in $\delta$ (mas)')
+        axdec_res.set_xlabel(r'time (MJD)')
 
-        figres.subplots_adjust(hspace=0)
+        fig_res.subplots_adjust(hspace=0)
 
         plt.savefig(paper_dir + 'ob150029_onsky_res.pdf')
         plt.show()
