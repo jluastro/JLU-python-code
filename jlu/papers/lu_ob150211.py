@@ -179,10 +179,11 @@ def mainplot():
     plt.savefig(paper_dir + 'ob150211_mainplot.pdf')
     plt.show()
 
-def plot_onSky(plot_residuals=True):
+def plot_onSky():
     '''
     Plots the on-sky motion (unlensed motion subtracted from the astrometry)
-    of the centroid, with side plots of the residuals of the unlensed observations to the model.
+    of the centroid, with plots of the residuals of the observations and model
+    to the unlensed motion.
     '''
     data, mymodel, t_mod, tast, _ = setup()
 
@@ -200,8 +201,8 @@ def plot_onSky(plot_residuals=True):
 
     # Model the unlensed astrometry at t_ast
     dp_tdat_unlens = mymodel.get_astrometry(data['t_ast']) - p_mod_unlens_tdat
-    x_no_pm_tdat = (dp_tdat_unlens[:, 0])*-1
-    y_no_pm_tdat = dp_tdat_unlens[:, 1]
+    x_no_pm_tdat = (dp_tdat_unlens[:, 0])*-1e3
+    y_no_pm_tdat = dp_tdat_unlens[:, 1]*1e3
 
     # Get indices to isolate astrometry time
     residx = np.where((t_mod>=tast.min()) & (t_mod<=tast.max()))[0]
@@ -246,27 +247,6 @@ def plot_onSky(plot_residuals=True):
 
     plt.savefig(paper_dir + 'ob150029_onsky.pdf')
     plt.show()
-
-    if plot_residuals:
-        fig_res, (axra_res, axdec_res) = plt.subplots(2, 1, sharex=True, num=2)
-
-        axra_res.scatter(t_mod[residx], (x_mod_no_pm - x_mod_no_pm)[residx],
-                         c=t_mod[residx], cmap=cmap, norm=norm, s=2)
-        axra_res.errorbar(data['t_ast'], (x_dat_no_pm - x_no_pm_tdat), yerr = data['xpos_err']*1e3,
-                          fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
-        axra_res.set_ylabel(r'residuals in $\alpha^*$ (mas)')
-
-        axdec_res.scatter(t_mod[residx], (y_mod_no_pm - y_mod_no_pm)[residx],
-                         c=t_mod[residx], cmap=cmap, norm=norm, s=2)
-        axdec_res.errorbar(data['t_ast'], (y_dat_no_pm - y_no_pm_tdat), yerr = data['ypos_err']*1e3,
-                          fmt='k.', ecolor=smap.to_rgba(data['t_ast']), elinewidth=2)
-        axdec_res.set_ylabel(r'residuals in $\delta$ (mas)')
-        axdec_res.set_xlabel(r'time (MJD)')
-
-        fig_res.subplots_adjust(hspace=0)
-
-        plt.savefig(paper_dir + 'ob150029_onsky_res.pdf')
-        plt.show()
 
 def plot_obs():
     '''
