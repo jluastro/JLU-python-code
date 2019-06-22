@@ -1431,7 +1431,7 @@ def make_ob150211_tab():
     output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
     
 
-def make_ob150211_astrom_fit_tab():
+def make_ob150211_astrom_fit_tab(recalc=False):
     """
     Make a table with only the astrometric + photometric fit solution.
     """
@@ -1440,8 +1440,8 @@ def make_ob150211_astrom_fit_tab():
     mnest_root = pspl_ast_phot['ob150211']
     data = munge_ob150211.getdata()
 
-    if os.path.exists(table_root + '.fits') and recalc is False:
-        _in = open(table_root + '.fits', 'r')
+    if os.path.exists(mnest_root + '_best.fits') and recalc is False:
+        _in = open(mnest_root + '_best.fits', 'rb')
         
         pars1 = pickle.load(_in)
         values1 = pickle.load(_in)
@@ -1479,8 +1479,8 @@ def make_ob150211_astrom_fit_tab():
         pars1, values1 = model_fitter.quantiles(mnest_tab_sol1, sigma=1)
         pars2, values2 = model_fitter.quantiles(mnest_tab_sol2, sigma=1)
 
-        # Save to a picle file for easy reloading.
-        _out = open(table_root + '.fits', 'w')
+        # Save to a pickle file for easy reloading.
+        _out = open(mnest_root + '_best.fits', 'wb')
         pickle.dump(pars1, _out)
         pickle.dump(values1, _out)
         pickle.dump(logZ_sol1, _out)
@@ -1521,15 +1521,39 @@ def make_ob150211_astrom_fit_tab():
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
 
+    # We need a string description of each parameter. 
+    desc = {'t0'      : r'Time of closest approach.'
+            'u0_amp'  : r'Closest approach in $\theta_E$ units.',
+            'tE'      : r'Einstein crossing time.',
+            'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
+            'piE_N'   : r'Microlensing parallax in the $\delta$ direction.',
+            'b_sff'   : r'The source flux fraction in the OGLE aperture, unlensed.',
+            'mag_src' : r'OGLE I-band magnitude of the unlensed source.',
+            'mL'      : r'Mass of the lens.',
+            'xS0_E'   : r'Relative $\alpha^*$ source position at $t_0$.',
+            'xS0_N'   : r'Relative $\delta$ source positions at $t_0$.',
+            'beta'    : r'Closest angular approach distance.',
+            'muL_E'   : r'Proper motion of the lens in the $\alpha^*$ direction',
+            'muL_N'   : r'Proper motion of the lens in the $\delta$ direction',
+            'muS_E'   : r'Proper motion of the source in the $\alpha^*$ direction',
+            'muS_N'   : r'Proper motion of the source in the $\delta$ direction',
+            'dL'      : r'Distance to the lens.'
+            'dS'      : r'Distance to the source.'
+            'dL_dS'   : r'Distance ratio of lens to source.'
+            'thetaE'  : r'Angular einstein radius',
+            'muRel_E' : r'Relative source-lens proper motion in the $\alpha^*$ direction.',
+            'muRel_N' : r'Relative source-lens proper motion in the $\delta$ direction.'
+            }
+
     output = open(paper_dir + 'ob150211_params_ast_phot.txt', 'w')
-    output.write('Fit & & \\\\\n')
+    output.write('Fit & & & \\\\n')
     output.write('\hline\n')
     for pp in params_list:
         # Check if we should switch to derived parameters when we
         # encounter a '' in the parameters list.
         if pp == '':
             output.write('\hline\n')
-            output.write('Derived & & \\\\\n')
+            output.write('Derived & & & \\\\\n')
             output.write('\hline\n')
             continue
         
@@ -1547,11 +1571,11 @@ def make_ob150211_astrom_fit_tab():
             sol1 = '--'
             sol2 = '--'
 
-        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' \\\\\n')
+        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + descr[pp] + ' \\\\\n')
 
     output.write('log$\mathcal{Z}$' + ' & ' +
                      '{:.2f}'.format(logZ_sol2) + ' & ' +
-                     '{:.2f}'.format(logZ_sol1) + ' \\\\\n')
+                     '{:.2f}'.format(logZ_sol1) + ' & Local Evidence  \\\\\n')
 
     output.close()
 
@@ -1876,4 +1900,73 @@ def dLdS_popsycle():
 
 
     plt.show()
+
+def calc_velocity():
+    import astropy.coordinates as coord
+    import astropy.units as u
     
+    data = munge_ob150211.getdata()
+    mnest_root = pspl_ast_phot['ob150211']
+    
+    # Load up the best-fit data
+    _in = open(mnest_root + '_best.fits', 'rb')
+        
+    pars1 = pickle.load(_in)
+    values1 = pickle.load(_in)
+    logZ_sol1 = pickle.load(_in)
+    maxL_sol1 = pickle.load(_in)
+    
+    pars2 = pickle.load(_in)
+    values2 = pickle.load(_in)
+    logZ_sol2 = pickle.load(_in)
+    maxL_sol2 = pickle.load(_in)
+
+    _in.close()
+
+    # Fetch the lens proper motions. Only for the 1st solution
+    # as this is the one we will adopt for the paper. 
+    dL = values2['dL'][0]
+    muL_E = values2['muL_E'][0]
+    muL_N = values2['muL_N'][0]
+    muLe_E = np.mean([values2['muL_E'][1], values2['muL_E'][2]])
+    muLe_N = np.mean([values2['muL_N'][1], values2['muL_N'][2]])
+    print(dL, muL_E, muL_N)
+
+    c1 = coord.ICRS(ra=data['raL']*u.degree, dec=data['decL']*u.degree,
+                distance=dL*u.pc,
+                pm_ra_cosdec=muL_E*u.mas/u.yr,
+                pm_dec=muL_N*u.mas/u.yr)
+
+    galcen_distance = 8*u.kpc
+    pm_en = [muL_E, muL_N] * u.mas/u.yr
+    v_e, v_n = -(galcen_distance * pm_en).to(u.km/u.s, u.dimensionless_angles())
+    ve_e = -(galcen_distance * muLe_E * u.mas/u.yr).to(u.km/u.s, u.dimensionless_angles())
+    ve_n = -(galcen_distance * muLe_N * u.mas/u.yr).to(u.km/u.s, u.dimensionless_angles())
+
+    gal = c1.transform_to(coord.Galactic)
+    muL_l = gal.pm_l_cosb
+    muL_b = gal.pm_b
+    v_l = -(galcen_distance * muL_l).to(u.km/u.s, u.dimensionless_angles())
+    v_b = -(galcen_distance * muL_b).to(u.km/u.s, u.dimensionless_angles())
+
+    fmt = '    {0:8s} = {1:8.3f} +/- {2:8.3f}  {3:8s}'
+    
+    print('Proper Motion for OB150322:')
+    print('  Celestial:')
+    print(fmt.format('muL_E', muL_E, muLe_E, 'mas/yr'))
+    print(fmt.format('muL_N', muL_N, muLe_N, 'mas/yr'))
+    print('  Galactic:')
+    print(fmt.format('muL_l', muL_l, 0.0, 'mas/yr'))
+    print(fmt.format('muL_b', muL_b, 0.0, 'mas/yr'))
+    
+    print('Velocity for OB150322 at dL=', dL)
+    print('  Celestial:')
+    print(fmt.format('vL_E', v_e, ve_e, 'km/s'))
+    print(fmt.format('vL_N', v_n, ve_n, 'km/s'))
+    print('  Galactic:')
+    print(fmt.format('vL_l', v_l, 0.0, 'km/s'))
+    print(fmt.format('vL_b', v_b, 0.0, 'km/s'))
+        
+
+
+    return
