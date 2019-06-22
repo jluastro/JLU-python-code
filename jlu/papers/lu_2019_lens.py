@@ -1592,7 +1592,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
 
     # We need a string description of each parameter. 
-    desc = {'t0'      : r'Time of closest approach.'
+    desc = {'t0'      : r'Time of closest approach.',
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
             'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
@@ -1607,9 +1607,9 @@ def make_ob150211_astrom_fit_tab(recalc=False):
             'muL_N'   : r'Proper motion of the lens in the $\delta$ direction',
             'muS_E'   : r'Proper motion of the source in the $\alpha^*$ direction',
             'muS_N'   : r'Proper motion of the source in the $\delta$ direction',
-            'dL'      : r'Distance to the lens.'
-            'dS'      : r'Distance to the source.'
-            'dL_dS'   : r'Distance ratio of lens to source.'
+            'dL'      : r'Distance to the lens.',
+            'dS'      : r'Distance to the source.',
+            'dL_dS'   : r'Distance ratio of lens to source.',
             'thetaE'  : r'Angular einstein radius',
             'muRel_E' : r'Relative source-lens proper motion in the $\alpha^*$ direction.',
             'muRel_N' : r'Relative source-lens proper motion in the $\delta$ direction.'
@@ -1641,7 +1641,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
             sol1 = '--'
             sol2 = '--'
 
-        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + descr[pp] + ' \\\\\n')
+        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
 
     output.write('log$\mathcal{Z}$' + ' & ' +
                      '{:.2f}'.format(logZ_sol2) + ' & ' +
