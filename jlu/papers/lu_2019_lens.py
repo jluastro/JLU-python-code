@@ -55,7 +55,12 @@ comp_stars = {'ob140613': [],
 
 pspl_ast_phot = {'ob140613': '',
                  'ob150029': '',
-                 'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/bb_'}
+                 'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/ff_'}
+
+pspl_ast_phot_err = {'ob140613': '',
+                     'ob150029': '',
+                     'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/gg_'}
+
 
 pspl_phot = {'ob140613': '',
              'ob150029': '',
@@ -639,13 +644,16 @@ def weighted_avg_and_std(values, weights):
 
 def plot_ob150211_mass_posterior():
     """
-    Lines are median, +/- 3 sigma.
+    # Lines are median, +/- 3 sigma.
+    Line is MAP solution, global/mode 1 (identical).
     """
 
     fontsize1 = 18
     fontsize2 = 14
 
     tab = Table.read(pspl_ast_phot['ob150211'] + '.fits')
+    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    print(smy['MAP mL'])
     mmax = tab['mL'].max()
     mmin = tab['mL'].min()
 
@@ -661,7 +669,7 @@ def plot_ob150211_mass_posterior():
 
     n = norm_kde(n, 10.)
     b0 = 0.5 * (b[1:] + b[:-1])
-
+                     
     n, b, _ = plt.hist(b0, bins = b, weights = n)
 
     plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
@@ -671,32 +679,38 @@ def plot_ob150211_mass_posterior():
     plt.yticks(fontsize=fontsize2)
 
     plt.xscale('log')
+                     
 
-    ##########                                                                                                              
-    # Calculate 3-sigma boundaries for mass limits.                                                                         
-    ##########                                                                                                              
-    sig1_hi = 0.682689
-    sig1_lo = 1.0 - sig1_hi
-    sig_med = 0.5
-    sig2_hi = 0.9545
-    sig2_lo = 1.0 - sig2_hi
-    sig3_hi = 0.9973
-    sig3_lo = 1.0 - sig3_hi
+#    ##########       
+#    # Calculate 3-sigma boundaries for mass limits. 
+#    ##########
+#
+#    sig1_hi = 0.682689
+#    sig1_lo = 1.0 - sig1_hi
+#    sig_med = 0.5
+#    sig2_hi = 0.9545
+#    sig2_lo = 1.0 - sig2_hi
+#    sig3_hi = 0.9973
+#    sig3_lo = 1.0 - sig3_hi
+#
+#    quantiles = [sig3_lo, sig2_lo, sig1_lo, sig_med, sig1_hi, sig2_hi, sig3_hi]
+#
+#    mass_quants = model_fitter.weighted_quantile(tab['mL'], quantiles,
+#                                                 sample_weight=tab['weights'])
+#
+#    for qq in range(len(quantiles)):
+#        print( 'Mass at {0:.1f}% quantiles:  M = {1:5.2f}'.format(quantiles[qq]*100, mass_quants[qq]))
+#
+#    ax = plt.axis()
+#    # plot median and +/- 3 sigma
+#    plt.axvline(mass_quants[0], color='k', linestyle='--')
+#    plt.axvline(mass_quants[3], color='k', linestyle='--')
+#    plt.axvline(mass_quants[-1], color='k', linestyle='--')
+#    plt.show()
 
-    quantiles = [sig3_lo, sig2_lo, sig1_lo, sig_med, sig1_hi, sig2_hi, sig3_hi]
-
-    mass_quants = model_fitter.weighted_quantile(tab['mL'], quantiles,
-                                                 sample_weight=tab['weights'])
-
-    for qq in range(len(quantiles)):
-        print( 'Mass at {0:.1f}% quantiles:  M = {1:5.2f}'.format(quantiles[qq]*100, mass_quants[qq]))
-
-    ax = plt.axis()
-    # plot median and +/- 3 sigma
-    plt.axvline(mass_quants[0], color='k', linestyle='--')
-    plt.axvline(mass_quants[3], color='k', linestyle='--')
-    plt.axvline(mass_quants[-1], color='k', linestyle='--')
+    plt.axvline(smy['MAP mL'][0], color='k', linestyle='-', lw = 3)
     plt.show()
+
     plt.savefig(paper_dir + 'ob150211_mass_posterior.pdf')
     plt.savefig(paper_dir + 'ob150211_mass_posterior.png')
 
@@ -1307,7 +1321,7 @@ def plot_ob150211_posterior_tE_piE_phot_only():
 
     return
 
-def make_ob150029_tab():
+def make_ob150211_tab():
 # For this one, the negative solutions much favored over the positive solutions 
 # Which are also super unphysical.
 
@@ -1565,6 +1579,105 @@ def make_ob150211_astrom_fit_tab(recalc=False):
 
     output.close()
 
+def make_ob150211_map_fit_tab():
+    """
+    Make a table with only the astrometric + photometric fit solution.
+    Using the MAP solution.
+    """
+    # Get the phot+astrom data
+
+    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    smy_err = Table.read(pspl_ast_phot_err['ob150211'] + 'summary.fits')
+    print(smy.keys())
+
+    # In the order we want them in the table. Use an empty param to indicate
+    # break between fit parameters and unfit parameters.
+    params_list = ['t0', 'b_sff', 'mag_src',
+                   'mL', 'dL', 'dL_dS', 'beta', 
+                   'muL_E', 'muL_N', 'muS_E', 'muS_N',
+                   'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 'add_err', '',
+                   'tE', 'dS', 'thetaE', 'u0_amp', 
+                   'muRel_E', 'muRel_N', 'logZ']
+
+    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
+              'u0_amp' : [r'$u_0$ ', '${0:.3f}$'],
+              'tE' : [r'$t_E$ (days)', '${0:.1f}$'],
+              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'], 
+              'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}$'],
+              'b_sff' : [r'$b_{SFF}$', '${0:.3f}$'],
+              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'], 
+              'mL' : [r'$M_L (M_\odot$)', '${0:.1f}$'],
+              'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.4f}$'],
+              'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.4f}$'],
+              'beta' : [r'$\beta$ (mas)', '${0:.2f}$'],
+              'muL_E' : [r'$\mu_{L,E}$ (mas/yr)', '${0:.2f}$'],
+              'muL_N' : [r'$\mu_{L,N}$ (mas/yr)', '${0:.2f}$'],
+              'muS_E' : [r'$\mu_{S,E}$ (mas/yr)', '${0:.2f}$'],
+              'muS_N' : [r'$\mu_{S,N}$ (mas/yr)', '${0:.2f}$'],
+              'dL' : [r'$d_L$ (pc)', '${0:.0f}$'],
+              'dS' : [r'$d_S$ (pc) ', '${0:.0f}$'],
+              'dL_dS' : [r'$d_L/d_S$', '${0:.3f}$'],
+              'thetaE' : [r'$\theta_E$ (mas)', '${0:.2f}$'],
+              'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}$'],
+              'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}$'],
+              'add_err' : [r'$\varepsilon$ (mag)', '${0:.4f}$'],
+              'logZ' : [r'log$\mathcal{Z}$', '${0:.1f}$']}
+
+    output = open(paper_dir + 'ob150211_params_ast_phot_MAP.txt', 'w')
+    output.write('Fit & & \\\\\n')
+    output.write('\hline\n')
+
+    output_err = open(paper_dir + 'ob150211_params_ast_phot_err_MAP.txt', 'w')
+    output_err.write('Fit & \\\\\n')
+    output_err.write('\hline\n')
+
+    for pp in params_list:
+        # Check if we should switch to derived parameters when we
+        # encounter a '' in the parameters list.
+        if pp == '':
+            output.write('\hline\n')
+            output.write('Derived & & \\\\\n')
+            output.write('\hline\n')
+
+            output_err.write('\hline\n')
+            output_err.write('Derived & \\\\\n')
+            output_err.write('\hline\n')
+
+            continue
+        
+        p = params[pp]
+
+        # Fill out the table for NO additive error
+        # that has two solutions.
+        if (pp != 'add_err') & (pp != 'logZ'):
+            sol1 = p[1].format(smy['MAP ' + pp][1])
+            sol2 = p[1].format(smy['MAP ' + pp][2])
+
+            output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' \\\\\n')
+
+        # Take care of logZ
+        if pp == 'logZ':
+            sol1 = p[1].format(smy[pp][1])
+            sol2 = p[1].format(smy[pp][2])
+                
+            output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' \\\\\n')
+    
+        # Fill out the table for WITH additive error
+        # that has one solution.
+
+        # Take care of logZ
+        if pp == 'logZ':
+            sol = p[1].format(smy_err[pp][0])
+            
+            output_err.write(p[0] + ' & ' + sol + ' \\\\\n')
+
+        if pp != 'logZ':
+            sol = p[1].format(smy_err['MAP_' + pp][0])
+            output_err.write(p[0] + ' & ' + sol + ' \\\\\n')
+
+    output.close()
+
+
 def plot_ob150211_phot():                                         
     data = munge_ob150211.getdata()
 
@@ -1751,6 +1864,42 @@ def make_all_comparison_plots():
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
 
+def dLdS_popsycle():
+    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+
+    long_idx = np.where(t['t_E'] > 100)[0]
+
+    dL = t['rad_L']
+    dS = t['rad_S']
+    dLdS = (1.0 * dL)/(1.0 * dS)
+
+    dL_long = t['rad_L'][long_idx]
+    dS_long = t['rad_S'][long_idx]
+    dLdS_long = (1.0 * dL_long)/(1.0 * dS_long)
+
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+    plt.hist(dLdS, bins = np.linspace(0, 1, 11), histtype = 'step', density=True, label = 'All')
+    plt.hist(dLdS_long, bins = np.linspace(0, 1, 11), histtype = 'step', density=True, label = 'Long')
+    plt.xlabel('dL/dS')
+    plt.legend()
+
+    fig = plt.figure(2, figsize=(6,6))
+    plt.clf()
+    plt.hist(dL, bins = np.linspace(0, 12, 13), histtype = 'step', density=True, label = 'All')
+    plt.hist(dL_long, bins = np.linspace(0, 12, 13), histtype = 'step', density=True, label = 'Long')
+    plt.xlabel('dL (kpc)')
+    plt.legend()
+
+    fig = plt.figure(3, figsize=(6,6))
+    plt.clf()
+    plt.hist(dLdS, bins = np.logspace(-2, 1))
+    plt.xlabel('dL/dS')
+    plt.xscale('log')
+    plt.show()
+
+
+    plt.show()
 
 def calc_velocity():
     import astropy.coordinates as coord
