@@ -1511,35 +1511,35 @@ def make_ob150211_astrom_fit_tab(recalc=False):
     desc = {'t0'      : r'Time of closest approach.'
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
-            'piE_E'   : r'Microlensing parallax in the East-West direction.',
-            'piE_N'   : r'Microlensing parallax in the North-South direction.',
+            'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
+            'piE_N'   : r'Microlensing parallax in the $\delta$ direction.',
             'b_sff'   : r'The source flux fraction in the OGLE aperture, unlensed.',
             'mag_src' : r'OGLE I-band magnitude of the unlensed source.',
             'mL'      : r'Mass of the lens.',
-            'xS0_E'   : r'Position of the source w.r.t. the lens in the East-West direction.',
-            'xS0_N'   : r'Position of the source w.r.t. the lens in the North-South direction.',
-            'beta'    : r'Closest angular approach distance with a sign indicating whether the source passes to the West($+$) or Easth ($-$) of the lens)',
-            'muL_E'   : r'Proper motion of the lens in the East-West direction',
-            'muL_N'   : r'Proper motion of the lens in the North-south direction',
-            'muS_E'   : r'Proper motion of the source in the East-West direction',
-            'muS_N'   : r'Proper motion of the source in the North-South direction',
+            'xS0_E'   : r'Relative $\alpha^*$ source position at $t_0$.',
+            'xS0_N'   : r'Relative $\delta$ source positions at $t_0$.',
+            'beta'    : r'Closest angular approach distance.',
+            'muL_E'   : r'Proper motion of the lens in the $\alpha^*$ direction',
+            'muL_N'   : r'Proper motion of the lens in the $\delta$ direction',
+            'muS_E'   : r'Proper motion of the source in the $\alpha^*$ direction',
+            'muS_N'   : r'Proper motion of the source in the $\delta$ direction',
             'dL'      : r'Distance to the lens.'
             'dS'      : r'Distance to the source.'
             'dL_dS'   : r'Distance ratio of lens to source.'
             'thetaE'  : r'Angular einstein radius',
-            'muRel_E' : r'Relative source-lens proper motion in the East-West direction.',
-            'muRel_N' : r'Relative source-lens proper motion in the North-South direction.'
+            'muRel_E' : r'Relative source-lens proper motion in the $\alpha^*$ direction.',
+            'muRel_N' : r'Relative source-lens proper motion in the $\delta$ direction.'
             }
 
     output = open(paper_dir + 'ob150211_params_ast_phot.txt', 'w')
-    output.write('Fit & & \\\\\n')
+    output.write('Fit & & & \\\\n')
     output.write('\hline\n')
     for pp in params_list:
         # Check if we should switch to derived parameters when we
         # encounter a '' in the parameters list.
         if pp == '':
             output.write('\hline\n')
-            output.write('Derived & & \\\\\n')
+            output.write('Derived & & & \\\\\n')
             output.write('\hline\n')
             continue
         
@@ -1557,11 +1557,11 @@ def make_ob150211_astrom_fit_tab(recalc=False):
             sol1 = '--'
             sol2 = '--'
 
-        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' \\\\\n')
+        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + descr[pp] + ' \\\\\n')
 
     output.write('log$\mathcal{Z}$' + ' & ' +
                      '{:.2f}'.format(logZ_sol2) + ' & ' +
-                     '{:.2f}'.format(logZ_sol1) + ' \\\\\n')
+                     '{:.2f}'.format(logZ_sol1) + ' & Local Evidence  \\\\\n')
 
     output.close()
 
