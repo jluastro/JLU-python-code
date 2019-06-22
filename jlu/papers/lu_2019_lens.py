@@ -1507,6 +1507,30 @@ def make_ob150211_astrom_fit_tab():
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
 
+    # We need a string description of each parameter. 
+    desc = {'t0'      : r'Time of closest approach.'
+            'u0_amp'  : r'Closest approach in $\theta_E$ units.',
+            'tE'      : r'Einstein crossing time.',
+            'piE_E'   : r'Microlensing parallax in the East-West direction.',
+            'piE_N'   : r'Microlensing parallax in the North-South direction.',
+            'b_sff'   : r'The source flux fraction in the OGLE aperture, unlensed.',
+            'mag_src' : r'OGLE I-band magnitude of the unlensed source.',
+            'mL'      : r'Mass of the lens.',
+            'xS0_E'   : r'Position of the source w.r.t. the lens in the East-West direction.',
+            'xS0_N'   : r'Position of the source w.r.t. the lens in the North-South direction.',
+            'beta'    : r'Closest angular approach distance with a sign indicating whether the source passes to the West($+$) or Easth ($-$) of the lens)',
+            'muL_E'   : r'Proper motion of the lens in the East-West direction',
+            'muL_N'   : r'Proper motion of the lens in the North-south direction',
+            'muS_E'   : r'Proper motion of the source in the East-West direction',
+            'muS_N'   : r'Proper motion of the source in the North-South direction',
+            'dL'      : r'Distance to the lens.'
+            'dS'      : r'Distance to the source.'
+            'dL_dS'   : r'Distance ratio of lens to source.'
+            'thetaE'  : r'Angular einstein radius',
+            'muRel_E' : r'Relative source-lens proper motion in the East-West direction.',
+            'muRel_N' : r'Relative source-lens proper motion in the North-South direction.'
+            }
+
     output = open(paper_dir + 'ob150211_params_ast_phot.txt', 'w')
     output.write('Fit & & \\\\\n')
     output.write('\hline\n')
