@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
-#from flystar import starlists
+from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit, least_squares
 import matplotlib.ticker
@@ -151,6 +151,90 @@ def make_obs_table():
     # Smash all the tables together.
     final_table = vstack([tables['ob140613'], tables['ob150029'], tables['ob150211']])
     
+    print(final_table)
+
+    final_table.write(paper_dir + 'data_table.tex', format='aastex', overwrite=True)
+
+    return
+
+def make_obs_table_ob150211():
+    """
+    Make a LaTeX table for all of the observations of the three targets from 2014/2015.
+    """
+
+    targets = list(epochs.keys())
+
+    tables = {}
+
+    # Build only OB150211
+    target = 'ob150211'
+    
+    n_epochs = len(epochs[target])
+
+    obj_name = np.repeat(target.upper(), n_epochs)
+    obj_name[1:] = ''
+
+    date = np.zeros(n_epochs, dtype='S10')
+    tint = np.zeros(n_epochs, dtype=int)
+    n_exp = np.zeros(n_epochs, dtype=int)
+    strehl = np.zeros(n_epochs, dtype=float)
+    fwhm = np.zeros(n_epochs, dtype=float)
+    strehl_e = np.zeros(n_epochs, dtype=float)
+    fwhm_e = np.zeros(n_epochs, dtype=float)
+    n_star = np.zeros(n_epochs, dtype=int)
+    m_base = np.zeros(n_epochs, dtype=float)
+    ast_err = np.zeros(n_epochs, dtype=float)
+    phot_err = np.zeros(n_epochs, dtype=float)
+
+    # Loop through each epoch and grab information to populate our table.
+    for ee in range(n_epochs):
+        epoch = epochs[target][ee]
+        img_file = '/g/lu/data/microlens/{0:s}/combo/mag{0:s}_{1:s}_kp.fits'.format(epoch, target)
+        log_file = '/g/lu/data/microlens/{0:s}/combo/mag{0:s}_{1:s}_kp.log'.format(epoch, target)
+        pos_file = '/g/lu/data/microlens/{0:s}/combo/starfinder/plotPosError_{1:s}_kp.txt'.format(epoch, target)
+
+        # Fetch stuff from the image header.
+        hdr = fits.getheader(img_file)
+        date[ee] = hdr['DATE-OBS'].strip()
+        tint[ee] = np.round(float(hdr['ITIME']) * float(hdr['COADDS']), 0)
+
+        # From the log file, average Strehl and FWHM
+        _log = Table.read(log_file, format='ascii')
+        _log.rename_column('col2', 'fwhm')
+        _log.rename_column('col3', 'strehl')
+        strehl[ee] = _log['strehl'].mean()
+        strehl_e[ee] = _log['strehl'].std()
+        fwhm[ee] = _log['fwhm'].mean()
+        fwhm_e[ee] = _log['fwhm'].std()
+        n_exp[ee] = len(_log)
+
+        # Read in the stats file from the analysis of the AIROPA starlist.
+        _pos = open(pos_file, 'r')
+        lines = _pos.readlines()
+        _pos.close()
+
+        n_star[ee] = int(lines[0].split(':')[-1])
+        ast_err[ee] = float(lines[1].split(':')[-1])
+        phot_err[ee] = float(lines[2].split(':')[-1])
+        m_base[ee] = float(lines[3].split('=')[-1])
+
+    # Make our table
+    c_date = Column(data=date, name='Date', format='{:10s}')
+    c_tint = Column(data=tint, name='t$_{int}$', format='{:3.0f}', unit='s')
+    c_nexp = Column(data=n_exp, name='N$_{exp}$', format='{:3d}')
+    c_fwhm = Column(data=fwhm, name='FWHM', format='{:3.0f}', unit='mas')
+    c_fwhm_err = Column(data=fwhm_e, name='FWHM$_{err}$', format='{:3.0f}', unit='mas')
+    c_strehl = Column(data=strehl, name='Strehl', format='{:4.2f}')
+    c_strehl_err = Column(data=strehl_e, name='Strehl$_{err}$', format='{:4.2f}')
+    c_nstar = Column(data=n_star, name='N$_{star}$', format='{:4d}')
+    c_mbase = Column(data=m_base, name='Kp$_{turn}$', format='{:4.1f}', unit='mag')
+    c_asterr = Column(data=ast_err, name='$\sigma_{ast}$', format='{:5.2f}', unit='mas')
+    c_photerr = Column(data=phot_err, name='$\sigma_{phot}$', format='{:5.2f}', unit='mag')
+
+    final_table = Table((c_date, c_tint, c_nexp,
+                         c_fwhm, c_fwhm_err, c_strehl, c_strehl_err,
+                         c_nstar, c_mbase, c_asterr, c_photerr))
+
     print(final_table)
 
     final_table.write(paper_dir + 'data_table.tex', format='aastex', overwrite=True)
@@ -1668,7 +1752,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
             sol1 = '--'
             sol2 = '--'
 
-        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + descr[pp] + ' \\\\\n')
+        output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
 
     output.write('log$\mathcal{Z}$' + ' & ' +
                      '{:.2f}'.format(logZ_sol2) + ' & ' +
@@ -2436,5 +2520,108 @@ def calc_velocity():
     print(fmt.format('vL_b', v_b, 0.0, 'km/s'))
         
 
+
+    return
+
+
+def plot_cmds():
+    """
+    Everything is in 
+    /Users/jlu/work/microlens/OB150211/a_2019_05_04/notes/7_other_phot.ipynb
+    """
+
+    # Read in the Gaia and 2MASS catalogs.
+    tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
+    gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
+    
+    tt_t = np.where(tmass['name'] == 'ob150211')
+    tt_g = np.where(gaia['name'] == 'ob150211')
+
+    plt.close(1)
+    plt.figure(1, figsize=(10, 4))
+    plt.subplots_adjust(bottom=0.2, left=0.1, right=0.8, wspace=0.4)
+
+    plt.subplot(1, 2, 1)
+    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Jmag'], 'k.', alpha=0.5)
+    plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Jmag'][tt_t], 'ro', ms=10)
+    plt.xlim(0, 3)
+    plt.gca().invert_yaxis()
+    plt.xlabel('J-K (mag)')
+    plt.ylabel('J (mag)')
+    plt.title('2MASS')
+
+    plt.subplot(1, 2, 2)
+    sc = plt.scatter(gaia['bp_rp'], gaia['phot_g_mean_mag'], c=gaia['parallax'], s=10,
+                     vmin=-1, vmax=2, cmap=plt.cm.viridis)
+    plt.plot(gaia['bp_rp'][tt_g], gaia['phot_g_mean_mag'][tt_g], 'ro', ms=10)
+    plt.xlim(0, 6.5)
+    plt.gca().invert_yaxis()
+    plt.xlabel('G$_{BP}$ - G$_{RP}$ (mag)')
+    plt.ylabel('G (mag)')
+    plt.title('Gaia')
+
+    fig = plt.gcf()
+    cb_ax = fig.add_axes([0.83, 0.13, 0.02, 0.77])
+    cbar = fig.colorbar(sc, cax=cb_ax, label='Parallax (mas)')
+    
+    plt.savefig(paper_dir + 'cmds.png')
+
+    return
+
+
+def calc_blending_kp():
+    """
+    Read in a NIRC2 catalog and add up the flux
+    from all the sources that are within 1.3" from 
+    the target. This should match the b_sff derived
+    from the fits. 
+    """
+    scale = 0.00995 # arcsec / pixel
+
+    # Read in a NIRC2 starlist (high-ish quality)
+    nirc2_lis = '/g/lu/data/microlens/17jun05/combo/starfinder/'
+    nirc2_lis += 'mag17jun05_ob150211_kp_rms_named.lis'
+
+    foo = starlists.read_starlist(nirc2_lis, error=True)
+
+    # Find the target
+    tdx = np.where(foo['name'] == 'ob150211')[0][0]
+
+    # Calculate the distance from the target for each star
+    r2d = np.hypot(foo['x'] - foo['x'][tdx],
+                   foo['y'] - foo['y'][tdx])
+    r2d *= scale
+
+    foo['r2d'] = r2d
+
+    # Find those targets within the OGLE aperture
+    rdx = np.where(r2d < 1.5)[0]
+    print(foo[rdx])
+
+    # Calculate the source flux fraction assuming
+    # that the lens is dark.
+    f_src_lens = foo['flux'][tdx]
+    f_neighbors = foo['flux'][rdx[1:]].sum()
+    f_total = f_src_lens + f_neighbors
+
+    print('f_src_lens  = ', f_src_lens)
+    print('f_neighbors = ', f_neighbors)
+    print('f_total     = ', f_total)
+    print('')
+    print('f_N / f_tot = {0:.2f}'.format( f_neighbors / f_total))
+    print('(f_S + f_L) / f_tot = {0:.2f}'.format( f_src_lens / f_total))
+    
+    b_sff = foo['flux'][tdx] / (foo['flux'][rdx].sum())
+    print('b_sff = {0:.2f}'.format( b_sff ))
+
+    fit_b_sff = 0.90
+
+    f_lens = f_src_lens - (fit_b_sff * f_total)
+    print('f_lens = ', f_lens)
+    f_src = f_src_lens - f_lens
+    print('f_src  = ', f_src)
+
+    print('f_S / (f_S + f_L) = {0:.2f}'.format(f_src / f_src_lens))
+    
 
     return
