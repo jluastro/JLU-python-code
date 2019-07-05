@@ -17,13 +17,15 @@ lis_file = combo_dir + '/starfinder/mag17jun05_ob150211_kp_rms_named.lis'
 astrom_data = '/u/jlu/work/microlens/OB150211/a_2019_05_04/ob150211_astrom_p3_2019_05_04.fits'
 pspl_ast_phot = '/u/jlu/work/microlens/OB150211/a_2019_05_04/model_fits/4_fit_phot_astrom_parallax/bb_'
 
+which_fit = 'median' # Options: 'map' (maximum a posteriori), 'median', or 'maxl' (maximum likelihood)
+
 def get_datmod():
     # Get the data and model
     data = munge_ob150211.getdata(astrom_file=astrom_data)
 
     fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_phot)
     fitter.load_mnest_results()
-    mymodel = fitter.get_best_fit_model(use_median=True)
+    mymodel = fitter.get_best_fit_model(def_best=which_fit)
 
     return data, mymodel
 
@@ -92,7 +94,7 @@ def mainplot():
 
     ## PLOT ##
     cmap, norm, smap = get_cmap(t_mod)
-    fig = plt.figure(figsize=(16,6))
+    fig = plt.figure(figsize=(13,6))
     gs = gridspec.GridSpec(3, 2)
 
     # Set a reference frame. This should agree with the (0,0) date from above.
@@ -174,7 +176,7 @@ def mainplot():
     axdec.set_ylabel(r'$\Delta \delta$ (mas)')
     axdec.set_xlabel('time (MJD)')
 
-    fig.subplots_adjust(left=0.05, hspace=0, wspace=0.05)
+    fig.subplots_adjust(left=0.05, hspace=0, wspace=0.2)
 
     plt.savefig(paper_dir + 'ob150211_mainplot.pdf')
     plt.show()
