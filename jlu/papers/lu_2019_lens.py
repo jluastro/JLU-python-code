@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
-from flystar import starlists
+#from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit, least_squares
 import matplotlib.ticker
@@ -2227,19 +2227,25 @@ def murel_popsycle():
     fig = plt.figure(2, figsize=(6,6))
     plt.clf()
     plt.hist(murel, 
-             bins = np.linspace(0, 20, 51), 
-#             bins = np.logspace(-2, 2, 51),
+#             bins = np.linspace(0, 20, 51), 
+             bins = np.logspace(-1, 1.3, 51),
              histtype = 'step', 
              density=True, 
              label = 'All')
+    plt.hist(murel_long, 
+#             bins = np.linspace(0, 20, 51), 
+             bins = np.logspace(-1, 1.3, 51),
+             histtype = 'step', 
+             density=True, 
+             label = 'Long')
     plt.hist(murel_long_piE, 
-             bins = np.linspace(0, 20, 51), 
-#             bins = np.logspace(-2, 2, 51),
+#             bins = np.linspace(0, 20, 51), 
+             bins = np.logspace(-1, 13., 51),
              histtype = 'step', 
              density=True, 
              label = 'Long, piE < 0.1')
     plt.xlabel('murel (mas/yr)')
-#    plt.xscale('log')
+    plt.xscale('log')
     plt.legend()
 
 def dLdS_popsycle():
