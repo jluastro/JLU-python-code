@@ -26,6 +26,9 @@ mpl_b = '#1f77b4'
 mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
+ep_ob120169 = ['12jun',   '12jul',   '13apr',   '13jul', '15may05',
+               '15jun07', '16may24', '16jul14']
+
 ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
                '16jul14', '16aug02', '17jun05', '17jun08', '17jul19', 
                '18may11', '18aug02', '18aug16']
@@ -37,34 +40,49 @@ ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
                '17jun05', '17jul14', '18may11', '18aug16']
 
     
-epochs = {'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
+epochs = {'ob120169': ep_ob120169, 'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
 
-paper_dir = '/u/jlu/doc/papers/ob150211/'
+# paper_dir = '/u/jlu/doc/papers/ob150211/'
+paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
 
-a_dir = {'ob140613': '/u/jlu/work/microlens/OB140613/a_2019_04_19/',
-         'ob150029': '/u/jlu/work/microlens/OB150029/a_2019_04_19/',
-         'ob150211': '/u/jlu/work/microlens/OB150211/a_2019_05_04/'}
+mlens_dir = '/u/jlu/work/microlens/'
 
-astrom_data = {'ob140613': '',
-               'ob150029': a_dir['ob150029'] + 'ob150029_astrom_p3_2019_04_19.fits',
-               'ob150211': a_dir['ob150211'] + 'ob150211_astrom_p3_2019_05_04.fits'}
+a_date = {'ob120169': '2019_06_26',
+          'ob140613': '2019_06_26',
+          'ob150029': '2019_06_26',
+          'ob150211': '2019_06_26'}
 
-comp_stars = {'ob140613': [],
+comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
+              'ob140613': ['S002_15_0.7', 'S001_15_0.9'],
               'ob150029': ['S002_16_0.3', 'S003_16_0.9'],
               'ob150211': ['S001_11_1.3', 'S003_14_1.4']}
 
-pspl_ast_phot = {'ob140613': '',
-                 'ob150029': '',
-                 'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/ff_'}
+astrom_pass = {'ob120169': 'p5',
+               'ob140613': 'p5',
+               'ob150029': 'p3',
+               'ob150211': 'p5'}
 
-pspl_ast_phot_err = {'ob140613': '',
-                     'ob150029': '',
-                     'ob150211': a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/gg_'}
+a_dir = {}
+astrom_data = {}
 
+for targ in a_date:
+    a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
+    astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + '.fits'
+    
+pspl_phot = {a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/aa_',
+             a_dir['ob140613'] + 'model_fits/3_fit_phot_parallax/aa_',
+             a_dir['ob150029'] + 'model_fits/3_fit_phot_parallax/aa_',
+             a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/aa_'}
 
-pspl_phot = {'ob140613': '',
-             'ob150029': '',
-             'ob150211': a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_'}
+pspl_ast_phot = {a_dir['ob120169'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob140613'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob150029'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/aa_'}
+
+pspl_ast_phot = {a_dir['ob120169'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob140613'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob150029'] + 'model_fits/4_fit_phot_astrom_parallax/aa_',
+                 a_dir['ob150211'] + 'model_fits/4_fit_phot_astrom_parallax/aa_'}
     
 def make_obs_table():
     """
@@ -421,12 +439,20 @@ def plot_images():
         
 
 def plot_comparison_stars_all():
-    plot_comparison_stars('ob140613')
-    plot_comparison_stars('ob150029')
-    plot_comparison_stars('ob150211')
+    plot_comparison_stars('ob120169', res_rng=1.1)
+    plot_comparison_stars('ob140613', res_rng=0.4)
+    plot_comparison_stars('ob150029', res_rng=1.1)
+    plot_comparison_stars('ob150211', res_rng=1.3)
     return
 
-def plot_comparison_stars(target):
+def plot_comparison_stars(target, res_rng=0.8):
+    """
+    target : str
+        Target name (lowercase)
+
+    res_rng : float
+        +/- range of residuals in milli-arcseconds.
+    """
     ast_data_file = astrom_data[target]
 
     data = Table.read(ast_data_file)
@@ -445,20 +471,21 @@ def plot_comparison_stars(target):
     tmax = data['t'][tdx].max() + 0.5   # in days
 
     # Setup figure and color scales
-    fig = plt.figure(1, figsize=(13, 6))
+    fig = plt.figure(1, figsize=(13, 7.5))
     plt.clf()
-    grid = plt.GridSpec(5, 3, hspace=5, wspace=0.5)
-    plt.subplots_adjust(left=0.12, right=0.86)
+    grid_t = plt.GridSpec(1, 3, hspace=5.0, wspace=0.5, bottom=0.60, top=0.95, left=0.12, right=0.86)
+    grid_b = plt.GridSpec(2, 3, hspace=0.1, wspace=0.5, bottom=0.10, top=0.45, left=0.12, right=0.86)
 
-    cmap = plt.cm.viridis
+    cmap = plt.cm.plasma
     norm = plt.Normalize(vmin=tmin, vmax=tmax)
     smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     smap.set_array([])
 
     def plot_each_star(star_num, star_name):
         # Make two boxes for each star
-        ax_sky = fig.add_subplot(grid[0:-2, star_num])
-        ax_res = fig.add_subplot(grid[-2:, star_num])
+        ax_sky = fig.add_subplot(grid_t[0, star_num])
+        ax_resX = fig.add_subplot(grid_b[1, star_num])
+        ax_resY = fig.add_subplot(grid_b[0, star_num])
 
         # Fetch the data
         tdx = np.where(data['name'] == star_name)[0][0]
@@ -475,21 +502,21 @@ def plot_comparison_stars(target):
         ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
 
         # Plot Positions on Sky
-        sc = ax_sky.scatter(star['x'], star['y'], c=star['t'], cmap=cmap, norm=norm, s=5)
+        ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
+        sc = ax_sky.scatter(star['x'], star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
         ax_sky.errorbar(star['x'], star['y'], xerr=star['xe'], yerr=star['ye'],
-                            ecolor=smap.to_rgba(star['t']), fmt='none')
-        ax_sky.plot(xmod, ymod, 'k-', color='grey')
-        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey')
-        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey')
+                            ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
         ax_sky.set_aspect('equal', adjustable='datalim')
 
         # Figure out which axis has the bigger data range.
         xrng = np.abs(star['x'].max() - star['x'].min())
         yrng = np.abs(star['y'].max() - star['y'].min())
         if xrng > yrng:
-            ax_sky.set_xlim(star['x'].min(), star['x'].max())
+            ax_sky.set_xlim(star['x'].min() - 0.001, star['x'].max() + 0.001)
         else:
-            ax_sky.set_ylim(star['y'].min(), star['y'].max())
+            ax_sky.set_ylim(star['y'].min() - 0.001, star['y'].max() + 0.001)
 
         # Set labels
         ax_sky.invert_xaxis()
@@ -504,22 +531,27 @@ def plot_comparison_stars(target):
         yres = (star['y'] - ymod_at_t) * 1e3
         xrese = star['xe'] * 1e3
         yrese = star['ye'] * 1e3
-        ax_res.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$')
-        ax_res.errorbar(star['t'], yres, yerr=yrese, fmt='b.', label=r'$\delta$')
-        ax_res.plot(tmod, xmod - xmod, 'r-')
-        ax_res.plot(tmod, xmode*1e3, 'r--')
-        ax_res.plot(tmod, -xmode*1e3, 'r--')
-        ax_res.plot(tmod, ymod - ymod, 'b-')
-        ax_res.plot(tmod, ymode*1e3, 'b--')
-        ax_res.plot(tmod, -ymode*1e3, 'b--')
-        ax_res.set_xlabel('Date (yr)')
-        ax_res.set_ylim(-0.8, 0.8)
+        ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
+        ax_resY.errorbar(star['t'], yres, yerr=yrese, fmt='b.', label=r'$\delta$', elinewidth=2)
+        ax_resX.plot(tmod, xmod - xmod, 'r-')
+        ax_resX.plot(tmod, xmode*1e3, 'r--')
+        ax_resX.plot(tmod, -xmode*1e3, 'r--')
+        ax_resY.plot(tmod, ymod - ymod, 'b-')
+        ax_resY.plot(tmod, ymode*1e3, 'b--')
+        ax_resY.plot(tmod, -ymode*1e3, 'b--')
+        ax_resX.set_xlabel('Date (yr)')
+        ax_resX.set_ylim(-res_rng, res_rng)
+        ax_resY.set_ylim(-res_rng, res_rng)
+        ax_resY.get_xaxis().set_visible(False)
         if star_num == 0:
-            ax_res.set_ylabel('Resid. (mas)')
-        if star_num == 2:
-            ax_res.legend(loc='right', bbox_to_anchor= (1.5, 0.5),
-                              borderaxespad=0, frameon=True, numpoints=1,
-                              handletextpad=0.1)
+            ax_resX.set_ylabel(r'$\alpha^*$')
+            ax_resY.set_ylabel(r'$\delta$')
+            plt.gcf().text(0.015, 0.3, 'Residuals (mas)', rotation=90, fontsize=24,
+                               ha='center', va='center')
+        # if star_num == 2:
+        #     ax_res.legend(loc='right', bbox_to_anchor= (1.5, 0.5),
+        #                       borderaxespad=0, frameon=True, numpoints=1,
+        #                       handletextpad=0.1)
             # leg_ax = fig.add_axes([0.88, 0.12, 0.1, 0.1])
             # leg_ax.text(
             
@@ -531,8 +563,10 @@ def plot_comparison_stars(target):
     sc = plot_each_star(0, targets[0])
     sc = plot_each_star(1, targets[1])
     sc = plot_each_star(2, targets[2])
-    cb_ax = fig.add_axes([0.88, 0.41, 0.02, 0.49])
+    cb_ax = fig.add_axes([0.88, 0.60, 0.02, 0.35])
     plt.colorbar(sc, cax=cb_ax, label='Year')
+
+    plt.savefig(paper_dir + 'comparison_star_' + target + '.png')
     
     return
 
@@ -2157,3 +2191,4 @@ def calc_blending_kp():
     
 
     return
+
