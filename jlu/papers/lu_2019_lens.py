@@ -325,7 +325,7 @@ def plot_images():
         plt.plot(psf_tab['Xarc'], psf_tab['Yarc'], 'go', ms=15, mec='green', mfc='none', mew=2)
 
         plt.axis('equal')
-        plt.xlabel(r'$\Delta \alpha \;\cos\; \delta$ (")')
+        plt.xlabel(r'$\Delta \alpha^*$ (")')
         plt.ylabel(r'$\Delta \delta$ (")')
         plt.title(target.upper())
 
