@@ -167,7 +167,7 @@ def make_obs_table():
         tables[target] = tt
 
     # Smash all the tables together.
-    final_table = vstack([tables['ob140613'], tables['ob150029'], tables['ob150211']])
+    final_table = vstack([tables['ob120169'], tables['ob140613'], tables['ob150029'], tables['ob150211']])
     
     print(final_table)
 
@@ -3321,3 +3321,43 @@ def make_all_comparison_plots():
 #    fit_ob150211_phot_astr.plot_model_and_data_modes()  
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
+
+def compare_all_linear_motions():
+    """
+    Plot and calculate the significance of the astrometric signal for each target.
+    See fit_velocities.py in jlu/microlens for more info.
+    Saves the calculations in a table.
+    """
+    from jlu.microlens import fit_velocities
+
+    targets = list(epochs.keys())
+    objects = []
+    signal = []
+    average_deviation = np.zeros(len(targets))
+    average_deviation_error = np.zeros(len(targets))
+
+    n = 1
+    for t, target in enumerate(targets):
+        print("*** {} ***".format(target))
+
+        tab = fit_velocities.StarTable(target)
+
+        average, var = tab.compare_linear_motion(return_results=True, fign_start=n)
+        average_deviation[t] = average
+        average_deviation_error[t] = np.sqrt(var)
+        sig = np.abs(average_deviation[t] / average_deviation_error[t])
+        signal.append("${:.1f}\sigma$".format(sig))
+
+        objects.append(target.upper())
+        n += 2
+
+    av_dev = Column(data=average_deviation, name='$\overline{\Delta r}$',
+                    format='{:.3f}', unit='mas')
+    av_deve = Column(data=average_deviation_error, name='$\sigma_{\overline{\Delta r}}$',
+                     format='{:.3f}', unit='mas')
+    signal = Column(data=signal, name='signal')
+
+    tab = Table((Column(data=objects, name='Object'), av_dev, av_deve, signal))
+    tab.write(paper_dir + 'astrom_signal.tex', format='aastex', overwrite=True)
+
+    print(tab)
