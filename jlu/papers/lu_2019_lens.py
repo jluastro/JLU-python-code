@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
-#from flystar import starlists
+from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit, least_squares
 import matplotlib.ticker
@@ -284,11 +284,13 @@ def plot_pos_err():
     return
 
 def plot_images():
+    img_ob120169 = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
     img_ob140613 = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
     img_ob150029 = '/g/lu/data/microlens/17jul19/combo/mag17jul19_ob150029_kp.fits'
     img_ob150211 = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
 
-    images = {'ob140613': img_ob140613,
+    images = {'ob120169': img_ob120169,
+              'ob140613': img_ob140613,
               'ob150029': img_ob150029,
               'ob150211': img_ob150211}
 
@@ -299,7 +301,7 @@ def plot_images():
         img = fits.getdata(images[target])
 
         psf_file = '/g/lu/data/microlens/source_list/' + target + '_psf.list'
-        psf_tab = Table.read(psf_file, format='ascii')
+        psf_tab = Table.read(psf_file, format='ascii', header_start=-1)
         pdx = np.where(psf_tab['PSF?'] == 1)[0]
         psf_tab = psf_tab[pdx]
 
@@ -328,14 +330,19 @@ def plot_images():
         plt.xlabel(r'$\Delta \alpha^*$ (")')
         plt.ylabel(r'$\Delta \delta$ (")')
         plt.title(target.upper())
-
-        date_label = '20{0:2s} {2:3s} {2:2s}'.format(img_base[3:5], img_base[5:8].upper(), img_base[8:10])
+        
+        date_label = '20{0:2s} {1:3s} {2:2s}'.format(img_base[3:5], img_base[5:8].upper(), img_base[8:10])
         plt.gcf().text(0.2, 0.8, date_label, color='black')
 
         # plt.xlim(0.5, -0.5)
         # plt.ylim(-0.5, 0.5)
 
         return
+
+    plt.figure(4)
+    plt.clf()
+    plot_image_for_source('ob120169', 10, 1e5)
+    plt.savefig(paper_dir + 'img_ob120169.pdf')
 
     plt.figure(1)
     plt.clf()
