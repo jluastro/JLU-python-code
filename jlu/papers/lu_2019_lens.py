@@ -341,7 +341,7 @@ def plot_images():
 
     plt.figure(4)
     plt.clf()
-    plot_image_for_source('ob120169', 10, 1e5)
+    plot_image_for_source('ob120169', 10, 5e5)
     plt.savefig(paper_dir + 'img_ob120169.pdf')
 
     plt.figure(1)
