@@ -26,6 +26,7 @@ class StarTable(Table):
         Table.__init__(self, tab)
 
         self['name'] = self['name'].astype('U20')
+        self.cut = False # Tracks whether the data has been cut or not
 
         return
 
@@ -90,6 +91,9 @@ class StarTable(Table):
         # This is slow; but robust.
         for ss in range(N_stars):
             self.fit_velocity_for_star(ss, bootstrap=bootstrap, time_cut=time_cut)
+
+        if time_cut is not None:
+            self.cut = True
 
         if verbose:
             stop_time = time.time()
@@ -244,7 +248,62 @@ class StarTable(Table):
 
         return
 
-    def plot_fit(self, fign=0, return_res=False):
+    def calc_chi2(self, star):
+        ss = np.where(self['name']==star)[0][0]
+
+        x = self['x'][ss, :].data
+        y = self['y'][ss, :].data
+
+        if 'xe' in self.colnames:
+            xe = self['xe'][ss, :].data
+            ye = self['ye'][ss, :].data
+        else:
+            xe = np.ones(N_epochs, dtype=float)
+            ye = np.ones(N_epochs, dtype=float)
+
+        if 't' in self.colnames:
+            t = self['t'][ss, :].data
+        else:
+            t = self.meta['list_times']
+
+        # Find the data used in the fit
+        if self.cut:
+            time_cut = time_cuts[self.target]
+            good = np.where((xe != 0) & (ye != 0) &
+                            np.isfinite(xe) & np.isfinite(ye) &
+                            np.isfinite(x) & np.isfinite(y) &
+                            (np.floor(t) != time_cut))[0]
+        else:
+            good = np.where((xe != 0) & (ye != 0) &
+                            np.isfinite(xe) & np.isfinite(ye) &
+                            np.isfinite(x) & np.isfinite(y))[0]
+
+        x = x[good]
+        y = y[good]
+        t = t[good]
+        xe = xe[good]
+        ye = ye[good]
+
+        # Change signs of the East                                                                        
+        x = x*-1.0
+        x0 = self['x0'][ss]*-1.0
+        vx = self['vx'][ss]*-1.0
+        
+        xmod_at_t = x0 + vx * (t - self['t0'][ss])
+        ymod_at_t = self['y0'][ss] + self['vy'][ss] * (t - self['t0'][ss])
+        xres = (x - xmod_at_t)
+        yres = (y - ymod_at_t)
+
+        # Calculate chi^2
+        chi2_x = xres**2 / xe**2
+        chi2_y = yres**2 / ye**2
+
+        chi2 = np.sum(chi2_x + chi2_y)
+        chi2_red = chi2 / (len(x) - 2) 
+
+        return chi2, chi2_red
+
+    def plot_fit(self, title, fign=0, return_res=False):
         res_rng = res_dict[self.target]
 
         stars = np.append([self.target], lu.comp_stars[self.target])
@@ -255,13 +314,16 @@ class StarTable(Table):
         tmax = self['t'][tdx].max() + 0.5   # in days
 
         # Setup figure and color scales
-        figsize = (13, 7.5)
+        figsize = (13, 9.5)
         if fign != 0:
             fig = plt.figure(fign, figsize=figsize)
         else:
             fig = plt.figure(figsize=figsize)
         plt.clf()
-        grid_t = plt.GridSpec(1, 3, hspace=5.0, wspace=0.5, bottom=0.60, top=0.95, left=0.12, right=0.86)
+
+        st = fig.suptitle(title + " astrometry", fontsize = 20)
+
+        grid_t = plt.GridSpec(1, 3, hspace=5.0, wspace=0.5, bottom=0.60, top=0.90, left=0.12, right=0.86)
         grid_b = plt.GridSpec(2, 3, hspace=0.1, wspace=0.5, bottom=0.10, top=0.45, left=0.12, right=0.86)
 
         cmap = plt.cm.plasma
@@ -338,41 +400,66 @@ class StarTable(Table):
             if star_num == 0:
                 ax_resX.set_ylabel(r'$\alpha^*$')
                 ax_resY.set_ylabel(r'$\delta$')
-                plt.gcf().text(0.015, 0.3, 'Residuals (mas)', rotation=90, fontsize=24,
+                plt.gcf().text(0.015, 0.3, 'Residuals (mas)', rotation=90, fontsize=18,
                                    ha='center', va='center')
 
             xmode_at_t = np.hypot(star['x0e'], star['vxe'] * (star['t'] - star['t0']))*1e3
             ymode_at_t = np.hypot(star['y0e'], star['vye'] * (star['t'] - star['t0']))*1e3
+            x_err = np.hypot(xrese, xmode_at_t)
+            y_err = np.hypot(yrese, ymode_at_t)
 
-            return np.vstack([[xres], [np.hypot(xrese, xmode_at_t)]]), np.vstack([[yres],\
-                             [np.hypot(yrese, ymode_at_t)]]), sc
-
+            return np.vstack([[xres], [x_err]]), np.vstack([[yres], [y_err]]), sc
+            
         xr, yr, sc = plot_each_star(0, stars[0])
         sc = plot_each_star(1, stars[1])[-1]
         sc = plot_each_star(2, stars[2])[-1]
         cb_ax = fig.add_axes([0.88, 0.60, 0.02, 0.35])
         plt.colorbar(sc, cax=cb_ax, label='Year')
 
-        plt.show()
+        plt.savefig("{0}_{1}_linear_fit.pdf".format(self.target, title))
 
         if return_res:
             return xr, yr
 
-    def compare_linear_motion(self, return_results=False, fign_start=1):
+    def compare_linear_motion(self, return_results=False, fign_start=1, plot_residuals=False):
         """
         Compare the linear motion of the target by first fitting linear motion to all
         the astrometry, then fitting to only non-peak astrometry.
-        Calculates the significance of the signal as
-             sigma^2_{average deviation} = 1 / (sum_i 1/sigma^2_{deviation, i}) / N_obs,
+        Calculates the significance of the signal as the ratio of the the average
+        deviation during the peak year to the root of it error,
+             sigma_{average deviation} = sqrt{ 1 / (sum_i 1/sigma^2_{deviation, i}) / N_obs },
         where
-             sigma^2_{deviation, i} = deltaX_i
+             sigma^2_{deviation, i} = deltaR_i.
+        These numbers are printed, along with the number N_obs of observations in the peak year.
+
+        Parameters
+        ----------
+        self : astropy.table
+        return_results : bool, optional
+            If True, returns the average deviation and its variance.
+            Default is False.
+        fign_start : int, optional
+            The first figure number (for the linear fit of all the astrometry).
+            Used to not overplot on different targets.
+            Default is 1.
+
+        Returns
+        -------
+        average : float, optional
+            Returned if return_results = True.
+            The average deviation of the astrometry in the peak year in mas.
+        var : float, optional
+            Returned if return_results = True.
+            The variance of the average above in mas^2.
         """
         # Plot the linear fit from the astrometry
-        self.plot_fit(fign=fign_start)
+        self.plot_fit(title = 'all', fign=fign_start)
+        all_chi2, all_chi2_red = self.calc_chi2(self.target)
         # Plot the linear fit without the peak year and get the residuals
         time_cut = time_cuts[self.target]
         self.fit(time_cut=time_cut)
-        xr, yr = self.plot_fit(fign=(fign_start + 1), return_res=True)
+        xr, yr = self.plot_fit(title = 'off_peak', fign=(fign_start + 1), return_res=True)
+        cut_chi2, cut_chi2_red = self.calc_chi2(self.target)
 
         tdx = np.where(self['name'] == self.target)[0][0]
         idx = np.where(np.floor(self[tdx]['t']) == time_cut)[0]
@@ -388,8 +475,11 @@ class StarTable(Table):
         average = np.multiply(rres, weights).sum() / weights.sum()
         var = 1/np.power(weights, 2).sum()/len(idx)
 
-        print("N = %d"%len(idx))
-        print("average deviation = %.2f +/- %.2f mas"%(average, np.sqrt(var)))
-
         if return_results:
-            return average, var
+            return average, var, np.array([all_chi2, all_chi2_red]), np.array([cut_chi2, cut_chi2_red])
+        else:
+            print("N_obs = %d"%len(idx))
+            print("average deviation = %.2f +/- %.2f mas"%(average, np.sqrt(var)))
+            print("     chi^2       chi^2_red")
+            print("all: %.2f        %.2f"%(all_chi2, all_chi2_red))
+            print("cut: %.2f        %.2f"%(cut_chi2, cut_chi2_red))

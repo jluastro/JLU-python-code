@@ -3337,23 +3337,36 @@ def compare_all_linear_motions():
     """
     from jlu.microlens import fit_velocities
 
+    # Make directory to hold table and figures
+    out_dir = paper_dir+ 'compare_linear_motion'
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    os.chdir(out_dir)
+
     targets = list(epochs.keys())
     objects = []
     signal = []
     average_deviation = np.zeros(len(targets))
     average_deviation_error = np.zeros(len(targets))
+    all_chi2 = np.zeros(len(targets))
+    all_chi2_red = np.zeros(len(targets))
+    cut_chi2 = np.zeros(len(targets))
+    cut_chi2_red = np.zeros(len(targets))
 
     n = 1
     for t, target in enumerate(targets):
-        print("*** {} ***".format(target))
-
         tab = fit_velocities.StarTable(target)
 
-        average, var = tab.compare_linear_motion(return_results=True, fign_start=n)
+        average, var, all_chi2s, cut_chi2s = tab.compare_linear_motion(return_results=True, fign_start=n)
         average_deviation[t] = average
         average_deviation_error[t] = np.sqrt(var)
         sig = np.abs(average_deviation[t] / average_deviation_error[t])
         signal.append("${:.1f}\sigma$".format(sig))
+        all_chi2[t] = all_chi2s[0]
+        all_chi2_red[t] = all_chi2s[1]
+        cut_chi2[t] = cut_chi2s[0]
+        cut_chi2_red[t] = cut_chi2s[1]
 
         objects.append(target.upper())
         n += 2
@@ -3362,9 +3375,16 @@ def compare_all_linear_motions():
                     format='{:.3f}', unit='mas')
     av_deve = Column(data=average_deviation_error, name='$\sigma_{\overline{\Delta r}}$',
                      format='{:.3f}', unit='mas')
-    signal = Column(data=signal, name='signal')
+    signal = Column(data=signal, name='significance')
+    all_chi2 = Column(data=all_chi2, name='$\chi^2$a', format='{:.2f}')
+    all_chi2_red = Column(data=all_chi2_red, name='$\chi^2_{red}$a', format='{:.2f}')
+    cut_chi2 = Column(data=cut_chi2, name='$\chi^2$', format='{:.2f}')
+    cut_chi2_red = Column(data=cut_chi2_red, name='$\chi^2_{red}$', format='{:.2f}')
 
-    tab = Table((Column(data=objects, name='Object'), av_dev, av_deve, signal))
-    tab.write(paper_dir + 'astrom_signal.tex', format='aastex', overwrite=True)
+    tab = Table((Column(data=objects, name='Object'), all_chi2, all_chi2_red, cut_chi2, cut_chi2_red,\
+                     av_dev, av_deve, signal))
+    tab.write('astrom_significance.tex', format='aastex', overwrite=True)
 
     print(tab)
+
+    os.chdir('../')
