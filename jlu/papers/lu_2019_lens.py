@@ -14,7 +14,7 @@ from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 import os
 from scipy.ndimage import gaussian_filter as norm_kde
-from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
+from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model, munge
 import dynesty.utils as dyutil
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
@@ -174,6 +174,81 @@ def make_obs_table():
     final_table.write(paper_dir + 'data_table.tex', format='aastex', overwrite=True)
 
     return
+
+def epoch_figure():
+    '''
+    Makes a nice illustration of the OGLE and Keck data obtained for all targets.
+    '''
+    from astropy.time import Time
+    import datetime
+
+    # Obtain all dates
+    targets = list(epochs.keys())
+    ast_dates = np.array([])
+    pho_dates = np.array([])
+    ast_per_target = np.zeros(len(targets), dtype=int)
+    pho_per_target = np.zeros(len(targets), dtype=int)
+    for t in range(len(targets)):
+        data = munge.getdata(targets[t], time_format='jyear')
+        ast_dates = np.append(ast_dates, data['t_ast'].data)
+        pho_dates = np.append(pho_dates, data['t_phot'].data)
+        ast_per_target[t] = len(data['t_ast'])
+        pho_per_target[t] = len(data['t_phot'])
+
+    # Convert to astropy Time objects
+    ast_dates = Time(ast_dates, format='jyear', scale='utc').datetime
+    pho_dates = Time(pho_dates, format='jyear', scale='utc').datetime
+    t_min = np.min([ast_dates.min(), pho_dates.min()])
+    t_max = np.max([ast_dates.max(), pho_dates.max()])
+    years = np.arange(t_min.year, t_max.year + 1)
+    num_t = (years[-1] - years[0])*12 + (t_max.month - t_min.month)
+    month_arr = np.arange(0, num_t+1)
+
+    # Make grid
+    grid = np.zeros((3*len(targets), num_t+1))
+
+    # Find differences in months
+    delta_ast = np.zeros(len(ast_dates), dtype=int)
+    for i in range(len(delta_ast)):
+        delta_ast[i] = (ast_dates[i].year - years[0])*12 + (ast_dates[i].month - t_min.month)
+    delta_pho = np.zeros(len(pho_dates), dtype=int)
+    for i in range(len(delta_pho)):
+        delta_pho[i] = (pho_dates[i].year - years[0])*12 + (pho_dates[i].month - t_min.month)
+    
+    a = 0
+    p = 0
+    black = 1
+    red = 2
+    for t in range(len(targets)):
+        in_idx = 3*t
+        # Identify Keck astrometry
+        for d in delta_ast[a:a+ast_per_target[t]]:
+            if d in month_arr:
+                grid[in_idx:in_idx+2, d] = black
+        a += ast_per_target[t]
+        # Identify OGLE photometry
+        for d in delta_pho[p:p+pho_per_target[t]]:
+            if d in month_arr:
+                grid[in_idx+1, d] = red
+        p += pho_per_target[t]
+
+    cmap = matplotlib.colors.ListedColormap(['#ffffff', 'black', 'red'])
+    boundaries = [-0.5, 0.5, 1.5, 2.5]
+    norm = matplotlib.colors.BoundaryNorm(boundaries, cmap.N, clip=True)
+
+    x = np.linspace(Time(t_min).jyear, Time(t_max).jyear, num_t+1)
+    y = np.linspace(0, len(targets), grid.shape[0])
+    
+    fig, ax = plt.subplots(figsize=(8,6))
+    cax = ax.pcolormesh(x, y, grid, cmap=cmap, norm=norm)
+    plt.yticks(y[1::3], targets)
+
+    #cbar = fig.colorbar(cax, ticks=[1, 2])
+    #cbar.set_clim(black, red)
+    #cbar.ax.set_yticklabels(['Keck', 'OGLE'])
+    
+    plt.show()
+    plt.savefig(paper_dir + 'epochs.pdf')
 
 def perr_v_mag(mag, amp, index, mag_const, adderr):
     """
@@ -1275,6 +1350,67 @@ def calc_blending_kp():
 
     return
 
+def compare_all_linear_motions():
+    """
+    Plot and calculate the significance of the astrometric signal for each target.
+    See fit_velocities.py in jlu/microlens for more info.
+    Saves the calculations in a table.
+    """
+    from jlu.microlens import fit_velocities
+
+    # Make directory to hold table and figures
+    out_dir = paper_dir+ 'compare_linear_motion'
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    ret_dir = os.getcwd()
+    os.chdir(out_dir)
+
+    targets = list(epochs.keys())
+    objects = []
+    signal = []
+    average_deviation = np.zeros(len(targets))
+    average_deviation_error = np.zeros(len(targets))
+    all_chi2 = np.zeros(len(targets))
+    all_chi2_red = np.zeros(len(targets))
+    cut_chi2 = np.zeros(len(targets))
+    cut_chi2_red = np.zeros(len(targets))
+
+    n = 1
+    for t, target in enumerate(targets):
+        tab = fit_velocities.StarTable(target)
+
+        average, var, all_chi2s, cut_chi2s = tab.compare_linear_motion(return_results=True, fign_start=n)
+        average_deviation[t] = average
+        average_deviation_error[t] = np.sqrt(var)
+        sig = np.abs(average_deviation[t] / average_deviation_error[t])
+        signal.append("${:.1f}\sigma$".format(sig))
+        all_chi2[t] = all_chi2s[0]
+        all_chi2_red[t] = all_chi2s[1]
+        cut_chi2[t] = cut_chi2s[0]
+        cut_chi2_red[t] = cut_chi2s[1]
+
+        objects.append(target.upper())
+        n += 2
+
+    av_dev = Column(data=average_deviation, name='$\overline{\Delta r}$',
+                    format='{:.3f}', unit='mas')
+    av_deve = Column(data=average_deviation_error, name='$\sigma_{\overline{\Delta r}}$',
+                     format='{:.3f}', unit='mas')
+    signal = Column(data=signal, name='significance')
+    all_chi2 = Column(data=all_chi2, name='$\chi^2$a', format='{:.2f}')
+    all_chi2_red = Column(data=all_chi2_red, name='$\chi^2_{red}$a', format='{:.2f}')
+    cut_chi2 = Column(data=cut_chi2, name='$\chi^2$', format='{:.2f}')
+    cut_chi2_red = Column(data=cut_chi2_red, name='$\chi^2_{red}$', format='{:.2f}')
+
+    tab = Table((Column(data=objects, name='Object'), all_chi2, all_chi2_red, cut_chi2, cut_chi2_red,\
+                     av_dev, av_deve, signal))
+    tab.write('astrom_significance.tex', format='aastex', overwrite=True)
+
+    print(tab)
+
+    os.chdir(ret_dir)
+
 
 ####################################
 ### PopSyCLE Visualization Stuff ###
@@ -1515,7 +1651,6 @@ def pi_popsycle():
 #    plt.legend()
 #
     plt.show()
-
 
 
 ##################################
@@ -3328,63 +3463,3 @@ def make_all_comparison_plots():
 #    fit_ob150211_phot_astr.plot_model_and_data_modes()  
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
-
-def compare_all_linear_motions():
-    """
-    Plot and calculate the significance of the astrometric signal for each target.
-    See fit_velocities.py in jlu/microlens for more info.
-    Saves the calculations in a table.
-    """
-    from jlu.microlens import fit_velocities
-
-    # Make directory to hold table and figures
-    out_dir = paper_dir+ 'compare_linear_motion'
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-
-    os.chdir(out_dir)
-
-    targets = list(epochs.keys())
-    objects = []
-    signal = []
-    average_deviation = np.zeros(len(targets))
-    average_deviation_error = np.zeros(len(targets))
-    all_chi2 = np.zeros(len(targets))
-    all_chi2_red = np.zeros(len(targets))
-    cut_chi2 = np.zeros(len(targets))
-    cut_chi2_red = np.zeros(len(targets))
-
-    n = 1
-    for t, target in enumerate(targets):
-        tab = fit_velocities.StarTable(target)
-
-        average, var, all_chi2s, cut_chi2s = tab.compare_linear_motion(return_results=True, fign_start=n)
-        average_deviation[t] = average
-        average_deviation_error[t] = np.sqrt(var)
-        sig = np.abs(average_deviation[t] / average_deviation_error[t])
-        signal.append("${:.1f}\sigma$".format(sig))
-        all_chi2[t] = all_chi2s[0]
-        all_chi2_red[t] = all_chi2s[1]
-        cut_chi2[t] = cut_chi2s[0]
-        cut_chi2_red[t] = cut_chi2s[1]
-
-        objects.append(target.upper())
-        n += 2
-
-    av_dev = Column(data=average_deviation, name='$\overline{\Delta r}$',
-                    format='{:.3f}', unit='mas')
-    av_deve = Column(data=average_deviation_error, name='$\sigma_{\overline{\Delta r}}$',
-                     format='{:.3f}', unit='mas')
-    signal = Column(data=signal, name='significance')
-    all_chi2 = Column(data=all_chi2, name='$\chi^2$a', format='{:.2f}')
-    all_chi2_red = Column(data=all_chi2_red, name='$\chi^2_{red}$a', format='{:.2f}')
-    cut_chi2 = Column(data=cut_chi2, name='$\chi^2$', format='{:.2f}')
-    cut_chi2_red = Column(data=cut_chi2_red, name='$\chi^2_{red}$', format='{:.2f}')
-
-    tab = Table((Column(data=objects, name='Object'), all_chi2, all_chi2_red, cut_chi2, cut_chi2_red,\
-                     av_dev, av_deve, signal))
-    tab.write('astrom_significance.tex', format='aastex', overwrite=True)
-
-    print(tab)
-
-    os.chdir('../')
