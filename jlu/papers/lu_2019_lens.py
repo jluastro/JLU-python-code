@@ -1350,7 +1350,7 @@ def calc_blending_kp():
 
     return
 
-def compare_all_linear_motions():
+def compare_all_linear_motions(save_all=False):
     """
     Plot and calculate the significance of the astrometric signal for each target.
     See fit_velocities.py in jlu/microlens for more info.
@@ -1380,7 +1380,9 @@ def compare_all_linear_motions():
     for t, target in enumerate(targets):
         tab = fit_velocities.StarTable(target)
 
-        average, var, all_chi2s, cut_chi2s = tab.compare_linear_motion(return_results=True, fign_start=n)
+        average, var, all_chi2s, cut_chi2s = tab.compare_linear_motion(fign_start=n,
+                                                                       return_results=True,
+                                                                       save_all=save_all)
         average_deviation[t] = average
         average_deviation_error[t] = np.sqrt(var)
         sig = np.abs(average_deviation[t] / average_deviation_error[t])
@@ -1391,7 +1393,7 @@ def compare_all_linear_motions():
         cut_chi2_red[t] = cut_chi2s[1]
 
         objects.append(target.upper())
-        n += 2
+        n += 3
 
     av_dev = Column(data=average_deviation, name='$\overline{\Delta r}$',
                     format='{:.3f}', unit='mas')

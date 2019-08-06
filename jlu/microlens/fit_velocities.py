@@ -303,7 +303,7 @@ class StarTable(Table):
 
         return chi2, chi2_red
 
-    def plot_fit(self, title, fign=0, return_res=False):
+    def plot_fit(self, title, fign=0, return_res=False, save_plot=False):
         res_rng = res_dict[self.target]
 
         stars = np.append([self.target], lu.comp_stars[self.target])
@@ -416,12 +416,115 @@ class StarTable(Table):
         cb_ax = fig.add_axes([0.88, 0.60, 0.02, 0.35])
         plt.colorbar(sc, cax=cb_ax, label='Year')
 
-        plt.savefig("{0}_{1}_linear_fit.pdf".format(self.target, title))
+        if save_plot:
+            plt.savefig("{0}_{1}_linear_fit.pdf".format(self.target, title))
 
         if return_res:
             return xr, yr
 
-    def compare_linear_motion(self, return_results=False, fign_start=1, plot_residuals=False):
+    def plot_target(self, fign):
+        res_rng = res_dict[self.target]
+
+        stars = np.append([self.target], lu.comp_stars[self.target])
+
+        # Figure out the min/max of the times for these sources.
+        tdx = np.where(self['name'] == self.target)[0][0]
+        tmin = self['t'][tdx].min() - 0.5   # in days
+        tmax = self['t'][tdx].max() + 0.5   # in days
+
+        # Setup figure and color scales
+        figsize = (6, 9.5)
+        if fign != 0:
+            fig = plt.figure(fign, figsize=figsize)
+        else:
+            fig = plt.figure(figsize=figsize)
+        plt.clf()
+
+        # st = fig.suptitle(self.target + " astrometry", fontsize = 20)
+
+        grid_t = plt.GridSpec(1, 1, hspace=5.0, wspace=0.5, bottom=0.60, top=0.90, left=0.22, right=0.79)
+        grid_b = plt.GridSpec(2, 1, hspace=0.1, wspace=0.5, bottom=0.10, top=0.45, left=0.22, right=0.79)
+
+        cmap = plt.cm.plasma
+        norm = plt.Normalize(vmin=tmin, vmax=tmax)
+        smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        smap.set_array([])
+
+        ax_sky = fig.add_subplot(grid_t[0, 0])
+        ax_resX = fig.add_subplot(grid_b[1, 0])
+        ax_resY = fig.add_subplot(grid_b[0, 0])
+
+        # Fetch the data
+        tdx = np.where(self['name'] == self.target)[0][0]
+        star = self[tdx]
+
+        # Change signs of the East
+        x = star['x']*-1.0
+        x0 = star['x0']*-1.0
+        vx = star['vx']*-1.0
+
+        # Make the model curves
+        tmod = np.arange(tmin, tmax, 0.1)
+        xmod = x0 + vx * (tmod - star['t0'])
+        ymod = star['y0'] + star['vy'] * (tmod - star['t0'])
+        xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0']))
+        ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0']))
+
+        xmod_at_t = x0 + vx * (star['t'] - star['t0'])
+        ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
+
+        # Plot Positions on Sky
+        ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
+        sc = ax_sky.scatter(x, star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_sky.errorbar(x, star['y'], xerr=star['xe'], yerr=star['ye'],
+                            ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
+        ax_sky.set_aspect('equal', adjustable='datalim')
+
+        # Figure out which axis has the bigger data range.
+        xrng = np.abs(x.max() - x.min())
+        yrng = np.abs(star['y'].max() - star['y'].min())
+        if xrng > yrng:
+            ax_sky.set_xlim(x.min() - 0.001, x.max() + 0.001)
+        else:
+            ax_sky.set_ylim(star['y'].min() - 0.001, star['y'].max() + 0.001)
+
+        # Set labels
+        ax_sky.invert_xaxis()
+        ax_sky.set_title(self.target.upper())
+        ax_sky.set_xlabel(r'$\Delta\alpha*$ (")')
+        ax_sky.set_ylabel(r'$\Delta\delta$ (")')
+
+        # Plot Residuals vs. Time
+        xres = (x - xmod_at_t) * 1e3
+        yres = (star['y'] - ymod_at_t) * 1e3
+        xrese = star['xe'] * 1e3
+        yrese = star['ye'] * 1e3
+        ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
+        ax_resY.errorbar(star['t'], yres, yerr=yrese, fmt='b.', label=r'$\delta$', elinewidth=2)
+        ax_resX.plot(tmod, xmod - xmod, 'r-')
+        ax_resX.plot(tmod, xmode*1e3, 'r--')
+        ax_resX.plot(tmod, -xmode*1e3, 'r--')
+        ax_resY.plot(tmod, ymod - ymod, 'b-')
+        ax_resY.plot(tmod, ymode*1e3, 'b--')
+        ax_resY.plot(tmod, -ymode*1e3, 'b--')
+        ax_resX.set_xlabel('Date (yr)')
+        ax_resX.set_ylim(-res_rng, res_rng)
+        ax_resY.set_ylim(-res_rng, res_rng)
+        ax_resY.get_xaxis().set_visible(False)
+        ax_resX.set_ylabel(r'$\alpha^*$')
+        ax_resY.set_ylabel(r'$\delta$')
+        plt.gcf().text(0.04, 0.3, 'Residuals (mas)', rotation=90, fontsize=18,
+                           ha='center', va='center')
+
+        cb_ax = fig.add_axes([0.8, 0.60, 0.02, 0.3])
+        plt.colorbar(sc, cax=cb_ax, label='Year')
+
+        plt.savefig("{}_linear_fit.pdf".format(self.target))
+
+    def compare_linear_motion(self, return_results=False, fign_start=1,
+                              plot_residuals=False, save_all=False):
         """
         Compare the linear motion of the target by first fitting linear motion to all
         the astrometry, then fitting to only non-peak astrometry.
@@ -453,12 +556,14 @@ class StarTable(Table):
             The variance of the average above in mas^2.
         """
         # Plot the linear fit from the astrometry
-        self.plot_fit(title = 'all', fign=fign_start)
+        self.plot_fit(title = 'all', fign=fign_start, save_plot=save_all)
         all_chi2, all_chi2_red = self.calc_chi2(self.target)
         # Plot the linear fit without the peak year and get the residuals
         time_cut = time_cuts[self.target]
         self.fit(time_cut=time_cut)
-        xr, yr = self.plot_fit(title = 'off_peak', fign=(fign_start + 1), return_res=True)
+        self.plot_target(fign=(fign_start+1))
+        xr, yr = self.plot_fit(title = 'off_peak', fign=(fign_start + 2),
+                               return_res=True, save_plot=save_all)
         cut_chi2, cut_chi2_red = self.calc_chi2(self.target)
 
         tdx = np.where(self['name'] == self.target)[0][0]
