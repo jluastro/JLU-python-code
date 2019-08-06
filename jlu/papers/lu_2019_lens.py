@@ -1355,6 +1355,13 @@ def compare_all_linear_motions(save_all=False):
     Plot and calculate the significance of the astrometric signal for each target.
     See fit_velocities.py in jlu/microlens for more info.
     Saves the calculations in a table.
+    
+    Parameters
+    ----------
+    save_all : bool, optional
+      If True, all plots are saved. If False, only the figure of the off-peak
+      linear fit of the target is saved.
+      Default is False.
     """
     from jlu.microlens import fit_velocities
 
