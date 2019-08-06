@@ -303,7 +303,32 @@ class StarTable(Table):
 
         return chi2, chi2_red
 
-    def plot_fit(self, title, fign=0, return_res=False, save_plot=False):
+    def plot_fit(self, title, fign=1, return_res=False, save_plot=False):
+        '''
+        Plot the linear fit of the target and companion stars.
+        
+        Parameters
+        ----------
+        title : string
+            String (usually "all" or "off_peak") for the figure
+            to be added to the title "_astrometry".
+        fign : int, optional
+            Figure number.
+            Default is 1.
+        return_res : bool, optional
+            If True, returns the residuals to the fit for the target.
+            Default is False.
+        save_plot : bool, optional
+            If True, saves the figure.
+            Default is False.
+            
+        Returns
+        -------
+        xr, yr : array_like, optional
+            If return_res is True, the residuals in x and y
+            are returned, each array containing the residuals
+            and their error.
+        '''
         res_rng = res_dict[self.target]
 
         stars = np.append([self.target], lu.comp_stars[self.target])
@@ -422,7 +447,16 @@ class StarTable(Table):
         if return_res:
             return xr, yr
 
-    def plot_target(self, fign):
+    def plot_target(self, fign=1):
+        '''
+        Plots the linear fit for the target only. The figure is saved.
+        
+        Parameters
+        ----------
+        fign : int, optional
+            Figure number.
+            Default is 1.
+        '''
         res_rng = res_dict[self.target]
 
         stars = np.append([self.target], lu.comp_stars[self.target])
@@ -523,8 +557,7 @@ class StarTable(Table):
 
         plt.savefig("{}_linear_fit.pdf".format(self.target))
 
-    def compare_linear_motion(self, return_results=False, fign_start=1,
-                              plot_residuals=False, save_all=False):
+    def compare_linear_motion(self, return_results=False, fign_start=1, save_all=False):
         """
         Compare the linear motion of the target by first fitting linear motion to all
         the astrometry, then fitting to only non-peak astrometry.
@@ -545,6 +578,11 @@ class StarTable(Table):
             The first figure number (for the linear fit of all the astrometry).
             Used to not overplot on different targets.
             Default is 1.
+        save_all : bool, optional
+            If True, saves all plots (comparison plots of both linear fits
+            the target-only off-peak fit).
+            If False, only the target-only off-peak fit is saved.
+            Default is False.
 
         Returns
         -------
@@ -558,9 +596,11 @@ class StarTable(Table):
         # Plot the linear fit from the astrometry
         self.plot_fit(title = 'all', fign=fign_start, save_plot=save_all)
         all_chi2, all_chi2_red = self.calc_chi2(self.target)
+        
         # Plot the linear fit without the peak year and get the residuals
         time_cut = time_cuts[self.target]
-        self.fit(time_cut=time_cut)
+        self.fit(time_cut=time_cut) # Fit without the peak year
+        # Plot the fit for the target. This figure will always be saved.
         self.plot_target(fign=(fign_start+1))
         xr, yr = self.plot_fit(title = 'off_peak', fign=(fign_start + 2),
                                return_res=True, save_plot=save_all)
