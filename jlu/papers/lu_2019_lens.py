@@ -1210,7 +1210,6 @@ def plot_cmds():
 
     return
 
-
 def calc_blending_kp():
     """
     Read in a NIRC2 catalog and add up the flux
