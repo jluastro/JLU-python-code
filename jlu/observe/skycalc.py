@@ -43,6 +43,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         labels.append(label)
 
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
+    heights = [1.45, 1.35, 1.25, 1.15]
 
     # Get sunset and sunrise times on the first specified day
     midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[date_idx], days[date_idx])) - utc_offset
