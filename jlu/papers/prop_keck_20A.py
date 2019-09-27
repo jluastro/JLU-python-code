@@ -889,6 +889,7 @@ def plot_ob140613_phot_ast():
         fm2.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
                      fmt='k.', alpha=0.9)
         fm2.set_yticks(np.array([0.0, 0.2]))
+        fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
         fm2.axhline(0, linestyle='--', color='r')
         fm2.set_xlabel('Time (HJD)')
         fm1.set_ylabel('Magnitude')
@@ -911,6 +912,7 @@ def plot_ob140613_phot_ast():
                     yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
         f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
         f2.axhline(0, linestyle='--', color='r')
+        f2.xaxis.set_major_locator(plt.MaxNLocator(3))
         f2.set_xlabel('Time (HJD)')
         f2.set_ylabel('Res.')
 
@@ -931,6 +933,7 @@ def plot_ob140613_phot_ast():
                     yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
         f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
         f4.axhline(0, linestyle='--', color='r')
+        f4.xaxis.set_major_locator(plt.MaxNLocator(3))
         f4.set_yticks(np.array([0.0, -0.2]))
         f4.set_xlabel('Time (HJD)')
         f4.set_ylabel('Res.')
