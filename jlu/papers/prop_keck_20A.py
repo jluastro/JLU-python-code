@@ -1128,122 +1128,142 @@ def plot_ob140613_phot_ast():
 
     mod_all = mod_fit.get_best_fit_modes_model(def_best='median')
     tab_all = mod_fit.load_mnest_modes()
-    
-    def plot_4panel(mod, tab):
-        # Calculate the model on a similar timescale to the data.
-        tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
-        t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
-        t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
 
-        # Get the linear motion curves for the source (includes parallax)
-        p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
-        p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+    plot_4panel(data, mod_all[1], tab_all[1], r_min_k=4.0, mass_max_lim=2)
 
-        # Get the lensed motion curves for the source
-        p_lens_mod = mod.get_astrometry(t_mod_ast)
-        p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+    return
 
-        # Geth the photometry
-        m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
-        m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
-        m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+def plot_ob150211_phot_ast():
+    data = munge.getdata('ob150211', use_astrom_phot=True)
+    mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
+    mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
 
-        # Calculate the delta-mag between R-band and K-band from the
-        # flat part at the end.
-        tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast'][-1]))
-        r_min_k = data['mag1'][tidx] - data['mag2'][-1]
-        r_min_k = 4.0
-        print('r_min_k = ', r_min_k)
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
+    #mod_fit.separate_modes()
+    #mod_fit.summarize_results_modes()
 
-        # Plotting        
-        plt.figure(2, figsize=(18, 4))
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='median')
+    tab_all = mod_fit.load_mnest_modes()
 
-        pan_wid = 0.15
-        pan_pad = 0.09
-        fig_pos = np.arange(0, 4) * (pan_wid + pan_pad) + pan_pad
-        print(fig_pos)
-
-        # Brightness vs. time
-        fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
-        fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
-        fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
-                     color = mpl_b, fmt='.', alpha=0.05)
-        fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
-                     fmt='k.', alpha=0.9)
-        fm1.plot(t_mod_pho, m_lens_mod, 'r-')
-        fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                     color = mpl_b, fmt='.', alpha=0.05)
-        fm2.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
-                     fmt='k.', alpha=0.9)
-        fm2.set_yticks(np.array([0.0, 0.2]))
-        fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
-        fm2.axhline(0, linestyle='--', color='r')
-        fm2.set_xlabel('Time (HJD)')
-        fm1.set_ylabel('Magnitude')
-        fm1.invert_yaxis()
-        fm2.set_ylabel('Res.')
-        
-        
-        # RA vs. time
-        f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
-        f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
-        f1.errorbar(data['t_ast'], data['xpos']*1e3,
-                        yerr=data['xpos_err']*1e3, fmt='k.')
-        f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
-        f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
-        f1.get_xaxis().set_visible(False)
-        f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
-        f1.get_shared_x_axes().join(f1, f2)
-        
-        f2.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
-                    yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
-        f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
-        f2.axhline(0, linestyle='--', color='r')
-        f2.xaxis.set_major_locator(plt.MaxNLocator(3))
-        f2.set_xlabel('Time (HJD)')
-        f2.set_ylabel('Res.')
-
-        
-        # Dec vs. time
-        f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
-        f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
-        f3.errorbar(data['t_ast'], data['ypos']*1e3,
-                        yerr=data['ypos_err']*1e3, fmt='k.')
-        f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
-        f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
-        f3.set_ylabel(r'$\Delta \delta$ (mas)')
-        f3.yaxis.set_major_locator(plt.MaxNLocator(4))
-        f3.get_xaxis().set_visible(False)
-        f3.get_shared_x_axes().join(f3, f4)
-        
-        f4.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
-                    yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
-        f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
-        f4.axhline(0, linestyle='--', color='r')
-        f4.xaxis.set_major_locator(plt.MaxNLocator(3))
-        f4.set_yticks(np.array([0.0, -0.2]))
-        f4.set_xlabel('Time (HJD)')
-        f4.set_ylabel('Res.')
-
-
-        # Mass posterior
-        masses = 10**tab['log_thetaE'] / (8.14 * 10**tab['log_piE'])
-        weights = tab['weights']
-        print(masses[0:10])
-        print(weights[0:10])
-        
-        f5 = plt.gcf().add_axes([fig_pos[3], 0.18, pan_wid, 0.8])
-        f5.hist(masses, weights=weights, bins=50, alpha = 0.9)
-        f5.set_xlabel('Mass (M$_\odot$)')
-        f5.set_ylabel('Probability')
-        f5.set_xlim(0, 2)
-
-
-    plt.close(2)
-    plot_4panel(mod_all[1], tab_all[1])
+    plot_4panel(data, mod_all[1], tab_all[1], mass_max_lim=5)
     
 
     return
+
+def plot_4panel(data, mod, tab, r_min_k=None, mass_max_lim=2):
+    # Calculate the model on a similar timescale to the data.
+    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
+
+    # Get the linear motion curves for the source (includes parallax)
+    p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+
+    # Get the lensed motion curves for the source
+    p_lens_mod = mod.get_astrometry(t_mod_ast)
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+
+    # Geth the photometry
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
+    m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+
+    # Calculate the delta-mag between R-band and K-band from the
+    # flat part at the end.
+    tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast'][-1]))
+    if r_min_k == None:
+        r_min_k = data['mag1'][tidx] - data['mag2'][-1]
+    print('r_min_k = ', r_min_k)
+
+    # Plotting        
+    plt.close(2)
+    plt.figure(2, figsize=(18, 4))
+
+    pan_wid = 0.15
+    pan_pad = 0.09
+    fig_pos = np.arange(0, 4) * (pan_wid + pan_pad) + pan_pad
+    print(fig_pos)
+
+    # Brightness vs. time
+    fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
+    fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
+    fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    # fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
+    #              fmt='k.', alpha=0.9)
+    fm1.plot(t_mod_pho, m_lens_mod, 'r-')
+    fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    # fm2.errorbar(data['t_phot2'], data['mag2'] + r_min_k - m_lens_mod_at_phot2, yerr=data['mag_err2'],
+    #              fmt='k.', alpha=0.9)
+    fm2.set_yticks(np.array([0.0, 0.2]))
+    fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
+    fm2.axhline(0, linestyle='--', color='r')
+    fm2.set_xlabel('Time (HJD)')
+    fm1.set_ylabel('Magnitude')
+    fm1.invert_yaxis()
+    fm2.set_ylabel('Res.')
+    
+    
+    # RA vs. time
+    f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
+    f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
+    f1.errorbar(data['t_ast'], data['xpos']*1e3,
+                    yerr=data['xpos_err']*1e3, fmt='k.')
+    f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
+    f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
+    f1.get_xaxis().set_visible(False)
+    f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
+    f1.get_shared_x_axes().join(f1, f2)
+    
+    f2.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+                yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
+    f2.axhline(0, linestyle='--', color='r')
+    f2.xaxis.set_major_locator(plt.MaxNLocator(3))
+    f2.set_xlabel('Time (HJD)')
+    f2.set_ylabel('Res.')
+
+    
+    # Dec vs. time
+    f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
+    f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
+    f3.errorbar(data['t_ast'], data['ypos']*1e3,
+                    yerr=data['ypos_err']*1e3, fmt='k.')
+    f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
+    f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
+    f3.set_ylabel(r'$\Delta \delta$ (mas)')
+    f3.yaxis.set_major_locator(plt.MaxNLocator(4))
+    f3.get_xaxis().set_visible(False)
+    f3.get_shared_x_axes().join(f3, f4)
+    
+    f4.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
+                yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
+    f4.axhline(0, linestyle='--', color='r')
+    f4.xaxis.set_major_locator(plt.MaxNLocator(3))
+    f4.set_yticks(np.array([0.0, -0.2]))
+    f4.set_xlabel('Time (HJD)')
+    f4.set_ylabel('Res.')
+
+
+    # Mass posterior
+    masses = 10**tab['log_thetaE'] / (8.14 * 10**tab['log_piE'])
+    weights = tab['weights']
+    print(masses[0:10])
+    print(weights[0:10])
+    
+    f5 = plt.gcf().add_axes([fig_pos[3], 0.18, pan_wid, 0.8])
+    bins = np.arange(0., 10, 0.1)
+    f5.hist(masses, weights=weights, bins=bins, alpha = 0.9)
+    f5.set_xlabel('Mass (M$_\odot$)')
+    f5.set_ylabel('Probability')
+    f5.set_xlim(0, mass_max_lim)
+
+    return
+
+
     
 
 def OLD_MAP_NUMBERS_DONT_USE():
@@ -1362,3 +1382,16 @@ def OLD_MAP_NUMBERS_DONT_USE():
     piEN_190033 = 0.438
     piE_190033 = np.hypot(piEE_190033, piEN_190033)
     tE_190033 = 135.52
+
+
+def explore_ob150211():
+    mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
+    mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
+    tab_all = mod_fit.load_mnest_modes()
+
+    
+
+    return
+    
