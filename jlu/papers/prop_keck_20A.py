@@ -29,8 +29,9 @@ import pdb
 import pickle
 from scipy.stats import norm
 
-mpl_o = '#ff7f0e'
+# Default matplotlib color cycles.
 mpl_b = '#1f77b4'
+mpl_o = '#ff7f0e'
 mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
@@ -160,6 +161,19 @@ def calc_hypot_and_err(A, sig_A_p, sig_A_m, B, sig_B_p, sig_B_m):
     sigma_f_m = np.sqrt(Af2 * sig_A_m**2 + Bf2 * sig_B_m**2)
     
     return f, sigma_f_p, sigma_f_m
+
+
+def upper_limit_or_no(median, sigma, n):
+    """
+    Given the median, is it n * sigma above zero?
+    """
+    x = median - n * sigma
+    if x < 0:
+        print('UPPER LIMIT')
+    if x > 0:
+        print('MEASUREMENT')
+
+    return
 
 def tE_piE_deltac():
     """
@@ -296,10 +310,6 @@ def tE_piE_deltac():
     dcmax_150211_pe = 10**(logthetaE_150211 + logthetaE_150211_pe)/np.sqrt(8) - dcmax_150211
     dcmax_150211_me = dcmax_150211 - 10**(logthetaE_150211 - logthetaE_150211_me)/np.sqrt(8)
 
-    print(dcmax_150211)
-    print(dcmax_150211_pe)
-    print(dcmax_150211_me)
-
     ##########
     # OB170019
     ##########
@@ -430,9 +440,29 @@ def tE_piE_deltac():
             final_delta_arr[i] = delta
             final_u_arr[i] = u
 
-    plt.figure(10, figsize=(14, 6))
+    # Figure out what needs to be an upper limit.
+    name = ['OB110022', 'OB120169', 'OB140613', 'OB150029', 'OB150211', 'OB170019', 'OB170095', 'OB190017']
+    dcmax_median = [dcmax_110022, dcmax_120169, dcmax_140613, dcmax_150029, dcmax_150211]
+    dcmax_median_me = [dcmax_110022_me, dcmax_120169_me, dcmax_140613_me, dcmax_150029_me, dcmax_150211_me]
+    piE_median = [piE_110022, piE_120169, piE_140613, piE_150029, piE_150211,
+                  piE_170019, piE_170095, piE_190017]
+    piE_median_me = [piE_110022_me, piE_120169_me, piE_140613_me, piE_150029_me, piE_150211_me,
+                     piE_170019_me, piE_170095_me, piE_190017_me]
+    print('deltac_max')
+    print('----------')
+    for i in np.arange(len(dcmax_median)):
+        print(name[i])
+        upper_limit_or_no(dcmax_median[i], dcmax_median_me[i], 2)
+
+    print('piE')
+    print('----------')
+    for i in np.arange(len(piE_median)):
+        print(name[i])
+        upper_limit_or_no(piE_median[i], piE_median_me[i], 2)
+
+    plt.figure(1, figsize=(14, 6))
     plt.clf()
-    plt.subplots_adjust(left = 0.25, bottom = 0.15, wspace = 0.3)
+    plt.subplots_adjust(left = 0.25, bottom = 0.15, wspace = 0.2, top = 0.99, right = 0.99)
     ax1 = plt.subplot(1, 2, 1) 
     ax2 = plt.subplot(1, 2, 2)
 
@@ -490,7 +520,7 @@ def tE_piE_deltac():
                  xerr = np.array([[tE_150211_me], [tE_150211_pe]]), 
                  yerr = np.array([[piE_150211_me], [piE_150211_pe]]),
                  capsize = 5, fmt = 's', color = 'purple', markersize = 12,
-                 label = 'OB150211')
+                 label = 'OB150211', uplims = True)
     ax1.errorbar(tE_170019, piE_170019, 
                  xerr = np.array([[tE_170019_me], [tE_170019_pe]]), 
                  yerr = np.array([[piE_170019_me], [piE_170019_pe]]),
@@ -545,12 +575,12 @@ def tE_piE_deltac():
                  xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
                  yerr = np.array([[piE_110022_me], [piE_110022_pe]]),
                  capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
-                 label = 'OB110022')
+                 label = 'OB110022', xuplims = True)
     ax2.errorbar(dcmax_120169, piE_120169, 
                  xerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
                  yerr = np.array([[piE_120169_me], [piE_120169_pe]]),
                  capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
-                 label = 'OB120169')
+                 label = 'OB120169', xuplims = True)
     ax2.errorbar(dcmax_140613, piE_140613, 
                  xerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
                  yerr = np.array([[piE_140613_me], [piE_140613_pe]]),
@@ -560,15 +590,14 @@ def tE_piE_deltac():
                  xerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
                  yerr = np.array([[piE_150029_me], [piE_150029_pe]]),
                  capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
-                 label = 'OB150029')
+                 label = 'OB150029', xuplims = True)
     ax2.errorbar(dcmax_150211, piE_150211, 
                  xerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
                  yerr = np.array([[piE_150211_me], [piE_150211_pe]]),
                  capsize = 5, fmt = 's', color = 'purple', markersize = 12,
-                 label = 'OB150211')
+                 label = 'OB150211', xuplims = True, uplims = True)
 
     ax2.set_xlabel('$\delta_{c,max}$ (mas)')
-    ax2.set_ylabel('$\pi_E$')
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.set_xlim(mindc, maxdc)
@@ -576,379 +605,379 @@ def tE_piE_deltac():
 
     plt.show()
 
-    ###########
-    # piE vs delta_cmax
-    ###########
-    plt.figure(2, figsize=(6, 6))
-    plt.clf()
-    plt.subplots_adjust(bottom = 0.15, right = 0.95)
-
-    mindc = 0.005
-    maxdc = 5
-    minpiE = 0.003
-    maxpiE = 5
-
-    # For labeling purposes, to make it darker in the legend.
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'Star', marker = 's',  
-                c = 'gold')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'WD', marker = 'P', 
-                c = 'coral')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'NS', marker = 'v', 
-                c = 'limegreen')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'BH', 
-                c = 'k')
-    
-    plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
-                      alpha = 0.1, marker = 's', c = 'gold')
-    plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
-                      alpha = 0.1, marker = 'P', c = 'coral')
-    plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
-                      alpha = 0.1, marker = 'v', c = 'limegreen')
-    plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
-                      alpha = 0.2, c = 'k')
-
-    plt.errorbar(piE_110022, dcmax_110022, 
-                 xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
-                 yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-                 capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
-                 label = 'OB110022')
-    plt.errorbar(piE_120169, dcmax_120169,
-                 xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
-                 yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
-                 capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
-                 label = 'OB120169')
-    plt.errorbar(piE_140613, dcmax_140613,  
-                 xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
-                 yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
-                 capsize = 5, fmt = 's', color = 'navy', markersize = 12,
-                 label = 'OB140613')
-    plt.errorbar(piE_150029, dcmax_150029,  
-                 xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
-                 yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
-                 capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
-                 label = 'OB150029')
-    plt.errorbar(piE_150211, dcmax_150211, 
-                 xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
-                 yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
-                 capsize = 5, fmt = 's', color = 'purple', markersize = 12,
-                 label = 'OB150211')
-
-    plt.xlabel('$\pi_E$')
-    plt.ylabel('$\delta_{c,max}$ (mas)')
-    plt.xscale('log')
-    plt.yscale('log')
-#    plt.legend(loc=4)
-    plt.xlim(minpiE, maxpiE)
-    plt.ylim(mindc, maxdc)
-
-    plt.show()
-
-    ###########
-    # piE vs delta_cmax
-    ###########
-    plt.figure(2, figsize=(6, 6))
-    plt.clf()
-
-    mindc = 0.005
-    maxdc = 5
-    minpiE = 0.003
-    maxpiE = 5
-
-    # For labeling purposes, to make it darker in the legend.
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'Star', marker = 's',  
-                c = 'gold')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'WD', marker = 'P', 
-                c = 'coral')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'NS', marker = 'v', 
-                c = 'limegreen')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'BH', 
-                c = 'k')
-    
-    plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
-                      alpha = 0.1, marker = 's', c = 'gold')
-    plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
-                      alpha = 0.1, marker = 'P', c = 'coral')
-    plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
-                      alpha = 0.1, marker = 'v', c = 'limegreen')
-    plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
-                      alpha = 0.2, c = 'k')
-
-    plt.errorbar(piE_110022, dcmax_110022, 
-                 xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
-                 yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB110022')
-    plt.errorbar(piE_120169, dcmax_120169,
-                 xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
-                 yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB120169')
-    plt.errorbar(piE_140613, dcmax_140613,  
-                 xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
-                 yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB140613')
-    plt.errorbar(piE_150029, dcmax_150029,  
-                 xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
-                 yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB150029')
-    plt.errorbar(piE_150211, dcmax_150211, 
-                 xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
-                 yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB150211')
-
-    plt.xlabel('$\pi_E$')
-    plt.ylabel('$\delta_{c,max}$ (mas)')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend(loc=4)
-    plt.xlim(minpiE, maxpiE)
-    plt.ylim(mindc, maxdc)
-
-    plt.legend(bbox_to_anchor=(-0.2,0), loc="lower left", borderaxespad=0)
-
-    plt.show()
-
-    ###########
-    # piE vs tE
-    ###########
-    plt.figure(1, figsize=(8, 6))
-    plt.clf()
-    plt.subplots_adjust(left = 0.4, bottom = 0.15, right = 0.96)
-
-    minpiE = 0.003
-    maxpiE = 5
-    mintE = 0.8
-    maxtE = 500
-
-    # For labeling purposes, to make it darker in the legend.
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'Star', marker = 's',  
-                c = 'gold')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'WD', marker = 'P', 
-                c = 'coral')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'NS', marker = 'v', 
-                c = 'limegreen')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'BH', 
-                c = 'k')
-    
-    plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx],
-                alpha = 0.2, marker = 's', c = 'gold', label = '')
-    plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx],
-                alpha = 0.2, marker = 'P', c = 'coral', label = '')
-    plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                alpha = 0.2, marker = 'v', c = 'limegreen', label = '')
-    plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx], 
-                alpha = 0.2, c = 'k', label = '')
-
-    plt.errorbar(tE_110022, piE_110022, 
-                 xerr = np.array([[tE_110022_me], [tE_110022_pe]]), 
-                 yerr = np.array([[piE_110022_me], [piE_110022_pe]]),
-                 capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
-                 label = 'OB110022')
-    plt.errorbar(tE_120169, piE_120169, 
-                 xerr = np.array([[tE_120169_me], [tE_120169_pe]]), 
-                 yerr = np.array([[piE_120169_me], [piE_120169_pe]]),
-                 capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
-                 label = 'OB120169')
-    plt.errorbar(tE_140613, piE_140613, 
-                 xerr = np.array([[tE_140613_me], [tE_140613_pe]]), 
-                 yerr = np.array([[piE_140613_me], [piE_140613_pe]]),
-                 capsize = 5, fmt = 's', color = 'navy', markersize = 12,
-                 label = 'OB140613')
-    plt.errorbar(tE_150029, piE_150029, 
-                 xerr = np.array([[tE_150029_me], [tE_150029_pe]]), 
-                 yerr = np.array([[piE_150029_me], [piE_150029_pe]]),
-                 capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
-                 label = 'OB150029')
-    plt.errorbar(tE_150211, piE_150211, 
-                 xerr = np.array([[tE_150211_me], [tE_150211_pe]]), 
-                 yerr = np.array([[piE_150211_me], [piE_150211_pe]]),
-                 capsize = 5, fmt = 's', color = 'purple', markersize = 12,
-                 label = 'OB150211')
-    plt.errorbar(tE_170019, piE_170019, 
-                 xerr = np.array([[tE_170019_me], [tE_170019_pe]]), 
-                 yerr = np.array([[piE_170019_me], [piE_170019_pe]]),
-                 capsize = 5, fmt = 's', color = 'deeppink', markersize = 12,
-                 label = 'OB170019')
-    plt.errorbar(tE_170095, piE_170095, 
-                 xerr = np.array([[tE_170095_me], [tE_170095_pe]]), 
-                 yerr = np.array([[piE_170095_me], [piE_170095_pe]]),
-                 capsize = 5, fmt = 's', color = 'red', markersize = 12,
-                 label = 'OB170095')
-    plt.errorbar(tE_190017, piE_190017, 
-                 xerr = np.array([[tE_190017_me], [tE_190017_pe]]), 
-                 yerr = np.array([[piE_190017_me], [piE_190017_pe]]),
-                 capsize = 5, fmt = 's', color = 'fuchsia', markersize = 12,
-                 label = 'OB190017')
-
-    plt.xlabel('$t_E$ (days)')
-    plt.ylabel('$\pi_E$')
-    plt.xscale('log')
-    plt.yscale('log')
-#    plt.legend(loc=2)
-    plt.legend(bbox_to_anchor=(-0.7, 0), loc="lower left", borderaxespad=0)
-    plt.xlim(mintE, maxtE)
-    plt.ylim(minpiE, maxpiE)
-    tEbins = np.logspace(-1, 2.5, 26)
-    piEbins = np.logspace(-4, 1, 26)
-
-    plt.show()
-
-    ###########
-    # piE vs delta_cmax
-    ###########
-    plt.figure(2, figsize=(6, 6))
-    plt.clf()
-    plt.subplots_adjust(bottom = 0.15, right = 0.95)
-
-    mindc = 0.005
-    maxdc = 5
-    minpiE = 0.003
-    maxpiE = 5
-
-    # For labeling purposes, to make it darker in the legend.
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'Star', marker = 's',  
-                c = 'gold')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'WD', marker = 'P', 
-                c = 'coral')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'NS', marker = 'v', 
-                c = 'limegreen')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'BH', 
-                c = 'k')
-    
-    plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
-                      alpha = 0.1, marker = 's', c = 'gold')
-    plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
-                      alpha = 0.1, marker = 'P', c = 'coral')
-    plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
-                      alpha = 0.1, marker = 'v', c = 'limegreen')
-    plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
-                      alpha = 0.2, c = 'k')
-
-    plt.errorbar(piE_110022, dcmax_110022, 
-                 xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
-                 yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-                 capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
-                 label = 'OB110022')
-    plt.errorbar(piE_120169, dcmax_120169,
-                 xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
-                 yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
-                 capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
-                 label = 'OB120169')
-    plt.errorbar(piE_140613, dcmax_140613,  
-                 xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
-                 yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
-                 capsize = 5, fmt = 's', color = 'navy', markersize = 12,
-                 label = 'OB140613')
-    plt.errorbar(piE_150029, dcmax_150029,  
-                 xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
-                 yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
-                 capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
-                 label = 'OB150029')
-    plt.errorbar(piE_150211, dcmax_150211, 
-                 xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
-                 yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
-                 capsize = 5, fmt = 's', color = 'purple', markersize = 12,
-                 label = 'OB150211')
-
-    plt.xlabel('$\pi_E$')
-    plt.ylabel('$\delta_{c,max}$ (mas)')
-    plt.xscale('log')
-    plt.yscale('log')
-#    plt.legend(loc=4)
-    plt.xlim(minpiE, maxpiE)
-    plt.ylim(mindc, maxdc)
-
-    plt.show()
-
-    ###########
-    # tE vs delta_cmax
-    ###########
-    plt.figure(3, figsize=(6, 6))
-    plt.clf()
-
-    mindc = 0.005
-    maxdc = 5
-    mintE = 0.8
-    maxtE = 500    
-    
-    # For labeling purposes, to make it darker in the legend.
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'Star', marker = 's',  
-                c = 'gold')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'WD', marker = 'P', 
-                c = 'coral')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'NS', marker = 'v', 
-                c = 'limegreen')
-    plt.scatter(10**-3, 10**-3,
-                alpha = 0.5, label = 'BH', 
-                c = 'k')
-
-    plt.scatter(t['t_E'][st_idx], final_delta_arr[st_idx],
-                      alpha = 0.2, marker = 's', c = 'gold')
-    plt.scatter(t['t_E'][wd_idx], final_delta_arr[wd_idx],
-                      alpha = 0.2, marker = 'P', c = 'coral')
-    plt.scatter(t['t_E'][ns_idx], final_delta_arr[ns_idx],
-                      alpha = 0.2, marker = 'v', c = 'limegreen')
-    plt.scatter(t['t_E'][bh_idx], final_delta_arr[bh_idx],
-                      alpha = 0.2, c = 'k')
-
-    plt.errorbar(tE_110022, dcmax_110022,  
-                 xerr = np.array([[tE_110022_me], [tE_110022_pe]]),
-                 yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB110022')
-    plt.errorbar(tE_120169, dcmax_120169,  
-                 xerr = np.array([[tE_120169_me], [tE_120169_pe]]),
-                 yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB120169')
-    plt.errorbar(tE_140613, dcmax_140613,  
-                 xerr = np.array([[tE_140613_me], [tE_140613_pe]]),
-                 yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB140613')
-    plt.errorbar(tE_150029, dcmax_150029, 
-                 xerr = np.array([[tE_150029_me], [tE_150029_pe]]),
-                 yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB150029')
-    plt.errorbar(tE_150211, dcmax_150211,  
-                 xerr = np.array([[tE_150211_me], [tE_150211_pe]]),
-                 yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
-                 capsize = 5, fmt = 's',
-                 label = 'OB150211')
- 
-    plt.xlabel('$t_E$ (days)')
-    plt.ylabel('$\delta_{c,max}$ (mas)')
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.legend(loc=2)
-    plt.xlim(mintE, maxtE)
-    plt.ylim(mindc, maxdc)
-
-    plt.show()
-
+#     ###########
+#     # piE vs delta_cmax
+#     ###########
+#     plt.figure(2, figsize=(6, 6))
+#     plt.clf()
+#     plt.subplots_adjust(bottom = 0.15, right = 0.95)
+# 
+#     mindc = 0.005
+#     maxdc = 5
+#     minpiE = 0.003
+#     maxpiE = 5
+# 
+#     # For labeling purposes, to make it darker in the legend.
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'Star', marker = 's',  
+#                 c = 'gold')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'WD', marker = 'P', 
+#                 c = 'coral')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'NS', marker = 'v', 
+#                 c = 'limegreen')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'BH', 
+#                 c = 'k')
+#     
+#     plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
+#                       alpha = 0.1, marker = 's', c = 'gold')
+#     plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
+#                       alpha = 0.1, marker = 'P', c = 'coral')
+#     plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
+#                       alpha = 0.1, marker = 'v', c = 'limegreen')
+#     plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
+#                       alpha = 0.2, c = 'k')
+# 
+#     plt.errorbar(piE_110022, dcmax_110022, 
+#                  xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
+#                  yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
+#                  label = 'OB110022')
+#     plt.errorbar(piE_120169, dcmax_120169,
+#                  xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
+#                  yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
+#                  label = 'OB120169')
+#     plt.errorbar(piE_140613, dcmax_140613,  
+#                  xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
+#                  yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'navy', markersize = 12,
+#                  label = 'OB140613')
+#     plt.errorbar(piE_150029, dcmax_150029,  
+#                  xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
+#                  yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
+#                  label = 'OB150029')
+#     plt.errorbar(piE_150211, dcmax_150211, 
+#                  xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
+#                  yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'purple', markersize = 12,
+#                  label = 'OB150211')
+# 
+#     plt.xlabel('$\pi_E$')
+#     plt.ylabel('$\delta_{c,max}$ (mas)')
+#     plt.xscale('log')
+#     plt.yscale('log')
+# #    plt.legend(loc=4)
+#     plt.xlim(minpiE, maxpiE)
+#     plt.ylim(mindc, maxdc)
+# 
+#     plt.show()
+# 
+#     ###########
+#     # piE vs delta_cmax
+#     ###########
+#     plt.figure(2, figsize=(6, 6))
+#     plt.clf()
+# 
+#     mindc = 0.005
+#     maxdc = 5
+#     minpiE = 0.003
+#     maxpiE = 5
+# 
+#     # For labeling purposes, to make it darker in the legend.
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'Star', marker = 's',  
+#                 c = 'gold')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'WD', marker = 'P', 
+#                 c = 'coral')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'NS', marker = 'v', 
+#                 c = 'limegreen')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'BH', 
+#                 c = 'k')
+#     
+#     plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
+#                       alpha = 0.1, marker = 's', c = 'gold')
+#     plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
+#                       alpha = 0.1, marker = 'P', c = 'coral')
+#     plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
+#                       alpha = 0.1, marker = 'v', c = 'limegreen')
+#     plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
+#                       alpha = 0.2, c = 'k')
+# 
+#     plt.errorbar(piE_110022, dcmax_110022, 
+#                  xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
+#                  yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB110022')
+#     plt.errorbar(piE_120169, dcmax_120169,
+#                  xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
+#                  yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB120169')
+#     plt.errorbar(piE_140613, dcmax_140613,  
+#                  xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
+#                  yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB140613')
+#     plt.errorbar(piE_150029, dcmax_150029,  
+#                  xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
+#                  yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB150029')
+#     plt.errorbar(piE_150211, dcmax_150211, 
+#                  xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
+#                  yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB150211')
+# 
+#     plt.xlabel('$\pi_E$')
+#     plt.ylabel('$\delta_{c,max}$ (mas)')
+#     plt.xscale('log')
+#     plt.yscale('log')
+#     plt.legend(loc=4)
+#     plt.xlim(minpiE, maxpiE)
+#     plt.ylim(mindc, maxdc)
+# 
+#     plt.legend(bbox_to_anchor=(-0.2,0), loc="lower left", borderaxespad=0)
+# 
+#     plt.show()
+# 
+#     ###########
+#     # piE vs tE
+#     ###########
+#     plt.figure(1, figsize=(8, 6))
+#     plt.clf()
+#     plt.subplots_adjust(left = 0.4, bottom = 0.15, right = 0.96)
+# 
+#     minpiE = 0.003
+#     maxpiE = 5
+#     mintE = 0.8
+#     maxtE = 500
+# 
+#     # For labeling purposes, to make it darker in the legend.
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'Star', marker = 's',  
+#                 c = 'gold')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'WD', marker = 'P', 
+#                 c = 'coral')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'NS', marker = 'v', 
+#                 c = 'limegreen')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'BH', 
+#                 c = 'k')
+#     
+#     plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx],
+#                 alpha = 0.2, marker = 's', c = 'gold', label = '')
+#     plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx],
+#                 alpha = 0.2, marker = 'P', c = 'coral', label = '')
+#     plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+#                 alpha = 0.2, marker = 'v', c = 'limegreen', label = '')
+#     plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx], 
+#                 alpha = 0.2, c = 'k', label = '')
+# 
+#     plt.errorbar(tE_110022, piE_110022, 
+#                  xerr = np.array([[tE_110022_me], [tE_110022_pe]]), 
+#                  yerr = np.array([[piE_110022_me], [piE_110022_pe]]),
+#                  capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
+#                  label = 'OB110022')
+#     plt.errorbar(tE_120169, piE_120169, 
+#                  xerr = np.array([[tE_120169_me], [tE_120169_pe]]), 
+#                  yerr = np.array([[piE_120169_me], [piE_120169_pe]]),
+#                  capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
+#                  label = 'OB120169')
+#     plt.errorbar(tE_140613, piE_140613, 
+#                  xerr = np.array([[tE_140613_me], [tE_140613_pe]]), 
+#                  yerr = np.array([[piE_140613_me], [piE_140613_pe]]),
+#                  capsize = 5, fmt = 's', color = 'navy', markersize = 12,
+#                  label = 'OB140613')
+#     plt.errorbar(tE_150029, piE_150029, 
+#                  xerr = np.array([[tE_150029_me], [tE_150029_pe]]), 
+#                  yerr = np.array([[piE_150029_me], [piE_150029_pe]]),
+#                  capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
+#                  label = 'OB150029')
+#     plt.errorbar(tE_150211, piE_150211, 
+#                  xerr = np.array([[tE_150211_me], [tE_150211_pe]]), 
+#                  yerr = np.array([[piE_150211_me], [piE_150211_pe]]),
+#                  capsize = 5, fmt = 's', color = 'purple', markersize = 12,
+#                  label = 'OB150211')
+#     plt.errorbar(tE_170019, piE_170019, 
+#                  xerr = np.array([[tE_170019_me], [tE_170019_pe]]), 
+#                  yerr = np.array([[piE_170019_me], [piE_170019_pe]]),
+#                  capsize = 5, fmt = 's', color = 'deeppink', markersize = 12,
+#                  label = 'OB170019')
+#     plt.errorbar(tE_170095, piE_170095, 
+#                  xerr = np.array([[tE_170095_me], [tE_170095_pe]]), 
+#                  yerr = np.array([[piE_170095_me], [piE_170095_pe]]),
+#                  capsize = 5, fmt = 's', color = 'red', markersize = 12,
+#                  label = 'OB170095')
+#     plt.errorbar(tE_190017, piE_190017, 
+#                  xerr = np.array([[tE_190017_me], [tE_190017_pe]]), 
+#                  yerr = np.array([[piE_190017_me], [piE_190017_pe]]),
+#                  capsize = 5, fmt = 's', color = 'fuchsia', markersize = 12,
+#                  label = 'OB190017')
+# 
+#     plt.xlabel('$t_E$ (days)')
+#     plt.ylabel('$\pi_E$')
+#     plt.xscale('log')
+#     plt.yscale('log')
+# #    plt.legend(loc=2)
+#     plt.legend(bbox_to_anchor=(-0.7, 0), loc="lower left", borderaxespad=0)
+#     plt.xlim(mintE, maxtE)
+#     plt.ylim(minpiE, maxpiE)
+#     tEbins = np.logspace(-1, 2.5, 26)
+#     piEbins = np.logspace(-4, 1, 26)
+# 
+#     plt.show()
+# 
+#     ###########
+#     # piE vs delta_cmax
+#     ###########
+#     plt.figure(2, figsize=(6, 6))
+#     plt.clf()
+#     plt.subplots_adjust(bottom = 0.15, right = 0.95)
+# 
+#     mindc = 0.005
+#     maxdc = 5
+#     minpiE = 0.003
+#     maxpiE = 5
+# 
+#     # For labeling purposes, to make it darker in the legend.
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'Star', marker = 's',  
+#                 c = 'gold')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'WD', marker = 'P', 
+#                 c = 'coral')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'NS', marker = 'v', 
+#                 c = 'limegreen')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'BH', 
+#                 c = 'k')
+#     
+#     plt.scatter(t['pi_E'][st_idx], final_delta_arr[st_idx],
+#                       alpha = 0.1, marker = 's', c = 'gold')
+#     plt.scatter(t['pi_E'][wd_idx], final_delta_arr[wd_idx],
+#                       alpha = 0.1, marker = 'P', c = 'coral')
+#     plt.scatter(t['pi_E'][ns_idx], final_delta_arr[ns_idx],
+#                       alpha = 0.1, marker = 'v', c = 'limegreen')
+#     plt.scatter(t['pi_E'][bh_idx], final_delta_arr[bh_idx],
+#                       alpha = 0.2, c = 'k')
+# 
+#     plt.errorbar(piE_110022, dcmax_110022, 
+#                  xerr = np.array([[piE_110022_me], [piE_110022_pe]]),
+#                  yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'cyan', markersize = 12,
+#                  label = 'OB110022')
+#     plt.errorbar(piE_120169, dcmax_120169,
+#                  xerr = np.array([[piE_120169_me], [piE_120169_pe]]),
+#                  yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'dodgerblue', markersize = 12,
+#                  label = 'OB120169')
+#     plt.errorbar(piE_140613, dcmax_140613,  
+#                  xerr = np.array([[piE_140613_me], [piE_140613_pe]]),
+#                  yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'navy', markersize = 12,
+#                  label = 'OB140613')
+#     plt.errorbar(piE_150029, dcmax_150029,  
+#                  xerr = np.array([[piE_150029_me], [piE_150029_pe]]),
+#                  yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'blueviolet', markersize = 12,
+#                  label = 'OB150029')
+#     plt.errorbar(piE_150211, dcmax_150211, 
+#                  xerr = np.array([[piE_150211_me], [piE_150211_pe]]),
+#                  yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
+#                  capsize = 5, fmt = 's', color = 'purple', markersize = 12,
+#                  label = 'OB150211')
+# 
+#     plt.xlabel('$\pi_E$')
+#     plt.ylabel('$\delta_{c,max}$ (mas)')
+#     plt.xscale('log')
+#     plt.yscale('log')
+# #    plt.legend(loc=4)
+#     plt.xlim(minpiE, maxpiE)
+#     plt.ylim(mindc, maxdc)
+# 
+#     plt.show()
+# 
+#     ###########
+#     # tE vs delta_cmax
+#     ###########
+#     plt.figure(3, figsize=(6, 6))
+#     plt.clf()
+# 
+#     mindc = 0.005
+#     maxdc = 5
+#     mintE = 0.8
+#     maxtE = 500    
+#     
+#     # For labeling purposes, to make it darker in the legend.
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'Star', marker = 's',  
+#                 c = 'gold')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'WD', marker = 'P', 
+#                 c = 'coral')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'NS', marker = 'v', 
+#                 c = 'limegreen')
+#     plt.scatter(10**-3, 10**-3,
+#                 alpha = 0.5, label = 'BH', 
+#                 c = 'k')
+# 
+#     plt.scatter(t['t_E'][st_idx], final_delta_arr[st_idx],
+#                       alpha = 0.2, marker = 's', c = 'gold')
+#     plt.scatter(t['t_E'][wd_idx], final_delta_arr[wd_idx],
+#                       alpha = 0.2, marker = 'P', c = 'coral')
+#     plt.scatter(t['t_E'][ns_idx], final_delta_arr[ns_idx],
+#                       alpha = 0.2, marker = 'v', c = 'limegreen')
+#     plt.scatter(t['t_E'][bh_idx], final_delta_arr[bh_idx],
+#                       alpha = 0.2, c = 'k')
+# 
+#     plt.errorbar(tE_110022, dcmax_110022,  
+#                  xerr = np.array([[tE_110022_me], [tE_110022_pe]]),
+#                  yerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB110022')
+#     plt.errorbar(tE_120169, dcmax_120169,  
+#                  xerr = np.array([[tE_120169_me], [tE_120169_pe]]),
+#                  yerr = np.array([[dcmax_120169_me], [dcmax_120169_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB120169')
+#     plt.errorbar(tE_140613, dcmax_140613,  
+#                  xerr = np.array([[tE_140613_me], [tE_140613_pe]]),
+#                  yerr = np.array([[dcmax_140613_me], [dcmax_140613_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB140613')
+#     plt.errorbar(tE_150029, dcmax_150029, 
+#                  xerr = np.array([[tE_150029_me], [tE_150029_pe]]),
+#                  yerr = np.array([[dcmax_150029_me], [dcmax_150029_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB150029')
+#     plt.errorbar(tE_150211, dcmax_150211,  
+#                  xerr = np.array([[tE_150211_me], [tE_150211_pe]]),
+#                  yerr = np.array([[dcmax_150211_me], [dcmax_150211_pe]]), 
+#                  capsize = 5, fmt = 's',
+#                  label = 'OB150211')
+#  
+#     plt.xlabel('$t_E$ (days)')
+#     plt.ylabel('$\delta_{c,max}$ (mas)')
+#     plt.xscale('log')
+#     plt.yscale('log')
+#     plt.legend(loc=2)
+#     plt.xlim(mintE, maxtE)
+#     plt.ylim(mindc, maxdc)
+# 
+#     plt.show()
+# 
     return
 
 
@@ -1146,7 +1175,6 @@ def plot_ob150211_phot_ast():
     tab_all = mod_fit.load_mnest_modes()
 
     plot_4panel(data, mod_all[1], tab_all[1], mass_max_lim=5)
-    
 
     return
 
@@ -1392,7 +1420,7 @@ def explore_ob150211():
     tab_all = mod_fit.load_mnest_modes()
 
     plt.figure(1)
-    plt.plot(tab_all[0][
+    #plt.plot(tab_all[0][])
 
     return
     
