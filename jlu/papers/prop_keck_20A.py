@@ -880,18 +880,20 @@ def plot_ob140613_phot_ast():
         fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
         fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
         fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
-                         fmt='k.', alpha=0.2)
+                     color = mpl_b, fmt='.', alpha=0.05)
         fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
-                         fmt='g.', alpha=0.2)
+                     fmt='k.', alpha=0.9)
         fm1.plot(t_mod_pho, m_lens_mod, 'r-')
         fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                         fmt='k.', alpha=0.2)
+                     color = mpl_b, fmt='.', alpha=0.05)
         fm2.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
-                         fmt='g.', alpha=0.2)
+                     fmt='k.', alpha=0.9)
+        fm2.set_yticks(np.array([0.0, 0.2]))
         fm2.axhline(0, linestyle='--', color='r')
         fm2.set_xlabel('Time (HJD)')
         fm1.set_ylabel('Magnitude')
         fm1.invert_yaxis()
+        fm2.set_ylabel('Res.')
         
         
         # RA vs. time
@@ -901,15 +903,16 @@ def plot_ob140613_phot_ast():
                         yerr=data['xpos_err']*1e3, fmt='k.')
         f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
         f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
+        f1.get_xaxis().set_visible(False)
         f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
         f1.get_shared_x_axes().join(f1, f2)
         
         f2.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
-                    yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=0.2)
+                    yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
         f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
         f2.axhline(0, linestyle='--', color='r')
         f2.set_xlabel('Time (HJD)')
-        f2.set_ylabel('Obs - Mod')
+        f2.set_ylabel('Res.')
 
         
         # Dec vs. time
@@ -920,13 +923,17 @@ def plot_ob140613_phot_ast():
         f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
         f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
         f3.set_ylabel(r'$\Delta \delta$ (mas)')
+        f3.yaxis.set_major_locator(plt.MaxNLocator(4))
+        f3.get_xaxis().set_visible(False)
         f3.get_shared_x_axes().join(f3, f4)
         
         f4.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
-                    yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=0.2)
+                    yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
         f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
         f4.axhline(0, linestyle='--', color='r')
+        f4.set_yticks(np.array([0.0, -0.2]))
         f4.set_xlabel('Time (HJD)')
+        f4.set_ylabel('Res.')
 
 
         # Mass posterior
@@ -936,9 +943,10 @@ def plot_ob140613_phot_ast():
         print(weights[0:10])
         
         f5 = plt.gcf().add_axes([fig_pos[3], 0.18, pan_wid, 0.8])
-        f5.hist(masses, weights=weights, bins=50)
+        f5.hist(masses, weights=weights, bins=50, alpha = 0.9)
         f5.set_xlabel('Mass (M$_\odot$)')
         f5.set_ylabel('Probability')
+        f5.set_xlim(0, 2)
 
 
     plt.close(2)
@@ -948,7 +956,7 @@ def plot_ob140613_phot_ast():
     return
     
 
-def OLD():
+def OLD_MAP_NUMBERS_DONT_USE():
     #############
     # The observations. 
     # OB110022 from Lu+16.
