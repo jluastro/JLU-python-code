@@ -1153,32 +1153,34 @@ def plot_ob140613_phot_ast():
 
     mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
     #mod_fit.separate_modes()
-    #mod_fit.summarize_results_modes()
+    mod_fit.summarize_results_modes()
 
-    mod_all = mod_fit.get_best_fit_modes_model(def_best='median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
     tab_all = mod_fit.load_mnest_modes()
 
-    plot_4panel(data, mod_all[1], tab_all[1], r_min_k=4.0, mass_max_lim=2)
+    plot_4panel(data, mod_all[0], tab_all[0], 'ob140613_phot_astrom.png', r_min_k=4.0, mass_max_lim=2, log=False)
 
     return
 
 def plot_ob150211_phot_ast():
     data = munge.getdata('ob150211', use_astrom_phot=True)
     mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
-    mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
+    mod_base += '8_fit_multiphot_astrom_parallax2/tmp/aa_'
 
     mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
     #mod_fit.separate_modes()
     #mod_fit.summarize_results_modes()
 
-    mod_all = mod_fit.get_best_fit_modes_model(def_best='median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
     tab_all = mod_fit.load_mnest_modes()
 
-    plot_4panel(data, mod_all[1], tab_all[1], mass_max_lim=5)
+    tab_all[0]['weights'] = tab_all[0]['weights'] / tab_all[0]['weights'].sum()
+
+    plot_4panel(data, mod_all[0], tab_all[0], 'ob150211_phot_astrom.png', mass_max_lim=10, log=True)
 
     return
 
-def plot_4panel(data, mod, tab, r_min_k=None, mass_max_lim=2):
+def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False):
     # Calculate the model on a similar timescale to the data.
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
     t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
@@ -1211,7 +1213,6 @@ def plot_4panel(data, mod, tab, r_min_k=None, mass_max_lim=2):
     pan_wid = 0.15
     pan_pad = 0.09
     fig_pos = np.arange(0, 4) * (pan_wid + pan_pad) + pan_pad
-    print(fig_pos)
 
     # Brightness vs. time
     fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
@@ -1279,15 +1280,15 @@ def plot_4panel(data, mod, tab, r_min_k=None, mass_max_lim=2):
     # Mass posterior
     masses = 10**tab['log_thetaE'] / (8.14 * 10**tab['log_piE'])
     weights = tab['weights']
-    print(masses[0:10])
-    print(weights[0:10])
     
     f5 = plt.gcf().add_axes([fig_pos[3], 0.18, pan_wid, 0.8])
     bins = np.arange(0., 10, 0.1)
-    f5.hist(masses, weights=weights, bins=bins, alpha = 0.9)
+    f5.hist(masses, weights=weights, bins=bins, alpha = 0.9, log=log)
     f5.set_xlabel('Mass (M$_\odot$)')
     f5.set_ylabel('Probability')
     f5.set_xlim(0, mass_max_lim)
+
+    plt.savefig(outfile)
 
     return
 
@@ -1413,14 +1414,164 @@ def OLD_MAP_NUMBERS_DONT_USE():
 
 
 def explore_ob150211():
+    data = munge.getdata('ob150211', use_astrom_phot=True)
     mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
+    mod_base += '8_fit_multiphot_astrom_parallax2/tmp/aa_'
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
+    #mod_fit.summarize_results_modes()
+    tab_all = mod_fit.load_mnest_modes()
+    tab = tab_all[0]
+
+    tab['mL'] = 10**tab['log_mL']
+    tab['piE'] = 10**tab['log_piE']
+    tab['thetaE'] = 10**tab['log_thetaE']
+
+    plt.figure(1)
+    plt.clf()
+    plt.hist(tab['log_thetaE'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(thetaE)')
+
+    plt.figure(3)
+    plt.clf()
+    plt.hist(tab['log_mL'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(mL)')
+
+    plt.figure(4)
+    plt.clf()
+    plt.hist(tab['log_piE'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(piE)')
+
+    plt.figure(5)
+    plt.clf()
+    plt.hist(tab['thetaE'], weights=tab['weights'], bins=50)
+    plt.xlabel('thetaE')
+
+    plt.figure(6)
+    plt.clf()
+    plt.hist(tab['mL'], weights=tab['weights'], bins=50)
+    plt.xlabel('mL')
+
+    plt.figure(7)
+    plt.clf()
+    plt.hist(tab['piE'], weights=tab['weights'], bins=50)
+    plt.xlabel('piE')
+
+    plt.figure(8)
+    plt.clf()
+    plt.plot(tab['logLike'], tab['log_mL'], 'k.')
+    
+    summarize_results(tab)
+    pdb.set_trace()
+    
+    return
+
+
+def explore_ob140613():
+    data = munge.getdata('ob140613', use_astrom_phot=True)
+    mod_base = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/'
     mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
 
     mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
+    mod_fit.summarize_results_modes()
     tab_all = mod_fit.load_mnest_modes()
+    tab = tab_all[0]
+
+    tab['mL'] = 10**tab['log_mL']
+    tab['piE'] = 10**tab['log_piE']
+    tab['thetaE'] = 10**tab['log_thetaE']
 
     plt.figure(1)
-    #plt.plot(tab_all[0][])
+    plt.clf()
+    plt.hist(tab['log_thetaE'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(thetaE)')
 
-    return
+    plt.figure(3)
+    plt.clf()
+    plt.hist(tab['log_mL'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(mL)')
+
+    plt.figure(4)
+    plt.clf()
+    plt.hist(tab['log_piE'], weights=tab['weights'], bins=50)
+    plt.xlabel('log(piE)')
+
+    plt.figure(5)
+    plt.clf()
+    plt.hist(tab['thetaE'], weights=tab['weights'], bins=50)
+    plt.xlabel('thetaE')
+
+    plt.figure(6)
+    plt.clf()
+    plt.hist(tab['mL'], weights=tab['weights'], bins=50)
+    plt.xlabel('mL')
+
+    plt.figure(7)
+    plt.clf()
+    plt.hist(tab['piE'], weights=tab['weights'], bins=50)
+    plt.xlabel('piE')
+
+    plt.figure(8)
+    plt.clf()
+    plt.plot(tab['logLike'], tab['log_mL'], 'k.')
+
+    summarize_results(tab)
     
+    return
+
+
+def summarize_results(tab):
+    if len(tab) < 1:
+        print('Did you run multinest_utils.separate_mode_files yet?') 
+
+    # Which params to include in table
+    parameters = tab.colnames
+    parameters.remove('weights')
+    parameters.remove('logLike')
+    
+    weights = tab['weights']
+    sumweights = np.sum(weights)
+    weights = weights / sumweights
+
+    sig1 = 0.682689
+    sig2 = 0.9545
+    sig3 = 0.9973
+    sig1_lo = (1.-sig1)/2.
+    sig2_lo = (1.-sig2)/2.
+    sig3_lo = (1.-sig3)/2.
+    sig1_hi = 1.-sig1_lo
+    sig2_hi = 1.-sig2_lo
+    sig3_hi = 1.-sig3_lo
+
+    print(sig1_lo, sig1_hi)
+
+    # Calculate the median, best-fit, and quantiles.
+    best_idx = np.argmax(tab['logLike'])
+    best = tab[best_idx]
+    best_errors = {}
+    med_best = {}
+    med_errors = {}
+    
+    for n in parameters:
+        # Calculate median, 1 sigma lo, and 1 sigma hi credible interval.
+        tmp = model_fitter.weighted_quantile(tab[n], [0.5, sig1_lo, sig1_hi], sample_weight=weights)
+        
+        # Switch from values to errors.
+        err_lo = tmp[0] - tmp[1]
+        err_hi = tmp[2] - tmp[0]
+
+        # Store into dictionaries.
+        med_best[n] = tmp[0]
+        med_errors[n] = np.array([err_lo, err_hi])
+        #best_errors[n] = np.array([best[n] - tmp[1], tmp[2] - best[n]])
+        best_errors[n] = np.array([tmp[1], tmp[2]])
+
+    print('####################')
+    print('Best-Fit Solution:')
+    print('####################')
+    fmt = '    {0:15s}  best = {1:10.3f}  68\% low = {2:10.3f} 68% hi = {3:10.3f}'
+    for n in parameters:
+        print(fmt.format(n, best[n], best_errors[n][0], best_errors[n][1]))
+
+    
+    return
