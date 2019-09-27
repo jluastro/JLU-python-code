@@ -1391,7 +1391,8 @@ def explore_ob150211():
     mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
     tab_all = mod_fit.load_mnest_modes()
 
-    
+    plt.figure(1)
+    plt.plot(tab_all[0][
 
     return
     
