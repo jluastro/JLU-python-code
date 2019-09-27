@@ -29,8 +29,9 @@ import pdb
 import pickle
 from scipy.stats import norm
 
-mpl_o = '#ff7f0e'
+# Default matplotlib color cycles.
 mpl_b = '#1f77b4'
+mpl_o = '#ff7f0e'
 mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
@@ -1195,14 +1196,10 @@ def plot_ob140613_phot_ast():
         fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
         fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
         fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
-                     color = mpl_b, fmt='.', alpha=0.05)
-        fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
-                     fmt='k.', alpha=0.9)
+                     fmt = 'k.', alpha=0.05)
         fm1.plot(t_mod_pho, m_lens_mod, 'r-')
         fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                     color = mpl_b, fmt='.', alpha=0.05)
-        fm2.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
-                     fmt='k.', alpha=0.9)
+                     fmt = 'k.', alpha=0.05)
         fm2.set_yticks(np.array([0.0, 0.2]))
         fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
         fm2.axhline(0, linestyle='--', color='r')
