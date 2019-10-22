@@ -31,16 +31,16 @@ ep_ob120169 = ['12jun',   '12jul',   '13apr',   '13jul', '15may05',
                '15jun07', '16may24', '16jul14']
 
 ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
-               '16jul14', '16aug02', '17jun05', '17jun08', '17jul19', 
+               '16jul14', '16aug02', '17jun05', '17jun08', '17jul19',
                '18may11', '18aug02', '18aug16']
 
 ep_ob150029 = ['15jun07', '15jul23', '16may24', '16jul14', '17may21',
                '17jul14', '17jul19', '18aug21']
-    
+
 ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
                '17jun05', '17jul14', '18may11', '18aug16']
 
-    
+
 epochs = {'ob120169': ep_ob120169, 'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
 
 # paper_dir = '/u/jlu/doc/papers/ob150211/'
@@ -69,22 +69,22 @@ astrom_data = {}
 for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + '.fits'
-    
+
 pspl_phot = {'ob120169' : a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob140613' : a_dir['ob140613'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob150029' : a_dir['ob150029'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob150211' : a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_'}
 
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_', 
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
                       'ob140613' : a_dir['ob140613'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
                       'ob150029' : a_dir['ob150029'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
                       'ob150211' : a_dir['ob150211'] + 'model_fits/8_fit_multiphot_astrom_parallax2/dd_'}
 
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_only_parallax/bb_', 
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
                   'ob140613' : a_dir['ob140613'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
                   'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
                   'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
-     
+
 def make_obs_table():
     """
     Make a LaTeX table for all of the observations of the three targets from 2014/2015.
@@ -98,10 +98,10 @@ def make_obs_table():
     for ii in range(len(targets)):
         target = targets[ii]
         n_epochs = len(epochs[target])
-        
+
         obj_name = np.repeat(target.upper(), n_epochs)
         obj_name[1:] = ''
-        
+
         date = np.zeros(n_epochs, dtype='S10')
         tint = np.zeros(n_epochs, dtype=int)
         n_exp = np.zeros(n_epochs, dtype=int)
@@ -159,7 +159,7 @@ def make_obs_table():
         c_mbase = Column(data=m_base, name='Kp$_{turn}$', format='{:4.1f}', unit='mag')
         c_asterr = Column(data=ast_err, name='$\sigma_{ast}$', format='{:5.2f}', unit='mas')
         c_photerr = Column(data=phot_err, name='$\sigma_{phot}$', format='{:5.2f}', unit='mag')
-        
+
         tt = Table((c_obj_name, c_date, c_tint, c_nexp,
                     c_fwhm, c_fwhm_err, c_strehl, c_strehl_err,
                     c_nstar, c_mbase, c_asterr, c_photerr))
@@ -168,7 +168,7 @@ def make_obs_table():
 
     # Smash all the tables together.
     final_table = vstack([tables['ob120169'], tables['ob140613'], tables['ob150029'], tables['ob150211']])
-    
+
     print(final_table)
 
     final_table.write(paper_dir + 'data_table.tex', format='aastex', overwrite=True)
@@ -214,7 +214,7 @@ def epoch_figure():
     delta_pho = np.zeros(len(pho_dates), dtype=int)
     for i in range(len(delta_pho)):
         delta_pho[i] = (pho_dates[i].year - years[0])*12 + (pho_dates[i].month - t_min.month)
-    
+
     a = 0
     p = 0
     black = 1
@@ -238,7 +238,7 @@ def epoch_figure():
 
     x = np.linspace(Time(t_min).jyear, Time(t_max).jyear, num_t+1)
     y = np.linspace(0, len(targets), grid.shape[0])
-    
+
     fig, ax = plt.subplots(figsize=(8,6))
     cax = ax.pcolormesh(x, y, grid, cmap=cmap, norm=norm)
     plt.yticks(y[1::3], targets)
@@ -246,7 +246,7 @@ def epoch_figure():
     #cbar = fig.colorbar(cax, ticks=[1, 2])
     #cbar.set_clim(black, red)
     #cbar.ax.set_yticklabels(['Keck', 'OGLE'])
-    
+
     plt.show()
     plt.savefig(paper_dir + 'epochs.pdf')
 
@@ -267,7 +267,7 @@ def fit_perr_v_mag(params, mag, perr_obs):
     index = params[1]
     mag_const = params[2]
     adderr = params[3]
-    
+
     perr_mod = perr_v_mag(mag, amp, index, mag_const, adderr)
 
     resid = perr_obs - perr_mod
@@ -276,10 +276,10 @@ def fit_perr_v_mag(params, mag, perr_obs):
 
 def plot_pos_err():
     """
-    Make one plot per target that shows the positional errors vs. magnitude for every epoch. 
+    Make one plot per target that shows the positional errors vs. magnitude for every epoch.
     """
     targets = list(epochs.keys())
-    
+
     plt.close('all')
 
     # NIRC2 plate scale (for 2015 Apr 13 and later)
@@ -301,12 +301,12 @@ def plot_pos_err():
         # for ee in range(4):
         for ee in range(n_epochs):
             epoch = epochs[target][ee]
-            
+
             pos_file = '/g/lu/data/microlens/{0:s}/combo/starfinder/mag{0:s}_{1:s}_kp_rms_named.lis'.format(epoch, target)
 
             lis = starlists.StarList.from_lis_file(pos_file)
 
-            # Calc the 1D astrometric error by using the average over X and Y 
+            # Calc the 1D astrometric error by using the average over X and Y
             perr = 0.5 * (lis['xe'] + lis['ye'])
             kmag = lis['m'] + np.random.rand(len(lis))*1e-5
             # col_idx = np.argmin(np.abs(color_times - lis['t'][0]))
@@ -333,7 +333,7 @@ def plot_pos_err():
             # plt.semilogy(p_mag, perr_v_mag(p_mag, *popt), label='curve_fit')
             # plt.semilogy(p_mag, perr_v_mag(p_mag, *res_lsq.x), label='lsq')
 
-            
+
             # FIT a functional form similar to Jia et al. 2009 with outlier rejection.
             p0 = [1e-7, 0.7, 5, 1e-3]
             res_lsq2 = least_squares(fit_perr_v_mag, p0, args=(kmag, perr), loss='cauchy', f_scale=0.01)
@@ -346,16 +346,16 @@ def plot_pos_err():
             # Plot the data
             # if ee == 0:
             #     plt.plot(kmag, perr * scale * 1e3, '.', label=epoch_label + ' (obs)', color=col, ms=2)
-            
+
             plt.semilogy(p_mag, scale * 1e3 * perr_v_mag(p_mag, *res_lsq2.x), label=epoch_label, color=col)
-            
+
         plt.legend(fontsize=12, loc='upper left', ncol=2)
         plt.xlabel('Kp mag')
         plt.ylabel('$\sigma_{ast}$ (mas)')
         plt.title(target.upper())
         plt.ylim(3e-2, 10)
         plt.savefig(paper_dir + 'pos_err_' + target + '.pdf')
-            
+
     return
 
 def plot_images():
@@ -372,7 +372,7 @@ def plot_images():
     def plot_image_for_source(target, vmin, vmax):
         combo_dir = os.path.dirname(images[target])
         img_base = os.path.basename(images[target])
-        
+
         img = fits.getdata(images[target])
 
         psf_file = '/g/lu/data/microlens/source_list/' + target + '_psf.list'
@@ -405,7 +405,7 @@ def plot_images():
         plt.xlabel(r'$\Delta \alpha^*$ (")')
         plt.ylabel(r'$\Delta \delta$ (")')
         plt.title(target.upper())
-        
+
         date_label = '20{0:2s} {1:3s} {2:2s}'.format(img_base[3:5], img_base[5:8].upper(), img_base[8:10])
         plt.gcf().text(0.2, 0.8, date_label, color='black')
 
@@ -433,9 +433,194 @@ def plot_images():
     plt.clf()
     plot_image_for_source('ob150211', 12, 1e6)
     plt.savefig(paper_dir + 'img_ob150211.pdf')
-    
+
     return
-        
+
+
+def plot_ob150211_phot_ast():
+    data = munge.getdata('ob150211', use_astrom_phot=True)
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
+                           outputfiles_basename = pspl_ast_multiphot['ob150211'])
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    img_f = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
+
+    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
+                'scalex': [2.0, 4.0], 'scaley': [-2, -2],
+                'textx': 4.6, 'texty': -1.5}
+    plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw)
+
+def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
+    import matplotlib.gridspec as gridspec
+    from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
+                                                      mark_inset)
+    from mpl_toolkits.axes_grid1.colorbar import colorbar
+
+    # Sample time
+    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
+
+    # Get the linear motion curves for the source (includes parallax)
+    p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+
+    # Get the lensed motion curves for the source
+    p_lens_mod = mod.get_astrometry(t_mod_ast)
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+
+    # Get the photometry
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
+    m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+
+    # Find the closest model date to the ref_epoch and
+    # center inset positions on it
+    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast'][ref_epoch]).argmin()
+    xpos_ins = (p_lens_mod[:, 0] - p_lens_mod[mod_ref_epoch, 0])*-1e3
+    ypos_ins = (p_lens_mod[:, 1] - p_lens_mod[mod_ref_epoch, 1])*1e3
+
+    # Load the Keck image
+    combo_dir = os.path.dirname(img_f)
+    img_base = os.path.basename(img_f)
+
+    img = fits.getdata(img_f)
+
+    psf_file = '/g/lu/data/microlens/source_list/' + target + '_psf.list'
+    psf_tab = Table.read(psf_file, format='ascii', header_start=-1)
+    pdx = np.where(psf_tab['PSF?'] == 1)[0]
+    psf_tab = psf_tab[pdx]
+
+    lis_file = combo_dir + '/starfinder/' + img_base.replace('.fits', '_rms_named.lis')
+    lis_tab = starlists.StarList.from_lis_file(lis_file)
+
+    # Find the target and get its pixel coordinates in this image.
+    tdx = np.where(lis_tab['name'] == target)[0]
+    coo_targ = np.array([lis_tab['x'][tdx[0]], lis_tab['y'][tdx[0]]])
+    coo_targ -= 1   # Shift to a 0-based array system
+
+    # Define the axes
+    scale = 0.00996
+    x_axis = np.arange(img.shape[0], dtype=float)
+    y_axis = np.arange(img.shape[1], dtype=float)
+    x_axis = (x_axis - coo_targ[0]) * scale * -1.0
+    y_axis = (y_axis - coo_targ[1]) * scale
+
+    # Set figure
+    plt.close(1)
+    fig = plt.figure(1, figsize = (15,10))
+    outer_axes = gridspec.GridSpec(2, 2, wspace=0.3, hspace=0.3)
+
+    ax1 = fig.add_subplot(outer_axes[0, 0])
+    ax1.imshow(img, cmap='gist_heat_r', norm=LogNorm(12, 1e6),
+               extent=[x_axis[0], x_axis[-1], y_axis[0], y_axis[-1]])
+    ax1.set_xlim(-4,2)
+    ax1.set_ylim(-4,2)
+    ax1.set_xlabel(r'$\Delta \alpha^*$ (")')
+    ax1.set_ylabel(r'$\Delta \delta$ (")')
+    ax1.invert_xaxis()
+
+    # Label the target
+    line_color = "#7f0f18"
+    ax1.plot(inset_kw['labelp1'], inset_kw['labelp2'],
+             linestyle='-', color=line_color)
+    ax1.text(inset_kw['labelp1'][0], inset_kw['labelp2'][0], target,
+             fontsize=16, color=line_color)
+
+    # Fake inset axes to control the inset marking, hide its ticks
+    axf = inset_axes(ax1, 1, 1)
+    axf.plot(xpos_ins/1e3, ypos_ins/1e3)
+    axf.set_xticks([])
+    axf.set_yticks([])
+    axf.set_aspect('equal')
+
+    # Plot the motion on the sky
+    axins = inset_axes(ax1, 1.05, 1)
+
+    axins.scatter(xpos_ins, ypos_ins, c=t_mod_ast, cmap=cmap, norm=norm, s=1)
+    axins.errorbar((data['xpos'] - data['xpos'][ref_epoch])*-1e3, (data['ypos'] - data['ypos'][ref_epoch])*1e3,
+                   xerr = data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='.k')
+
+    axins.set_xticks([],[])
+    axins.set_yticks([],[])
+    axins.invert_xaxis()
+
+    # Enlarge the lims to create space for the points
+    axins.set_ylim(axins.get_ylim()[0]-2.0, axins.get_ylim()[1]+1.0)
+    axins.set_aspect('equal')
+
+    # Plot the scale in the inset
+    axins.plot(inset_kw['scalex'], inset_kw['scaley'], color=line_color)
+    axins.text(inset_kw['textx'], inset_kw['texty'], '2 mas', color=line_color, fontsize=12)
+
+    # Tweak the limits of the fake axes to fit the inset markers
+    axf.set_ylim((axins.get_ylim()[0])/1e3, (axins.get_ylim()[1])/1e3)
+    # Manually set the position and relative size of the inset axes within ax1
+    ip = InsetPosition(ax1, [0.40,0,0.55,0.45])
+    axf.set_axes_locator(ip)
+    axins.set_axes_locator(ip)
+    # Mark the region corresponding to the inset axes on the parenta axes
+    # and draw lines in grey linking the two axes.
+    mark_inset(parent_axes=ax1, inset_axes=axf, loc1=1, loc2=3, fc="none", ec='0.45')
+
+    # MAGNITUDE VS TIME
+    grid1 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[1],
+                                             hspace = 0, height_ratios = [4, 1])
+    ax10 = fig.add_subplot(grid1[0])
+    ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+                  fmt='k.', alpha=0.05)
+    ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
+    ax10.invert_yaxis()
+    ax10.set_ylabel('Magnitude')
+    ax10.set_xticks([])
+    ax11 = fig.add_subplot(grid1[1])
+    ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
+                  fmt='k.', alpha=0.05)
+    ax11.scatter(t_mod_pho, m_lens_mod - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
+    ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
+    ax11.set_xlabel('Time (HJD)')
+    ax11.set_ylabel('Res.')
+
+    # RA VS TIME
+    grid2 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[2],
+                                             hspace = 0, height_ratios = [4, 1])
+    ax20 = fig.add_subplot(grid2[0])
+    ax21 = fig.add_subplot(grid2[1])
+    ax20.errorbar(data['t_ast'], data['xpos']*1e3,
+                  yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
+    ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
+    ax20.get_xaxis().set_visible(False)
+    ax20.set_ylabel(r'$\Delta \alpha^*$ (mas)')
+    ax20.get_shared_x_axes().join(ax20, ax21)
+    ax21.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+                  yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax21.axhline(0, linestyle='--', color='r')
+    ax21.set_xlabel('Time (HJD)')
+    ax21.set_ylabel('Res.')
+
+    # DEC VS TIME
+    grid3 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[3],
+                                             hspace = 0, height_ratios = [4, 1])
+    ax30 = fig.add_subplot(grid3[0])
+    ax31 = fig.add_subplot(grid3[1])
+    ax30.errorbar(data['t_ast'], data['ypos']*1e3,
+                  yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
+    ax30.scatter(t_mod_ast, p_lens_mod[:, 1]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax30.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
+    ax30.get_xaxis().set_visible(False)
+    ax30.set_ylabel(r'$\Delta \delta$ (mas)')
+    ax30.get_shared_x_axes().join(ax30, ax31)
+    ax31.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
+                  yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax31.axhline(0, linestyle='--', color='r')
+    ax31.set_xlabel('Time (HJD)')
+    ax31.set_ylabel('Res.')
+
+    plt.show()
+
 
 def plot_comparison_stars_all():
     plot_comparison_stars('ob120169', res_rng=1.1)
@@ -523,7 +708,7 @@ def plot_comparison_stars(target, res_rng=0.8):
         ax_sky.set_xlabel(r'$\Delta\alpha*$ (")')
         if star_num == 0:
             ax_sky.set_ylabel(r'$\Delta\delta$ (")')
-            
+
 
         # Plot Residuals vs. Time
         xres = (star['x'] - xmod_at_t) * 1e3
@@ -553,12 +738,12 @@ def plot_comparison_stars(target, res_rng=0.8):
         #                       handletextpad=0.1)
             # leg_ax = fig.add_axes([0.88, 0.12, 0.1, 0.1])
             # leg_ax.text(
-            
+
 
         return sc
 
-        
-        
+
+
     sc = plot_each_star(0, targets[0])
     sc = plot_each_star(1, targets[1])
     sc = plot_each_star(2, targets[2])
@@ -566,7 +751,7 @@ def plot_comparison_stars(target, res_rng=0.8):
     plt.colorbar(sc, cax=cb_ax, label='Year')
 
     plt.savefig(paper_dir + 'comparison_star_' + target + '.png')
-    
+
     return
 
 
@@ -579,7 +764,7 @@ def weighted_avg_and_std(values, weights):
     average = np.average(values, weights=weights)
     # Fast and numerically precise:
     variance = np.average((values-average)**2, weights=weights)
-    
+
     return (average, np.sqrt(variance))
 
 
@@ -587,11 +772,11 @@ def make_tab_9_fit():
     """
     Make a table with phot only (Keck + OGLE) fit
     9_fit_multiphot_only_parallax
-    """    
+    """
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
     params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
-                   'b_sff1', 'mag1', 'b_sff2', 'mag2', '', 
+                   'b_sff1', 'mag1', 'b_sff2', 'mag2', '',
                    'log_piE']
 
     params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
@@ -605,8 +790,8 @@ def make_tab_9_fit():
               'b_sff2' : [r'$b_{SFF}$', '${0:.3f}$'],
               'mag2' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
               'log_piE' : [r'$\mathrm{log}\pi_E$', '${0:.3f}$']}
-              
-    # We need a string description of each parameter. 
+
+    # We need a string description of each parameter.
     desc = {'t0'      : r'Time of closest approach.',
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
@@ -623,7 +808,7 @@ def make_tab_9_fit():
     # Get the data
     targets = list(epochs.keys())
     for target in targets:
-        tab = Table.read(pspl_multiphot[target] + 'summary.fits')    
+        tab = Table.read(pspl_multiphot[target] + 'summary.fits')
         output = open(paper_dir + target + '_tab_9_fit.txt', 'w')
         ##########################################
         # This stuff needs to be done by hand.
@@ -641,19 +826,19 @@ def make_tab_9_fit():
                     output.write('Derived & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][0])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
                          'Local Evidence')
 
             output.close()
-            
+
         if target == 'ob150211':
             output.write('Fit & {}  & {} & {} \\\\\n')
             output.write('\hline \n')
@@ -665,33 +850,33 @@ def make_tab_9_fit():
                     output.write('Derived & {} & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][1])
                 sol2 = p[1].format(tab['MAP_' + pp][2])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' + 
+                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
                          'Local Evidence')
 
             output.close()
 
- 
+
 def make_tab_8_fit():
     """
-    Make a table with the Kains parametrization 
+    Make a table with the Kains parametrization
     8_fit_multiphot_astrom_parallax2
-    """    
+    """
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
     params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
-                   'b_sff1', 'mag_src1', 'b_sff2', 'mag_src2', 'log_thetaE', 
+                   'b_sff1', 'mag_src1', 'b_sff2', 'mag_src2', 'log_thetaE',
                    'xS0_E', 'xS0_N', 'muS_E', 'muS_N', 'piS', '',
-                   'log_mL', 'muL_E', 'muL_N', 'muRel_E', 
+                   'log_mL', 'muL_E', 'muL_N', 'muRel_E',
                    'muRel_N', 'piL', 'piRel', 'log_piE']
 
     params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
@@ -721,8 +906,8 @@ def make_tab_8_fit():
               'log_thetaE' : [r'$\mathrm{log}\theta_E$ (mas)', '${0:.2f}$'],
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}$']}
-              
-    # We need a string description of each parameter. 
+
+    # We need a string description of each parameter.
     desc = {'t0'      : r'Time of closest approach.',
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
@@ -755,7 +940,7 @@ def make_tab_8_fit():
     # Get the data
     targets = list(epochs.keys())
     for target in targets:
-        tab = Table.read(pspl_ast_multiphot[target] + 'summary.fits')    
+        tab = Table.read(pspl_ast_multiphot[target] + 'summary.fits')
         output = open(paper_dir + target + '_tab_8_fit.txt', 'w')
         ##########################################
         # This stuff needs to be done by hand.
@@ -773,19 +958,19 @@ def make_tab_8_fit():
                     output.write('Derived & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][0])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
                          'Local Evidence')
 
             output.close()
-            
+
         if target == 'ob150211':
             output.write('Fit & {}  & {} & {} \\\\\n')
             output.write('\hline \n')
@@ -797,17 +982,17 @@ def make_tab_8_fit():
                     output.write('Derived & {} & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][1])
                 sol2 = p[1].format(tab['MAP_' + pp][2])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' + 
+                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
                          'Local Evidence')
 
             output.close()
@@ -816,7 +1001,7 @@ def make_tab_3_fit():
     """
     Make a table with OGLE phot only fit
     3_fit_phot_parallax
-    """    
+    """
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
     params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
@@ -831,8 +1016,8 @@ def make_tab_3_fit():
               'b_sff' : [r'$b_{SFF}$', '${0:.3f}$'],
               'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
               'piE' : [r'$\mathrm{log}\pi_E$', '${0:.3f}$']}
-              
-    # We need a string description of each parameter. 
+
+    # We need a string description of each parameter.
     desc = {'t0'      : r'Time of closest approach.',
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
@@ -847,7 +1032,7 @@ def make_tab_3_fit():
     # Get the data
     targets = list(epochs.keys())
     for target in targets:
-        tab = Table.read(pspl_phot[target] + 'summary.fits')    
+        tab = Table.read(pspl_phot[target] + 'summary.fits')
         output = open(paper_dir + target + '_tab_3_fit.txt', 'w')
         ##########################################
         # This stuff needs to be done by hand.
@@ -865,19 +1050,19 @@ def make_tab_3_fit():
                     output.write('Derived & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][0])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
                          'Local Evidence')
 
             output.close()
-            
+
         if ((target == 'ob120169') | (target == 'ob150211')):
             output.write('Fit & {}  & {} & {} \\\\\n')
             output.write('\hline \n')
@@ -889,17 +1074,17 @@ def make_tab_3_fit():
                     output.write('Derived & {} & {} & {} \\\\\n')
                     output.write('\hline\n')
                     continue
-            
+
                 p = params[pp]
 
                 sol1 = p[1].format(tab['MAP_' + pp][1])
                 sol2 = p[1].format(tab['MAP_' + pp][2])
-        
+
                 output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-                
+
             output.write('log$\mathcal{Z}$' + ' & ' +
                          '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' + 
+                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
                          'Local Evidence')
 
             output.close()
@@ -912,7 +1097,7 @@ def tE_piE():
 
     bh_idx = np.where(t['rem_id_L'] == 103)[0]
     ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where((t['rem_id_L'] == 101) | 
+    wd_idx = np.where((t['rem_id_L'] == 101) |
                       (t['rem_id_L'] == 6))[0]
     st_idx = np.where(t['rem_id_L'] == 0)[0]
 
@@ -924,23 +1109,23 @@ def tE_piE():
     maxpiE = 5
     mintE = 0.8
     maxtE = 500
-    
+
     # the scatter plot:
-    plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx]/mas_to_rad, 
-                      alpha = 0.3, label = 'Star', marker = 's',  
+    plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx]/mas_to_rad,
+                      alpha = 0.3, label = 'Star', marker = 's',
                       c = 'gold')
-    plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx]/mas_to_rad, 
-                      alpha = 0.3, label = 'WD', marker = 'P', 
+    plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx]/mas_to_rad,
+                      alpha = 0.3, label = 'WD', marker = 'P',
                       c = 'coral')
-    plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx]/mas_to_rad, 
-                      alpha = 0.3, label = 'NS', marker = 'v', 
+    plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx]/mas_to_rad,
+                      alpha = 0.3, label = 'NS', marker = 'v',
                       c = 'mediumblue')
-    plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx]/mas_to_rad, 
-                      alpha = 0.3, label = 'BH', 
+    plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx]/mas_to_rad,
+                      alpha = 0.3, label = 'BH',
                       c = 'k')
 
     #############
-    # Add the observations. 
+    # Add the observations.
     # OB110022 from Lu+16.
     # Others are phot parallax solutions (global)
     #############
@@ -999,17 +1184,17 @@ def tE_piE():
     plt.savefig(paper_dir + 'tE_piE.pdf')
 
     return
-  
+
 def shift_vs_piE():
     # This assumes blending from source and lens.
     t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
 
     u0_arr = t['u0']
     thetaE_arr = t['theta_E']
-    
+
     # Stores the maximum astrometric shift
     final_delta_arr = np.zeros(len(u0_arr))
-    
+
     # Stores the lens-source separation corresponding
     # to the maximum astrometric shift
     final_u_arr = np.zeros(len(u0_arr))
@@ -1028,15 +1213,15 @@ def shift_vs_piE():
     # g_arr = np.zeros(len(t['ubv_i_app_L']))
 
     for i in np.arange(len(u0_arr)):
-        g = g_arr[i] 
-        thetaE = thetaE_arr[i]    
-        # Try all values between u0 and sqrt(2) to find max 
+        g = g_arr[i]
+        thetaE = thetaE_arr[i]
+        # Try all values between u0 and sqrt(2) to find max
         # astrometric shift
         if u0_arr[i] < np.sqrt(2):
             u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
             delta_arr = np.zeros(len(u_arr))
             for j in np.arange(len(u_arr)):
-                u = u_arr[j] 
+                u = u_arr[j]
                 numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
                 denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
                 delta = (u * thetaE/(1 + g)) * (numer/denom)
@@ -1057,23 +1242,23 @@ def shift_vs_piE():
 
     bh_idx = np.where(t['rem_id_L'] == 103)[0]
     other_idx = np.where(t['rem_id_L'] != 103)[0]
- 
+
     plt.figure(1)
     plt.clf()
     fig, ax = plt.subplots()
     norm = matplotlib.colors.Normalize(np.log10(np.min(t['t_E'])), np.log10(np.max(t['t_E'])))
     plt.subplots_adjust(bottom = 0.15, right = 0.95, top = 0.9)
     plt.set_cmap('inferno_r')
-    ax.scatter(t['pi_E'][bh_idx]/mas_to_rad, final_delta_arr[bh_idx], 
+    ax.scatter(t['pi_E'][bh_idx]/mas_to_rad, final_delta_arr[bh_idx],
                alpha = 0.2, c = np.log10(t['t_E'][bh_idx]), label = 'PopSyCLE BH', norm = norm)
-    ax.scatter(t['pi_E'][other_idx]/mas_to_rad, final_delta_arr[other_idx], 
+    ax.scatter(t['pi_E'][other_idx]/mas_to_rad, final_delta_arr[other_idx],
                alpha = 0.2, c = np.log10(t['t_E'][other_idx]), label = 'PopSyCLE Other', s = 2, norm = norm)
     #############
     # Add the observations
     #############
     # OB110022, astrometry solution
     piEE_ob11 = -0.393
-    piEE_erru_ob11 = 0.013 
+    piEE_erru_ob11 = 0.013
     piEE_errl_ob11 = 0.012
     piEN_ob11 = -0.071
     piEN_erru_ob11 = 0.014
@@ -1084,10 +1269,10 @@ def shift_vs_piE():
     piE_ob11_errl = calc_pythag_err(piEE_ob11, piEE_errl_ob11, piEN_ob11, piEN_errl_ob11)
 
     deltac_ob11 = 2.19/np.sqrt(8) # max shift calc'd from thetaE.
-    deltac_ob11_errl = 1.06/np.sqrt(8) 
-    deltac_ob11_erru = 1.17/np.sqrt(8) 
+    deltac_ob11_errl = 1.06/np.sqrt(8)
+    deltac_ob11_erru = 1.17/np.sqrt(8)
     tE_ob11 = 61.4
-    ax.errorbar(piE_ob11, deltac_ob11, 
+    ax.errorbar(piE_ob11, deltac_ob11,
                 xerr = np.array([piE_ob11_errl, piE_ob11_erru]).reshape((2,1)),
                 yerr = np.array([deltac_ob11_errl, deltac_ob11_erru]).reshape((2,1)),
                 color = 'k', alpha = 0.99, capsize=5)
@@ -1097,7 +1282,7 @@ def shift_vs_piE():
     # OB150211, larger logZ solution
     # piE component, lower and upper errors
     piEE_ob15 = 0.012
-    piEE_erru_ob15 = 0.007 
+    piEE_erru_ob15 = 0.007
     piEE_errl_ob15 = 0.007
     piEN_ob15 = 0.012
     piEN_erru_ob15 = 0.008
@@ -1108,11 +1293,11 @@ def shift_vs_piE():
     piE_ob15_errl = calc_pythag_err(piEE_ob15, piEE_errl_ob15, piEN_ob15, piEN_errl_ob15)
 
     deltac_ob15 = 1.13/np.sqrt(8) # max shift calc'd from thetaE.
-    deltac_ob15_errl = 0.31/np.sqrt(8) 
-    deltac_ob15_erru = 0.26/np.sqrt(8) 
+    deltac_ob15_errl = 0.31/np.sqrt(8)
+    deltac_ob15_erru = 0.26/np.sqrt(8)
     tE_ob15 = 137.5
- 
-    ax.errorbar(piE_ob15, deltac_ob15, 
+
+    ax.errorbar(piE_ob15, deltac_ob15,
                 xerr = np.array([piE_ob15_errl, piE_ob15_erru]).reshape((2,1)),
                 yerr = np.array([deltac_ob15_errl, deltac_ob15_erru]).reshape((2,1)),
                 color = 'k', alpha = 0.99, capsize=5)
@@ -1136,11 +1321,11 @@ def shift_vs_piE():
     plt.show()
 
     return
-     
+
 def calc_pythag_err(A, sigA, B, sigB):
     """
     For a function of the form f = sqrt(A^2 + B^2) where
-    A and B have errors sigA and sigB, calculate the 
+    A and B have errors sigA and sigB, calculate the
     error on f, assuming A and B are uncorrelated.
     """
 
@@ -1182,18 +1367,18 @@ def calc_ob110022_shift():
 def calc_velocity():
     import astropy.coordinates as coord
     import astropy.units as u
-    
+
     data = munge_ob150211.getdata()
     mnest_root = pspl_ast_phot['ob150211']
-    
+
     # Load up the best-fit data
     _in = open(mnest_root + '_best.fits', 'rb')
-        
+
     pars1 = pickle.load(_in)
     values1 = pickle.load(_in)
     logZ_sol1 = pickle.load(_in)
     maxL_sol1 = pickle.load(_in)
-    
+
     pars2 = pickle.load(_in)
     values2 = pickle.load(_in)
     logZ_sol2 = pickle.load(_in)
@@ -1202,7 +1387,7 @@ def calc_velocity():
     _in.close()
 
     # Fetch the lens proper motions. Only for the 1st solution
-    # as this is the one we will adopt for the paper. 
+    # as this is the one we will adopt for the paper.
     dL = values2['dL'][0]
     muL_E = values2['muL_E'][0]
     muL_N = values2['muL_N'][0]
@@ -1228,7 +1413,7 @@ def calc_velocity():
     v_b = -(galcen_distance * muL_b).to(u.km/u.s, u.dimensionless_angles())
 
     fmt = '    {0:8s} = {1:8.3f} +/- {2:8.3f}  {3:8s}'
-    
+
     print('Proper Motion for OB150322:')
     print('  Celestial:')
     print(fmt.format('muL_E', muL_E, muLe_E, 'mas/yr'))
@@ -1236,7 +1421,7 @@ def calc_velocity():
     print('  Galactic:')
     print(fmt.format('muL_l', muL_l, 0.0, 'mas/yr'))
     print(fmt.format('muL_b', muL_b, 0.0, 'mas/yr'))
-    
+
     print('Velocity for OB150322 at dL=', dL)
     print('  Celestial:')
     print(fmt.format('vL_E', v_e, ve_e, 'km/s'))
@@ -1244,20 +1429,20 @@ def calc_velocity():
     print('  Galactic:')
     print(fmt.format('vL_l', v_l, 0.0, 'km/s'))
     print(fmt.format('vL_b', v_b, 0.0, 'km/s'))
-        
+
     return
 
 
 def plot_cmds():
     """
-    Everything is in 
+    Everything is in
     /Users/jlu/work/microlens/OB150211/a_2019_05_04/notes/7_other_phot.ipynb
     """
 
     # Read in the Gaia and 2MASS catalogs.
     tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
     gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
-    
+
     tt_t = np.where(tmass['name'] == 'ob150211')
     tt_g = np.where(gaia['name'] == 'ob150211')
 
@@ -1287,7 +1472,7 @@ def plot_cmds():
     fig = plt.gcf()
     cb_ax = fig.add_axes([0.83, 0.13, 0.02, 0.77])
     cbar = fig.colorbar(sc, cax=cb_ax, label='Parallax (mas)')
-    
+
     plt.savefig(paper_dir + 'cmds.png')
 
     return
@@ -1295,9 +1480,9 @@ def plot_cmds():
 def calc_blending_kp():
     """
     Read in a NIRC2 catalog and add up the flux
-    from all the sources that are within 1.3" from 
+    from all the sources that are within 1.3" from
     the target. This should match the b_sff derived
-    from the fits. 
+    from the fits.
     """
     scale = 0.00995 # arcsec / pixel
 
@@ -1333,7 +1518,7 @@ def calc_blending_kp():
     print('')
     print('f_N / f_tot = {0:.2f}'.format( f_neighbors / f_total))
     print('(f_S + f_L) / f_tot = {0:.2f}'.format( f_src_lens / f_total))
-    
+
     b_sff = foo['flux'][tdx] / (foo['flux'][rdx].sum())
     print('b_sff = {0:.2f}'.format( b_sff ))
 
@@ -1345,7 +1530,7 @@ def calc_blending_kp():
     print('f_src  = ', f_src)
 
     print('f_S / (f_S + f_L) = {0:.2f}'.format(f_src / f_src_lens))
-    
+
 
     return
 
@@ -1354,7 +1539,7 @@ def compare_all_linear_motions(save_all=False):
     Plot and calculate the significance of the astrometric signal for each target.
     See fit_velocities.py in jlu/microlens for more info.
     Saves the calculations in a table.
-    
+
     Parameters
     ----------
     save_all : bool, optional
@@ -1429,8 +1614,8 @@ def murel_popsycle():
     mas_to_rad = 4.848 * 10**-9
 
     long_idx = np.where(t['t_E'] > 100)[0]
-    
-    idx = np.where((t['t_E'] > 100) & 
+
+    idx = np.where((t['t_E'] > 100) &
                    (t['pi_E']/mas_to_rad < 0.1))[0]
 
     print(len(t['t_E']))
@@ -1456,23 +1641,23 @@ def murel_popsycle():
 
     fig = plt.figure(2, figsize=(6,6))
     plt.clf()
-    plt.hist(murel, 
-#             bins = np.linspace(0, 20, 51), 
+    plt.hist(murel,
+#             bins = np.linspace(0, 20, 51),
              bins = np.logspace(-1, 1.3, 51),
-             histtype = 'step', 
-             density=True, 
+             histtype = 'step',
+             density=True,
              label = 'All')
-    plt.hist(murel_long, 
-#             bins = np.linspace(0, 20, 51), 
+    plt.hist(murel_long,
+#             bins = np.linspace(0, 20, 51),
              bins = np.logspace(-1, 1.3, 51),
-             histtype = 'step', 
-             density=True, 
+             histtype = 'step',
+             density=True,
              label = 'Long')
-    plt.hist(murel_long_piE, 
-#             bins = np.linspace(0, 20, 51), 
+    plt.hist(murel_long_piE,
+#             bins = np.linspace(0, 20, 51),
              bins = np.logspace(-1, 13., 51),
-             histtype = 'step', 
-             density=True, 
+             histtype = 'step',
+             density=True,
              label = 'Long, piE < 0.1')
     plt.xlabel('murel (mas/yr)')
     plt.xscale('log')
@@ -1490,7 +1675,7 @@ def dLdS_popsycle():
     dL_long = t['rad_L'][long_idx]
     dS_long = t['rad_S'][long_idx]
     dLdS_long = (1.0 * dL_long)/(1.0 * dS_long)
- 
+
     fig = plt.figure(1, figsize=(6,6))
     plt.clf()
     plt.hist(dLdS, bins = np.linspace(0, 1, 11), histtype = 'step', density=True, label = 'All')
@@ -1527,7 +1712,7 @@ def dS_popsycle():
 
     mean, std = norm.fit(piS)
     print(mean, std)
-    
+
     fig = plt.figure(1, figsize=(6,6))
     plt.clf()
     plt.hist(piS,
@@ -1541,30 +1726,30 @@ def dS_popsycle():
 
     fig = plt.figure(2, figsize=(6,6))
     plt.clf()
-    plt.hist(dS, 
-             bins = np.linspace(0, 20, 21), 
-             histtype = 'step', 
-             density=True, 
+    plt.hist(dS,
+             bins = np.linspace(0, 20, 21),
+             histtype = 'step',
+             density=True,
              label = 'All')
-    plt.hist(dS_long, 
-             bins = np.linspace(0, 20, 21), 
-             histtype = 'step', 
-             density=True, 
+    plt.hist(dS_long,
+             bins = np.linspace(0, 20, 21),
+             histtype = 'step',
+             density=True,
              label = 'Long')
     plt.xlabel('dS (kpc)')
     plt.legend()
 
     fig = plt.figure(3, figsize=(6,6))
     plt.clf()
-    plt.hist(1.0/dS, 
-             bins = np.linspace(0, 0.25, 21), 
-             histtype = 'step', 
-             density=True, 
+    plt.hist(1.0/dS,
+             bins = np.linspace(0, 0.25, 21),
+             histtype = 'step',
+             density=True,
              label = 'All')
-    plt.hist(1.0/dS_long, 
-             bins = np.linspace(0, 0.25, 21), 
-             histtype = 'step', 
-             density=True, 
+    plt.hist(1.0/dS_long,
+             bins = np.linspace(0, 0.25, 21),
+             histtype = 'step',
+             density=True,
              label = 'Long')
     plt.xlabel('piS (mas)')
     plt.legend()
@@ -1607,7 +1792,7 @@ def pi_popsycle():
     plt.clf()
     plt.hist(piS,
              bins = bins,
-#             normed = True, 
+#             normed = True,
              label = 'piS',
              histtype = 'step')
     plt.hist(piL,
@@ -1630,30 +1815,30 @@ def pi_popsycle():
 
 #    fig = plt.figure(2, figsize=(6,6))
 #    plt.clf()
-#    plt.hist(dS, 
-#             bins = np.linspace(0, 20, 21), 
-#             histtype = 'step', 
-#             density=True, 
+#    plt.hist(dS,
+#             bins = np.linspace(0, 20, 21),
+#             histtype = 'step',
+#             density=True,
 #             label = 'All')
-#    plt.hist(dS_long, 
-#             bins = np.linspace(0, 20, 21), 
-#             histtype = 'step', 
-#             density=True, 
+#    plt.hist(dS_long,
+#             bins = np.linspace(0, 20, 21),
+#             histtype = 'step',
+#             density=True,
 #             label = 'Long')
 #    plt.xlabel('dS (kpc)')
 #    plt.legend()
 #
 #    fig = plt.figure(3, figsize=(6,6))
 #    plt.clf()
-#    plt.hist(1.0/dS, 
-#             bins = np.linspace(0, 0.25, 21), 
-#             histtype = 'step', 
-#             density=True, 
+#    plt.hist(1.0/dS,
+#             bins = np.linspace(0, 0.25, 21),
+#             histtype = 'step',
+#             density=True,
 #             label = 'All')
-#    plt.hist(1.0/dS_long, 
-#             bins = np.linspace(0, 0.25, 21), 
-#             histtype = 'step', 
-#             density=True, 
+#    plt.hist(1.0/dS_long,
+#             bins = np.linspace(0, 0.25, 21),
+#             histtype = 'step',
+#             density=True,
 #             label = 'Long')
 #    plt.xlabel('piS (mas)')
 #    plt.legend()
@@ -1676,7 +1861,7 @@ def make_obs_table_ob150211():
 
     # Build only OB150211
     target = 'ob150211'
-    
+
     n_epochs = len(epochs[target])
 
     obj_name = np.repeat(target.upper(), n_epochs)
@@ -1768,13 +1953,13 @@ def plot_astrometry(target):
     best['dS'] = best['dL'] / 0.8772
     best['b_sff'] = 0.6451
     best['mag_src'] = 17.77
-  
+
     # mymodel = model.PSPL_parallax(data['raL'], data['decL'],
     #                                    best['mL'], best['t0'], np.array([best['xS0_E'], best['xS0_N']]),
     #                                    best['beta'], np.array([best['muL_E'], best['muL_N']]),
     #                                    np.array([best['muS_E'], best['muS_N']]),
     #                                    best['dL'], best['dS'], best['b_sff'], best['mag_src'])
-        
+
     fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_phot[target])
     fitter.load_mnest_results()
     mymodel = fitter.get_best_fit_model(use_median=True)
@@ -1791,7 +1976,7 @@ def plot_astrometry(target):
 
     # 1 day sampling over whole range
     t_mod = np.arange(data['t_ast'].min(), data['t_ast'].max(), 1)
-    
+
     # Model - usually from fitter
     pos_out = mymodel.get_astrometry(t_mod)
     plt.plot(pos_out[:, 0]*1e3, pos_out[:, 1]*1e3, 'r-')
@@ -1850,7 +2035,7 @@ def plot_astrometry(target):
     y_year = []
     xe_year = []
     ye_year = []
-    
+
     t_dat_yr = multinest_plot.mmjd_to_year(data['t_ast'])
 
     min_year = np.floor(t_dat_yr.min())
@@ -1859,7 +2044,7 @@ def plot_astrometry(target):
     years = np.arange(min_year, max_year + 1, 1)
     for tt in range(len(years)-1):
         ii = np.where((years[tt] < t_dat_yr) & (t_dat_yr <= years[tt+1]))[0]
-        
+
         if tt == 100:
             t_year = data['t_ast'][ii].data
             x_year = x_no_pm[ii]
@@ -1894,7 +2079,7 @@ def plot_astrometry(target):
     ye_year = np.array(ye_year)
     print(t_year)
     print(x_year)
-    
+
     plt.figure(5)
     plt.clf()
     plt.scatter(x_year*1e3, y_year*1e3, c=t_year,
@@ -1908,8 +2093,8 @@ def plot_astrometry(target):
     plt.xlabel(r'$\Delta \alpha^*$ (mas)')
     plt.ylabel(r'$\Delta \delta$ (mas)')
     plt.colorbar()
-    
-    
+
+
     plt.figure(6)
     plt.clf()
     plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast'],
@@ -1948,12 +2133,12 @@ def plot_ob150211_mass_posterior():
     xlimu = 1.1 * mmax
     bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
     b0 = 0.5 * (b[1:] + b[:-1])
-                     
+
     n, b, _ = plt.hist(b0, bins = b, weights = n)
 
     plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
@@ -1963,10 +2148,10 @@ def plot_ob150211_mass_posterior():
     plt.yticks(fontsize=fontsize2)
 
     plt.xscale('log')
-                     
 
-#    ##########       
-#    # Calculate 3-sigma boundaries for mass limits. 
+
+#    ##########
+#    # Calculate 3-sigma boundaries for mass limits.
 #    ##########
 #
 #    sig1_hi = 0.682689
@@ -2020,7 +2205,7 @@ def plot_ob150029_mass_posterior():
 #    bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
     bins = np.linspace(xliml, xlimu, 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
@@ -2036,9 +2221,9 @@ def plot_ob150029_mass_posterior():
 
 #    plt.xscale('log')
 
-    ##########                                                                                                              
-    # Calculate 3-sigma boundaries for mass limits.                                                                         
-    ##########                                                                                                              
+    ##########
+    # Calculate 3-sigma boundaries for mass limits.
+    ##########
     sig1_hi = 0.682689
     sig1_lo = 1.0 - sig1_hi
     sig_med = 0.5
@@ -2088,12 +2273,12 @@ def plot_ob150211_mass_posterior():
     xlimu = 1.1 * mmax
     bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
     b0 = 0.5 * (b[1:] + b[:-1])
-                     
+
     n, b, _ = plt.hist(b0, bins = b, weights = n)
 
     plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
@@ -2103,10 +2288,10 @@ def plot_ob150211_mass_posterior():
     plt.yticks(fontsize=fontsize2)
 
     plt.xscale('log')
-                     
 
-#    ##########       
-#    # Calculate 3-sigma boundaries for mass limits. 
+
+#    ##########
+#    # Calculate 3-sigma boundaries for mass limits.
 #    ##########
 #
 #    sig1_hi = 0.682689
@@ -2160,7 +2345,7 @@ def plot_ob150029_mass_posterior():
 #    bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
     bins = np.linspace(xliml, xlimu, 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
@@ -2176,9 +2361,9 @@ def plot_ob150029_mass_posterior():
 
 #    plt.xscale('log')
 
-    ##########                                                                                                              
-    # Calculate 3-sigma boundaries for mass limits.                                                                         
-    ##########                                                                                                              
+    ##########
+    # Calculate 3-sigma boundaries for mass limits.
+    ##########
     sig1_hi = 0.682689
     sig1_lo = 1.0 - sig1_hi
     sig_med = 0.5
@@ -2228,12 +2413,12 @@ def plot_ob150211_mass_posterior():
     xlimu = 1.1 * mmax
     bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
     b0 = 0.5 * (b[1:] + b[:-1])
-                     
+
     n, b, _ = plt.hist(b0, bins = b, weights = n)
 
     plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
@@ -2243,10 +2428,10 @@ def plot_ob150211_mass_posterior():
     plt.yticks(fontsize=fontsize2)
 
     plt.xscale('log')
-                     
 
-#    ##########       
-#    # Calculate 3-sigma boundaries for mass limits. 
+
+#    ##########
+#    # Calculate 3-sigma boundaries for mass limits.
 #    ##########
 #
 #    sig1_hi = 0.682689
@@ -2300,7 +2485,7 @@ def plot_ob150029_mass_posterior():
 #    bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
     bins = np.linspace(xliml, xlimu, 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
@@ -2316,9 +2501,9 @@ def plot_ob150029_mass_posterior():
 
 #    plt.xscale('log')
 
-    ##########                                                                                                              
-    # Calculate 3-sigma boundaries for mass limits.                                                                         
-    ##########                                                                                                              
+    ##########
+    # Calculate 3-sigma boundaries for mass limits.
+    ##########
     sig1_hi = 0.682689
     sig1_lo = 1.0 - sig1_hi
     sig_med = 0.5
@@ -2368,12 +2553,12 @@ def plot_ob150211_mass_posterior():
     xlimu = 1.1 * mmax
     bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
     b0 = 0.5 * (b[1:] + b[:-1])
-                     
+
     n, b, _ = plt.hist(b0, bins = b, weights = n)
 
     plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
@@ -2383,10 +2568,10 @@ def plot_ob150211_mass_posterior():
     plt.yticks(fontsize=fontsize2)
 
     plt.xscale('log')
-                     
 
-#    ##########       
-#    # Calculate 3-sigma boundaries for mass limits. 
+
+#    ##########
+#    # Calculate 3-sigma boundaries for mass limits.
 #    ##########
 #
 #    sig1_hi = 0.682689
@@ -2440,7 +2625,7 @@ def plot_ob150029_mass_posterior():
 #    bins = np.logspace(np.log10(xliml), np.log10(xlimu), 500)
     bins = np.linspace(xliml, xlimu, 500)
 
-    n, b = np.histogram(tab['mL'], bins = bins, 
+    n, b = np.histogram(tab['mL'], bins = bins,
                         weights = tab['weights'], normed = True)
 
     n = norm_kde(n, 10.)
@@ -2456,9 +2641,9 @@ def plot_ob150029_mass_posterior():
 
 #    plt.xscale('log')
 
-    ##########                                                                                                              
-    # Calculate 3-sigma boundaries for mass limits.                                                                         
-    ##########                                                                                                              
+    ##########
+    # Calculate 3-sigma boundaries for mass limits.
+    ##########
     sig1_hi = 0.682689
     sig1_lo = 1.0 - sig1_hi
     sig_med = 0.5
@@ -2507,7 +2692,7 @@ def plot_ob150211_posterior_tE_piE_phot_astrom():
         str_type = str
         float_type = float
         int_type = int
-        
+
     """
     Basically the _hist2d function from dynesty, but with a few mods I made.
     https://github.com/joshspeagle/dynesty/blob/master/dynesty/plotting.py
@@ -2556,17 +2741,17 @@ def plot_ob150211_posterior_tE_piE_phot_astrom():
     contour_cmap = [list(rgba_color) for l in levels] + [rgba_color]
     for i, l in enumerate(levels):
         contour_cmap[i][-1] *= float(i) / (len(levels)+1)
- 
-    xmax = x.max() 
+
+    xmax = x.max()
     xmin = x.min()
 
-    ymax = y.max() 
+    ymax = y.max()
     ymin = y.min()
 
     xliml = 0.9 * xmin
     xlimu = 1.1 * xmax
     xbins = np.linspace(xliml, xlimu, 500)
-   
+
     yliml = 0.9 * ymin
     ylimu = 1.1 * ymax
     ybins = np.linspace(yliml, ylimu, 500)
@@ -2577,7 +2762,7 @@ def plot_ob150211_posterior_tE_piE_phot_astrom():
                              weights=weights)
     # Smooth the results.
     H = norm_kde(H, [3, 3])
- 
+
     # Compute the density levels.
     Hflat = H.flatten()
     inds = np.argsort(Hflat)[::-1]
@@ -2686,7 +2871,7 @@ def plot_ob150211_posterior_deltac_piE_phot_astrom():
         str_type = str
         float_type = float
         int_type = int
-        
+
     """
     Basically the _hist2d function from dynesty, but with a few mods I made.
     https://github.com/joshspeagle/dynesty/blob/master/dynesty/plotting.py
@@ -2735,17 +2920,17 @@ def plot_ob150211_posterior_deltac_piE_phot_astrom():
     contour_cmap = [list(rgba_color) for l in levels] + [rgba_color]
     for i, l in enumerate(levels):
         contour_cmap[i][-1] *= float(i) / (len(levels)+1)
- 
-    xmax = x.max() 
+
+    xmax = x.max()
     xmin = x.min()
 
-    ymax = y.max() 
+    ymax = y.max()
     ymin = y.min()
 
     xliml = 0.9 * xmin
     xlimu = 1.1 * xmax
     xbins = np.linspace(xliml, xlimu, 500)
-   
+
     yliml = 0.9 * ymin
     ylimu = 1.1 * ymax
     ybins = np.linspace(yliml, ylimu, 500)
@@ -2756,7 +2941,7 @@ def plot_ob150211_posterior_deltac_piE_phot_astrom():
                              weights=weights)
     # Smooth the results.
     H = norm_kde(H, [3, 3])
- 
+
     # Compute the density levels.
     Hflat = H.flatten()
     inds = np.argsort(Hflat)[::-1]
@@ -2866,14 +3051,14 @@ def plot_ob150211_posterior_tE_piE_phot_only():
         str_type = str
         float_type = float
         int_type = int
-        
+
     """
     Basically the _hist2d function from dynesty, but with a few mods I made.
     https://github.com/joshspeagle/dynesty/blob/master/dynesty/plotting.py
     """
 
     tab = Table.read('/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/aa_.fits')
-    
+
     x = tab['tE']
     y = (tab['piE_E']**2 + tab['piE_N']**2)**0.5
     weights = tab['weights']
@@ -2915,17 +3100,17 @@ def plot_ob150211_posterior_tE_piE_phot_only():
     contour_cmap = [list(rgba_color) for l in levels] + [rgba_color]
     for i, l in enumerate(levels):
         contour_cmap[i][-1] *= float(i) / (len(levels)+1)
- 
-    xmax = x.max() 
+
+    xmax = x.max()
     xmin = x.min()
 
-    ymax = y.max() 
+    ymax = y.max()
     ymin = y.min()
 
     xliml = 0.9 * xmin
     xlimu = 1.1 * xmax
     xbins = np.linspace(xliml, xlimu, 500)
-   
+
     yliml = 0.9 * ymin
     ylimu = 1.1 * ymax
     ybins = np.linspace(yliml, ylimu, 500)
@@ -2936,7 +3121,7 @@ def plot_ob150211_posterior_tE_piE_phot_only():
                              weights=weights)
     # Smooth the results.
     H = norm_kde(H, [3, 3])
- 
+
     # Compute the density levels.
     Hflat = H.flatten()
     inds = np.argsort(Hflat)[::-1]
@@ -3026,7 +3211,7 @@ def plot_ob150211_posterior_tE_piE_phot_only():
 
 
 def make_ob150211_tab():
-# For this one, the negative solutions much favored over the positive solutions 
+# For this one, the negative solutions much favored over the positive solutions
 # Which are also super unphysical.
 
     """
@@ -3034,7 +3219,7 @@ def make_ob150211_tab():
     """
     # Get the photometry-only data
     mnest_root_phot_only = pspl_phot['ob150211']
-    
+
     best_arr_phot_only = np.loadtxt(mnest_root_phot_only + 'summary.txt')
     best_phot_only_sol1 = best_arr_phot_only[1][14:21]
     logZ_phot_only_sol1 = best_arr_phot_only[1][28]
@@ -3046,10 +3231,10 @@ def make_ob150211_tab():
     # FIXME: Make these files and make sure they match up with the old indices.
     mnest_tab_phot_only_sol1 = np.loadtxt(mnest_root_phot_only + 'mode0.dat')
     mnest_tab_phot_only_sol2 = np.loadtxt(mnest_root_phot_only + 'mode1.dat')
-    
+
     # Get the phot+astrom data
     mnest_root_phot_astr = pspl_ast_phot['ob150211']
-    
+
     best_arr_phot_astr = np.loadtxt(mnest_root_phot_astr + 'summary.txt')
     best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
     logZ_phot_astr_sol1 = best_arr_phot_astr[1][84]
@@ -3068,8 +3253,8 @@ def make_ob150211_tab():
 
     phot_astr_pars1, phot_astr_med_vals1 = model_fitter.quantiles(mnest_tab_phot_astr_sol1)
 #    phot_astr_pars2, phot_astr_med_vals2 = model_fitter.quantiles(mnest_tab_phot_astr_sol2)
-    
-    params_list = ['t0', 'u0_amp', 'tE', 
+
+    params_list = ['t0', 'u0_amp', 'tE',
                    'piE_E', 'piE_N', 'b_sff', 'mag_src',
                    'mL', 'xS0_E', 'xS0_N', 'beta',
                    'muL_E', 'muL_N', 'muS_E', 'muS_N',
@@ -3078,10 +3263,10 @@ def make_ob150211_tab():
     params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'u0_amp' : [r'$u_0$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'tE' : [r'$t_E$ (days)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'piE_E' : [r'$\pi_{E,E}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
+              'piE_E' : [r'$\pi_{E,E}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'piE_N' : [r'$\pi_{E,N}$ $^\dagger$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'b_sff' : [r'$b_{SFF}$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
-              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
+              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'mL' : [r'$M_L (M_\odot$)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
@@ -3096,7 +3281,7 @@ def make_ob150211_tab():
               'thetaE' : [r'$\theta_E$ (mas)$^\dagger$', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)$^\dagger$', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
-    
+
     output = open(paper_dir + 'ob150029_param_fits_table.txt', 'w')
     for pp in params_list:
         p = params[pp]
@@ -3107,7 +3292,7 @@ def make_ob150211_tab():
             phot_only_sol2 = p[1].format(phot_only_med_vals2[pp][0],
                                          phot_only_med_vals2[pp][2],
                                          phot_only_med_vals2[pp][1])
-        
+
         else:
 #            phot_only_sol1 = '--'
             phot_only_sol2 = '--'
@@ -3133,7 +3318,7 @@ def make_ob150211_tab():
                      '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
 
     output.write('log$\mathcal{Z}$' + '& ' + '{:.2f}'.format(logZ_phot_only_sol2) + ' & ' + '{:.2f}'.format(logZ_phot_astr_sol1) + ' \\\\\n')
-    
+
 
 def make_ob150211_astrom_fit_tab(recalc=False):
     """
@@ -3146,12 +3331,12 @@ def make_ob150211_astrom_fit_tab(recalc=False):
 
     if os.path.exists(mnest_root + '_best.fits') and recalc is False:
         _in = open(mnest_root + '_best.fits', 'rb')
-        
+
         pars1 = pickle.load(_in)
         values1 = pickle.load(_in)
         logZ_sol1 = pickle.load(_in)
         maxL_sol1 = pickle.load(_in)
-        
+
         pars2 = pickle.load(_in)
         values2 = pickle.load(_in)
         logZ_sol2 = pickle.load(_in)
@@ -3165,7 +3350,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
         mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
 
         # We also need to fetch the logZ and maxL... pull from the summary plot.
-        # But are these the same solutions? 
+        # But are these the same solutions?
         best_arr = np.loadtxt(mnest_root + 'summary.txt')
         best_sol1 = best_arr[1][42:63]
         logZ_sol1 = best_arr[1][84]
@@ -3173,7 +3358,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
         best_sol2 = best_arr[2][42:63]
         logZ_sol2 = best_arr[2][84]
         maxL_sol2 = best_arr[2][85]
-        
+
         # FIXME: Make these files and make sure they match up with the old indices.
         mnest_tab_list = mfit.load_mnest_modes()
         mnest_tab_sol1 = mnest_tab_list[0]
@@ -3198,7 +3383,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
     params_list = ['t0', 'b_sff', 'mag_src',
-                   'mL', 'dL', 'dL_dS', 'beta', 
+                   'mL', 'dL', 'dL_dS', 'beta',
                    'muL_E', 'muL_N', 'muS_E', 'muS_N',
                    'piE_E', 'piE_N', 'xS0_E', 'xS0_N', '',
                    'tE', 'dS', 'thetaE', 'u0_amp', 'muRel_E', 'muRel_N']
@@ -3206,10 +3391,10 @@ def make_ob150211_astrom_fit_tab(recalc=False):
     params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'u0_amp' : [r'$u_0$ ', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'tE' : [r'$t_E$ (days)', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
-              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'], 
+              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
               'b_sff' : [r'$b_{SFF}$', '${0:.3f}^{{+{1:.3f}}}_{{-{2:.3f}}}$'],
-              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}^{{+{1:.4f}}}_{{-{2:.4f}}}$'], 
+              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}^{{+{1:.4f}}}_{{-{2:.4f}}}$'],
               'mL' : [r'$M_L (M_\odot$)', '${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'],
               'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.4f}^{{+{1:.4f}}}_{{-{2:.4f}}}$'],
               'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.4f}^{{+{1:.4f}}}_{{-{2:.4f}}}$'],
@@ -3225,7 +3410,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
               'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'],
               'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$']}
 
-    # We need a string description of each parameter. 
+    # We need a string description of each parameter.
     desc = {'t0'      : r'Time of closest approach.',
             'u0_amp'  : r'Closest approach in $\theta_E$ units.',
             'tE'      : r'Einstein crossing time.',
@@ -3260,10 +3445,10 @@ def make_ob150211_astrom_fit_tab(recalc=False):
             output.write('Derived & & & \\\\\n')
             output.write('\hline\n')
             continue
-        
+
         p = params[pp]
 
-        
+
         if pp in pars1:
             sol1 = p[1].format(values1[pp][0],
                                values1[pp][2],
@@ -3297,19 +3482,19 @@ def make_ob150211_map_fit_tab():
     # In the order we want them in the table. Use an empty param to indicate
     # break between fit parameters and unfit parameters.
     params_list = ['t0', 'b_sff', 'mag_src',
-                   'mL', 'dL', 'dL_dS', 'beta', 
+                   'mL', 'dL', 'dL_dS', 'beta',
                    'muL_E', 'muL_N', 'muS_E', 'muS_N',
                    'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 'add_err', '',
-                   'tE', 'dS', 'thetaE', 'u0_amp', 
+                   'tE', 'dS', 'thetaE', 'u0_amp',
                    'muRel_E', 'muRel_N', 'logZ']
 
     params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
               'u0_amp' : [r'$u_0$ ', '${0:.3f}$'],
               'tE' : [r'$t_E$ (days)', '${0:.1f}$'],
-              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'], 
+              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'],
               'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}$'],
               'b_sff' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'], 
+              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
               'mL' : [r'$M_L (M_\odot$)', '${0:.1f}$'],
               'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.4f}$'],
               'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.4f}$'],
@@ -3348,7 +3533,7 @@ def make_ob150211_map_fit_tab():
             output_err.write('\hline\n')
 
             continue
-        
+
         p = params[pp]
 
         # Fill out the table for NO additive error
@@ -3363,16 +3548,16 @@ def make_ob150211_map_fit_tab():
         if pp == 'logZ':
             sol1 = p[1].format(smy[pp][1])
             sol2 = p[1].format(smy[pp][2])
-                
+
             output.write(p[0] + ' & ' + sol2 + ' & ' + sol1 + ' \\\\\n')
-    
+
         # Fill out the table for WITH additive error
         # that has one solution.
 
         # Take care of logZ
         if pp == 'logZ':
             sol = p[1].format(smy_err[pp][0])
-            
+
             output_err.write(p[0] + ' & ' + sol + ' \\\\\n')
 
         if pp != 'logZ':
@@ -3382,7 +3567,7 @@ def make_ob150211_map_fit_tab():
     output.close()
 
 
-def plot_ob150211_phot():                                         
+def plot_ob150211_phot():
     data = munge_ob150211.getdata()
 
     mnest_dir = '/u/jlu/work/microlens/OB150211/a_2019_05_04/notes/3_fit_phot_parallax/u0_plusminus/'
@@ -3404,7 +3589,7 @@ def marginalize_tE_piE():
 
     bh_idx = np.where(t['rem_id_L'] == 103)[0]
     ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where((t['rem_id_L'] == 101) | 
+    wd_idx = np.where((t['rem_id_L'] == 101) |
                       (t['rem_id_L'] == 6))[0]
     st_idx = np.where(t['rem_id_L'] == 0)[0]
 
@@ -3419,19 +3604,19 @@ def marginalize_tE_piE():
 
     norm = matplotlib.colors.Normalize(np.log10(np.min(t['mu_rel'])), np.log10(np.max(t['mu_rel'])))
     plt.set_cmap('inferno_r')
-    
+
     # the scatter plot:
-    plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx]/mas_to_rad, 
-                      alpha = 0.4, label = 'Star', marker = 's', s = 1, 
+    plt.scatter(t['t_E'][st_idx], t['pi_E'][st_idx]/mas_to_rad,
+                      alpha = 0.4, label = 'Star', marker = 's', s = 1,
                       c = np.log10(t['mu_rel'][st_idx]), norm = norm)
-    plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx]/mas_to_rad, 
-                      alpha = 0.4, label = 'WD', marker = 'P', 
+    plt.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx]/mas_to_rad,
+                      alpha = 0.4, label = 'WD', marker = 'P',
                       c = np.log10(t['mu_rel'][wd_idx]), norm = norm)
-    plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx]/mas_to_rad, 
-                      alpha = 0.4, label = 'NS', marker = 'v', 
+    plt.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx]/mas_to_rad,
+                      alpha = 0.4, label = 'NS', marker = 'v',
                       c = np.log10(t['mu_rel'][ns_idx]), norm = norm)
-    plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx]/mas_to_rad, 
-                      alpha = 0.4, label = 'BH', 
+    plt.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx]/mas_to_rad,
+                      alpha = 0.4, label = 'BH',
                       c = np.log10(t['mu_rel'][bh_idx]), norm = norm)
     plt.xlabel('$t_E$ (days)')
     plt.ylabel('$\pi_E$')
@@ -3467,7 +3652,7 @@ def make_all_comparison_plots():
                                                                outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/4_fit_phot_astrom_parallax/aa_')
 
     # Best fit = median
-#    fit_ob150211_phot_only.plot_model_and_data_modes()    
-#    fit_ob150211_phot_astr.plot_model_and_data_modes()  
-#    fit_ob150029_phot_only.plot_model_and_data_modes()  
+#    fit_ob150211_phot_only.plot_model_and_data_modes()
+#    fit_ob150211_phot_astr.plot_model_and_data_modes()
+#    fit_ob150029_phot_only.plot_model_and_data_modes()
     fit_ob150029_phot_astr.plot_model_and_data_modes()
