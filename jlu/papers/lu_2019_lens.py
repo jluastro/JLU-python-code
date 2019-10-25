@@ -91,6 +91,20 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
                   'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
                   'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
 
+def all_paper():
+    plot_images()
+    make_obs_table()
+    plot_pos_err()
+
+    plot_ob120169_phot_ast()
+    plot_ob140613()
+    plot_ob150029_phot_ast()
+    plot_ob150211_phot_ast()
+
+    tE_piE()
+    
+    return
+    
 def make_obs_table():
     """
     Make a LaTeX table for all of the observations of the three targets from 2014/2015.
@@ -3874,3 +3888,7 @@ def get_base_photometry():
 
     return
         
+
+def plot_vpd():
+    
+    return
