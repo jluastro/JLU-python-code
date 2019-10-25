@@ -451,7 +451,7 @@ def plot_ob150211_phot_ast():
     plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw)
 
 def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
-    import matplotlib.gridspec as gridspec
+    #import matplotlib.gridspec as gridspec
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
     from mpl_toolkits.axes_grid1.colorbar import colorbar
@@ -473,6 +473,13 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
     m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
     m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+
+    t_mod_all = np.append(t_mod_ast, t_mod_pho)
+    # Set the colorbar
+    cmap = plt.cm.viridis
+    norm = plt.Normalize(vmin=t_mod_all.min(), vmax=t_mod_all.max())
+    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    smap.set_array([])
 
     # Find the closest model date to the ref_epoch and
     # center inset positions on it
@@ -508,10 +515,14 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Set figure
     plt.close(1)
-    fig = plt.figure(1, figsize = (15,10))
-    outer_axes = gridspec.GridSpec(2, 2, wspace=0.3, hspace=0.3)
+    fig = plt.figure(1, figsize = (12,10))
+    wpad = 0.15
+    hpad = 0.1
+    ax_width = 0.37*10/12
+    ax_height = 0.37
 
-    ax1 = fig.add_subplot(outer_axes[0, 0])
+    # TARGET IMAGE
+    ax1 = fig.add_axes([wpad, 1.0 - hpad/2 - ax_height, ax_width, ax_height])
     ax1.imshow(img, cmap='gist_heat_r', norm=LogNorm(12, 1e6),
                extent=[x_axis[0], x_axis[-1], y_axis[0], y_axis[-1]])
     ax1.set_xlim(-4,2)
@@ -524,7 +535,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     line_color = "#7f0f18"
     ax1.plot(inset_kw['labelp1'], inset_kw['labelp2'],
              linestyle='-', color=line_color)
-    ax1.text(inset_kw['labelp1'][0], inset_kw['labelp2'][0], target,
+    ax1.text(inset_kw['labelp1'][0], inset_kw['labelp2'][0], target.upper(),
              fontsize=16, color=line_color)
 
     # Fake inset axes to control the inset marking, hide its ticks
@@ -564,28 +575,32 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     mark_inset(parent_axes=ax1, inset_axes=axf, loc1=1, loc2=3, fc="none", ec='0.45')
 
     # MAGNITUDE VS TIME
-    grid1 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[1],
-                                             hspace = 0, height_ratios = [4, 1])
-    ax10 = fig.add_subplot(grid1[0])
+    ax10 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - 0.75*ax_height, ax_width, 0.75*ax_height])
+    ax11 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - ax_height, ax_width, 0.25*ax_height])
     ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax10.invert_yaxis()
     ax10.set_ylabel('Magnitude')
+    ax10.set_aspect('auto', adjustable='box')
     ax10.set_xticks([])
-    ax11 = fig.add_subplot(grid1[1])
     ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     ax11.scatter(t_mod_pho, m_lens_mod - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
-    ax11.set_xlabel('Time (HJD)')
-    ax11.set_ylabel('Res.')
+    ax11.set_xlabel('Time (MJD)')
+    ax11.set_ylabel('res')
+
+    # Center the position data and model off the reference epoch
+    p_lens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
+    p_unlens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
+    p_unlens_mod_at_ast -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
+    data['xpos'] -= data['xpos'][ref_epoch]
+    data['ypos'] -= data['ypos'][ref_epoch]
 
     # RA VS TIME
-    grid2 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[2],
-                                             hspace = 0, height_ratios = [4, 1])
-    ax20 = fig.add_subplot(grid2[0])
-    ax21 = fig.add_subplot(grid2[1])
+    ax20 = fig.add_axes([wpad, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
+    ax21 = fig.add_axes([wpad, hpad, ax_width, 0.25*ax_height])
     ax20.errorbar(data['t_ast'], data['xpos']*1e3,
                   yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
     ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
@@ -597,14 +612,12 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
                   yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax21.axhline(0, linestyle='--', color='r')
-    ax21.set_xlabel('Time (HJD)')
-    ax21.set_ylabel('Res.')
+    ax21.set_xlabel('Time (MJD)')
+    ax21.set_ylabel('res')
 
     # DEC VS TIME
-    grid3 = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec = outer_axes[3],
-                                             hspace = 0, height_ratios = [4, 1])
-    ax30 = fig.add_subplot(grid3[0])
-    ax31 = fig.add_subplot(grid3[1])
+    ax30 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
+    ax31 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad, ax_width, 0.25*ax_height])
     ax30.errorbar(data['t_ast'], data['ypos']*1e3,
                   yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
     ax30.scatter(t_mod_ast, p_lens_mod[:, 1]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
@@ -616,10 +629,10 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
                   yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax31.axhline(0, linestyle='--', color='r')
-    ax31.set_xlabel('Time (HJD)')
-    ax31.set_ylabel('Res.')
+    ax31.set_xlabel('Time (MJD)')
+    ax31.set_ylabel('res')
 
-    plt.show()
+    plt.savefig('/u/nijaid/test.png')
 
 
 def plot_comparison_stars_all():
