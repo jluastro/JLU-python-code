@@ -69,6 +69,12 @@ astrom_data = {}
 for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + '.fits'
+
+photom_spitzer = {'ob120169': None,
+                  'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
+                  'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
+                  'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
+
     
 pspl_phot = {'ob120169' : a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob140613' : a_dir['ob140613'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
@@ -3471,3 +3477,149 @@ def make_all_comparison_plots():
 #    fit_ob150211_phot_astr.plot_model_and_data_modes()  
 #    fit_ob150029_phot_only.plot_model_and_data_modes()  
     fit_ob150029_phot_astr.plot_model_and_data_modes()
+
+
+def plot_all_photometry_single():
+    plot_photometry_single('ob120169')
+    plot_photometry_single('ob150029')
+    plot_photometry_single('ob150211')
+    plot_photometry_single('ob140613')
+
+    return
+
+def plot_photometry_single(target):
+    data = munge.getdata(target, use_astrom_phot=True)
+
+    fitter = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=pspl_ast_multiphot[target])
+    fitter.load_mnest_results()
+    fitter.separate_modes()
+    par_all = fitter.get_best_fit_modes(def_best='median')
+    par = par_all[0]
+    mod_all = fitter.get_best_fit_modes_model(def_best='median')
+    mod = mod_all[0]
+
+    ##########
+    # Make amplification plot
+    ##########
+    amp1 = 10**((data['mag1'] - par['mag_src1']) / -2.5) - ((1 - par['b_sff1']) / par['b_sff1'])
+    amp2 = 10**((data['mag2'] - par['mag_src2']) / -2.5) - ((1 - par['b_sff2']) / par['b_sff2'])
+
+    const = 2.5 / math.log(10)   # 1.08574
+    f1 = 10**(data['mag1'] / -2.5)
+    f2 = 10**(data['mag2'] / -2.5)
+    f_err1 = (1. / const) * data['mag_err1'] * f1
+    f_err2 = (1. / const) * data['mag_err2'] * f2
+
+    f_src1 = 10**(par['mag_src1'] / -2.5)
+    f_src2 = 10**(par['mag_src2'] / -2.5)
+
+    amp_err1 = f_err1 / f_src1
+    amp_err2 = f_err2 / f_src2
+
+    t_min = np.min(np.append(data['t_phot1'], data['t_phot2']))
+    t_max = np.max(np.append(data['t_phot1'], data['t_phot2']))
+    t_mod = np.arange(t_min, t_max, 1)
+    amp_mod = mod.get_amplification(t_mod)
+    amp_mod_t_dat1 = mod.get_amplification(data['t_phot1'])
+    amp_mod_t_dat2 = mod.get_amplification(data['t_phot2'])
+
+    #plt.close(1)
+    fig_a = plt.figure(1, figsize=(6,6))
+    fig_a.clf()
+
+    f1 = fig_a.add_axes([0.2, 0.33, 0.75, 0.6])
+    f2 = fig_a.add_axes([0.2, 0.13, 0.75, 0.2])
+
+    # Amplification Curve 
+    f1.plot(t_mod, amp_mod, 'k-', label='model')
+    f1.errorbar(data['t_phot1'], amp1, yerr=amp_err1, color='red',
+                   label='OGLE I', fmt='r.', alpha=0.4, zorder=3000)
+    f1.errorbar(data['t_phot2'], amp2, yerr=amp_err2, color='blue',
+                   label='Keck Kp', fmt='b.', alpha=0.6, zorder=3001)
+    f1.set_ylabel('Amplification')
+    f1.legend()
+    f1.set_title(target.upper())
+
+    # Residuals
+    f1.get_shared_x_axes().join(f1, f2)
+    f2.errorbar(data['t_phot1'], amp1 - amp_mod_t_dat1,
+                    yerr=amp_err1, fmt='r.', alpha=0.2)
+    f2.errorbar(data['t_phot2'], amp2 - amp_mod_t_dat2,
+                    yerr=amp_err2, fmt='b.', alpha=0.2)
+    f2.axhline(0, linestyle='--', color='r')
+    f2.set_xlabel('Time (HJD)')
+    f2.set_ylabel('Obs - Mod')
+
+    ##########
+    # Make magntidue plot
+    ##########
+    mag_mod1 = mod.get_photometry(t_mod, 0)
+    mag_mod2 = mod.get_photometry(t_mod, 1)
+
+    mag_mod_t_dat1 = mod.get_photometry(data['t_phot1'], 0)
+    mag_mod_t_dat2 = mod.get_photometry(data['t_phot2'], 1)
+
+    # Calculate the baseline-mag correction factor.
+    base1 = par['mag_src1'] - (-2.5 * math.log10( par['b_sff1'] ))
+    base2 = par['mag_src2'] - (-2.5 * math.log10( par['b_sff2'] ))
+
+    dbase = base2 - base1
+    print(par['mag_src1'], par['mag_src2'])
+    print(par['b_sff1'], par['b_sff2'])
+    print(base1, base2, dbase)
+    
+    #plt.close(2)
+    fig_b = plt.figure(2, figsize=(6,6))
+    fig_b.clf()
+
+    f3 = fig_b.add_axes([0.2, 0.33, 0.75, 0.6])
+    f4 = fig_b.add_axes([0.2, 0.13, 0.75, 0.2])
+
+    # light curve
+    f3.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'], color='red',
+                     label='OGLE I', fmt='r.', alpha=0.4, zorder=3000)
+    f3.errorbar(data['t_phot2'], data['mag2'] - dbase, yerr=data['mag_err2'], color='blue',
+                     label='Keck Kp + {0:.1f}'.format(-dbase), fmt='b.', alpha=0.6, zorder=3000)
+    f3.invert_yaxis()
+    f3.plot(t_mod, mag_mod1, 'r--')
+    f3.plot(t_mod, mag_mod2 - dbase, 'b--')
+    f3.set_ylabel('Observed Magnitude')
+    f3.legend()
+    f3.set_title(target.upper())
+
+    # residuals
+    f3.get_shared_x_axes().join(f3, f4)
+    f4.errorbar(data['t_phot1'], data['mag1'] - mag_mod_t_dat1,
+                    yerr=data['mag_err1'], fmt='r.', alpha=0.2)
+    f4.errorbar(data['t_phot2'], data['mag2'] - mag_mod_t_dat2,
+                    yerr=data['mag_err2'], fmt='b.', alpha=0.2)
+    f4.axhline(0, linestyle='--', color='r')
+    f4.set_xlabel('Time (HJD)')
+    f4.set_ylabel('Obs - Mod')
+
+    return
+    
+def get_base_photometry():
+
+    fmt = '{0:s}:  Kp = {1:6.3f} +/- {2:6.3f} mag'
+    for targ, ep in epochs.items():
+        # Fetch the photometry for this target
+        data = munge.getdata(targ, use_astrom_phot=True)
+
+        # Photometry 2 is the Kp photometry. Only get the last 4 epochs.
+        times = data['t_phot2']
+        mags = data['mag2']
+
+        sdx = times.argsort()
+        times = times[sdx]
+        mags = mags[sdx]
+
+        mags = mags[-4:]
+
+        m_mean = mags.mean()
+        m_err = mags.std()
+        
+        print(fmt.format(targ, m_mean, m_err))
+
+    return
+        
