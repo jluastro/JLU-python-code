@@ -437,6 +437,45 @@ def plot_images():
     return
 
 
+def plot_ob120169_phot_ast():
+    data = munge.getdata('ob120169', use_astrom_phot=True)
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
+                           outputfiles_basename = pspl_ast_multiphot['ob120169'])
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    img_f = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
+
+    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
+                'scalex': [-8, -6], 'scaley': [-2, -2],
+                'textx': -5, 'texty': -1.3}
+    plot_4panel(data, mod_all[0], 'ob120169', 1, img_f, inset_kw)
+
+def plot_ob140613_phot_ast():
+    data = munge.getdata('ob140613', use_astrom_phot=True)
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
+                           outputfiles_basename = pspl_ast_multiphot['ob140613'])
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    img_f = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
+
+    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
+                'scalex': [-2, 0], 'scaley': [6, 6],
+                'textx': 1.4, 'texty': 6.5}
+    plot_4panel(data, mod_all[0], 'ob140613', 6, img_f, inset_kw)
+
+def plot_ob150029_phot_ast():
+    data = munge.getdata('ob150029', use_astrom_phot=True)
+
+    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
+                           outputfiles_basename = pspl_ast_multiphot['ob150029'])
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    img_f = '/g/lu/data/microlens/17jul19/combo/mag17jul19_ob150029_kp.fits'
+
+    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
+                'scalex': [-5, -3], 'scaley': [-7, -7],
+                'textx': 1, 'texty': -10}
+    plot_4panel(data, mod_all[0], 'ob150029', 6, img_f, inset_kw)
+
 def plot_ob150211_phot_ast():
     data = munge.getdata('ob150211', use_astrom_phot=True)
 
@@ -447,11 +486,25 @@ def plot_ob150211_phot_ast():
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [2.0, 4.0], 'scaley': [-2, -2],
-                'textx': 4.6, 'texty': -1.5}
+                'textx': 4.5, 'texty': -1.5}
     plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw)
 
+    
 def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
-    #import matplotlib.gridspec as gridspec
+    '''
+    Plots a 2x2 figure of 1) the Keck image @ ref_epoch (which must coincide
+    with img_f), 2) magnitude vs time, 3) RA vs time, and 4) DEC vs time,
+    where the latter three have a residual to the model.
+    The astrometry plots include the lens and unlensed models.
+    inset_kw is a dictionary for plotting 1) with the following keywords:
+    {'labelp1': [x, y] list of first anchor for the label line,
+     'labelp2': [x, y] list of the second anchor,
+     'scalex': [x1, x2] list for plotting the pixel scale,
+     'scaley': [y1, y2] list for plotting the pixel scale
+               (y1 = y2 plots a flat line),
+     'textx': the x coord of the scale text, and
+     'texty': the y coord of the scale text}.
+     '''
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
     from mpl_toolkits.axes_grid1.colorbar import colorbar
@@ -601,16 +654,16 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     # RA VS TIME
     ax20 = fig.add_axes([wpad, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
     ax21 = fig.add_axes([wpad, hpad, ax_width, 0.25*ax_height])
-    ax20.errorbar(data['t_ast'], data['xpos']*1e3,
+    ax20.errorbar(data['t_ast'], data['xpos']*-1e3,
                   yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
-    ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
-    ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
+    ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*-1e3, 'r--')
     ax20.get_xaxis().set_visible(False)
     ax20.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     ax20.get_shared_x_axes().join(ax20, ax21)
-    ax21.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+    ax21.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * -1e3,
                   yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
-    ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax21.axhline(0, linestyle='--', color='r')
     ax21.set_xlabel('Time (MJD)')
     ax21.set_ylabel('res')
@@ -632,7 +685,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax31.set_xlabel('Time (MJD)')
     ax31.set_ylabel('res')
 
-    plt.savefig('/u/nijaid/test.png')
+    plt.savefig(paper_dir + target + '_phot_astrom.png')
 
 
 def plot_comparison_stars_all():
