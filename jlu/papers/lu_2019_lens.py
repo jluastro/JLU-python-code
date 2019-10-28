@@ -706,6 +706,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax31.set_ylabel('Res.')
 
     plt.savefig(paper_dir + target + '_phot_astrom.png')
+    plt.close(1)
 
 
 def plot_comparison_stars_all():
