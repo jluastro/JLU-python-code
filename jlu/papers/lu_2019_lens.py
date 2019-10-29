@@ -75,7 +75,7 @@ photom_spitzer = {'ob120169': None,
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-    
+
 pspl_phot = {'ob120169' : a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob140613' : a_dir['ob140613'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob150029' : a_dir['ob150029'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
@@ -102,9 +102,9 @@ def all_paper():
     plot_ob150211_phot_ast()
 
     tE_piE()
-    
+
     return
-    
+
 def make_obs_table():
     """
     Make a LaTeX table for all of the observations of the three targets from 2014/2015.
@@ -509,7 +509,7 @@ def plot_ob150211_phot_ast():
                 'textx': 4.5, 'texty': -1.5}
     plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw)
 
-    
+
 def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     '''
     Plots a 2x2 figure of 1) the Keck image @ ref_epoch (which must coincide
@@ -588,10 +588,10 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Set figure
     plt.close(1)
-    fig = plt.figure(1, figsize = (12,10))
+    fig = plt.figure(1, figsize = (10,10))
     wpad = 0.15
     hpad = 0.1
-    ax_width = 0.37*10/12
+    ax_width = 0.37#*10/12
     ax_height = 0.37
 
     # TARGET IMAGE
@@ -640,7 +640,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     # Tweak the limits of the fake axes to fit the inset markers
     axf.set_ylim((axins.get_ylim()[0])/1e3, (axins.get_ylim()[1])/1e3)
     # Manually set the position and relative size of the inset axes within ax1
-    ip = InsetPosition(ax1, [0.40,0,0.55,0.45])
+    ip = InsetPosition(ax1, [0.40, 0.05, 0.55, 0.45])
     axf.set_axes_locator(ip)
     axins.set_axes_locator(ip)
     # Mark the region corresponding to the inset axes on the parenta axes
@@ -662,7 +662,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11.scatter(t_mod_pho, m_lens_mod - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
     ax11.set_xlabel('Time (MJD)')
-    ax11.set_ylabel('res')
+    ax11.set_ylabel('Res.')
 
     # Center the position data and model off the reference epoch
     p_lens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
@@ -686,7 +686,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax21.axhline(0, linestyle='--', color='r')
     ax21.set_xlabel('Time (MJD)')
-    ax21.set_ylabel('res')
+    ax21.set_ylabel('Res.')
 
     # DEC VS TIME
     ax30 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
@@ -703,9 +703,10 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax31.axhline(0, linestyle='--', color='r')
     ax31.set_xlabel('Time (MJD)')
-    ax31.set_ylabel('res')
+    ax31.set_ylabel('Res.')
 
     plt.savefig(paper_dir + target + '_phot_astrom.png')
+    plt.close(1)
 
 
 def plot_comparison_stars_all():
@@ -3795,7 +3796,7 @@ def plot_photometry_single(target):
     f1 = fig_a.add_axes([0.2, 0.33, 0.75, 0.6])
     f2 = fig_a.add_axes([0.2, 0.13, 0.75, 0.2])
 
-    # Amplification Curve 
+    # Amplification Curve
     f1.plot(t_mod, amp_mod, 'k-', label='model')
     f1.errorbar(data['t_phot1'], amp1, yerr=amp_err1, color='red',
                    label='OGLE I', fmt='r.', alpha=0.4, zorder=3000)
@@ -3832,7 +3833,7 @@ def plot_photometry_single(target):
     print(par['mag_src1'], par['mag_src2'])
     print(par['b_sff1'], par['b_sff2'])
     print(base1, base2, dbase)
-    
+
     #plt.close(2)
     fig_b = plt.figure(2, figsize=(6,6))
     fig_b.clf()
@@ -3863,7 +3864,7 @@ def plot_photometry_single(target):
     f4.set_ylabel('Obs - Mod')
 
     return
-    
+
 def get_base_photometry():
 
     fmt = '{0:s}:  Kp = {1:6.3f} +/- {2:6.3f} mag'
@@ -3883,11 +3884,11 @@ def get_base_photometry():
 
         m_mean = mags.mean()
         m_err = mags.std()
-        
+
         print(fmt.format(targ, m_mean, m_err))
 
     return
-        
+
 
 def plot_vpd():
     all_targets = epochs.keys()
@@ -3937,6 +3938,3 @@ def plot_vpd():
 
     return
         
-        
-    
-    return
