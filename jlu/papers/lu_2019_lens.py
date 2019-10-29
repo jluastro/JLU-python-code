@@ -3890,5 +3890,53 @@ def get_base_photometry():
         
 
 def plot_vpd():
+    all_targets = epochs.keys()
+    all_targets = ['ob150029']
+    for target in all_targets:
+        ast_data_file = astrom_data[target]
+
+        data = Table.read(ast_data_file)
+
+        # Flip the coordinates to what we see on sky (+x increase to the East)
+        # Convert proper motions to mas/yr
+        data['x'] *= -1.0
+        data['x0'] *= -1.0
+        data['vx'] *= -1.0
+
+        data['vx'] *= 1e3 # mas/yr
+        data['vy'] *= 1e3 # mas/yr
+        data['vxe'] *= 1e3 # mas/yr
+        data['vye'] *= 1e3 # mas/yr
+
+        # Trim out junky data:
+        # -- stars detected in too few epochs
+        # -- stars with too-large proper motion errors.
+        verr_max = 0.5
+        idx = np.where((data['n_vfit'] > 5) &
+                       (data['vxe'] < verr_max) &
+                       (data['vxe'] < verr_max))[0]
+        fmt = '{0:s}: Trimming out {1:d} of {2:d} junk stars.'
+        print(fmt.format(target, len(data) - len(idx), len(data)))
+        
+        data = data[idx]
+
+        # Find the target. 
+        tdx = np.where(data['name'] == target)[0]
+
+        # Plot the proper motion VPD.
+        plt.figure(1)
+        plt.clf()
+        plt.errorbar(data['vx'], data['vy'], xerr=data['vxe'], yerr=data['vye'], fmt='k.')
+        plt.errorbar(data['vx'][tdx], data['vy'][tdx], xerr=data['vxe'][tdx], yerr=data['vye'][tdx], fmt='r.', ecolor='red')
+        plt.axis('equal')
+        plt.gca().invert_xaxis()
+        plt.xlabel(r'$\mu_{\alpha^*}$ (mas/yr)')
+        plt.xlabel(r'$\mu_{\delta}$ (mas/yr)')
+        plt.ylim(-15, 15)
+        plt.xlim(15, -15)
+
+    return
+        
+        
     
     return
