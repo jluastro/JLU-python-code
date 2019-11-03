@@ -468,7 +468,7 @@ def plot_ob120169_phot_ast():
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [-8, -6], 'scaley': [-2, -2],
                 'textx': -5, 'texty': -1.3}
-    plot_4panel(data, mod_all[0], 'ob120169', 1, img_f, inset_kw)
+    plot_4panel(data, mod_all[0], 'ob120169', 1, img_f, inset_kw) #ref: 2016-05-24
 
 def plot_ob140613_phot_ast():
     data = munge.getdata('ob140613', use_astrom_phot=True)
@@ -481,7 +481,7 @@ def plot_ob140613_phot_ast():
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [-2, 0], 'scaley': [6, 6],
                 'textx': 1.4, 'texty': 6.5}
-    plot_4panel(data, mod_all[0], 'ob140613', 6, img_f, inset_kw)
+    plot_4panel(data, mod_all[0], 'ob140613', 6, img_f, inset_kw) #ref: 2018-08-16
 
 def plot_ob150029_phot_ast():
     data = munge.getdata('ob150029', use_astrom_phot=True)
@@ -494,7 +494,7 @@ def plot_ob150029_phot_ast():
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [-5, -3], 'scaley': [-7, -7],
                 'textx': 1, 'texty': -10}
-    plot_4panel(data, mod_all[0], 'ob150029', 6, img_f, inset_kw)
+    plot_4panel(data, mod_all[0], 'ob150029', 6, img_f, inset_kw) #ref: 2017-07-19
 
 def plot_ob150211_phot_ast():
     data = munge.getdata('ob150211', use_astrom_phot=True)
@@ -507,7 +507,7 @@ def plot_ob150211_phot_ast():
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [2.0, 4.0], 'scaley': [-2, -2],
                 'textx': 4.5, 'texty': -1.5}
-    plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw)
+    plot_4panel(data, mod_all[0], 'ob150211', 7, img_f, inset_kw) #ref: 2017-06-05
 
 
 def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
@@ -588,10 +588,10 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Set figure
     plt.close(1)
-    fig = plt.figure(1, figsize = (10,10))
-    wpad = 0.15
-    hpad = 0.1
-    ax_width = 0.37#*10/12
+    fig = plt.figure(1, figsize = (11,10))
+    wpad = 0.14
+    hpad = 0.11
+    ax_width = 0.37*10/11
     ax_height = 0.37
 
     # TARGET IMAGE
@@ -611,7 +611,8 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax1.text(inset_kw['labelp1'][0], inset_kw['labelp2'][0], target.upper(),
              fontsize=16, color=line_color)
 
-    # Fake inset axes to control the inset marking, hide its ticks
+    # Fake inset axes to control the inset marking,
+    # since the scale of the inset is different from the main plot
     axf = inset_axes(ax1, 1, 1)
     axf.plot(xpos_ins/1e3, ypos_ins/1e3)
     axf.set_xticks([])
@@ -705,7 +706,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax31.set_xlabel('Time (MJD)')
     ax31.set_ylabel('Res.')
 
-    plt.savefig(paper_dir + target + '_phot_astrom.png')
+    plt.savefig(paper_dir + target + '_phot_astrom.pdf')
     plt.close(1)
 
 
