@@ -59,7 +59,7 @@ def csvtonumpy(result, table='mean', release='dr1'):
 
 
 def ps1cone(ra, dec, radius, table="mean", release="dr1", format="csv",
-            columns=None,
+            columns=None, pagesize=0,
             baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs",
             verbose=False,
             **kw):
@@ -74,6 +74,7 @@ def ps1cone(ra, dec, radius, table="mean", release="dr1", format="csv",
     release (string): dr1 or dr2
     format: csv, votable, json, numpy
     columns: list of column names to include (None means use defaults)
+    pagesize: maximum number of records in response (0 means no limit)
     baseurl: base URL for the request
     verbose: print info about request
     **kw: other parameters (e.g., 'nDetections.min':2)
@@ -85,13 +86,14 @@ def ps1cone(ra, dec, radius, table="mean", release="dr1", format="csv",
     data['radius'] = radius
 
     result = ps1search(table=table, release=release, format=format,
-                       columns=columns,
+                       columns=columns, pagesize=pagesize,
                        baseurl=baseurl, verbose=verbose, **data)
 
     return result
 
 
-def ps1search(table="mean", release="dr1", format="csv", columns=None,
+def ps1search(table="mean", release="dr1", format="csv", 
+              columns=None, pagesize=0,
               baseurl="https://catalogs.mast.stsci.edu/api/v0.1/panstarrs",
               verbose=False,
               **kw):
@@ -103,6 +105,7 @@ def ps1search(table="mean", release="dr1", format="csv", columns=None,
     release (string): dr1 or dr2
     format: csv, votable, json, numpy
     columns: list of column names to include (None means use defaults)
+    pagesize: maximum number of records in response (0 means no limit)
     baseurl: base URL for the request
     verbose: print info about request
     **kw: other parameters (e.g., 'nDetections.min':2).  Note this is required!
@@ -135,7 +138,9 @@ def ps1search(table="mean", release="dr1", format="csv", columns=None,
         # two different ways to specify a list of column values in the API
         # data['columns'] = columns
         data['columns'] = '[{}]'.format(','.join(columns))
-
+    
+    data['pagesize'] = int(pagesize)
+        
     # either get or post works
     #    r = requests.post(url, data=data)
     r = requests.get(url, params=data)
