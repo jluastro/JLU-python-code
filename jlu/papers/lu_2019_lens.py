@@ -84,7 +84,66 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
                   'ob140613' : a_dir['ob140613'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
                   'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
                   'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
+
+def calc_AIC(k, maxlogL):
+    """
+    Calculate Akaike Information Criterion.
+    k = number of parameters 
+    maxlogL = maximum log likelihood
+    """
+    aic = 2 * (k - maxlogL)
+
+    return aic
+
+def calc_BIC(n, k, maxlogL):
+    """
+    Calculate Bayesian Information Criterion.
+    n = sample size
+    k = number of parameters 
+    maxlogL = maximum log likelihood
+    """
+    bic = np.log(n) * k - 2 * maxlogL
+
+    return bic
+
+def calc_from_stats(stats_fits_file):
+    t = Table.read(stats_fits_file)
+
+
+def summarize_fits():
+    """
+    For personal use
+    """
+    ob120169_ogle = np.loadtxt(a_dir['ob120169'] + 'OGLE-2012-BLG-0169.dat')
+    ob140613_ogle = np.loadtxt(a_dir['ob140613'] + 'OGLE-2014-BLG-0613.dat')
+    ob150029_ogle = np.loadtxt(a_dir['ob150029'] + 'OGLE-2015-BLG-0029.dat')
+    ob150211_ogle = np.loadtxt(a_dir['ob150211'] + 'OGLE-2015-BLG-0211.dat')
+
+    n_ob120169_ogle = ob120169_ogle.shape[0]
+    n_ob140613_ogle = ob140613_ogle.shape[0]
+    n_ob150029_ogle = ob150029_ogle.shape[0]
+    n_ob150211_ogle = ob150211_ogle.shape[0]
+
+    ob120169_keck = Table.read(a_dir['ob120169'] + 'ob120169_astrom_' + 
+                               astrom_pass['ob120169'] + '_' + a_date['ob120169'] + '.fits')
+    ob140613_keck = Table.read(a_dir['ob140613'] + 'ob140613_astrom_' + 
+                               astrom_pass['ob140613'] + '_' + a_date['ob140613'] + '.fits')
+    ob150029_keck = Table.read(a_dir['ob150029'] + 'ob150029_astrom_' + 
+                               astrom_pass['ob150029'] + '_' + a_date['ob150029'] + '.fits')
+    ob150211_keck = Table.read(a_dir['ob150211'] + 'ob150211_astrom_' + 
+                               astrom_pass['ob150211'] + '_' + a_date['ob150211'] + '.fits')
      
+    n_ob120169_keck = ob120169_keck['x'].shape[1]
+    n_ob140613_keck = ob140613_keck['x'].shape[1]
+    n_ob150029_keck = ob150029_keck['x'].shape[1]
+    n_ob150211_keck = ob150211_keck['x'].shape[1]
+
+    n_params_3_fit = 8
+    n_params_8_fit = 16 # For 2 photometric data sets.
+    n_params_9_fit = 9 # For 2 photometric data sets.
+
+    
+
 def make_obs_table():
     """
     Make a LaTeX table for all of the observations of the three targets from 2014/2015.

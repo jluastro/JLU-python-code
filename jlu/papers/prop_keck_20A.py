@@ -900,12 +900,12 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
     fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
     fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
-                 fmt='k.', alpha=0.05)
+                 color = mpl_b, fmt='.', alpha=0.05)
     # fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
     #              fmt='k.', alpha=0.9)
     fm1.plot(t_mod_pho, m_lens_mod, 'r-')
     fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                 fmt='k.', alpha=0.05)
+                 color = mpl_b, fmt='.', alpha=0.05)
     # fm2.errorbar(data['t_phot2'], data['mag2'] + r_min_k - m_lens_mod_at_phot2, yerr=data['mag_err2'],
     #              fmt='k.', alpha=0.9)
 #    fm2.set_yticks(np.array([0.0, 0.2]))
