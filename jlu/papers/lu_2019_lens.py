@@ -2,7 +2,7 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
-from flystar import starlists
+# from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit, least_squares
 import matplotlib.ticker
@@ -91,26 +91,26 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
                   'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
                   'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
 
-def calc_AIC(k, maxlogL):
-    """
-    Calculate Akaike Information Criterion.
-    k = number of parameters 
-    maxlogL = maximum log likelihood
-    """
-    aic = 2 * (k - maxlogL)
+# added 12/20/19: might supersede pspl_phot.
+# THINGS LABELED "TEMP" NEED TO BE CHANGED!!!!!!
+ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+             'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
+             'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
+             'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+             'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
+             'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_a/', # TEMP
+             'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+             'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
+             'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_a/', # TEMP
+             'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
+             'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
+             'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
 
-    return aic
-
-def calc_BIC(n, k, maxlogL):
-    """
-    Calculate Bayesian Information Criterion.
-    n = sample size
-    k = number of parameters 
-    maxlogL = maximum log likelihood
-    """
-    bic = np.log(n) * k - 2 * maxlogL
-
-    return bic
+# Is this ok to do?
+ogle_phot['ob120169'] = ogle_phot['ob120169_add']
+ogle_phot['ob140613'] = ogle_phot['ob140613_add']
+ogle_phot['ob150029'] = ogle_phot['ob150029_add']
+ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
 def calc_from_stats(stats_fits_file):
     t = Table.read(stats_fits_file)
@@ -160,6 +160,9 @@ def all_paper():
     plot_ob150211_phot_ast()
 
     tE_piE()
+
+    # Appendix
+    make_BIC_comparison_table()
 
     return
 
@@ -3997,3 +4000,97 @@ def plot_vpd():
 
     return
         
+def make_BIC_comparison_table():
+    # Use the one with the highest likelihood solution.
+    # THINGS LABELED "TEMP" NEED TO BE CHANGED!!!!!!
+    ob120169_none = get_Rchi2_and_BIC('ob120169', 'none', ogle_phot['ob120169_none'], 'a9_') # TEMP
+    ob120169_add = get_Rchi2_and_BIC('ob120169', 'add', ogle_phot['ob120169_add'], 'a9_') # TEMP
+    ob120169_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a0_')
+
+    ob140613_none = get_Rchi2_and_BIC('ob140613', 'none', ogle_phot['ob140613_none'], 'a9_') # TEMP
+    ob140613_add = get_Rchi2_and_BIC('ob140613', 'add', ogle_phot['ob140613_add'], 'a9_') # TEMP
+    ob140613_mult = get_Rchi2_and_BIC('ob140613', 'mult', ogle_phot['ob140613_mult'], 'a9_') # TEMP
+
+    ob150029_none = get_Rchi2_and_BIC('ob150029', 'none', ogle_phot['ob150029_none'], 'a9_') # TEMP
+    ob150029_add = get_Rchi2_and_BIC('ob150029', 'add', ogle_phot['ob150029_add'], 'a9_') # TEMP
+    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a9_') # TEMP
+
+    ob150211_none = get_Rchi2_and_BIC('ob150211', 'none', ogle_phot['ob150211_none'], 'a1_')
+    ob150211_add = get_Rchi2_and_BIC('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
+    ob150211_mult = get_Rchi2_and_BIC('ob150211', 'mult', ogle_phot['ob150211_mult'], 'd5_')
+
+    with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
+        tab_file.write('No error term' + ' & ' 
+                       + '{0:.2f}'.format(ob120169_none[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_none[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_none[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_none[1]) + r' \\ ' + '\n'
+                       + 
+                       'Multiplicative' + ' & ' 
+                       + '{0:.2f}'.format(ob120169_mult[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_mult[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_mult[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_mult[1]) + r' \\ ' + '\n'
+                       +
+                       'Additive' + ' & ' 
+                       + '{0:.2f}'.format(ob120169_add[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_add[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_add[1]) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_add[1]) + r' \\ ' + '\n')
+
+    return
+                       
+    
+def get_Rchi2_and_BIC(target, errtype, dir, runid):
+    """
+    Calculate the reduced chi2 and BIC values for a run.
+
+    target : 'ob120169', 'ob140613', 'ob150029', or 'ob150211'
+
+    errtype : 'add', 'mult', or 'none'
+
+    dir : path to the run's data
+
+    runid : the run's outputfiles_basename
+    """
+    data = munge.getdata2(target, 
+                          phot_data=['I_OGLE'], 
+                          ast_data=['Kp_Keck'])
+    ndata = len(data['mag'])
+
+    # Determine fitter based on error
+    if errtype == 'none':
+        fitter = model_fitter.PSPL_phot_parallax_Solver(data,
+                                                        outputfiles_basename = dir + runid)
+    if errtype == 'mult':
+        fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
+                                                             outputfiles_basename = dir + runid)
+
+    if errtype == 'add':
+        fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                            outputfiles_basename = dir + runid)
+
+    nparams = fitter.n_dims 
+
+    outdir = './'
+    os.makedirs(outdir, exist_ok=True)
+
+    # Get the BIC.
+    param = fitter.get_best_fit(def_best='maxl')
+    maxlogL = fitter.log_likely(param)
+
+    Rchi2 = fitter.calc_chi2()/(ndata - nparams)
+    bic = calc_BIC(ndata, nparams, maxlogL)
+
+    return Rchi2, bic
+
+def calc_BIC(n, k, maxlogL):
+    """
+    maxL = maximized value of the LOG likelihood function
+    n = number of data points
+    k = number of parameters in model
+    """
+
+    bic = np.log(n) * k - 2 * maxlogL
+
+    return bic
