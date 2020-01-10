@@ -95,12 +95,12 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
 # added 12/20/19: might supersede pspl_phot.
 # THINGS LABELED "TEMP" NEED TO BE CHANGED!!!!!!
 ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
-             'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
+             'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
              'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
              'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
-             'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
+             'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
              'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/',
-             'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+             'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
              'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/', 
              'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
              'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
@@ -1495,13 +1495,144 @@ def calc_BIC(n, k, maxlogL):
 
     return bic
 
+def OB120169_OGLE_phot_table():
+    # Figure out what chi2 for the maxlikelihood solution is.
+    ob120169_add = get_Rchi2('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_')
+
+    rchi2_1 = ob120169_add[1][0] # CHECK THIS!!!!!!!
+    rchi2_2 = ob120169_add[1][1] 
+
+    t = Table.read(ogle_phot['ob120169_add'] + 'c3_summary.fits')
+    
+    t0_1 = t['MaxLike_t0'][1]
+    u0_amp_1 = t['MaxLike_u0_amp'][1]
+    tE_1 = t['MaxLike_tE'][1]
+    piE_E_1 = t['MaxLike_piE_E'][1]
+    piE_N_1 = t['MaxLike_piE_N'][1]
+    b_sff_1 = t['MaxLike_b_sff'][1]
+    mag_src_1 = t['MaxLike_mag_src'][1]
+    add_err_1 = t['MaxLike_add_err'][1]
+    logZ_1 = t['logZ'][1]
+    logL_1 = t['maxlogL'][1]
+
+    t0_2 = t['MaxLike_t0'][2]
+    u0_amp_2 = t['MaxLike_u0_amp'][2]
+    tE_2 = t['MaxLike_tE'][2]
+    piE_E_2 = t['MaxLike_piE_E'][2]
+    piE_N_2 = t['MaxLike_piE_N'][2]
+    b_sff_2 = t['MaxLike_b_sff'][2]
+    mag_src_2 = t['MaxLike_mag_src'][2]
+    add_err_2 = t['MaxLike_add_err'][2]
+    logZ_2 = t['logZ'][2]
+    logL_2 = t['maxlogL'][2]    
+
+    with open('OB120169_OGLE_phot.txt', 'w+') as tab_file:
+        tab_file.write('log$\mathcal{Z}$' + ' & ' 
+                       + '{0:.2f}'.format(logZ_1) + ' & ' 
+                       + '{0:.2f}'.format(logZ_2) + r' \\ ' + '\n'
+                       +
+                       'log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(logL_1) + ' & ' 
+                       + '{0:.2f}'.format(logL_2) + r' \\ ' + '\n'
+                       +
+                       '$\chi^2_{dof}$' + ' & ' 
+                       + '{0:.2f}'.format(rchi2_1) + ' & ' 
+                       + '{0:.2f}'.format(rchi2_2) + r' \\ ' + '\n'
+                       +
+                       '$t_0$ (MJD)' + ' & ' 
+                       + '{0:.2f}'.format(t0_1) + ' & ' 
+                       + '{0:.2f}'.format(t0_2) + r' \\ ' + '\n'
+                       +
+                       '$u_0$' + ' & ' 
+                       + '{0:.2f}'.format(u0_amp_1) + ' & ' 
+                       + '{0:.2f}'.format(u0_amp_2) + r' \\ ' + '\n'
+                       +
+                       '$t_E$ (days)' + ' & ' 
+                       + '{0:.2f}'.format(tE_1) + ' & ' 
+                       + '{0:.2f}'.format(tE_2) + r' \\ ' + '\n'
+                       +
+                       '$\pi_{E,E}$' + ' & ' 
+                       + '{0:.2f}'.format(piE_E_1) + ' & ' 
+                       + '{0:.2f}'.format(piE_E_2) + r' \\ ' + '\n'
+                       +
+                       '$\pi_{E,N}$' + ' & ' 
+                       + '{0:.2f}'.format(piE_N_1) + ' & ' 
+                       + '{0:.2f}'.format(piE_N_2) + r' \\ ' + '\n'
+                       +
+                       '$b_{SFF}$' + ' & ' 
+                       + '{0:.2f}'.format(b_sff_1) + ' & ' 
+                       + '{0:.2f}'.format(b_sff_2) + r' \\ ' + '\n'
+                       +
+                       '$I_{src}$ (mag)' + ' & ' 
+                       + '{0:.2f}'.format(mag_src_1) + ' & ' 
+                       + '{0:.2f}'.format(mag_src_2) + r' \\ ' + '\n'
+                       +
+                       r'$\varepsilon_a$ (mag)' + ' & ' 
+                       + '{0:.2f}'.format(add_err_1) + ' & ' 
+                       + '{0:.2f}'.format(add_err_2) + r' \\ ' + '\n')
+    return
+
+
+def OB120169_OGLE_phot_plot_fits():
+    data = munge.getdata2('ob120169',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
+
+    dir = ogle_phot['ob120169_add']
+    runid = 'c3_'
+
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+    res = fitter.load_mnest_results_for_dynesty()
+    smy = fitter.load_mnest_summary()
+
+    maxL1 = []
+    maxL2 = []
+    for param in fitter.all_param_names:
+        maxL1.append(smy['MaxLike_' + param][1]) 
+        maxL2.append(smy['MaxLike_' + param][2]) 
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    model_fitter.postplot(res, labels=labels, quantiles=None,
+                          show_titles=False, truths1=maxL1, truths2=maxL2)
+    plt.savefig('OB120169_OGLE_phot_posterior.png')
+
+    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
+                                   truths1=maxL1, truths2=maxL2)
+    ax = plt.gca()
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    plt.savefig('OB120169_OGLE_phot_corner.png')
+
+#    # Local. not sure if correct yet
+#    res_list = fitter.load_mnest_modes_results_for_dynesty()
+#    smy = fitter.load_mnest_summary()
+#
+#    maxL1 = []
+#    maxL2 = []
+#    for param in fitter.all_param_names:
+#        maxL1.append(smy['MaxLike_' + param][1]) 
+#        maxL2.append(smy['MaxLike_' + param][2]) 
+#        
+#    labelz = ['$t_0$', '$u_0$', '$t_E$', '$\pi_{E,E}$',
+#              '$\pi_{E,E}$', '$b_{SFF}$', '$I_{src}$', r'$\varepsilon_m$'] 
+#
+#    dyplot.postplot(res_list[0], labels=labelz, quantiles = None,
+#                    show_titles=False, truths1=maxL1)
+#    plt.subplots_adjust(hspace=0.7)
+#
+#    dyplot.postplot(res_list[1], labels=labelz, quantiles = None,
+#                    show_titles=False, truths1=maxL2)
+#    plt.subplots_adjust(hspace=0.7)
+
 
 def OB150211_OGLE_phot_table():
     # Figure out what chi2 for the maxlikelihood solution is.
     ob150211_add = get_Rchi2('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
 
-    rchi2_1 = ob150211_add[1][1] # CHECK THIS!!!!!!!
-    rchi2_2 = ob150211_add[1][2] 
+    rchi2_1 = ob150211_add[1][0] # CHECK THIS!!!!!!!
+    rchi2_2 = ob150211_add[1][1] 
 
     t = Table.read(ogle_phot['ob150211_add'] + 'a4_summary.fits')
     
@@ -1540,7 +1671,7 @@ def OB150211_OGLE_phot_table():
                        + '{0:.2f}'.format(rchi2_1) + ' & ' 
                        + '{0:.2f}'.format(rchi2_2) + r' \\ ' + '\n'
                        +
-                       '$t_0$' + ' & ' 
+                       '$t_0$ (MJD)' + ' & ' 
                        + '{0:.2f}'.format(t0_1) + ' & ' 
                        + '{0:.2f}'.format(t0_2) + r' \\ ' + '\n'
                        +
@@ -1548,7 +1679,7 @@ def OB150211_OGLE_phot_table():
                        + '{0:.2f}'.format(u0_amp_1) + ' & ' 
                        + '{0:.2f}'.format(u0_amp_2) + r' \\ ' + '\n'
                        +
-                       '$t_E$' + ' & ' 
+                       '$t_E$ (days)' + ' & ' 
                        + '{0:.2f}'.format(tE_1) + ' & ' 
                        + '{0:.2f}'.format(tE_2) + r' \\ ' + '\n'
                        +
@@ -1564,11 +1695,11 @@ def OB150211_OGLE_phot_table():
                        + '{0:.2f}'.format(b_sff_1) + ' & ' 
                        + '{0:.2f}'.format(b_sff_2) + r' \\ ' + '\n'
                        +
-                       '$I_{src}$' + ' & ' 
+                       '$I_{src}$ (mag)' + ' & ' 
                        + '{0:.2f}'.format(mag_src_1) + ' & ' 
                        + '{0:.2f}'.format(mag_src_2) + r' \\ ' + '\n'
                        +
-                       r'$\varepsilon_a$' + ' & ' 
+                       r'$\varepsilon_a$ (mag)' + ' & ' 
                        + '{0:.2f}'.format(add_err_1) + ' & ' 
                        + '{0:.2f}'.format(add_err_2) + r' \\ ' + '\n')
     return
@@ -1594,7 +1725,7 @@ def OB150211_OGLE_phot_plot_fits():
         maxL2.append(smy['MaxLike_' + param][2]) 
 
     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$'] 
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
 
     model_fitter.postplot(res, labels=labels, quantiles=None,
                           show_titles=False, truths1=maxL1, truths2=maxL2)
@@ -1658,13 +1789,13 @@ def OB140613_OGLE_phot_table():
                        '$\chi^2_{dof}$' + ' & ' 
                        + '{0:.2f}'.format(rchi2) + r' \\ ' + '\n'
                        +
-                       '$t_0$' + ' & ' 
+                       '$t_0$ (MJD)' + ' & ' 
                        + '{0:.2f}'.format(t0) + r' \\ ' + '\n'
                        +
                        '$u_0$' + ' & ' 
                        + '{0:.2f}'.format(u0_amp) + r' \\ ' + '\n'
                        +
-                       '$t_E$' + ' & ' 
+                       '$t_E$ (days)' + ' & ' 
                        + '{0:.2f}'.format(tE) + r' \\ ' + '\n'
                        +
                        '$\pi_{E,E}$' + ' & ' 
@@ -1676,7 +1807,7 @@ def OB140613_OGLE_phot_table():
                        '$b_{SFF}$' + ' & ' 
                        + '{0:.2f}'.format(b_sff) + r' \\ ' + '\n'
                        +
-                       '$I_{src}$' + ' & ' 
+                       '$I_{src}$ (mag)' + ' & ' 
                        + '{0:.2f}'.format(mag_src) + r' \\ ' + '\n'
                        +
                        r'$\varepsilon_m$' + ' & ' 
@@ -1744,13 +1875,13 @@ def OB150029_OGLE_phot_table():
                        '$\chi^2_{dof}$' + ' & ' 
                        + '{0:.2f}'.format(rchi2) + r' \\ ' + '\n'
                        +
-                       '$t_0$' + ' & ' 
+                       '$t_0$ (MJD)' + ' & ' 
                        + '{0:.2f}'.format(t0) + r' \\ ' + '\n'
                        +
                        '$u_0$' + ' & ' 
                        + '{0:.2f}'.format(u0_amp) + r' \\ ' + '\n'
                        +
-                       '$t_E$' + ' & ' 
+                       '$t_E$ (days)' + ' & ' 
                        + '{0:.2f}'.format(tE) + r' \\ ' + '\n'
                        +
                        '$\pi_{E,E}$' + ' & ' 
@@ -1762,10 +1893,10 @@ def OB150029_OGLE_phot_table():
                        '$b_{SFF}$' + ' & ' 
                        + '{0:.2f}'.format(b_sff) + r' \\ ' + '\n'
                        +
-                       '$I_{src}$' + ' & ' 
+                       '$I_{src}$ (mag)' + ' & ' 
                        + '{0:.2f}'.format(mag_src) + r' \\ ' + '\n'
                        +
-                       r'$\varepsilon_a$' + ' & ' 
+                       r'$\varepsilon_a$ (mag)' + ' & ' 
                        + '{0:.2f}'.format(add_err) + r' \\ ' + '\n')
     return
 
@@ -1788,7 +1919,7 @@ def OB150029_OGLE_phot_plot_fits():
         maxL1.append(smy['MaxLike_' + param][0]) 
 
     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$'] 
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
 
     model_fitter.postplot(res, labels=labels, quantiles=None,
                           show_titles=False, truths1=maxL1)
@@ -1802,10 +1933,14 @@ def OB150029_OGLE_phot_plot_fits():
 
 
 def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
-                          color='black', smooth=0.02, quantiles_2d=None,
+                          color='black', smooth=0.02, # quantiles_2d=None,
+#                          quantiles_2d=1.0 - np.exp(-0.5 * np.array([1.0, 2.0]) ** 2),
+                          quantiles_2d = np.array([0.2, 0.5, 0.80]),
                           hist2d_kwargs=None, labels=None, label_kwargs=None,
                           show_titles=False, title_fmt=".2f", title_kwargs=None,):
     """
+    !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    ON THE WAY THIS PLOT LOOKS !!!
     Plot piE-tE 2D posteriors from OGLE photometry only fits.
     Also plot PopSyCLE simulations simultaneously.
     """
@@ -1823,6 +1958,18 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
 
+    # OB120169 fit results.
+    data_120169 = munge.getdata2('ob120169',
+                                 phot_data=['I_OGLE'],
+                                 ast_data=['Kp_Keck'])  
+
+    fitter_120169 = model_fitter.PSPL_phot_parallax_err_Solver(data_120169,
+                                                                outputfiles_basename=ogle_phot['ob120169_add'] + 'c3_')
+
+    results_120169 = fitter_120169.load_mnest_results_for_dynesty()
+    smy_120169 = fitter_120169.load_mnest_summary()
+
+    
     # OB140613 fit results.
     data_140613 = munge.getdata2('ob140613',
                                  phot_data=['I_OGLE'],
@@ -1855,14 +2002,17 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     smy_150211 = fitter_150211.load_mnest_summary()
 
     # Extract weighted samples.
+    samples_120169 = results_120169['samples']
     samples_140613 = results_140613['samples']
     samples_150029 = results_150029['samples']
     samples_150211 = results_150211['samples']
     try:
+        weights_120169 = np.exp(results_120169['logwt'] - results_120169['logz'][-1])
         weights_140613 = np.exp(results_140613['logwt'] - results_140613['logz'][-1])
         weights_150029 = np.exp(results_150029['logwt'] - results_150029['logz'][-1])
         weights_150211 = np.exp(results_150211['logwt'] - results_150211['logz'][-1])
     except:
+        weights_120169 = results_120169['weights']
         weights_140613 = results_140613['weights']
         weights_150029 = results_150029['weights']
         weights_150211 = results_150211['weights']
@@ -1870,6 +2020,15 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     # Deal with 1D results. A number of extra catches are also here
     # in case users are trying to plot other results besides the `Results`
     # instance generated by `dynesty`.
+    samples_120169 = np.atleast_1d(samples_120169)
+    if len(samples_120169.shape) == 1:
+        samples_120169 = np.atleast_2d(samples_120169)
+    else:
+        assert len(samples_120169.shape) == 2, "Samples must be 1- or 2-D."
+        samples_120169 = samples_120169.T
+    assert samples_120169.shape[0] <= samples_120169.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+    
     samples_140613 = np.atleast_1d(samples_140613)
     if len(samples_140613.shape) == 1:
         samples_140613 = np.atleast_2d(samples_140613)
@@ -1902,9 +2061,11 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     fig, axes = plt.subplots(1, 1, figsize=(6,6))
     plt.subplots_adjust(bottom=0.15)
 
+    tE_120169 = samples_120169[2]
     tE_140613 = samples_140613[2]
     tE_150029 = samples_150029[2]
     tE_150211 = samples_150211[2]
+    piE_120169 = np.hypot(samples_120169[3], samples_120169[4])
     piE_140613 = np.hypot(samples_140613[3], samples_140613[4])
     piE_150029 = np.hypot(samples_150029[3], samples_150029[4])
     piE_150211 = np.hypot(samples_150211[3], samples_150211[4])
@@ -1913,21 +2074,25 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     sy = smooth
 
     hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours',
-                                                       True)
+                                                       False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
                                                        True)
-    dyplot._hist2d(tE_140613, piE_140613, span=[span, span],
-                   weights=weights_140613, ax=axes, color=color, smooth=[sy, sx],
-                   **hist2d_kwargs)
-    dyplot._hist2d(tE_150029, piE_150029, span=[span, span],
-                   weights=weights_150029, ax=axes, color=color, smooth=[sy, sx],
-                   **hist2d_kwargs)
-    dyplot._hist2d(tE_150211, piE_150211, span=[span, span],
-                   weights=weights_150211, ax=axes, color=color, smooth=[sy, sx],
-                   **hist2d_kwargs)
-    axes.text(100, 0.20, 'OB150029')    
-    axes.text(300, 0.08, 'OB140613')    
-    axes.text(50, 0.004, 'OB150211')    
+    dyplot._hist2d(tE_120169, piE_120169, span=[span, span], quantiles_2d=quantiles_2d,
+                   weights=weights_120169, ax=axes, color='purple', smooth=[sy, sx],
+                   **hist2d_kwargs, plot_density=False)
+    dyplot._hist2d(tE_140613, piE_140613, span=[span, span], quantiles_2d=quantiles_2d,
+                   weights=weights_140613, ax=axes, color='red', smooth=[sy, sx],
+                   **hist2d_kwargs, plot_density=False)
+    dyplot._hist2d(tE_150029, piE_150029, span=[span, span], quantiles_2d=quantiles_2d,
+                   weights=weights_150029, ax=axes, color='darkorange', smooth=[sy, sx],
+                   **hist2d_kwargs, plot_density=False)
+    dyplot._hist2d(tE_150211, piE_150211, span=[span, span], quantiles_2d=quantiles_2d,
+                   weights=weights_150211, ax=axes, color='black', smooth=[sy, sx],
+                   **hist2d_kwargs, plot_density=False)
+    axes.text(150, 0.01, 'OB120169', color='purple')    
+    axes.text(170, 0.1, 'OB140613', color='red')    
+    axes.text(150, 0.20, 'OB150029', color='darkorange')    
+    axes.text(35, 0.04, 'OB150211', color='black')    
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
@@ -1940,26 +2105,39 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
 
     axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
                  alpha = 0.4, marker = '.', s = 25, 
-                 label = 'Star', color = 'paleturquoise')
+                 color = 'paleturquoise')
     axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
                  alpha = 0.4, marker = '.', s = 25, 
-                 label = 'WD', color = 'aqua')
+                 color = 'aqua')
     axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
                  alpha = 0.4, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
+                 color = 'blue')
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
                  alpha = 0.4, marker = '.', s = 25, 
-                 label = 'BH', color = 'red')
+                 color = 'dimgray')
+    # Trickery to make the legend darker
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'blue')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'dimgray')
 
-    axes.set_xlim(0.8, 4000)
-    axes.set_ylim(0.003, 1)
+    axes.set_xlim(10, 500)
+    axes.set_ylim(0.005, 0.5)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
     axes.set_yscale('log')
-    axes.legend()
+    axes.legend(loc=3)
     plt.savefig('piE_tE_phot_only_fit.png')
-
+    
 #############################################
 ### OLD STUFF (I DON'T THINK WE NEED THIS ###
 #############################################
