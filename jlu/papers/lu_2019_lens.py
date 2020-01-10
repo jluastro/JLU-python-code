@@ -97,12 +97,12 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
 ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
              'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
              'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
-             'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+             'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
              'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
              'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/',
              'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
-             'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/', # TEMP
-             'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_a/', # TEMP
+             'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/', 
+             'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
              'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
              'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
              'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
@@ -1156,29 +1156,6 @@ def compare_all_linear_motions(save_all=False):
     os.chdir(ret_dir)
 
 
-def make_all_comparison_plots():
-    data_150029 = munge_ob150029.getdata()
-    data_150211 = munge_ob150211.getdata()
-
-    fit_ob150211_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150211,
-                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/3_fit_phot_parallax/u0_plusminus/aa_')
-
-    fit_ob150211_phot_astr = model_fitter.PSPL_parallax_Solver(data_150211,
-                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/4_fit_phot_astrom_parallax/bb_')
-
-    fit_ob150029_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150029,
-                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/3_fit_phot_parallax/u0_plusminus/cc_')
-
-    fit_ob150029_phot_astr = model_fitter.PSPL_parallax_Solver(data_150029,
-                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/4_fit_phot_astrom_parallax/aa_')
-
-    # Best fit = median
-#    fit_ob150211_phot_only.plot_model_and_data_modes()
-#    fit_ob150211_phot_astr.plot_model_and_data_modes()
-#    fit_ob150029_phot_only.plot_model_and_data_modes()
-    fit_ob150029_phot_astr.plot_model_and_data_modes()
-
-
 def plot_all_photometry_single():
     plot_photometry_single('ob120169')
     plot_photometry_single('ob150029')
@@ -1379,13 +1356,13 @@ def make_BIC_comparison_table():
     ob120169_add = get_Rchi2_and_BIC('ob120169', 'add', ogle_phot['ob120169_add'], 'a9_') # TEMP
     ob120169_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a0_')
 
-    ob140613_none = get_Rchi2_and_BIC('ob140613', 'none', ogle_phot['ob140613_none'], 'a9_') # TEMP
+    ob140613_none = get_Rchi2_and_BIC('ob140613', 'none', ogle_phot['ob140613_none'], 'c2_') 
     ob140613_add = get_Rchi2_and_BIC('ob140613', 'add', ogle_phot['ob140613_add'], 'a9_') # TEMP
     ob140613_mult = get_Rchi2_and_BIC('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_') 
 
     ob150029_none = get_Rchi2_and_BIC('ob150029', 'none', ogle_phot['ob150029_none'], 'a9_') # TEMP
-    ob150029_add = get_Rchi2_and_BIC('ob150029', 'add', ogle_phot['ob150029_add'], 'a9_') # TEMP
-    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a9_') # TEMP
+    ob150029_add = get_Rchi2_and_BIC('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
+    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'd2_') 
 
     ob150211_none = get_Rchi2_and_BIC('ob150211', 'none', ogle_phot['ob150211_none'], 'a1_')
     ob150211_add = get_Rchi2_and_BIC('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
@@ -1502,7 +1479,7 @@ def get_Rchi2(target, errtype, dir, runid):
     Rchi2_modes = []
     for mm in np.arange(len(modes)):
         Rchi2 = fitter.calc_chi2(modes[mm])/(ndata - nparams)
-        Rchi2_modes.append(chi2)
+        Rchi2_modes.append(Rchi2)
     
     return Rchi2, Rchi2_modes
 
@@ -1655,8 +1632,8 @@ def OB140613_OGLE_phot_table():
     """
     One mode, global solution is reported.
     """
-    ob150211_add = get_Rchi2('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_')
-    rchi2 = ob150211_add[0]
+    ob140613_mult = get_Rchi2('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_')
+    rchi2 = ob140613_mult[0]
 
     t = Table.read(ogle_phot['ob140613_mult'] + 'c8_summary.fits')
 
@@ -1736,6 +1713,94 @@ def OB140613_OGLE_phot_plot_fits():
     ax.tick_params(axis='both', which='major', labelsize=10)
     plt.savefig('OB140613_OGLE_phot_corner.png')
 
+
+def OB150029_OGLE_phot_table():
+    """
+    One mode, global solution is reported.
+    """
+    ob150029_add = get_Rchi2('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
+    rchi2 = ob150029_add[0]
+
+    t = Table.read(ogle_phot['ob150029_add'] + 'd8_summary.fits')
+
+    t0 = t['MaxLike_t0'][0]
+    u0_amp = t['MaxLike_u0_amp'][0]
+    tE = t['MaxLike_tE'][0]
+    piE_E = t['MaxLike_piE_E'][0]
+    piE_N = t['MaxLike_piE_N'][0]
+    b_sff = t['MaxLike_b_sff'][0]
+    mag_src = t['MaxLike_mag_src'][0]
+    add_err = t['MaxLike_add_err'][0]
+    logZ = t['logZ'][0]
+    logL = t['maxlogL'][0]
+
+    with open('OB150029_OGLE_phot.txt', 'w+') as tab_file:
+        tab_file.write('log$\mathcal{Z}$' + ' & ' 
+                       + '{0:.2f}'.format(logZ) + r' \\ ' + '\n'
+                       +
+                       'log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(logL) + r' \\ ' + '\n'
+                       +
+                       '$\chi^2_{dof}$' + ' & ' 
+                       + '{0:.2f}'.format(rchi2) + r' \\ ' + '\n'
+                       +
+                       '$t_0$' + ' & ' 
+                       + '{0:.2f}'.format(t0) + r' \\ ' + '\n'
+                       +
+                       '$u_0$' + ' & ' 
+                       + '{0:.2f}'.format(u0_amp) + r' \\ ' + '\n'
+                       +
+                       '$t_E$' + ' & ' 
+                       + '{0:.2f}'.format(tE) + r' \\ ' + '\n'
+                       +
+                       '$\pi_{E,E}$' + ' & ' 
+                       + '{0:.2f}'.format(piE_E) + r' \\ ' + '\n'
+                       +
+                       '$\pi_{E,N}$' + ' & ' 
+                       + '{0:.2f}'.format(piE_N) + r' \\ ' + '\n'
+                       +
+                       '$b_{SFF}$' + ' & ' 
+                       + '{0:.2f}'.format(b_sff) + r' \\ ' + '\n'
+                       +
+                       '$I_{src}$' + ' & ' 
+                       + '{0:.2f}'.format(mag_src) + r' \\ ' + '\n'
+                       +
+                       r'$\varepsilon_a$' + ' & ' 
+                       + '{0:.2f}'.format(add_err) + r' \\ ' + '\n')
+    return
+
+
+def OB150029_OGLE_phot_plot_fits():
+    data = munge.getdata2('ob150029',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
+
+    dir = ogle_phot['ob150029_add']
+    runid = 'd8_'
+
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+    res = fitter.load_mnest_results_for_dynesty()
+    smy = fitter.load_mnest_summary()
+    
+    maxL1 = []
+    for param in fitter.all_param_names:
+        maxL1.append(smy['MaxLike_' + param][0]) 
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$'] 
+
+    model_fitter.postplot(res, labels=labels, quantiles=None,
+                          show_titles=False, truths1=maxL1)
+    plt.savefig('OB150029_OGLE_phot_posterior.png')
+
+    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
+                                   truths1=maxL1)
+    ax = plt.gca()
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    plt.savefig('OB150029_OGLE_phot_corner.png')
+
+
 def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
                           color='black', smooth=0.02, quantiles_2d=None,
                           hist2d_kwargs=None, labels=None, label_kwargs=None,
@@ -1758,6 +1823,26 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
 
+    # OB140613 fit results.
+    data_140613 = munge.getdata2('ob140613',
+                                 phot_data=['I_OGLE'],
+                                 ast_data=['Kp_Keck'])  
+
+    fitter_140613 = model_fitter.PSPL_phot_parallax_merr_Solver(data_140613,
+                                                                outputfiles_basename=ogle_phot['ob140613_mult'] + 'c8_')
+    results_140613 = fitter_140613.load_mnest_results_for_dynesty()
+    smy_140613 = fitter_140613.load_mnest_summary()
+
+    # OB150029 fit results.
+    data_150029 = munge.getdata2('ob150029',
+                                 phot_data=['I_OGLE'],
+                                 ast_data=['Kp_Keck'])  
+
+    fitter_150029 = model_fitter.PSPL_phot_parallax_err_Solver(data_150029,
+                                                                outputfiles_basename=ogle_phot['ob150029_add'] + 'd8_')
+    results_150029 = fitter_150029.load_mnest_results_for_dynesty()
+    smy_150029 = fitter_150029.load_mnest_summary()
+
     # OB150211 fit results.
     data_150211 = munge.getdata2('ob150211',
                                  phot_data=['I_OGLE'],
@@ -1769,38 +1854,22 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     results_150211 = fitter_150211.load_mnest_results_for_dynesty()
     smy_150211 = fitter_150211.load_mnest_summary()
 
-    # OB140613 fit results.
-    data_140613 = munge.getdata2('ob140613',
-                                 phot_data=['I_OGLE'],
-                                 ast_data=['Kp_Keck'])  
-
-    fitter_140613 = model_fitter.PSPL_phot_parallax_merr_Solver(data_140613,
-                                                                outputfiles_basename=ogle_phot['ob140613_mult'] + 'c8_')
-    results_140613 = fitter_140613.load_mnest_results_for_dynesty()
-    smy_140613 = fitter_140613.load_mnest_summary()
-
     # Extract weighted samples.
-    samples_150211 = results_150211['samples']
     samples_140613 = results_140613['samples']
+    samples_150029 = results_150029['samples']
+    samples_150211 = results_150211['samples']
     try:
-        weights_150211 = np.exp(results_150211['logwt'] - results_150211['logz'][-1])
         weights_140613 = np.exp(results_140613['logwt'] - results_140613['logz'][-1])
+        weights_150029 = np.exp(results_150029['logwt'] - results_150029['logz'][-1])
+        weights_150211 = np.exp(results_150211['logwt'] - results_150211['logz'][-1])
     except:
-        weights_150211 = results_150211['weights']
         weights_140613 = results_140613['weights']
+        weights_150029 = results_150029['weights']
+        weights_150211 = results_150211['weights']
 
     # Deal with 1D results. A number of extra catches are also here
     # in case users are trying to plot other results besides the `Results`
     # instance generated by `dynesty`.
-    samples_150211 = np.atleast_1d(samples_150211)
-    if len(samples_150211.shape) == 1:
-        samples_150211 = np.atleast_2d(samples_150211)
-    else:
-        assert len(samples_150211.shape) == 2, "Samples must be 1- or 2-D."
-        samples_150211 = samples_150211.T
-    assert samples_150211.shape[0] <= samples_150211.shape[1], "There are more " \
-                                                 "dimensions than samples!"
-
     samples_140613 = np.atleast_1d(samples_140613)
     if len(samples_140613.shape) == 1:
         samples_140613 = np.atleast_2d(samples_140613)
@@ -1810,15 +1879,35 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     assert samples_140613.shape[0] <= samples_140613.shape[1], "There are more " \
                                                  "dimensions than samples!"
 
+    samples_150029 = np.atleast_1d(samples_150029)
+    if len(samples_150029.shape) == 1:
+        samples_150029 = np.atleast_2d(samples_150029)
+    else:
+        assert len(samples_150029.shape) == 2, "Samples must be 1- or 2-D."
+        samples_150029 = samples_150029.T
+    assert samples_150029.shape[0] <= samples_150029.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+
+    samples_150211 = np.atleast_1d(samples_150211)
+    if len(samples_150211.shape) == 1:
+        samples_150211 = np.atleast_2d(samples_150211)
+    else:
+        assert len(samples_150211.shape) == 2, "Samples must be 1- or 2-D."
+        samples_150211 = samples_150211.T
+    assert samples_150211.shape[0] <= samples_150211.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+
     # Plot the piE-tE 2D posteriors.
     # tE = 2; piEE,N = 3, 4 
     fig, axes = plt.subplots(1, 1, figsize=(6,6))
     plt.subplots_adjust(bottom=0.15)
 
-    tE_150211 = samples_150211[2]
     tE_140613 = samples_140613[2]
-    piE_150211 = np.hypot(samples_150211[3], samples_150211[4])
+    tE_150029 = samples_150029[2]
+    tE_150211 = samples_150211[2]
     piE_140613 = np.hypot(samples_140613[3], samples_140613[4])
+    piE_150029 = np.hypot(samples_150029[3], samples_150029[4])
+    piE_150211 = np.hypot(samples_150211[3], samples_150211[4])
 
     sx = smooth
     sy = smooth
@@ -1830,10 +1919,14 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     dyplot._hist2d(tE_140613, piE_140613, span=[span, span],
                    weights=weights_140613, ax=axes, color=color, smooth=[sy, sx],
                    **hist2d_kwargs)
+    dyplot._hist2d(tE_150029, piE_150029, span=[span, span],
+                   weights=weights_150029, ax=axes, color=color, smooth=[sy, sx],
+                   **hist2d_kwargs)
     dyplot._hist2d(tE_150211, piE_150211, span=[span, span],
                    weights=weights_150211, ax=axes, color=color, smooth=[sy, sx],
                    **hist2d_kwargs)
-    axes.text(150, 0.15, 'OB140613')    
+    axes.text(100, 0.20, 'OB150029')    
+    axes.text(300, 0.08, 'OB140613')    
     axes.text(50, 0.004, 'OB150211')    
 
     # Add the PopSyCLE simulation points.
@@ -1858,8 +1951,8 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
                  alpha = 0.4, marker = '.', s = 25, 
                  label = 'BH', color = 'red')
 
-    axes.set_xlim(0.8, 1000)
-    axes.set_ylim(0.003, 5)
+    axes.set_xlim(0.8, 4000)
+    axes.set_ylim(0.003, 1)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
@@ -1870,6 +1963,28 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
 #############################################
 ### OLD STUFF (I DON'T THINK WE NEED THIS ###
 #############################################
+
+def make_all_comparison_plots():
+    data_150029 = munge_ob150029.getdata()
+    data_150211 = munge_ob150211.getdata()
+
+    fit_ob150211_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150211,
+                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/3_fit_phot_parallax/u0_plusminus/aa_')
+
+    fit_ob150211_phot_astr = model_fitter.PSPL_parallax_Solver(data_150211,
+                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150211/model_fits/4_fit_phot_astrom_parallax/bb_')
+
+    fit_ob150029_phot_only = model_fitter.PSPL_phot_parallax_Solver(data_150029,
+                                                                    outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/3_fit_phot_parallax/u0_plusminus/cc_')
+
+    fit_ob150029_phot_astr = model_fitter.PSPL_parallax_Solver(data_150029,
+                                                               outputfiles_basename = '/u/jlu/work/microlens/OB150029/model_fits/4_fit_phot_astrom_parallax/aa_')
+
+    # Best fit = median
+#    fit_ob150211_phot_only.plot_model_and_data_modes()
+#    fit_ob150211_phot_astr.plot_model_and_data_modes()
+#    fit_ob150029_phot_only.plot_model_and_data_modes()
+    fit_ob150029_phot_astr.plot_model_and_data_modes()
 
 def marginalize_tE_piE():
     t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
