@@ -1932,12 +1932,16 @@ def OB150029_OGLE_phot_plot_fits():
     plt.savefig('OB150029_OGLE_phot_corner.png')
 
 
-def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
-                          color='black', smooth=0.02, # quantiles_2d=None,
-#                          quantiles_2d=1.0 - np.exp(-0.5 * np.array([1.0, 2.0]) ** 2),
-                          quantiles_2d = np.array([0.2, 0.5, 0.80]),
-                          hist2d_kwargs=None, labels=None, label_kwargs=None,
-                          show_titles=False, title_fmt=".2f", title_kwargs=None,):
+def piE_tE_phot_only_fits():
+    span=0.999999426697
+    smooth=0.02
+    quantiles_2d=None
+    hist2d_kwargs=None
+    labels=None
+    label_kwargs=None
+    show_titles=False 
+    title_fmt=".2f" 
+    title_kwargs=None
     """
     !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
     ON THE WAY THIS PLOT LOOKS !!!
@@ -1945,8 +1949,6 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     Also plot PopSyCLE simulations simultaneously.
     """
     # Initialize values.
-    if quantiles is None:
-        quantiles = []
     if label_kwargs is None:
         label_kwargs = dict()
     if title_kwargs is None:
@@ -2006,6 +2008,7 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
     samples_140613 = results_140613['samples']
     samples_150029 = results_150029['samples']
     samples_150211 = results_150211['samples']
+
     try:
         weights_120169 = np.exp(results_120169['logwt'] - results_120169['logz'][-1])
         weights_140613 = np.exp(results_140613['logwt'] - results_140613['logz'][-1])
@@ -2077,18 +2080,18 @@ def piE_tE_phot_only_fits(span=0.999999426697, quantiles=[0.025, 0.5, 0.975],
                                                        False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
                                                        True)
-    dyplot._hist2d(tE_120169, piE_120169, span=[span, span], quantiles_2d=quantiles_2d,
-                   weights=weights_120169, ax=axes, color='purple', smooth=[sy, sx],
-                   **hist2d_kwargs, plot_density=False)
-    dyplot._hist2d(tE_140613, piE_140613, span=[span, span], quantiles_2d=quantiles_2d,
-                   weights=weights_140613, ax=axes, color='red', smooth=[sy, sx],
-                   **hist2d_kwargs, plot_density=False)
-    dyplot._hist2d(tE_150029, piE_150029, span=[span, span], quantiles_2d=quantiles_2d,
-                   weights=weights_150029, ax=axes, color='darkorange', smooth=[sy, sx],
-                   **hist2d_kwargs, plot_density=False)
-    dyplot._hist2d(tE_150211, piE_150211, span=[span, span], quantiles_2d=quantiles_2d,
-                   weights=weights_150211, ax=axes, color='black', smooth=[sy, sx],
-                   **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_120169, piE_120169, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_120169, ax=axes, smooth=[sy, sx], color='purple',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_140613, piE_140613, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_140613, ax=axes, smooth=[sy, sx], color='red', 
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_150029, piE_150029, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150029, ax=axes, smooth=[sy, sx], color='darkorange',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_150211, piE_150211, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150211, ax=axes, smooth=[sy, sx], color='black', 
+                                 **hist2d_kwargs, plot_density=False)
     axes.text(150, 0.01, 'OB120169', color='purple')    
     axes.text(170, 0.1, 'OB140613', color='red')    
     axes.text(150, 0.20, 'OB150029', color='darkorange')    
