@@ -93,8 +93,7 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
                   'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
 
 # added 12/20/19: might supersede pspl_phot.
-# THINGS LABELED "TEMP" NEED TO BE CHANGED!!!!!!
-ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_a/', # TEMP
+ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
              'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
              'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
              'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
@@ -1351,24 +1350,24 @@ def plot_vpd():
         
 def make_BIC_comparison_table():
     # Use the one with the highest likelihood solution.
-    # THINGS LABELED "TEMP" NEED TO BE CHANGED!!!!!!
-    ob120169_none = get_Rchi2_and_BIC('ob120169', 'none', ogle_phot['ob120169_none'], 'a9_') # TEMP
-    ob120169_add = get_Rchi2_and_BIC('ob120169', 'add', ogle_phot['ob120169_add'], 'a9_') # TEMP
+    ob120169_none = get_Rchi2_and_BIC('ob120169', 'none', ogle_phot['ob120169_none'], 'd7_')
+    ob120169_add = get_Rchi2_and_BIC('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_') 
     ob120169_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a0_')
 
     ob140613_none = get_Rchi2_and_BIC('ob140613', 'none', ogle_phot['ob140613_none'], 'c2_') 
-    ob140613_add = get_Rchi2_and_BIC('ob140613', 'add', ogle_phot['ob140613_add'], 'a9_') # TEMP
+    ob140613_add = get_Rchi2_and_BIC('ob140613', 'add', ogle_phot['ob140613_add'], 'b3_') 
     ob140613_mult = get_Rchi2_and_BIC('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_') 
 
-    ob150029_none = get_Rchi2_and_BIC('ob150029', 'none', ogle_phot['ob150029_none'], 'a9_') # TEMP
+    ob150029_none = get_Rchi2_and_BIC('ob150029', 'none', ogle_phot['ob150029_none'], 'b5_') 
     ob150029_add = get_Rchi2_and_BIC('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
-    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'd2_') 
+    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob150029_mult'], 'd2_') 
 
     ob150211_none = get_Rchi2_and_BIC('ob150211', 'none', ogle_phot['ob150211_none'], 'a1_')
     ob150211_add = get_Rchi2_and_BIC('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
     ob150211_mult = get_Rchi2_and_BIC('ob150211', 'mult', ogle_phot['ob150211_mult'], 'd5_')
 
-    with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
+#    with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
+    with open('BIC_comparison.txt', 'w+') as tab_file:
         tab_file.write('No error term' + ' & ' 
                        + '{0:.2f}'.format(ob120169_none[1]) + ' & ' 
                        + '{0:.2f}'.format(ob140613_none[1]) + ' & ' 
