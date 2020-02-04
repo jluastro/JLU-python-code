@@ -1,15 +1,15 @@
 import pylab as py
 import numpy as np
 from mpl_toolkits import mplot3d
-import pymc
-import bayesian as b
+#import pymc
+from . import bayesian as b
 from scipy import interpolate
 from jlu.papers import lu_gc_imf
 import scipy
 import scipy.stats
 import pymultinest
 import math
-import atpy
+#import atpy
 from gcreduce import gcutil
 import pickle
 import pdb
@@ -385,7 +385,7 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             
             # Convolve gaussian with PDF(K) from model
             if obs_k_norm_pdf.sum() == 0:
-                print 'We have a problem... this should never happen.'
+                print('We have a problem... this should never happen.')
                 pdb.set_trace()
                 return -np.Inf
             else:
@@ -490,43 +490,43 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             py.title('Old')
 
             
-            print 'dist    = %6.3f   log_prob = %8.1f' % (dist, math.log(prob_dist))
-            print 'log_age = %6.2f   log_prob = %8.1f' % (log_age_cont, math.log(prob_log_age_cont))
-            print 'alpha   = %6.2f   log_prob = %8.1f' % (alpha, math.log(prob_alpha))
-            print 'Mcl     = %6.2f   log_prob = %8.1f' % (Mcl, math.log(prob_Mcl))
-            print 'gamma   = %6.2f   log_prob = %8.1f' % (gamma, math.log(prob_gamma))
-            print 'N_old   = %6d   log_prob = %8.1f' % (N_old, math.log(prob_N_old))
-            print 'rcMean  = %6.2f   log_prob = %8.1f' % (rcMean, math.log(prob_rcMean))
-            print 'rcSigma = %6.2f   log_prob = %8.1f' % (rcSigma, math.log(prob_rcSigma))
-            print ''
-            print 'Simulated Stars:'
-            print 'N_yng = %6d' % (N_yng_sim)
-            print 'N_old = %6d' % (N_old_sim)
-            print 'N_tot = %6d' % (N_tot_sim)
-            print 'N_WR = %6d' % (N_WR_sim)
-            print ''
-            print 'Observed Stars:'
-            print 'N_yng = %6d' % (data.prob.sum())
-            print 'N_old = %6d' % ((1.0 - data.prob).sum())
-            print 'N_obs = %6d' % (N_obs)
-            print 'N_WR = %6d' % (data.N_WR)
-            print ''
-            print 'Binomial: '
-            print 'N_tot = %6d' % N_tot
-            print 'N_obs = %6d' % N_obs
-            print ''
-            print 'Likelihood:'
-            print 'log_L_N_WR         = %8.1f' % log_L_N_WR
-            print 'log_L_binom_coeff  = %8.1f' % log_binom_coeff
-            print 'log_L_k_detect     = %8.1f' % log_L_k_detect
-            print 'log_L_k_non_detect = %8.1f' % log_L_k_non_detect
-            print ''
+            print('dist    = %6.3f   log_prob = %8.1f' % (dist, math.log(prob_dist)))
+            print('log_age = %6.2f   log_prob = %8.1f' % (log_age_cont, math.log(prob_log_age_cont)))
+            print('alpha   = %6.2f   log_prob = %8.1f' % (alpha, math.log(prob_alpha)))
+            print('Mcl     = %6.2f   log_prob = %8.1f' % (Mcl, math.log(prob_Mcl)))
+            print('gamma   = %6.2f   log_prob = %8.1f' % (gamma, math.log(prob_gamma)))
+            print('N_old   = %6d   log_prob = %8.1f' % (N_old, math.log(prob_N_old)))
+            print('rcMean  = %6.2f   log_prob = %8.1f' % (rcMean, math.log(prob_rcMean)))
+            print('rcSigma = %6.2f   log_prob = %8.1f' % (rcSigma, math.log(prob_rcSigma)))
+            print('')
+            print('Simulated Stars:')
+            print('N_yng = %6d' % (N_yng_sim))
+            print('N_old = %6d' % (N_old_sim))
+            print('N_tot = %6d' % (N_tot_sim))
+            print('N_WR = %6d' % (N_WR_sim))
+            print('')
+            print('Observed Stars:')
+            print('N_yng = %6d' % (data.prob.sum()))
+            print('N_old = %6d' % ((1.0 - data.prob).sum()))
+            print('N_obs = %6d' % (N_obs))
+            print('N_WR = %6d' % (data.N_WR))
+            print('')
+            print('Binomial: ')
+            print('N_tot = %6d' % N_tot)
+            print('N_obs = %6d' % N_obs)
+            print('')
+            print('Likelihood:')
+            print('log_L_N_WR         = %8.1f' % log_L_N_WR)
+            print('log_L_binom_coeff  = %8.1f' % log_binom_coeff)
+            print('log_L_k_detect     = %8.1f' % log_L_k_detect)
+            print('log_L_k_non_detect = %8.1f' % log_L_k_non_detect)
+            print('')
             idx = np.where(data.prob > 0)[0]
-            print 'YNG arr_L_k_y_np   = %8.1f' % arr_L_k_y_np[idx].sum()
-            print 'YNG arr_L_k_y      = %8.1f' % arr_L_k_y[idx].sum()
-            print 'FINAL: '
-            print 'log_L = %8.1f' % log_L
-            print ''
+            print('YNG arr_L_k_y_np   = %8.1f' % arr_L_k_y_np[idx].sum())
+            print('YNG arr_L_k_y      = %8.1f' % arr_L_k_y[idx].sum())
+            print('FINAL: ')
+            print('log_L = %8.1f' % log_L)
+            print('')
             
             pdb.set_trace()
             
@@ -746,7 +746,7 @@ def run2(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             
             # Convolve gaussian with PDF(K) from model
             if obs_k_norm_pdf.sum() == 0:
-                print 'We have a problem... this should never happen.'
+                print('We have a problem... this should never happen.')
                 pdb.set_trace()
                 return -np.Inf
             else:
@@ -855,9 +855,9 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
         foo.close()
         
         idx = np.where((data.kp_ext <= magCut) & (data.prob != 0))
-        print len(data.kp)
+        print(len(data.kp))
         data.kp = data.kp[idx]
-        print len(data.kp)
+        print(len(data.kp))
         data.kp_ext = data.kp_ext[idx]
         data.kp_err = data.kp_err[idx]
         data.prob = data.prob[idx]
@@ -1018,7 +1018,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             
             # Convolve gaussian with PDF(K) from model
             if obs_k_norm_pdf.sum() == 0:
-                print 'We have a problem... this should never happen.'
+                print('We have a problem... this should never happen.')
                 pdb.set_trace()
                 return -np.Inf
             else:
@@ -1028,7 +1028,7 @@ def run(outdir, data=None, rmin=0, rmax=30, n_live_points=300, multiples=True,
             log_L_k_detect += data.prob[ii] * log_prob(L_k_i)
 
             if np.isnan(log_L_k_detect):
-                print 'Bad Model: cube[0:4] = ', cube[0:4]
+                print('Bad Model: cube[0:4] = ', cube[0:4])
 
             if log_L_k_detect == -np.inf:
                 break
@@ -1282,7 +1282,7 @@ def pair_posterior(atpy_table, weights, outfile=None, title=None):
     marginal pairwise posteriors of the parameters.
     """
 
-    params = atpy_table.keys()
+    params = list(atpy_table.keys())
     pcnt = len(params)
 
     fontsize = 10
@@ -1353,7 +1353,7 @@ def plot_results_3d(outdir, param1='alpha', param2='logAge'):
     tab = atpy.Table(outroot + '.txt', type='ascii')
 
     if num_params != (tab.shape[1] - 2):
-        print 'N_params mismatch: ', outroot
+        print('N_params mismatch: ', outroot)
 
     # First column is the weights
     weights = tab['col1']
@@ -1510,9 +1510,9 @@ def simulated_data(logAge=6.6, AKs=2.7, distance=8000, alpha=2.35, Mcl=10**4,
                 data.prob[yy] = np.random.uniform(low=0.4, high=1.0)
                 data.prob[oo] = 1.0 - data.prob[yy]
                 oldAssigned.append(oo)
-                print 'Probability Pair:'
-                print '   Young Kp = %.2f  Prob = %.2f' % (data.kp[yy], data.prob[yy])
-                print '     Old Kp = %.2f  Prob = %.2f' % (data.kp[oo], data.prob[oo])
+                print('Probability Pair:')
+                print('   Young Kp = %.2f  Prob = %.2f' % (data.kp[yy], data.prob[yy]))
+                print('     Old Kp = %.2f  Prob = %.2f' % (data.kp[oo], data.prob[oo]))
                 break
 
     ydx = np.where(data.isYoung == True)[0]
@@ -1553,9 +1553,9 @@ def test_prob_old():
 
     idx = np.where((obs.kp_ext >= 10) & (obs.kp_ext < 14))[0]
     rdx = np.where((obs.kp_ext >= 14) & (obs.kp_ext < 15.5))[0]
-    print 'OBS results:'
-    print 'N_old with 10.0 <= Kp < 14.0: %d' % (1.0 - obs.prob[idx]).sum()
-    print 'N_old with 14.0 <= Kp < 15.5: %d' % (1.0 - obs.prob[rdx]).sum()
+    print('OBS results:')
+    print('N_old with 10.0 <= Kp < 14.0: %d' % (1.0 - obs.prob[idx]).sum())
+    print('N_old with 14.0 <= Kp < 15.5: %d' % (1.0 - obs.prob[rdx]).sum())
 
     Nold = 1.5e3
     gamma = 0.3
@@ -1578,9 +1578,9 @@ def test_prob_old():
 
     idx = np.where((kp >= 10.0) & (kp < 14.0))[0]
     rdx = np.where((kp >= 14.0) & (kp < 15.5))[0]
-    print 'SIM results:'
-    print 'N_old with 10.0 <= Kp < 14.0: %d' % len(idx)
-    print 'N_old with 14.0 <= Kp < 15.5: %d' % len(rdx)
+    print('SIM results:')
+    print('N_old with 10.0 <= Kp < 14.0: %d' % len(idx))
+    print('N_old with 14.0 <= Kp < 15.5: %d' % len(rdx))
 
     outRoot = '/u/jlu/work/gc/imf/klf/2012_02_14/multinest/test_model/'
 
@@ -1619,8 +1619,8 @@ def test_prob_old():
     py.title('Old Stars')
     py.savefig(outRoot + 'klf_sim_vs_obs_old.png')
 
-    print len(sim.kp), sim.prob.sum() + (1.0 - sim.prob).sum()
-    print len(obs.kp), obs.prob.sum() + (1.0 - obs.prob).sum()
+    print(len(sim.kp), sim.prob.sum() + (1.0 - sim.prob).sum())
+    print(len(obs.kp), obs.prob.sum() + (1.0 - obs.prob).sum())
 
 
 def get_data_file(logAge, AKs, distance, imfSlope, clusterMass, Nold,
@@ -1752,7 +1752,7 @@ def plot_results_detail(rootdir):
 
     titles = [plotStuff[ii][0] for ii in range(len(plotStuff))]
     values = [plotStuff[ii][1] for ii in range(len(plotStuff))]
-    print titles
+    print(titles)
 
     py.figure(1, figsize=(22,12))
     py.subplots_adjust(left=0.05, right=0.98, bottom=0.05, top=0.95)

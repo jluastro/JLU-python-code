@@ -1,7 +1,8 @@
-from pyraf import iraf as ir
-import pyfits
+#from pyraf import iraf as ir
+#import pyfits
 import math
-import atpy
+#import atpy
+from astropy.table import Table
 import numpy as np
 import pylab as py
 import pickle, glob
@@ -183,7 +184,7 @@ def get_filter_profile(filter):
         print( 'Choices are: ', filters)
         return
 
-    table = atpy.Table(rootDir + filter + '.dat', type='ascii')
+    table = Table.read(rootDir + filter + '.dat', format='ascii')
 
     wavelength = table[table.keys()[0]]
     transmission = table[table.keys()[1]]

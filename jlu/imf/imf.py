@@ -50,8 +50,8 @@ def sample_imf(massLimits, imfSlopes, normMass, normMassRange=None,
     """
 
     if (massLimits[-1] > normMass) and verbose:
-        print 'sample_imf: Setting maximum allowed mass to %d' % \
-            (normMass)
+        print(('sample_imf: Setting maximum allowed mass to %d' % \
+            (normMass)))
 
         massLimits[-1] = normMass
 
@@ -124,8 +124,8 @@ def sample_imf(massLimits, imfSlopes, normMass, normMassRange=None,
         masses = np.append(masses, newMasses)
 
         if (loopCnt >= 0) and verbose:
-            print 'sample_imf: Loop %d added %.2e Msun to previous total of %.2e Msun' % \
-                (loopCnt, newSimTotalMass, simTotalMass)
+            print(('sample_imf: Loop %d added %.2e Msun to previous total of %.2e Msun' % \
+                (loopCnt, newSimTotalMass, simTotalMass)))
 
         simTotalMass += newSimTotalMass
         newStarCount = meanNumber * 0.1  # increase by 20% each pass
@@ -168,10 +168,10 @@ class IMF_broken_powerlaw(object):
         self.powers = powers
 
         if len(massLimits) != len(powers)+1:
-            print 'Incorrect specification of multi-part powerlaw.'
-            print '    len(massLimts) != len(powers)+1'
-            print '    len(massLimits) = ', len(massLimits)
-            print '    len(powers) = ', len(powers)
+            print('Incorrect specification of multi-part powerlaw.')
+            print('    len(massLimts) != len(powers)+1')
+            print(('    len(massLimits) = ', len(massLimits)))
+            print(('    len(powers) = ', len(powers)))
 
         # Calculate the coeffs to make the function continuous
         nterms = len(self.powers)
@@ -452,10 +452,10 @@ class IMF_Chabrier_2003(object):
         self.powers = powers
 
         if len(massLimits) != len(powers)+1:
-            print 'Incorrect specification of multi-part powerlaw.'
-            print '    len(massLimts) != len(powers)+1'
-            print '    len(massLimits) = ', len(massLimits)
-            print '    len(powers) = ', len(powers)
+            print('Incorrect specification of multi-part powerlaw.')
+            print('    len(massLimts) != len(powers)+1')
+            print(('    len(massLimits) = ', len(massLimits)))
+            print(('    len(powers) = ', len(powers)))
 
         # Calculate the coeffs to make the function continuous
         nterms = len(self.powers)

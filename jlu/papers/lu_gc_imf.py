@@ -1,39 +1,40 @@
 from sqlite3 import dbapi2 as sqlite
+import pandas as pd
+import pymysql as mdb
 import numpy as np
 np.seterr(all='warn')
 import pylab as py
 import matplotlib
-import asciidata
+from matplotlib.path import Path
+#import asciidata
+#import atpy
+#import pyfits
 import math
 import os
-import glob
-import atpy
 import scipy
 import itertools
-from mpl_toolkits.axes_grid import AxesGrid
 from matplotlib import gridspec
 from gcwork import objects
 from scipy import interpolate
-import pyfits
+from astropy.io import fits
 import pdb
 import pickle
-import cPickle
-from jlu.nirc2 import synthetic
+from popstar import synthetic, evolution, atmospheres, reddening, evolution
 from scipy import optimize
 from gcwork import starTables
 from gcwork import starset
-from jlu.util import plfit
-from jlu.util import CatalogFinder
+#from jlu.util import plfit
+#from jlu.util import CatalogFinder
 from jlu.starfinder import starPlant
-from jlu.stellarModels import extinction
-from jlu.stellarModels import atmospheres
-from jlu.stellarModels import evolution
+#from jlu.stellarModels import extinction
+#from jlu.stellarModels import atmospheres
+#from jlu.stellarModels import evolution
 from matplotlib import path
 from scipy.optimize import leastsq
 from jlu.util import constants
 from pysynphot import spectrum
 from scipy import stats
-from jlu.util import img_scale
+#from jlu.util import img_scale
 from gcreduce import gcutil
 import pymultinest
 import subprocess
@@ -41,14 +42,16 @@ from matplotlib.patches import FancyArrow
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from astropy.table import Table
 
-workDir = '/u/jlu/work/gc/imf/klf/2012_05_01/'
+workDir_old = '/u/jlu/work/gc/imf/klf/2012_05_01/'
+workDir = '/g/lu/scratch/siyao/work/3_young/imf/'
 theAKs = 2.7
-synFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a680.dat'
-oldSynFile = '/u/jlu/work/gc/photometry/synthetic/syn_nir_d08000_a935.dat'
-database = '/u/jlu/data/gc/database/stars.sqlite'
-klf_mag_bins = np.arange(9.0, 17, 1.0)  # Bin Center Points
 distance = 8000.0
-# klf_mag_bins = np.arange(9.0, 19, 0.5)  # Bin Center Points
+database = '/u/jlu/data/gc/database/stars.sqlite'
+klf_mag_bins = np.arange(9.0, 18, 1.0)  # Bin Center Points
+
+pwFile='/g/lu/scratch/siyao/other/pw.txt'
+pw = open(pwFile).read().split()[0]
+
 
 # fitAlpha = 1.71
 # fitAge = 3.92e6
@@ -59,6 +62,8 @@ fitAge = 3.9e6
 fitMcl = 9.2e3
 fitDist = 7900
 fitLogAge = math.log10(fitAge)
+
+
 
 def analysis_by_radius(rmin=0, rmax=30):
     # image_completeness_in_osiris()
@@ -149,7 +154,7 @@ def load_yng_data_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
 def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
     yng = objects.DataHolder()
 
-    outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir, rmin, rmax)
+    outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir+'completeness/', rmin, rmax)
 
     _pick = open(outRoot + '_yng_info.pickle', 'rb')
     yng.name = pickle.load(_pick)
@@ -168,7 +173,7 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
 
     # Optional magnitude cut
     if magCut != None:
-        print 'Cutting out young stars with Kp <= %.2f' % magCut
+        print(('Cutting out young stars with Kp <= %.2f' % magCut))
         idx = np.where(yng.kp_ext <= magCut)[0]
         yng.name = yng.name[idx]
         yng.x = yng.x[idx]
@@ -181,7 +186,7 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
         yng.isWR = yng.isWR[idx]
 
     if trimWR == True:
-        print 'Cutting out WR stars'
+        print('Cutting out WR stars')
         idx = np.where(yng.isWR == False)[0]
         yng.name = yng.name[idx]
         yng.x = yng.x[idx]
@@ -198,7 +203,7 @@ def load_yng_catalog_by_radius(rmin=0, rmax=30, magCut=None, trimWR=False):
 def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
     all = objects.DataHolder()
 
-    outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir, rmin, rmax)
+    outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir+'completeness/', rmin, rmax)
 
     _pick = open(outRoot + '_all_info.pickle', 'rb')
     all.name = pickle.load(_pick)
@@ -217,7 +222,7 @@ def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
 
     # Optional magnitude cut
     if magCut != None:
-        print 'Cutting out young stars with Kp <= %.2f' % magCut
+        print(('Cutting out young stars with Kp <= %.2f' % magCut))
         idx = np.where(all.kp_ext <= magCut)[0]
         all.name = all.name[idx]
         all.x = all.x[idx]
@@ -234,7 +239,7 @@ def load_all_catalog_by_radius(rmin=0, rmax=30, magCut=None):
 def load_image_completeness_by_radius(rmin=0, rmax=30):
     d = objects.DataHolder()
 
-    img_file = '%simage_completeness_r_%.1f_%.1f.txt' % (workDir, rmin, rmax)
+    img_file = '%simage_completeness_r_%.1f_%.1f.txt' % (workDir_old, rmin, rmax)
     _img = asciidata.open(img_file)
 
     d.mag = _img[0].tonumpy()
@@ -286,7 +291,7 @@ def gcimf_completeness():
 
     # Load up the label.dat file and use the coordinates in there
     # to astrometrically calibrate each NIRC2 dp_msc field.
-    label = starTables.Labels()
+    label = starTables.Labels('')
 
     # Load up the spectroscopic database to get the field-of-view definitions.
     fields = getOsirisFields()
@@ -299,7 +304,7 @@ def gcimf_completeness():
 
     for rr in range(len(fields.name)):
         fieldName = fields.name[rr]
-        print 'Working on field %s' % fields.name[rr]
+        print(('Working on field %s' % fields.name[rr]))
 
         # Load up the corresponding NIRC2 completeness starlists
         nircFieldName = osiris2nirc2[fieldName]
@@ -336,7 +341,7 @@ def gcimf_completeness():
 
         # Measure the completeness for this OSIRIS field. Also print it 
         # out into a file.
-        outRoot = '%s/completeness_%s' % (workDir, fieldName.replace(' ', ''))
+        outRoot = '%s/completeness_%s' % (workDir_old, fieldName.replace(' ', ''))
         completeness = np.zeros(len(cData.mag), dtype=float)
         _comp = open(outRoot + '.dat', 'w')
         for mm in range(len(cData.mag)):
@@ -362,7 +367,7 @@ def gcimf_completeness():
         py.ylim(0, 1.1)
         py.xlim(9, 20)
         py.savefig(outRoot + '.png')
-        print 'Saving %s' % (outRoot + '.png')
+        print(('Saving %s' % (outRoot + '.png')))
 
 def img_completeness():
     # Load up the completeness mosaic. Remember, it is aligned to the
@@ -391,7 +396,7 @@ def img_completeness():
     # Loop through each OSIRIS field and get the completeness curve.
     for rr in range(len(fields.name)):
         fieldName = fields.name[rr]
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         # Now trim down to just those pixels that are within this
         # OSIRIS field of view
@@ -402,7 +407,7 @@ def img_completeness():
         # Measure the completeness for this OSIRIS field. Also print it 
         # out into a file.
         outRoot = '%s/img_completeness_%s' % \
-            (workDir, fieldName.replace(' ', ''))
+            (workDir_old, fieldName.replace(' ', ''))
         completeness = np.zeros(len(magBins), dtype=float)
         _comp = open(outRoot + '.dat', 'w')
 
@@ -439,10 +444,10 @@ def img_completeness():
         py.ylim(0, 1.1)
         py.xlim(9, 20)
         py.savefig(outRoot + '.png')
-        print 'Saving %s' % (outRoot + '.png')
+        print(('Saving %s' % (outRoot + '.png')))
 
     # Write up the total completeness
-    outRoot = '%s/img_completeness_all' % (workDir)
+    outRoot = '%s/img_completeness_all' % (workDir_old)
     completeness = detected_all / planted_all
     _comp = open(outRoot + '.dat', 'w')
 
@@ -461,7 +466,7 @@ def img_completeness():
     py.ylim(0, 1.1)
     py.xlim(9, 20)
     py.savefig(outRoot + '.png')
-    print 'Saving %s' % (outRoot + '.png')
+    print(('Saving %s' % (outRoot + '.png')))
 
 
 def compare_img_completeness_methods():
@@ -476,12 +481,12 @@ def compare_img_completeness_methods():
     # Loop through each OSIRIS field and get the completeness curve.
     for rr in range(len(fields.name)):
         fieldName = fields.name[rr]
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         compFile1 = '%s/completeness_%s.dat' % \
-            (workDir, fieldName.replace(' ', ''))
+            (workDir_old, fieldName.replace(' ', ''))
         compFile2 = '%s/img_completeness_%s.dat' % \
-            (workDir, fieldName.replace(' ', ''))
+            (workDir_old, fieldName.replace(' ', ''))
 
         table1 = asciidata.open(compFile1)
         table2 = asciidata.open(compFile2)
@@ -501,7 +506,7 @@ def compare_img_completeness_methods():
         py.ylim(0, 1.1)
         py.xlim(9, 20)
         py.savefig('%simg_completeness_compare_%s.png' % \
-                       (workDir, fieldName.replace(' ', '')))
+                       (workDir_old, fieldName.replace(' ', '')))
 
     
 def compare_img_completeness_submaps():
@@ -546,6 +551,12 @@ def calc_spec_id_all_stars():
     dp_msc starlist. Extinction corrections are pulled for all the stars
     from the Schoedel et al. (2010) extinction map.
     """
+    yng_age = 5e6
+    old_age = 2e9
+
+    yng_temp = 30000
+    old_temp = 4500
+    
     # Load up the names of known Wolf-Rayet stars.
     wolfRayetNames = get_wolf_rayet_stars()
 
@@ -554,13 +565,13 @@ def calc_spec_id_all_stars():
     dp_msc_root = '/u/jlu/work/gc/dp_msc/2011_05_29/tables/'
     dp_msc_root += 'photo_catalog_dp_msc.dat'
 
-    dp_msc = atpy.Table(dp_msc_root, type='ascii')
+    dp_msc = Table.read(dp_msc_root, format='ascii')
     nirc2 = objects.DataHolder()
-    nirc2.name = dp_msc['Name']
-    nirc2.x = dp_msc['Xarc']
-    nirc2.y = dp_msc['Yarc']
-    nirc2.kp = dp_msc['Kp']
-    nirc2.kperr = dp_msc['Kperr']
+    nirc2.name = np.array(dp_msc['Name'])
+    nirc2.x = np.array(dp_msc['Xarc'])
+    nirc2.y = np.array(dp_msc['Yarc'])
+    nirc2.kp = np.array(dp_msc['Kp'])
+    nirc2.kperr = np.array(dp_msc['Kperr'])
 
     # Impose magnitude error lower limit of 1\%
     idx = np.where(nirc2.kperr < 0.02)[0]
@@ -596,8 +607,8 @@ def calc_spec_id_all_stars():
 
     # Will de-redden all stars to AKs = 2.7. Then these can be converted
     # using the ks_2_kp factor (assumes hot star atmospheres)
-    ks_2_kp_old = synthetic.get_Kp_Ks(theAKs, 4500.0, filename=oldSynFile)
-    ks_2_kp_yng = synthetic.get_Kp_Ks(theAKs, 30000.0, filename=synFile)
+    ks_2_kp_yng = get_Kp_Ks(yng_age, theAKs, distance, yng_temp)
+    ks_2_kp_old = get_Kp_Ks(old_age, theAKs, distance, old_temp)
 
     # Keep track of everything in the end
     kp_yng = []
@@ -638,22 +649,13 @@ def calc_spec_id_all_stars():
     for ff in range(len(fields.name)):
         fieldName = fields.name[ff]
         fieldSuffix = fieldName.replace(' ', '')
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         # Find the stars inside this field.
-        inside_yng = nxutils.points_inside_poly(xypoints_yng, 
-                                                fields.xyverts[ff])
-        inside_yng = np.where(inside_yng == True)[0]
-
-
-        inside_old = nxutils.points_inside_poly(xypoints_old, 
-                                                fields.xyverts[ff])
-        inside_old = np.where(inside_old == True)[0]
-
-
-        inside_nirc2 = nxutils.points_inside_poly(xypoints_nirc2, 
-                                                  fields.xyverts[ff])
-        inside_nirc2 = np.where(inside_nirc2 == True)[0]
+        path = matplotlib.path.Path(fields.xyverts[ff])
+        inside_yng = np.arange(len(xypoints_yng))[path.contains_points(xypoints_yng)]
+        inside_old = np.arange(len(xypoints_old))[path.contains_points(xypoints_old)]
+        inside_nirc2 = np.arange(len(xypoints_nirc2))[path.contains_points(xypoints_nirc2)]
         inside_nirc2_orig = inside_nirc2.copy()
 
         isWR_yng_field = []
@@ -666,12 +668,11 @@ def calc_spec_id_all_stars():
             # identified already.
             isNameInList, inField = is_name_in_list(yng.name[ii], name_yng)
             if isNameInList:
-                #print 'Skip %s in field %s (yng star found in field %s).' % \
-                #    (yng.name[ii], fieldName, fields.name[inField])
+                print('Skip %s in field %s (yng star found in field %s).' % \
+                    (yng.name[ii], fieldName, fields.name[inField]))
 
                 # Remove it from our inside_yng list.
                 inside_yng = inside_yng[inside_yng != ii]
-
                 continue
             
             # Find the star in the deep mosaic
@@ -682,19 +683,19 @@ def calc_spec_id_all_stars():
                 # them in this case.
                 idx = np.where(nirc2.name == yng.name[ii])[0]
                 nn = idx[0]
-                print 'Confused about field of star: %s' % yng.name[ii]
+                print(('Confused about field of star: %s' % yng.name[ii]))
             else:
                 nn = inside_nirc2[ndx[0]]
                 inside_nirc2 = np.delete(inside_nirc2, ndx[0])
 
-            if np.abs(nirc2.Aks[nn] - yng.Aks[ii]) > 0.1:
-                print "problem!!!"
-                pdb.set_trace()
+
+            #if np.abs(nirc2.AKs[nn] - yng.AKs[ii]) > 0.1:
+            #    print("problem!!!")
             
             # Calculate extinction corrected photometry
-            kp_2_ks_yng = synthetic.get_Kp_Ks(nirc2.Aks[nn], 30000.0, 
-                                              filename=synFile)
-            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_yng - nirc2.Aks[nn] \
+
+            kp_2_ks_yng = get_Kp_Ks(yng_age, nirc2.AKs[nn], distance, yng_temp) 
+            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_yng - nirc2.AKs[nn] \
                 + theAKs + ks_2_kp_yng
 
             # Use the photometry from the deep mosaic
@@ -705,7 +706,7 @@ def calc_spec_id_all_stars():
             wrIdx = np.where(wolfRayetNames == yng.name[ii])[0]
             if len(wrIdx) > 0:
                 isWR_yng_field.append(True)
-                print yng.name[ii], ' is a Wolf-Rayet Star'
+                print((yng.name[ii], ' is a Wolf-Rayet Star'))
             else:
                 isWR_yng_field.append(False)
 
@@ -721,12 +722,11 @@ def calc_spec_id_all_stars():
             # identified already.
             isNameInList, inField = is_name_in_list(old.name[ii], name_old)
             if isNameInList:
-                #print 'Skip %s in field %s (old star found in field %s).' % \
-                #    (old.name[ii], fieldName, fields.name[inField])
+                print('Skip %s in field %s (old star found in field %s).' % \
+                    (old.name[ii], fieldName, fields.name[inField]))
 
                 # Remove it from our inside_old list.
                 inside_old = inside_old[inside_old != ii]
-
                 continue
 
             # Find the star in the deep mosaic
@@ -737,16 +737,15 @@ def calc_spec_id_all_stars():
                 # them in this case.
                 idx = np.where(nirc2.name == old.name[ii])[0]
                 nn = idx[0]
-                print 'Confused about field of star: %s' % old.name[ii]
+                print(('Confused about field of star: %s' % old.name[ii]))
             else:
                 nn = inside_nirc2[ndx[0]]
                 inside_nirc2 = np.delete(inside_nirc2, ndx[0])
             
             # Calculate extinction corrected photometry
-            kp_2_ks_old = synthetic.get_Kp_Ks(nirc2.Aks[nn], 4500.0, 
-                                              filename=oldSynFile)
+            kp_2_ks_old = get_Kp_Ks(old_age, nirc2.AKs[nn], distance, old_temp) 
 
-            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_old - nirc2.Aks[nn] \
+            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_old - nirc2.AKs[nn] \
                 + theAKs + ks_2_kp_old
 
             # Use the photometry from the deep mosaic
@@ -762,14 +761,15 @@ def calc_spec_id_all_stars():
         fov = matplotlib.patches.Polygon(fields.xyverts[ff], fill=False)
         py.gca().add_patch(fov)
         py.title(fields.name[ff])
+
         for ii in inside_nirc2:
             # Stars can only be claimed by ONE field. Loop through all
             # previous star names and make sure this star hasn't been
             # identified already.
             isNameInList, inField = is_name_in_list(nirc2.name[ii], name_nirc2)
             if isNameInList:
-                #print 'Skip %s in field %s (nirc2 star found in field %s).' % \
-                #    (nirc2.name[ii], fieldName, fields.name[inField])
+                print('Skip %s in field %s (nirc2 star found in field %s).' % \
+                    (nirc2.name[ii], fieldName, fields.name[inField]))
 
                 # Remove it from our inside_nirc2_orig list.
                 inside_nirc2_orig = inside_nirc2_orig[inside_nirc2_orig != ii]
@@ -777,21 +777,20 @@ def calc_spec_id_all_stars():
                 continue
 
             # Calculate extinction corrected photometry
-            kp_2_ks_old = synthetic.get_Kp_Ks(nirc2.Aks[ii], 4500.0, 
-                                              filename=oldSynFile)
+            kp_2_ks_old = get_Kp_Ks(old_age, nirc2.AKs[nn], distance, old_temp) 
 
-            nirc2.kp_ext[ii] = nirc2.kp[ii] - kp_2_ks_old - nirc2.Aks[ii] \
+            nirc2.kp_ext[ii] = nirc2.kp[ii] - kp_2_ks_old - nirc2.AKs[ii] \
                 + theAKs + ks_2_kp_old
 
             # Check to see if we have bright stars that aren't reported in
             # Tuan's star planting experiment. If this is the case, then we
             # probably have a field of view issue. Just drop these stars for now.
             # **** TODO **** Remove this and figure out the root issue.
-            if (nirc2.kp_ext[ii] <= 15.5) and (nirc2.name[ii] not in specSims.name):
-                print 'Removing bright un-typed %s in field %s' % \
-                    (nirc2.name[ii], fieldName)
-                print '    Kp = %5.2f (%5.2f ext-corr)  x = %8.3f  y = %8.3f' % \
-                    (nirc2.kp[ii], nirc2.kp_ext[ii], nirc2.x[ii], nirc2.y[ii])
+            if (nirc2.kp_ext[ii] <= 15.5) and (nirc2.name[ii] not in specSims['name']):
+                print(('Removing bright un-typed %s in field %s' % \
+                    (nirc2.name[ii], fieldName)))
+                print(('    Kp = %5.2f (%5.2f ext-corr)  x = %8.3f  y = %8.3f' % \
+                    (nirc2.kp[ii], nirc2.kp_ext[ii], nirc2.x[ii], nirc2.y[ii])))
 
                 # Remove it from our inside_nirc2_orig list.
                 inside_nirc2_orig = inside_nirc2_orig[inside_nirc2_orig != ii]
@@ -831,7 +830,8 @@ def calc_spec_id_all_stars():
         field_old.append(field_old_tmp)
         field_nirc2.append(field_nirc2_tmp)
         
-    _out = open(workDir + 'spec_id_all_stars.dat', 'w')
+    _out = open(workDir + 'spec_id_all_stars.dat', 'wb')
+    pickle.dump(fields.name, _out)
     pickle.dump(kp_yng, _out)
     pickle.dump(kp_old, _out)
     pickle.dump(kp_nirc2, _out)
@@ -857,9 +857,10 @@ def calc_spec_id_all_stars():
     _out.close()
 
 def load_spec_id_all_stars(flatten=False):
-    _in = open(workDir + 'spec_id_all_stars.dat')
+    _in = open(workDir + 'spec_id_all_stars.dat', 'rb')
 
     d = objects.DataHolder()
+    d.fields = pickle.load(_in)
     d.kp_yng = pickle.load(_in)
     d.kp_old = pickle.load(_in)
     d.kp_nirc2 = pickle.load(_in)
@@ -921,10 +922,10 @@ def update_star_by_name(fromList, toList, comment=''):
         idx = np.where(toList.name[ii] == fromList.name)[0]
 
         if len(idx) == 0:
-            print 'Could not find %s star in NIRC2: %s' % \
-                (comment, toList.name[ii])
-            print '    Kp = %5.2f  x = %8.3f  y = %8.3f' % \
-                (toList.kp[ii], toList.x[ii], toList.y[ii])
+            print(('Could not find %s star in NIRC2: %s' % \
+                (comment, toList.name[ii])))
+            print(('    Kp = %5.2f  x = %8.3f  y = %8.3f' % \
+                (toList.kp[ii], toList.x[ii], toList.y[ii])))
         else:
             toList.x[ii] = fromList.x[idx]
             toList.y[ii] = fromList.y[idx]
@@ -978,20 +979,20 @@ def our_yng_catalog():
     isWR = isWR[sdx]
     field = field[sdx]
 
-    print '%-13s  %5s  %5s  %5s  %7s  %7s  %5s  %13s' % \
-        ('Name', 'Kp', 'Kperr', 'Kpext', 'X', 'Y', 'isWR', 'field')
+    print(('%-13s  %5s  %5s  %5s  %7s  %7s  %5s  %13s' % \
+        ('Name', 'Kp', 'Kperr', 'Kpext', 'X', 'Y', 'isWR', 'field')))
 
     for ii in range(len(name)):
-        print '%-13s  %5.2f  %5.2f  %5.2f  %7.3f  %7.3f  %5d  %13s' % \
+        print(('%-13s  %5.2f  %5.2f  %5.2f  %7.3f  %7.3f  %5d  %13s' % \
             (name[ii], kp[ii], kperr[ii], kp_ext[ii], x[ii], y[ii],
-             isWR[ii], field[ii])
+             isWR[ii], field[ii])))
 
     isWR = np.array(isWR)
 
-    print 'Total number of young stars: %d (total unique: %d)' % \
-        (len(name), len(np.unique(name)))
-    print '    %d WR stars and %d non-WR stars' % \
-        (isWR.sum(), len(isWR) - isWR.sum())
+    print(('Total number of young stars: %d (total unique: %d)' % \
+        (len(name), len(np.unique(name)))))
+    print(('    %d WR stars and %d non-WR stars' % \
+        (isWR.sum(), len(isWR) - isWR.sum())))
 
 def our_osiris_catalog():
     # Select all the OSIRIS fields-of-view
@@ -1234,74 +1235,48 @@ def fix_osiris_spectral_comp(compKp, comp):
 
 def load_young():
     # Create a connection to the database file and create a cursor
-    connection = sqlite.connect(database)
-    cur = connection.cursor()
-
-    # Get info on the stars
-    sql = 'select name, kp, x, y, AK_sch from stars where young="T"'
-    cur.execute(sql)
+    pwFile='/g/lu/scratch/siyao/other/pw.txt'
+    pw = open(pwFile).read().split()[0]
+    con = mdb.connect(host='galaxy1.astro.ucla.edu',user='dbread',passwd=pw,db='gcg')
     
-    rows = cur.fetchall()
-    starCnt = len(rows)
+    # Get info on the stars
+    rows = pd.read_sql_query('SELECT name, kp, x, y, AK_sch FROM stars WHERE young="T"', con)
+
+    print(('Found %d young stars in database stars' % len(rows)))
 
     starName = []
     x = []
     y = []
     kp = []
-    Aks = []
+    AKs = []
     starInField = []
 
-    print 'Found %d young stars in database' % starCnt
-
-    # Load up photometry from the dp_msc
-    lisFile = '/u/jlu/work/gc/dp_msc/2010_11_08/tables/'
-    lisFile += 'mag06maylgs1_dp_msc_kp_rms_named_abs_xwest.lis'
-    lis = starTables.StarfinderList(lisFile)
-
-    lisName = np.array(lis.name)
-    lisKp = lis.mag
-    lisX = lis.x * -1.0
-    lisY = lis.y
     
     # Loop through each star and pull out the relevant information
-    for ss in range(starCnt):
-        record = rows[ss]
-        name = str(record[0])
+    for ss in range(len(rows)):
+        record = rows.iloc[ss]
+        name = record['name']
 
         # Check that we observed this star and what field it was in.
-        cur.execute('select field from spectra where name = "%s"' % (name))
+        row = pd.read_sql_query('SELECT field FROM spectra WHERE name = "%s"' % (name), con)
 
-        row = cur.fetchone()
-        if row != None:
-            # find this star by name in the dp_msc
-            idx = np.where(lisName == name)[0]
-
-            if len(idx) == 0:
-                print 'load_young(): PROBLEM finding %s in dp_msc' % name
-
-            good_kp = lisKp[idx[0]]
-            good_x = lisX[idx[0]]
-            good_y =lisY[idx[0]]
-
-            starInField.append(row[0])
+        if not row.empty:
+            starInField.append(row.iloc[0]['field'])
 
             starName.append(str(name))
-            #kp.append(record[1])
-            #x.append(record[2])
-            #y.append(record[3])
-            kp.append(good_kp)
-            x.append(good_x)
-            y.append(good_y)
-            Aks.append(record[4])
+            kp.append(record['kp'])
+            x.append(record['x'])
+            y.append(record['y'])
+            AKs.append(record['AK_sch'])
 
-            if Aks[-1] == None:
-                print '%-13s  %5.2f  %7.3f  %7.3f  None' % \
-                    (starName[-1], kp[-1], x[-1], y[-1])
+            if AKs[-1] == None:
+                print(('%-13s  %5.2f  %7.3f  %7.3f  None' % \
+                    (starName[-1], kp[-1], x[-1], y[-1])))
             else:
-                print '%-13s  %5.2f  %7.3f  %7.3f  %4.2f' % \
-                    (starName[-1], kp[-1], x[-1], y[-1], Aks[-1])
+                print(('%-13s  %5.2f  %7.3f  %7.3f  %4.2f' % \
+                    (starName[-1], kp[-1], x[-1], y[-1], AKs[-1])))
         else:
-            print 'We do not have data on this star???', name
+            print(('We do not have data on this star???', name))
             #starInField.append('C')
             continue
     
@@ -1312,7 +1287,7 @@ def load_young():
     x = np.array(x)
     y = np.array(y)
     kp = np.array(kp)
-    Aks = np.array(Aks)
+    AKs = np.array(AKs)
 
     d = objects.DataHolder()
     d.starCnt = starCnt
@@ -1320,64 +1295,55 @@ def load_young():
     d.x = x
     d.y = y
     d.kp = kp
-    d.Aks = Aks
+    d.AKs = AKs
 
-    sdx = d.kp.argsort()
-    for ss in sdx:
-        print '%-13s  %5.2f' % (d.name[ss], d.kp[ss])
-
-    print 'Total Number of Young Stars: %d' % (starCnt)
+    print(('Found %d young stars in database spectra' % starCnt))
 
     return d
 
 def load_old():
     # Create a connection to the database file and create a cursor
-    connection = sqlite.connect(database)
-    cur = connection.cursor()
-
-    # Get info on the stars
-    sql = 'select name, kp, x, y, AK_sch from stars where young="F"'
-    cur.execute(sql)
+    pwFile='/g/lu/scratch/siyao/other/pw.txt'
+    pw = open(pwFile).read().split()[0]
+    con = mdb.connect(host='galaxy1.astro.ucla.edu',user='dbread',passwd=pw,db='gcg')
     
-    rows = cur.fetchall()
-    starCnt = len(rows)
+    # Get info on the stars
+    rows = pd.read_sql_query('SELECT name, kp, x, y, AK_sch FROM stars WHERE young="F"', con)
 
-    print 'Found %d old stars in database' % starCnt
+    print(('Found %d old stars in database stars' % len(rows)))
 
     starName = []
     x = []
     y = []
     kp = []
-    Aks = []
+    AKs = []
     starInField = []
     
     # Loop through each star and pull out the relevant information
-    for ss in range(starCnt):
-        record = rows[ss]
-        
-        name = record[0]
+    for ss in range(len(rows)):
+        record = rows.iloc[ss]
+        name = record['name']
 
         # Check that we observed this star and what field it was in.
-        cur.execute('select field from spectra where name = "%s"' % (name))
+        row = pd.read_sql_query('SELECT field FROM spectra WHERE name = "%s"' % (name), con)
 
-        row = cur.fetchone()
-        if row != None:
-            starInField.append(row[0])
+        if not row.empty:
+            starInField.append(row.iloc[0]['field'])
 
             starName.append(str(name))
-            kp.append(record[1])
-            x.append(record[2])
-            y.append(record[3])
-            Aks.append(record[4])
+            kp.append(record['kp'])
+            x.append(record['x'])
+            y.append(record['y'])
+            AKs.append(record['AK_sch'])
 
-            if Aks[-1] == None:
-                print '%-13s  %5.2f  %7.3f  %7.3f  None' % \
-                    (starName[-1], kp[-1], x[-1], y[-1])
+            if AKs[-1] == None:
+                print(('%-13s  %5.2f  %7.3f  %7.3f  None' % \
+                    (starName[-1], kp[-1], x[-1], y[-1])))
             else:
-                print '%-13s  %5.2f  %7.3f  %7.3f  %4.2f' % \
-                    (starName[-1], kp[-1], x[-1], y[-1], Aks[-1])
+                print(('%-13s  %5.2f  %7.3f  %7.3f  %4.2f' % \
+                    (starName[-1], kp[-1], x[-1], y[-1], AKs[-1])))
         else:
-            print 'We do not have data on this star???', name
+            print(('We do not have data on this star???', name))
             #starInField.append('C')
             continue
     
@@ -1388,7 +1354,7 @@ def load_old():
     x = np.array(x)
     y = np.array(y)
     kp = np.array(kp)
-    Aks = np.array(Aks)
+    AKs = np.array(AKs)
 
     d = objects.DataHolder()
     d.starCnt = starCnt
@@ -1396,7 +1362,9 @@ def load_old():
     d.x = x
     d.y = y
     d.kp = kp
-    d.Aks = Aks
+    d.AKs = AKs
+
+    print(('Found %d old stars in database spectra' % starCnt))
 
     return d
     
@@ -1436,7 +1404,7 @@ def completeness_to_one_AKs(magBins=None):
     for ff in range(numFields):
         fieldName = fields.name[ff]
         fieldSuffix = fieldName.replace(' ', '')
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         # Find the average extinction for this field
         fieldExtFile = '/u/jlu/work/gc/imf/extinction/extinct_mask_%s.fits' % \
@@ -1538,10 +1506,10 @@ def klf():
     ks_2_kp = synthetic.get_Kp_Ks(theAKs, 30000.0, filename=synFile)
 
     for ii in range(numStars):
-        kp_2_ks = synthetic.get_Kp_Ks(s.Aks[ii], 30000.0, filename=synFile)
+        kp_2_ks = synthetic.get_Kp_Ks(s.AKs[ii], 30000.0, filename=synFile)
 
         # Switch to Ks, correct differential extinction, switch to Kp
-        s.kp_ext[ii] = s.kp[ii] - kp_2_ks - s.Aks[ii] + theAKs + ks_2_kp
+        s.kp_ext[ii] = s.kp[ii] - kp_2_ks - s.AKs[ii] + theAKs + ks_2_kp
 
 
     xypoints = np.column_stack((s.x, s.y))
@@ -1591,7 +1559,7 @@ def klf():
     for ff in range(numFields):
         fieldName = fields.name[ff]
         fieldSuffix = fieldName.replace(' ', '')
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         field_names.append(fieldSuffix)
 
@@ -1634,8 +1602,8 @@ def klf():
             N[ff, kk] = len(idx)
 
             if magBins[kk] == 11:
-                print nameInField[idx]
-                print kpInField[idx]
+                print((nameInField[idx]))
+                print((kpInField[idx]))
 
             errN = math.sqrt(len(idx))
             if len(idx) == 0:
@@ -1706,7 +1674,7 @@ def klf():
 
 def load_klf():
     pickleFile = workDir + 'klf.dat'
-    _in = open(pickleFile, 'r')
+    _in = open(pickleFile, 'rb')
     
     d = objects.DataHolder()
 
@@ -1900,9 +1868,9 @@ def plot_klf2():
 
     sdx = mag_tmp.argsort()
 
-    print '%5s  %5s  %5s' % ('Kp', 'N', 'errN')
+    print(('%5s  %5s  %5s' % ('Kp', 'N', 'errN')))
     for ii in sdx:
-        print '%5.2f  %5d  %5d' % (mag_tmp[ii], N_tmp[ii], eN_tmp[ii])
+        print(('%5.2f  %5d  %5d' % (mag_tmp[ii], N_tmp[ii], eN_tmp[ii])))
 
     py.clf()
     py.errorbar(d.Kp[idx2], N_ext[idx4], fmt='ko', xerr=magBin/2.0, capsize=0)
@@ -2286,7 +2254,7 @@ def model_klf(logAge=6.78, imfSlope=2.35, clusterMass=10**4,
     py.title("logAge=%.2f, IMF slope=%.2f" % (logAge, imfSlope))
     py.savefig(workDir + 'plots/model_klf' + outSuffix)
 
-    print 'Age = %.2f Myr' % (10**(logAge-6.0))
+    print(('Age = %.2f Myr' % (10**(logAge-6.0))))
     
     # Trim out WR stars
     if not includeWR:
@@ -2347,7 +2315,7 @@ def calc_mf():
 
     magBinSize = d.Kp[1] - d.Kp[0]
 
-    print '%5s   %5s   %15s   %5s' % ('Kp', 'Mass', 'N/(arcsec^ mag)', 'Teff')
+    print(('%5s   %5s   %15s   %5s' % ('Kp', 'Mass', 'N/(arcsec^ mag)', 'Teff')))
     for ii in range(len(d.Kp)):
         idx = abs(d.Kp[ii] - modKp).argmin()
         imfMass[ii] = modMass[idx]
@@ -2364,8 +2332,8 @@ def calc_mf():
         imfN[ii] = KLF2[ii] / dmass
         imfNerr[ii] = eKLF2[ii] / dmass
 
-        print '%5.2f   %5.2f   %5.3f +/- %5.3f' % \
-            (imfKp[ii], imfMass[ii], imfN[ii], imfNerr[ii])
+        print(('%5.2f   %5.2f   %5.3f +/- %5.3f' % \
+            (imfKp[ii], imfMass[ii], imfN[ii], imfNerr[ii])))
 
 
     idx = np.where(KLF2 != 0)[0]
@@ -2415,9 +2383,9 @@ def calc_mf():
     fitAmp = fitOut[3]
     fitAmpErr = fitOut[4]
 
-    print 'Best Fit Powerlaw:'
-    print '  slope = %5.2f +/- %5.2f' % (fitSlope, fitSlopeErr)
-    print '  amp   = %5.2f +/- %5.2f' % (fitAmp, fitAmpErr)
+    print('Best Fit Powerlaw:')
+    print(('  slope = %5.2f +/- %5.2f' % (fitSlope, fitSlopeErr)))
+    print(('  amp   = %5.2f +/- %5.2f' % (fitAmp, fitAmpErr)))
 
     py.clf()
     py.errorbar(imfMass[idx], imfN[idx], fmt='ko', yerr=imfNerr[idx], 
@@ -2443,12 +2411,12 @@ def calc_mf():
     imfCount = np.concatenate(([lastBinCount], KLF2[idx[-1]+1:]))
     imfError = np.concatenate(([lastBinErr], eKLF2[idx[-1]+1:]))
 
-    indices = range(len(imfMass))
+    indices = list(range(len(imfMass)))
     indices.reverse()
-    print ''
+    print('')
     for ii in indices:
-        print '%5.2f  %6.4f +/- %6.4f' % \
-            (imfMass[ii], imfCount[ii], imfError[ii])
+        print(('%5.2f  %6.4f +/- %6.4f' % \
+            (imfMass[ii], imfCount[ii], imfError[ii])))
 
 
     py.clf()
@@ -2482,7 +2450,7 @@ def fit_imf_slope(mass, dNdM, dNdMerr):
     indexErr = math.sqrt( covar[1][1] )
     ampErr = math.sqrt( covar[0][0] ) * amp * math.log(10.0)
 
-    print pfinal, covar
+    print((pfinal, covar))
 
     fit = powerlaw(mass, amp, index)
 
@@ -2493,7 +2461,7 @@ def load_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=int(distan
     inFile = '/u/jlu/work/gc/imf/klf/models/iso/'
     inFile += 'iso_%.2f_%s_%4.2f_%4s.pickle' % (logAge, filterName, AKs,
                                                  str(distance).zfill(4))
-    print inFile
+    print(inFile)
 
     if not os.path.exists(inFile):
         make_observed_isochrone(logAge=logAge, filterName=filterName,
@@ -2569,8 +2537,8 @@ def make_observed_isochrone(logAge=6.78, filterName='Kp', AKs=theAKs, distance=i
         # ----------
         mag[ii] = synthetic.mag_in_filter(star, filter, red, flux0, mag0)
 
-        print 'M = %7.3f Msun   T = %5d K   R = %2.1f Rsun   logg = %4.2f   mag = %4.2f' % \
-            (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag[ii])
+        print(('M = %7.3f Msun   T = %5d K   R = %2.1f Rsun   logg = %4.2f   mag = %4.2f' % \
+            (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag[ii])))
 
 
     iso = objects.DataHolder()
@@ -2773,11 +2741,11 @@ def test_kp_ks_conversion(logAge=9.70):
     py.savefig(dir+'test_kp_ks/color_HKs_KpKs_' + ageStr + '.png')
     py.savefig(dir+'test_kp_ks/color_HKs_KpKs_' + ageStr + '.eps')
 
-    print 'Best fit Kp-Ks = %.5f + %.5f * H-Ks' % \
-        (hks_coeffs[1], hks_coeffs[0])
-    print 'Residuals from H-Ks vs. Kp-Ks fit: %.4f' % \
-        (hks_fit - kpks[hks_idx]).std()
-    print ''
+    print(('Best fit Kp-Ks = %.5f + %.5f * H-Ks' % \
+        (hks_coeffs[1], hks_coeffs[0])))
+    print(('Residuals from H-Ks vs. Kp-Ks fit: %.4f' % \
+        (hks_fit - kpks[hks_idx]).std()))
+    print('')
 
     # Ks-Lp vs. Kp-Ks
     py.clf()
@@ -2793,11 +2761,11 @@ def test_kp_ks_conversion(logAge=9.70):
              fontsize=14)
     py.savefig(dir+'test_kp_ks/color_KsLp_KpKs_' + ageStr + '.png')
 
-    print 'Best fit Kp-Ks = %.5f + %.5f * Ks-Lp' % \
-        (kslp_coeffs[1], kslp_coeffs[0])
-    print 'Residuals from Ks-Lp vs. Kp-Ks fit: %.4f' % \
-        (kslp_fit - kpks[kslp_idx]).std()
-    print ''
+    print(('Best fit Kp-Ks = %.5f + %.5f * Ks-Lp' % \
+        (kslp_coeffs[1], kslp_coeffs[0])))
+    print(('Residuals from Ks-Lp vs. Kp-Ks fit: %.4f' % \
+        (kslp_fit - kpks[kslp_idx]).std()))
+    print('')
 
     # Lets do the same for Kp vs. K
     hkp = (H - Kp).flatten()
@@ -2826,11 +2794,11 @@ def test_kp_ks_conversion(logAge=9.70):
              fontsize=14)
     py.savefig(dir+'test_kp_ks/color_HKp_KpK_' + ageStr + '.png')
 
-    print 'Best fit Kp-K = %.5f + %.5f * H-Kp' % \
-        (hkp_coeffs[1], hkp_coeffs[0])
-    print 'Residuals from H-Kp vs. Kp-K fit: %.4f' % \
-        (hkp_fit - kpk[hkp_idx]).std()
-    print ''
+    print(('Best fit Kp-K = %.5f + %.5f * H-Kp' % \
+        (hkp_coeffs[1], hkp_coeffs[0])))
+    print(('Residuals from H-Kp vs. Kp-K fit: %.4f' % \
+        (hkp_fit - kpk[hkp_idx]).std()))
+    print('')
 
     # Kp-Lp vs. Kp-K
     py.clf()
@@ -2846,15 +2814,15 @@ def test_kp_ks_conversion(logAge=9.70):
              fontsize=14)
     py.savefig(dir+'test_kp_ks/color_KpLp_KpK_' + ageStr + '.png')
 
-    print 'Best fit Kp-K = %.5f + %.5f * Kp-Lp' % \
-        (kplp_coeffs[1], kplp_coeffs[0])
-    print 'Residuals from Kp-Lp vs. Kp-K fit: %.4f' % \
-        (kplp_fit - kpk[kplp_idx]).std()
+    print(('Best fit Kp-K = %.5f + %.5f * Kp-Lp' % \
+        (kplp_coeffs[1], kplp_coeffs[0])))
+    print(('Residuals from Kp-Lp vs. Kp-K fit: %.4f' % \
+        (kplp_fit - kpk[kplp_idx]).std()))
 
     
 def make_calib_schoedel2010():
     sch = atpy.Table('/u/ghezgroup/data/gc/source_list/schoedel2010_extinction.vot')
-    print len(sch), len(sch.columns)
+    print((len(sch), len(sch.columns)))
 
     ##################################################
     # Now pull out only those sources with the BEST photometric data.
@@ -2877,7 +2845,7 @@ def make_calib_schoedel2010():
                      (sch['Lpmag'] > 0) & 
                      (sch['e_Lpmag'] <= lpe_limit))
 
-    print len(trim), len(trim.columns)
+    print((len(trim), len(trim.columns)))
 
     # Lets also make a nearest neighbor cut. Throw out stars that have
     # any star 
@@ -2907,7 +2875,7 @@ def make_calib_schoedel2010():
                 use.append(ii)
 
     final = trim.rows(use)
-    print 'Final Number of Calibrators: %d (out of %d)' % (len(final), len(sch))
+    print(('Final Number of Calibrators: %d (out of %d)' % (len(final), len(sch))))
 
     ##################################################
     # We need to convert from Ks to Kp. Conversions calculated in
@@ -3127,7 +3095,7 @@ def shiftToTop(list, idx, hasErrors=False, alsoHLp=True):
 
 def convert_Ks_Kp_calib(Ks, H=None, Lp=None):
     if H == None and Lp == None:
-        print 'Must specify either H or Lp to convert Ks to Kp'
+        print('Must specify either H or Lp to convert Ks to Kp')
 
     if H != None:
         Kp = 0.00639 + 0.01056 * (H - Ks) + Ks
@@ -3140,7 +3108,7 @@ def convert_Ks_Kp_calib(Ks, H=None, Lp=None):
 
 def convert_Kp_K_calib(Kp, H=None, Lp=None):
     if H == None and Lp == None:
-        print 'Must specify either H or Lp to convert Ks to Kp'
+        print('Must specify either H or Lp to convert Ks to Kp')
 
     if H != None:
         K = Kp - (-0.00048 + 0.06600 * (H - Kp))
@@ -3197,7 +3165,7 @@ def compare_calibrations_blum1996():
             idx = np.where(nameNew == 'irs'+nameOld[ii])[0]
 
         if len(idx) == 0:
-            print 'Could not find a match for Blum source: %s' % nameOld[ii]
+            print(('Could not find a match for Blum source: %s' % nameOld[ii]))
             continue
 
         idxOld.append(ii)
@@ -3268,7 +3236,7 @@ def compare_calibrations_rafelski2007():
             idx = np.where(nameNew == 'irs'+nameOld[ii])[0]
 
         if len(idx) == 0:
-            print 'Could not find a match for Rafelski source: %s' % nameOld[ii]
+            print(('Could not find a match for Rafelski source: %s' % nameOld[ii]))
             continue
 
         idxOld.append(ii)
@@ -3336,7 +3304,7 @@ def compare_calibrations_oldKeck():
             idx = np.where(nameNew == 'irs'+nameOld[ii])[0]
 
         if len(idx) == 0:
-            print 'Could not find a match for Rafelski source: %s' % nameOld[ii]
+            print(('Could not find a match for Rafelski source: %s' % nameOld[ii]))
             continue
 
         idxOld.append(ii)
@@ -3402,7 +3370,7 @@ def plot_model_klf(logAgeList=[6.80], suffix=None):
     py.clf()
 
     for aa in range(len(logAgeList)):
-        print 'Working on logAge = %.2f' % logAgeList[aa]
+        print(('Working on logAge = %.2f' % logAgeList[aa]))
 
         logAgeString = '0%d' % (logAgeList[aa] * 100)
 
@@ -3518,7 +3486,7 @@ def plot_img_completeness():
     py.ylim(0, 1.1)
     py.legend(loc='lower left', ncol=2, prop={'size':14})
     py.savefig(dir + 'plots/completeness_by_field.png')
-    print 'Saving %s' % (dir + 'plots/completeness_by_field.png')
+    print(('Saving %s' % (dir + 'plots/completeness_by_field.png')))
 
 def envelope_from_star_plant(field):
     """
@@ -3548,8 +3516,8 @@ def envelope_from_star_plant(field):
     dr = np.zeros((plantCount, starsCount), dtype=float)
     dm_in = np.zeros((plantCount, starsCount), dtype=float)
     dm_out = np.zeros((plantCount, starsCount), dtype=float)
-    print '%d Planted, %d Real, %d pairs' % (plantCount, starsCount, 
-                                             plantCount * starsCount)
+    print(('%d Planted, %d Real, %d pairs' % (plantCount, starsCount, 
+                                             plantCount * starsCount)))
 
     # Loop through the planted star positions
     for ii in range(len(d.x)):
@@ -3624,7 +3592,7 @@ def mosaic_detection_threshold_map():
     py.axis('equal')
     py.axis([-900, 2000, -900, 2000])
     py.savefig('%s/plots/map_detect_threshold.png' % dir)
-    print 'Saving %s/plots/map_detect_threshold.png' % dir
+    print(('Saving %s/plots/map_detect_threshold.png' % dir))
 
     # ##########
     # Plot a 2D map of the magnitude deviations
@@ -3640,11 +3608,11 @@ def mosaic_detection_threshold_map():
     py.axis('equal')
     py.axis([-900, 2000, -900, 2000])
     py.savefig('%s/plots/map_dm.png' % dir)
-    print 'Saving %s/plots/map_dm.png' % dir
+    print(('Saving %s/plots/map_dm.png' % dir))
     
-    print 'Magnitude Deviations:'
-    print '   max = %.2f' % magDeviant.max()
-    print '   min = %.2f' % magDeviant.min()
+    print('Magnitude Deviations:')
+    print(('   max = %.2f' % magDeviant.max()))
+    print(('   min = %.2f' % magDeviant.min()))
 
     # ##########
     # Plot the 1D histograms of magnitude deviations
@@ -3656,12 +3624,12 @@ def mosaic_detection_threshold_map():
     py.xlabel('Maximum Magnitude Deviation (mag)')
     py.ylabel('Number of Recovered Stars')
     py.savefig('%s/plots/hist_dm.png' % dir)
-    print 'Saving %s/plots/hist_dm.png' % dir
+    print(('Saving %s/plots/hist_dm.png' % dir))
 
     
 
 def load_completeness_mosaic(dir='/u/jlu/work/gc/dp_msc/2010_11_08/completeness/'):
-    print 'Loading star planting data from: mosaic_results.dat'
+    print('Loading star planting data from: mosaic_results.dat')
     _pickleFile = open(dir + 'mosaic_results.dat', 'r')
     
     data = objects.DataHolder()
@@ -3795,7 +3763,7 @@ def image_completeness_in_osiris():
     # Loop through each OSIRIS field and get the completeness curve.
     for rr in range(len(fields.name)):
         fieldName = fields.name[rr]
-        print 'Working on field %s' % fieldName
+        print(('Working on field %s' % fieldName))
 
         # Trim down to just those pixels that are within this
         # OSIRIS field of view
@@ -3822,15 +3790,15 @@ def image_completeness_in_osiris():
             xid = dx.argmin()
             yid = dy.argmin()
 
-            Aks = ext_map[yid, xid]
-            kp_2_ks_yng = synthetic.get_Kp_Ks(Aks, 30000.0, 
+            AKs = ext_map[yid, xid]
+            kp_2_ks_yng = synthetic.get_Kp_Ks(AKs, 30000.0, 
                                           filename=synFile)
 
-            kp_ext_in_tmp[kk] = kp_in[inside[kk]] - kp_2_ks_yng - Aks \
+            kp_ext_in_tmp[kk] = kp_in[inside[kk]] - kp_2_ks_yng - AKs \
                 + theAKs + ks_2_kp_yng
 
             if np.isnan(kp_out[inside[kk]]) == False:
-                kp_ext_out_tmp[kk] = kp_out[inside[kk]] - kp_2_ks_yng - Aks \
+                kp_ext_out_tmp[kk] = kp_out[inside[kk]] - kp_2_ks_yng - AKs \
                     + theAKs + ks_2_kp_yng
             else:
                 # Set to NaN
@@ -3882,7 +3850,7 @@ def image_completeness_by_radius(rmin=0, rmax=30, plot=True):
     # Trim down to just the specified radius range
     idx = np.where((r_in > rmin) & (r_in <= rmax))[0]
     if len(idx) == 0:
-        print 'calc_image_completeness(): No planted stars found.'
+        print('calc_image_completeness(): No planted stars found.')
 
     x_in = x_in[idx]
     y_in = y_in[idx]
@@ -3952,7 +3920,7 @@ def image_completeness_by_radius(rmin=0, rmax=30, plot=True):
         py.ylim(0, 1.1)
         py.xlim(9, 20)
         py.savefig(outRoot + '.png')
-        print 'Saving %s' % (outRoot + '.png')
+        print(('Saving %s' % (outRoot + '.png')))
 
 def image_completeness_by_radius_for_tuan():
     """
@@ -4080,7 +4048,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
         magLo = magBins[mm] - magHalfStep
         magHi = magBins[mm] + magHalfStep
 
-        print 'Working on mag bin %.2f - %.2f' % (magLo, magHi)
+        print(('Working on mag bin %.2f - %.2f' % (magLo, magHi)))
 
         # Before extinction correction, figure out which stars
         # fall into the magnitude bin and radius range.
@@ -4115,20 +4083,20 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
             unk_sdx.append(ni)
 
             # Find this unkonwn source in the spectral star planting results
-            idx = np.where(name == specSims.name)[0]
+            idx = np.where(name == specSims['name'])[0]
             if len(idx) == 0:
-                print '    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
-                    (name, s.kp_nirc2[ni], s.field_nirc2[ni])
+                print(('    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
+                    (name, s.kp_nirc2[ni], s.field_nirc2[ni])))
                 priorYngRad, priorOldRad = priorsAtRadius(s.r_nirc2[ni])
                 unk_probY.append( priorYngRad )
                 unk_probO.append( priorOldRad )
                 unk_probYerr.append( 0.1 )
                 unk_probOerr.append( 0.1 )
             else:
-                unk_probY.append( specSims.probYng[idx[0]] )
-                unk_probO.append( specSims.probOld[idx[0]] )
-                unk_probYerr.append( specSims.probYngErr[idx[0]] )
-                unk_probOerr.append( specSims.probOldErr[idx[0]] )
+                unk_probY.append( specSims['probYng'][idx[0]] )
+                unk_probO.append( specSims['probOld'][idx[0]] )
+                unk_probYerr.append( specSims['probYngErr'][idx[0]] )
+                unk_probOerr.append( specSims['probOldErr'][idx[0]] )
 
         unk_probY = np.array(unk_probY)
         unk_probO = np.array(unk_probO)
@@ -4137,8 +4105,8 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
         unk_sdx = np.array(unk_sdx)
 
         if len(unk_probY) != cnt_unk[mm]:
-            print 'Incorrect number of unknown sources:'
-            print mm, len(unk_probY), cnt_unk[mm], len(nn), len(yy), len(oo)
+            print('Incorrect number of unknown sources:')
+            print((mm, len(unk_probY), cnt_unk[mm], len(nn), len(yy), len(oo)))
             pdb.set_trace()
             
         # For the unknown sources, figure out how many are likely
@@ -4148,9 +4116,9 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
         adderr_unk_yng[mm] = math.sqrt((unk_probYerr**2).sum())
         adderr_unk_old[mm] = math.sqrt((unk_probOerr**2).sum())
 
-        print '  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d WR (observed)' % \
+        print(('  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d noWR (observed)' % \
             (cnt_yng[mm], cnt_old[mm], cnt_unk[mm],
-             cnt_unk_yng[mm], cnt_unk_old[mm], cnt_yng_noWR[mm])
+             cnt_unk_yng[mm], cnt_unk_old[mm], cnt_yng_noWR[mm])))
 
         ##########
         # After extinction correction
@@ -4220,10 +4188,10 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
 
             unk_sdx.append(ni)
             
-            idx = np.where(name == specSims.name)[0]
+            idx = np.where(name == specSims['name'])[0]
             if len(idx) == 0:
-                print '    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
-                    (name, s.kp_nirc2[ni], s.field_nirc2[ni])
+                print(('    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
+                    (name, s.kp_nirc2[ni], s.field_nirc2[ni])))
 
                 priorYngRad, priorOldRad = priorsAtRadius(s.r_nirc2[ni])
                 unk_probY.append( priorYngRad )
@@ -4231,10 +4199,10 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
                 unk_probYerr.append( 0.1 )
                 unk_probOerr.append( 0.1 )
             else:
-                unk_probY.append( specSims.probYng[idx[0]] )
-                unk_probO.append( specSims.probOld[idx[0]] )
-                unk_probYerr.append( specSims.probYngErr[idx[0]] )
-                unk_probOerr.append( specSims.probOldErr[idx[0]] )
+                unk_probY.append( specSims['probYng'][idx[0]] )
+                unk_probO.append( specSims['probOld'][idx[0]] )
+                unk_probYerr.append( specSims['probYngErr'][idx[0]] )
+                unk_probOerr.append( specSims['probOldErr'][idx[0]] )
 
         unk_probY = np.array(unk_probY)
         unk_probO = np.array(unk_probO)
@@ -4243,8 +4211,8 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
         unk_sdx = np.array(unk_sdx)
 
         if len(unk_probY) != cnt_ext_unk[mm]:
-            print 'Incorrect number of unknown sources:'
-            print mm, len(unk_probY), cnt_ext_unk[mm], len(nn), len(yy), len(oo)
+            print('Incorrect number of unknown sources:')
+            print((mm, len(unk_probY), cnt_ext_unk[mm], len(nn), len(yy), len(oo)))
 
         # For the unknown sources, figure out how many are likely
         # to be young and how many are likely to be old.
@@ -4253,9 +4221,9 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
         adderr_ext_unk_yng[mm] = math.sqrt((unk_probYerr**2).sum())
         adderr_ext_unk_old[mm] = math.sqrt((unk_probOerr**2).sum())
 
-        print '  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d WR (extinction corrected)' % \
+        print(('  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d no WR (extinction corrected)' % \
             (cnt_ext_yng[mm], cnt_ext_old[mm], cnt_ext_unk[mm],
-             cnt_ext_unk_yng[mm], cnt_ext_unk_old[mm], cnt_ext_yng_noWR[mm])
+             cnt_ext_unk_yng[mm], cnt_ext_unk_old[mm], cnt_ext_yng_noWR[mm])))
 
         # Save the unknown sources (that are young) to our lists.
         ndx = np.where(unk_probY != 0)[0]
@@ -4287,6 +4255,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
             all_isWR = np.append(all_isWR, np.zeros(len(unk_sdx), dtype=bool))
 
 
+    
     comp = (cnt_yng + cnt_old) / (cnt_yng + cnt_old + cnt_unk)
     comp_ext = (cnt_ext_yng + cnt_ext_old) / (cnt_ext_yng + cnt_ext_old + cnt_ext_unk)
     comp_fix = fix_osiris_spectral_comp(magBins, comp)
@@ -4392,7 +4361,7 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
     _pick3.close()
 
     # Save the completeness and KLF curves
-    _pick = open(outRoot + '.pickle', 'w')
+    _pick = open(outRoot + '.pickle', 'wb')
     pickle.dump(magBins, _pick)
     pickle.dump(cnt_yng, _pick)
     pickle.dump(cnt_old, _pick)
@@ -4433,6 +4402,15 @@ def spec_completeness_by_radius(rmin=0, rmax=30, plot=True):
                    (magBins[mm], comp_fix_yng[mm], comp_ext_fix_yng[mm]))
     _out.close()
 
+    # Text file with numbers
+    t_out = Table()
+    t_out['magBins'] = magBins
+    t_out['cnt_ext_yng'] = cnt_ext_yng
+    t_out['cnt_ext_unk_yng'] = cnt_ext_unk_yng
+    t_out['comp_ext_yng'] = comp_ext_yng
+    t_out.write(outRoot + '_num.txt', format='ascii.fixed_width')
+
+
 def load_spec_completeness_by_radius(rmin=0, rmax=30):
     """
     Load up the results from estimating completness (and
@@ -4443,7 +4421,7 @@ def load_spec_completeness_by_radius(rmin=0, rmax=30):
 
     outRoot = '%sspec_completeness_r_%.1f_%.1f' % (workDir, rmin, rmax)
 
-    _pick = open(outRoot + '.pickle', 'r')
+    _pick = open(outRoot + '.pickle', 'rb')
     d.magBins = pickle.load(_pick)
     d.cnt_yng = pickle.load(_pick)
     d.cnt_old = pickle.load(_pick)
@@ -4490,20 +4468,21 @@ def merge_completeness_by_radius(rmin=0, rmax=30):
     magBins = klf_mag_bins
 
     # Read in the image completeness table
-    img_file = '%simage_completeness_r_%.1f_%.1f.txt' % (workDir, rmin, rmax)
-    _img = asciidata.open(img_file)
+    #img_file = '%simage_completeness_r_%.1f_%.1f.txt' % (workDir_old, rmin, rmax)
+    img_file = '%simage_completeness_r_%.1f_%.1f.txt' % (workDir_old, 0, 30)
+    _img = Table.read(img_file, format='ascii')
 
-    mag_img = _img[0].tonumpy()
-    comp_img = _img[1].tonumpy()
-    comp_ext_img = _img[4].tonumpy() 
+    mag_img = _img['col1']
+    comp_img = _img['col2']
+    comp_ext_img = _img['col5'] 
 
     # Read in the spectroscopic completeness table
     spec_file = '%sspec_completeness_r_%.1f_%.1f.txt' % (workDir, rmin, rmax)
-    _spec = asciidata.open(spec_file)
+    _spec = Table.read(spec_file, format='ascii')
     
-    mag_spec = _spec[0].tonumpy()
-    comp_spec = _spec[1].tonumpy()
-    comp_ext_spec = _spec[2].tonumpy()
+    mag_spec = _spec['mag']
+    comp_spec = _spec['comp_yng']
+    comp_ext_spec = _spec['comp_ext_yng']
 
     py.clf()
     py.subplots_adjust(left=0.15)
@@ -4515,8 +4494,8 @@ def merge_completeness_by_radius(rmin=0, rmax=30):
     py.ylim(0, 1.05)
     py.savefig('%scompleteness_ext_spec_imag_r_%.1f_%.1f.png' % 
                (workDir, rmin, rmax))
-    py.savefig('%scompleteness_ext_spec_imag_r_%.1f_%.1f.eps' % 
-               (workDir, rmin, rmax))
+    #py.savefig('%scompleteness_ext_spec_imag_r_%.1f_%.1f.eps' % 
+    #           (workDir, rmin, rmax))
 
     py.clf()
     py.subplots_adjust(left=0.15)
@@ -4548,7 +4527,7 @@ def merge_completeness_by_radius(rmin=0, rmax=30):
 
     outRoot = '%scompleteness_info_r_%.1f_%.1f' % (workDir, rmin, rmax)
 
-    _out = open(outRoot + '.pickle', 'w')
+    _out = open(outRoot + '.pickle', 'wb')
     pickle.dump(klf_mag_bins, _out)
     pickle.dump(comp_ext_img_new, _out)
     pickle.dump(comp_ext_spec_new, _out)
@@ -4569,10 +4548,10 @@ def merge_completeness_by_radius(rmin=0, rmax=30):
 def klf_by_radius(rmin=0, rmax=30):
     # Load imaging completeness info
     comp_file = '%scompleteness_info_r_%.1f_%.1f.txt' % (workDir, rmin, rmax)
-    _comp = asciidata.open(comp_file)
-    comp_mag = _comp[0].tonumpy()
-    comp_imag = _comp[1].tonumpy()
-    comp_spec = _comp[2].tonumpy()
+    _comp = Table.read(comp_file, format='ascii')
+    comp_mag = _comp['Kp']
+    comp_imag = _comp['c_ext_img']
+    comp_spec = _comp['c_ext_spec']
     
     # Also load up the spectral completeness info that contains results from
     # star planting around un-typed stars.
@@ -4580,12 +4559,12 @@ def klf_by_radius(rmin=0, rmax=30):
 
     if ((len(comp_mag) != len(klf_mag_bins)) or
         (len(spec_info.magBins) != len(klf_mag_bins))):
-        print 'klf_by_radius(): Mismatch between completeness and KLF mag bins'
+        print('klf_by_radius(): Mismatch between completeness and KLF mag bins')
 
     # Load up the area maps for the OSIRIS fields and calculate the
     # total area.
     areaFile = '/u/jlu/work/gc/imf/extinction/nirc2_mask_all.fits'
-    areaFITS = pyfits.open(areaFile)
+    areaFITS = fits.open(areaFile)
     area_map = areaFITS[0].data
     area_hdr = areaFITS[0].header
     area_map = np.array(area_map, dtype=float)
@@ -4698,7 +4677,7 @@ def klf_by_radius(rmin=0, rmax=30):
     # Save to a pickle file
     pickleFile = '%sklf_r_%.1f_%.1f.dat' % (workDir, rmin, rmax)
 
-    _out = open(pickleFile, 'w')
+    _out = open(pickleFile, 'wb')
     
     pickle.dump(spec_info.magBins, _out)
     pickle.dump(N, _out)
@@ -4740,7 +4719,7 @@ def klf_by_radius(rmin=0, rmax=30):
 
 def load_klf_by_radius(rmin=0, rmax=30, mask_for_log=False):
     pickleFile = '%sklf_r_%.1f_%.1f.dat' % (workDir, rmin, rmax)
-    _in = open(pickleFile, 'r')
+    _in = open(pickleFile, 'rb')
     
     d = objects.DataHolder()
 
@@ -4980,7 +4959,7 @@ def plot_klf_vs_bartko_by_radius_12A(rmin=0, rmax=30, logAge=6.78, imfSlope=1.35
     binsKp = klf_mag_bins
     binSize = binsKp[1] - binsKp[0]
     binEdges = np.append(binsKp - binSize/2.0, binsKp[-1] + binSize/2.0)
-    print binEdges
+    print(binEdges)
     #binEdges = binsKp[0:-1] + (binsKp[1:] - binsKp[0:-1]) / 2.0
 
     # Plot a version without the model
@@ -5323,7 +5302,7 @@ def plot_klf_vs_model_by_radius(rmin=0, rmax=30, logAge=6.78, imfSlope=2.35,
     py.clf()
     (n, b, p) = py.hist(modelStars, bins=binEdges, histtype='step', weights=weights,
                         color='green', label='Salpeter Model', align='mid')
-    print n
+    print(n)
     py.gca().set_yscale('log')
 
     # Plot the observations
@@ -5451,13 +5430,11 @@ def getOsirisFields(dbCursor=None):
     # Connect to the database if a cursort objects isn't already
     # passed in.
     if dbCursor is None:
-        connection = sqlite.connect(database)
-        dbCursor = connection.cursor()
-
-    # Select all the OSIRIS fields-of-view
-    sql = 'select name, x_vertices, y_vertices from fields where short_name != ""'
-    dbCursor.execute(sql)
-    rows = dbCursor.fetchall()
+        con = mdb.connect(host='galaxy1.astro.ucla.edu',user='dbread',passwd=pw,db='gcg')
+        df_fields = pd.read_sql_query("SELECT name,x_vertices,y_vertices FROM fields WHERE name NOT LIKE 'Verification%' AND nstars IS NOT NULL", con)
+        rows = Table.from_pandas(df_fields)   
+        con.close()
+    
 
     names = []
     xverts = []
@@ -5465,14 +5442,14 @@ def getOsirisFields(dbCursor=None):
     xyverts = []
 
     for row in rows:
-        fieldName = row[0]
+        fieldName = row['name']
         if 'Imaging' in fieldName:
             continue
 
         names.append(str(fieldName))
         
-        xvertsTmp = np.array([float(ff) for ff in row[1].split(',')])
-        yvertsTmp = np.array([float(ff) for ff in row[2].split(',')])
+        xvertsTmp = np.array([float(ff) for ff in row['x_vertices'].split(',')])
+        yvertsTmp = np.array([float(ff) for ff in row['y_vertices'].split(',')])
         xverts.append( xvertsTmp )
         yverts.append( yvertsTmp )
         xyverts.append( np.column_stack((xvertsTmp, yvertsTmp)) )
@@ -5495,7 +5472,15 @@ def load_unknown_sims():
     query += 'probYngSimPrior, probYngSimPriorErr, '
     query += 'probOldSimPrior, probOldSimPriorErr '
     query += 'from unknownSims'
-    t = atpy.Table('sqlite', database, table='unknownSims', query=query)
+
+    # Create a connection to the database file and create a cursor
+    pwFile='/g/lu/scratch/siyao/other/pw.txt'
+    pw = open(pwFile).read().split()[0]
+    con = mdb.connect(host='galaxy1.astro.ucla.edu',user='dbread',passwd=pw,db='gcg')
+    rows = pd.read_sql_query(query, con)
+
+    t = Table.from_pandas(rows)
+
 
     # Rename columns
     t.rename_column('probYngSimPrior', 'probYng')
@@ -5504,16 +5489,16 @@ def load_unknown_sims():
     t.rename_column('probOldSimPriorErr', 'probOldErr')
 
     # Set S0-32 values to 0
-    idx = np.where(t.name == 'S0-32')[0]
-    t.probYng[idx] = 0
-    t.probOld[idx] = 0
+    idx = np.where(t['name'] == 'S0-32')[0]
+    t['probYng'][idx] = 0
+    t['probOld'][idx] = 0
 
     # There are a couple of wierd cases where the denominator is 0.
     # In this case, resort to priors.
-    idx = np.where(np.isnan(t.probYngErr) == True)[0]
+    idx = np.where(np.isnan(t['probYngErr']) == True)[0]
     if len(idx) > 0:
-        t.probYngErr[idx] = 0
-        t.probOldErr[idx] = 0
+        t['probYngErr'][idx] = 0
+        t['probOldErr'][idx] = 0
 
     return t
 
@@ -5522,6 +5507,7 @@ def load_unknown_sims():
 def priorsAtRadius(radius):
     """
     Function will take original priors for probability
+
     of early-type (yng) and late-type (old) classification
     and rescale them based on what we know about the
     observed fraction of young/old as a function of radius.
@@ -5542,11 +5528,12 @@ def priorsAtRadius(radius):
     
 def get_extinctions_for_stars(nirc2):
     # Create a new array to store extinction values
-    nirc2.Aks = np.zeros(len(nirc2.x), dtype=float)
+    nirc2.AKs = np.zeros(len(nirc2.x), dtype=float)
 
     # Load up the extinction map from Schodel 2010
-    schExtinctFile = '/u/jlu/work/gc/imf/extinction/2010schodel_AKs_fg6.fits'
-    schExtinct = pyfits.open(schExtinctFile)
+    #schExtinctFile = '/u/jlu/work/gc/imf/extinction/2010schodel_AKs_fg6.fits'
+    schExtinctFile = '/g/lu/scratch/siyao/work/3_young/imf/2018Lara_AKs_fg28.fits'
+    schExtinct = fits.open(schExtinctFile)
 
     # Calculate AKs for all the stars in the dp_mosaic
     ext_map = schExtinct[0].data
@@ -5572,38 +5559,21 @@ def get_extinctions_for_stars(nirc2):
         xid = dx.argmin()
         yid = dy.argmin()
 
-        nirc2.Aks[ss] = ext_map[yid, xid]
+        nirc2.AKs[ss] = ext_map[yid, xid]
 
 
 def get_wolf_rayet_stars():
     """
     Load up a list of star names for all known
-    Wolf-Rayet stars from the Paumard+ 2006 paper.
+    Wolf-Rayet stars from our database.
     """
-    cutSpectralTypes = ['WN', 'WC', 'WR']
+    pwFile='/g/lu/scratch/siyao/other/pw.txt'
+    pw = open(pwFile).read().split()[0]
+    con = mdb.connect(host='galaxy1.astro.ucla.edu',user='dbread',passwd=pw,db='gcg')
+    df_wr_stars = pd.read_sql_query("SELECT name FROM stars WHERE spec_type='WR'", con)
+    wr_stars = df_wr_stars.name.values
 
-    # Load up the names of stars that are known Wolf-Rayet stars
-    wolfRayetNames = []
-
-    connection = sqlite.connect(database)
-    cur = connection.cursor()
-    for ii in range(len(cutSpectralTypes)):
-        sqlCmd = "select ucla from paumard2006 "
-        sqlCmd += "where type like '%" + cutSpectralTypes[ii] + "%'"
-        cur.execute(sqlCmd)
-
-        rows = cur.fetchall()
-
-        for rr in range(len(rows)):
-            wolfRayetNames.append( rows[rr][0] )
-
-    wolfRayetNames = np.array(wolfRayetNames)
-
-    print 'Found %d Wolf-Rayet stars from Paumard+ 2006.' % \
-          len(wolfRayetNames)
-    print '   Note: not all have been observed with OSIRIS'
-
-    return wolfRayetNames
+    return wr_stars
 
 
 def poisson_error(n):
@@ -5693,7 +5663,7 @@ def plot_pdf_sgra_dist():
     # distribution of distances, lets save it off in
     # a convenient pickle file.
     _out = open(sgraDir + 'dist_pdf.cpickle', 'wb')
-    cPickle.dump(dist, _out)
+    pickle.dump(dist, _out)
     _out.close()
     
 def plot_binary_properties():
@@ -5810,10 +5780,10 @@ def plot_binary_properties():
     csfAmpErr = math.sqrt( csfCovar[0][0] ) * csfAmp
     csfIndexErr = math.sqrt( csfCovar[1][1] )
 
-    print 'MF  power-law amp = %.1e +/- %.1e and index = %.2f +/- %.2f' % \
-        (mfAmp, mfAmpErr, mfIndex, mfIndexErr)
-    print 'CSF power-law amp = %.1e +/- %.1e and index = %.2f +/- %.2f' % \
-        (csfAmp, csfAmpErr, csfIndex, csfIndexErr)
+    print(('MF  power-law amp = %.1e +/- %.1e and index = %.2f +/- %.2f' % \
+        (mfAmp, mfAmpErr, mfIndex, mfIndexErr)))
+    print(('CSF power-law amp = %.1e +/- %.1e and index = %.2f +/- %.2f' % \
+        (csfAmp, csfAmpErr, csfIndex, csfIndexErr)))
 
     def plaw_mf(x, amp, index):
         val = amp * x**index
@@ -5857,9 +5827,9 @@ def kiminki2007():
     meanMass = foo['M0'].mean()
     medianMass = np.median(foo['M0'])
 
-    print 'Kiminki+ 2007 Sample Info:'
-    print '     Mean mass = %6.2f' % (meanMass)
-    print '   Median mass = %6.2f' % (medianMass)
+    print('Kiminki+ 2007 Sample Info:')
+    print(('     Mean mass = %6.2f' % (meanMass)))
+    print(('   Median mass = %6.2f' % (medianMass)))
     
 def rizzuto2011():
     """
@@ -5944,7 +5914,7 @@ def rizzuto2011():
 
     foo = np.arange(len(sp_type_count), dtype=int)
     meanIdx = np.average(foo, weights=sp_type_count)
-    print 'Mean Spectral Type is %s' % (sp_type_uniq[int(round(meanIdx))])
+    print(('Mean Spectral Type is %s' % (sp_type_uniq[int(round(meanIdx))])))
 
     # Read in spectral type - mass mapping
     lit_root = '/u/jlu/work/gc/imf/literature/'
@@ -5994,8 +5964,8 @@ def rizzuto2011():
     #py.savefig(rootDir + 'USco_spec_type_hist.png')
 
     sp_type_mass_all = np.repeat(sp_type_mass, sp_type_count)
-    print 'Mean Mass is   %.1f Msun' % (sp_type_mass_all.mean())
-    print 'Median Mass is %.1f Msun' % (np.median(sp_type_mass))
+    print(('Mean Mass is   %.1f Msun' % (sp_type_mass_all.mean())))
+    print(('Median Mass is %.1f Msun' % (np.median(sp_type_mass))))
     
 
 def plot_mcmc_diagnostics(mcmc_file, chain=0, old_params=False):
@@ -6017,10 +5987,10 @@ def plot_mcmc_diagnostics(mcmc_file, chain=0, old_params=False):
     # Analyze each variable in the first chain
     suffix = '_' + mcmc_file
     for pp in params:
-        print
-        print '********************'
-        print '   ' + pp
-        print '********************'
+        print()
+        print('********************')
+        print(('   ' + pp))
+        print('********************')
 
         traceObj = db.trace(pp, chain=chain)
         
@@ -6068,10 +6038,10 @@ def compare_mcmc_chains(files):
     # Analyze each variable in the first chain
     suffix = '_' + files[0]
     for pp in params:
-        print
-        print '********************'
-        print '   ' + pp
-        print '********************'
+        print()
+        print('********************')
+        print(('   ' + pp))
+        print('********************')
 
         py.clf()
         minSize = np.Inf
@@ -6420,8 +6390,8 @@ def plot_model_vary_imf():
                 label=legLabel)
         p2.plot([8.5], model2.num_WR, 'b+', color=color, ms=10)
 
-        print 'IMF Slope = %.2f' % imfSlopes[i]
-        print '   N_WR = %3d and %3d' % (model1.num_WR, model2.num_WR)
+        print(('IMF Slope = %.2f' % imfSlopes[i]))
+        print(('   N_WR = %3d and %3d' % (model1.num_WR, model2.num_WR)))
 
     p1.set_xlabel('Kp Magnitude')
     p1.set_ylabel('Number of Stars')
@@ -6464,8 +6434,8 @@ def plot_model_vary_imf():
                 label=legLabel)
         p2.plot([8.5], model2.N_WR, 'b+', color=color, ms=10)
 
-        print 'IMF Slope = %.2f' % imfSlopes[i]
-        print '   N_WR = %3d and %3d' % (model1.N_WR, model2.N_WR)
+        print(('IMF Slope = %.2f' % imfSlopes[i]))
+        print(('   N_WR = %3d and %3d' % (model1.N_WR, model2.N_WR)))
 
     p1.set_xlabel('Kp Magnitude')
     p1.set_ylabel('Number of Stars')
@@ -6769,8 +6739,8 @@ def plot_klf_progression(rmin=0, rmax=30):
                 label='Ext + SpCmp + ImCmp')
 
     for ii in idx:
-        print 'Kp = %5.2f  N = %5.2f  density = %5.3f' % \
-            (d.Kp[ii], d.N_ext_cmp_sp_im[ii], d.KLF_ext_cmp_sp_im[ii])
+        print(('Kp = %5.2f  N = %5.2f  density = %5.3f' % \
+            (d.Kp[ii], d.N_ext_cmp_sp_im[ii], d.KLF_ext_cmp_sp_im[ii])))
 
     #py.gca().set_yscale('log')
     py.legend(loc='upper left', numpoints=1, prop=legFont)
@@ -6844,19 +6814,19 @@ def plot_sim_results(rootdir, index=0, sim=True, rmin=0, rmax=30):
 
     out_suffix = '_best_fit_%d' % index
 
-    print 'Plotting Solution %d' % index
-    print '   log(Likelihood): %.2f' % fit['logLike'][idx]
-    print '   log(age):        %.2f' % fit['logAge'][idx]
-    print '   distance (pc):   %d' % (fit['distance'][idx]*10**3)
-    print '   alpha:           %.2f' % fit['alpha'][idx]
-    print '   Mcl (Msun)       %d' % (fit['Mcl'][idx]*10**3)
+    print(('Plotting Solution %d' % index))
+    print(('   log(Likelihood): %.2f' % fit['logLike'][idx]))
+    print(('   log(age):        %.2f' % fit['logAge'][idx]))
+    print(('   distance (pc):   %d' % (fit['distance'][idx]*10**3)))
+    print(('   alpha:           %.2f' % fit['alpha'][idx]))
+    print(('   Mcl (Msun)       %d' % (fit['Mcl'][idx]*10**3)))
     # print '   N_old:           %d' % (fit['N_old'][idx])
     # print '   gamma:           %.2f' % (fit['gamma'][idx])
     # print '   rcMean:          %.2f' % (fit['rcMean'][idx])
     # print '   rcSigma:         %.2f' % (fit['rcSigma'][idx])
-    print '   N(WR):           %d in data vs. %d in sim' % (data.N_WR, fit['N_WR_sim'][idx])
-    print '   N(yng):          %d in data vs. %d in sim' % \
-        (data.prob.sum(), fit['N_yng_obs'][idx])
+    print(('   N(WR):           %d in data vs. %d in sim' % (data.N_WR, fit['N_WR_sim'][idx])))
+    print(('   N(yng):          %d in data vs. %d in sim' % \
+        (data.prob.sum(), fit['N_yng_obs'][idx])))
 
     plot_model_vs_data_MC(fit['logAge'][idx], 2.7, int(round(fit['distance'][idx]*10**3, 0)),
                           fit['alpha'][idx], int(round(fit['Mcl'][idx]*10**3, 0)), yngData=data,
@@ -6970,7 +6940,7 @@ def plot_WR_vs_age():
             tmp_logAge = round(logAge[tt], 2)
             tmp_alpha = round(alpha[aa], 2)
 
-            print 'log(age) = %.2f  alpha = %.2f' % (tmp_logAge, tmp_alpha)
+            print(('log(age) = %.2f  alpha = %.2f' % (tmp_logAge, tmp_alpha)))
 
             tmp = b.fetch_model_from_sims(tmp_logAge, AKs, distance,
                                           tmp_alpha, Mcl, minMass, maxMass)
@@ -7103,7 +7073,7 @@ def calc_WR_OB_ratio_vs_age():
             tmp_logAge = round(logAge[tt], 2)
             tmp_alpha = round(alpha[aa], 2)
 
-            print 'log(age) = %.2f  alpha = %.2f' % (tmp_logAge, tmp_alpha)
+            print(('log(age) = %.2f  alpha = %.2f' % (tmp_logAge, tmp_alpha)))
 
             cluster = b.model_young_cluster(tmp_logAge, imfSlope=tmp_alpha, 
                                             AKs=AKs, distance=distance, 
@@ -7209,7 +7179,7 @@ def plot_WR_OB_ratio_vs_age():
     outRoot = workDir + 'plots/num_WR_OB_ratio_vs_age'
     py.savefig(outRoot + '.png')
     tmp = 'convert %s.png %s.eps' % (outRoot, outRoot)
-    print tmp
+    print(tmp)
     subprocess.call(tmp, shell=True)
 
     # Plot a single IMF slope
@@ -7231,7 +7201,7 @@ def plot_WR_OB_ratio_vs_age():
     py.axhline(obsRatio, linestyle='--', color='black', linewidth=2)
     py.text(8, obsRatio+0.003, 'Observed')
     idx = np.where(np.abs(ratio[:,aa] - obsRatio) < 0.01)[0]
-    print idx, age[idx], val[idx]
+    print((idx, age[idx], val[idx]))
     #py.plot(age[idx[:2]], val[idx[:2]], 'ks')
     py.plot([2.9, 3.8], [obsRatio, obsRatio], 'ks', ms=10)
 
@@ -7241,7 +7211,7 @@ def plot_WR_OB_ratio_vs_age():
     outRoot = workDir + 'plots/num_WR_OB_ratio_vs_age_1.7'
     py.savefig(outRoot + '.png')
     tmp = 'convert %s.png %s.eps' % (outRoot, outRoot)
-    print tmp
+    print(tmp)
     subprocess.call(tmp, shell=True)
 
 def plot_fit_posteriors_2d():
@@ -7375,7 +7345,7 @@ def plot_fit_posterior_2d(axes, param1, param2, fit=None,
 
     if smooth1 != None or smooth2 != None:
         if smooth1 == None or smooth2 == None:
-            print 'Both smoothing paramters must be set to smooth.'
+            print('Both smoothing paramters must be set to smooth.')
         else:
             sigma = [smooth1, smooth2]
             H = ndimage.gaussian_filter(H, sigma, order=0)
@@ -7465,8 +7435,8 @@ def plot_fit_posteriors_1d(multiples=True, rmin=0.0):
                                                 loc=log_age_min, scale=log_age_diff)
     prob_log_age_cont /= 5.0
     ax2.plot(10**(tmp_bins-6.0), prob_log_age_cont, 'k--')
-    print 10**(tmp_bins-6.0)
-    print prob_log_age_cont
+    print((10**(tmp_bins-6.0)))
+    print(prob_log_age_cont)
 
     # Slope of the IMF
     alpha_min = 0.10
@@ -7567,29 +7537,29 @@ def get_best_fit(param, weights, paramName):
     # Do a special check for alpha from Bartko.
     if paramName == 'alpha':
         bartkoIdx = np.where(param_sort <= 0.45)[0]
-        print 'P(alpha <= 0.45) = %.2e' % cdf_param[bartkoIdx[-1]]
+        print(('P(alpha <= 0.45) = %.2e' % cdf_param[bartkoIdx[-1]]))
 
         salpeterIdx = np.where(param_sort >= 2.35)[0]
-        print 'P(alpha < 2.35) = %.2e' % (1.0 - cdf_param[salpeterIdx[0]])
+        print(('P(alpha < 2.35) = %.2e' % (1.0 - cdf_param[salpeterIdx[0]])))
 
     param_mean = np.average(param, weights=weights)
     param_std = math.sqrt( np.dot(weights, (param - param_mean)**2) / weightSum)
 
-    print ''
-    print '***** %s *****' % paramName
-    print 'Expectation Value:     %5.2f' % (exp_param)
-    print 'Most Probable:         %5.2f' % (param[-1])
-    print 'Standard Deviation:    %5.2f' % (param_std)
-    print 'Standard Dev. Range:   %5.2f - %5.2f' % \
-        (param_mean-param_std, param_mean+param_std)
-    print '68%% confidence range: %5.2f - %5.2f' % \
-        (param_sort[cdf_lo_idx], param_sort[cdf_hi_idx])
-    print '95%% confidence range: %5.2f - %5.2f' % \
-        (param_sort[cdf_lo2_idx], param_sort[cdf_hi2_idx])
-    print '99%% confidence range: %5.2f - %5.2f' % \
-        (param_sort[cdf_lo3_idx], param_sort[cdf_hi3_idx])
-    print 'Top 10 most probable:  '
-    print param[-20:]
+    print('')
+    print(('***** %s *****' % paramName))
+    print(('Expectation Value:     %5.2f' % (exp_param)))
+    print(('Most Probable:         %5.2f' % (param[-1])))
+    print(('Standard Deviation:    %5.2f' % (param_std)))
+    print(('Standard Dev. Range:   %5.2f - %5.2f' % \
+        (param_mean-param_std, param_mean+param_std)))
+    print(('68%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo_idx], param_sort[cdf_hi_idx])))
+    print(('95%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo2_idx], param_sort[cdf_hi2_idx])))
+    print(('99%% confidence range: %5.2f - %5.2f' % \
+        (param_sort[cdf_lo3_idx], param_sort[cdf_hi3_idx])))
+    print('Top 10 most probable:  ')
+    print((param[-20:]))
     
     return param_mean, param_std
 
@@ -7618,17 +7588,17 @@ def table_best_fit_params(multiples=True):
         idx1 = np.where(fit['age'] <= 3.3)[0]
         idx2 = np.where(fit['age'] > 3.3)[0]
 
-        print '' 
-        print '**** Age <= 3.3 Myr *****'
-        print '' 
+        print('') 
+        print('**** Age <= 3.3 Myr *****')
+        print('') 
         get_best_fit(fit['age'][idx1], fit['weights'][idx1], 'age1')
         get_best_fit(fit['alpha'][idx1], fit['weights'][idx1], 'alpha')
         get_best_fit(fit['Mcl'][idx1], fit['weights'][idx1], 'Mcl')
         get_best_fit(fit['distance'][idx1], fit['weights'][idx1], 'distance')
 
-        print '' 
-        print '**** Age > 3.3 Myr *****'
-        print '' 
+        print('') 
+        print('**** Age > 3.3 Myr *****')
+        print('') 
         age_mean, age_std = get_best_fit(fit['age'][idx2], fit['weights'][idx2], 'age2')
         alpha_mean, alpha_std = get_best_fit(fit['alpha'][idx2], fit['weights'][idx2], 'alpha')
         mass_mean, mass_std = get_best_fit(fit['Mcl'][idx2], fit['weights'][idx2], 'Mcl')
@@ -7641,13 +7611,13 @@ def table_best_fit_params(multiples=True):
 
     logage_mean = math.log10(age_mean*1e6)
 
-    print ''
-    print '***** Plotted Solution *****'
-    print '%-20s  %5.2f' % ('IMF Slope', alpha_mean)
-    print '%-20s  %5.2f' % ('Age (Myr)', age_mean)
-    print '%-20s  %5.2f' % ('log[Age (Myr)]', logage_mean)
-    print '%-20s  %5.2f' % ('Mass (x1000 Msun)', mass_mean)
-    print '%-20s  %5.2f' % ('Distance (kpc)', dist_mean)
+    print('')
+    print('***** Plotted Solution *****')
+    print(('%-20s  %5.2f' % ('IMF Slope', alpha_mean)))
+    print(('%-20s  %5.2f' % ('Age (Myr)', age_mean)))
+    print(('%-20s  %5.2f' % ('log[Age (Myr)]', logage_mean)))
+    print(('%-20s  %5.2f' % ('Mass (x1000 Msun)', mass_mean)))
+    print(('%-20s  %5.2f' % ('Distance (kpc)', dist_mean)))
 
 
     if multiples:
@@ -7682,7 +7652,7 @@ def test_num_WR_vs_multiples():
     numWR_s = np.zeros(nIter)
 
     for ii in range(nIter):
-        print 'Sim ', ii
+        print(('Sim ', ii))
         tmp1 = b.model_young_cluster(logAge, imfSlope=alpha, clusterMass=mass,
                                      makeMultiples=True)
         tmp2 = b.model_young_cluster(logAge, imfSlope=alpha, clusterMass=mass,
@@ -7730,9 +7700,9 @@ def cluster_mass():
             
         
         # Calculate extinction corrected photometry
-            kp_2_ks_yng = synthetic.get_Kp_Ks(nirc2.Aks[nn], 30000.0, 
+            kp_2_ks_yng = synthetic.get_Kp_Ks(nirc2.AKs[nn], 30000.0, 
                                               filename=synFile)
-            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_yng - nirc2.Aks[nn] \
+            nirc2.kp_ext[nn] = nirc2.kp[nn] - kp_2_ks_yng - nirc2.AKs[nn] \
                 + theAKs + ks_2_kp_yng
 
     return
@@ -8046,7 +8016,7 @@ def calc_total_mass():
 
     # Find the maximum radius at which we have data.
     maxRadius = mapRR[area_map > 0].max()
-    print 'Maximum Radius Observed: %.2f"' % (maxRadius)
+    print(('Maximum Radius Observed: %.2f"' % (maxRadius)))
 
     # Surface Density profile: flat inner, power law outer.
     # Surface Density Slope and inner Cutoff. Don't care about
@@ -8075,17 +8045,17 @@ def calc_total_mass():
     inFraction = inFOV / total
     outFraction = outFOV / total
 
-    print 'mapNstars.sum() = ', total
-    print 'mapNstars[obs].sum() = ', inFOV
-    print 'mapNstars[noobs].sum() = ', outFOV
-    print ''
-    print 'Fraction Observed = %.2f' % inFraction
-    print 'Fraction Unobserved = %.2f' % outFraction
+    print(('mapNstars.sum() = ', total))
+    print(('mapNstars[obs].sum() = ', inFOV))
+    print(('mapNstars[noobs].sum() = ', outFOV))
+    print('')
+    print(('Fraction Observed = %.2f' % inFraction))
+    print(('Fraction Unobserved = %.2f' % outFraction))
 
-    print ''
-    print 'Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
-        (1.0 / inFraction)
-    print ''
+    print('')
+    print(('Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
+        (1.0 / inFraction)))
+    print('')
     
 
     ##########
@@ -8106,15 +8076,15 @@ def calc_total_mass():
     Ntot = len(rows)
     inFraction = float(Nobs) / float(Ntot)
 
-    print ''
-    print 'N_yng for Kp < 13 total     : %d' % Ntot
-    print 'N_yng for Kp < 13 in our FOV: %d' % Nobs
-    print 'Fraction Observed = %.2f' % inFraction
+    print('')
+    print(('N_yng for Kp < 13 total     : %d' % Ntot))
+    print(('N_yng for Kp < 13 in our FOV: %d' % Nobs))
+    print(('Fraction Observed = %.2f' % inFraction))
     
-    print ''
-    print 'Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
-        (1.0 / inFraction)
-    print ''
+    print('')
+    print(('Total Cluster Mass = %.2f * Best-Fit Cluster Mass' % \
+        (1.0 / inFraction)))
+    print('')
 
 def compute_masses(rmin=0, rmax=30, magCut=15.5):
     """
@@ -8152,7 +8122,7 @@ def compute_masses(rmin=0, rmax=30, magCut=15.5):
     # Determine number of "fake" stars we need to generate in each magnitude bin.
     # Assign them a random magnitude from that bin.
     N_to_comp = np.round(klf_comp - klf)
-    print N_to_comp
+    print(N_to_comp)
 
     #### ACTUALLY IGNORING INCOMPLETENESS AS IT DOESN'T EFFECT ANYTHING ####
 
@@ -8196,7 +8166,7 @@ def compute_masses(rmin=0, rmax=30, magCut=15.5):
     all_isMulti = np.zeros((len(noWR), numMC), dtype=bool)
 
     for ss in range(len(noWR)):
-        print 'Monte Carlo for star %d' % ss
+        print(('Monte Carlo for star %d' % ss))
         sdx = noWR[ss]
         all_kp[ss,:] = scipy.stats.norm.rvs(size=numMC, loc=d.kp_ext[sdx], scale=d.kp_err[sdx])
 
@@ -8205,7 +8175,7 @@ def compute_masses(rmin=0, rmax=30, magCut=15.5):
             idx = dk.argmin()
 
             if dk[idx] > 0.1:
-                print 'Bad Mass match for this magnitude: ', all_kp[ss,ii], iso.mag[idx]
+                print(('Bad Mass match for this magnitude: ', all_kp[ss,ii], iso.mag[idx]))
 
             all_m[ss, ii] = iso.mass[idx]
             all_isMulti[ss, ii] = iso.isMultiple[idx]
@@ -8274,15 +8244,15 @@ def plot_masses_in_imf():
     # Also print out the individual masses for the stars.
     mass_mean = mass.mean(axis=1)
     mass_std = mass.std(axis=1)
-    print len(mass_mean)
-    print mass.shape
+    print((len(mass_mean)))
+    print((mass.shape))
     sdx = mass_mean.argsort()[::-1]
 
     for ii in sdx:
         dii = noWR[ii]
-        print '%-15s  Kp = %5.2f +/- %4.2f   M = %4.1f +/- %3.1f  prob = %.2f' % \
+        print(('%-15s  Kp = %5.2f +/- %4.2f   M = %4.1f +/- %3.1f  prob = %.2f' % \
             (data.name[dii], data.kp_ext[dii], data.kp_err[dii],
-             mass_mean[ii], mass_std[ii], data.prob[dii])
+             mass_mean[ii], mass_std[ii], data.prob[dii])))
 
 
 def completeness_from_catalog(rmin=0, rmax=30, mmin=8, mmax=15.5):
@@ -8312,8 +8282,8 @@ def completeness_from_catalog(rmin=0, rmax=30, mmin=8, mmax=15.5):
     else:
         comp_spec = np.nan
 
-    print 'r: %4.1f - %4.1f   m: %4.1f - %4.1f  n: %4d out of %4d' % \
-        (rmin, rmax, mmin, mmax, n_typed, n_total)
+    print(('r: %4.1f - %4.1f   m: %4.1f - %4.1f  n: %4d out of %4d' % \
+        (rmin, rmax, mmin, mmax, n_typed, n_total)))
 
     # Imaging completeness
     _planted = open(workDir + 'image_completeness_in_osiris.dat', 'r')
@@ -8427,8 +8397,8 @@ def calc_eccentricity_inner():
 
     idx = np.where(semia <= 0.75)[0]
 
-    print ecc[idx].mean()
-    print np.average(ecc[idx], weights=eccErr[idx])
+    print((ecc[idx].mean()))
+    print((np.average(ecc[idx], weights=eccErr[idx])))
 
     return tab
 
@@ -8477,14 +8447,14 @@ def print_catalog():
                      type='ascii', delimiter='&', data_start=0)
 
     names = np.concatenate([old.col1, yng.col1, unk.col1])
-    print '%d in Do list, %d in Lu list' % (len(names), len(d.name))
+    print(('%d in Do list, %d in Lu list' % (len(names), len(d.name))))
 
     odx = np.where((d.prob_err == 0) & (d.prob == 0))[0]
     ydx = np.where((d.prob_err == 0) & (d.prob == 1))[0]
     udx = np.where((d.prob_err > 0))[0]
 
-    print len(odx), len(ydx), len(udx)
-    print len(old.col1), len(yng.col1), len(unk.col1)
+    print((len(odx), len(ydx), len(udx)))
+    print((len(old.col1), len(yng.col1), len(unk.col1)))
 
     py.clf()
     py.plot(d.x[odx], d.y[odx], 'rx', ms=10)
@@ -8496,29 +8466,29 @@ def print_catalog():
     py.axis('equal')
 
     # Loop through and figure out why Tuan's list is so much longer.
-    print ''
-    print 'OLD: In Do not in Lu'
+    print('')
+    print('OLD: In Do not in Lu')
     for ii in range(len(old.col1)):
         if old.col1[ii] not in d.name:
-            print old[ii]
+            print((old[ii]))
 
-    print ''
-    print 'YNG: In Do not in Lu'
+    print('')
+    print('YNG: In Do not in Lu')
     for ii in range(len(yng.col1)):
         if yng.col1[ii] not in d.name:
-            print yng[ii]
+            print((yng[ii]))
 
-    print ''
-    print 'UNK: In Do not in Lu'
+    print('')
+    print('UNK: In Do not in Lu')
     for ii in range(len(unk.col1)):
         if unk.col1[ii] not in d.name:
-            print unk[ii]
+            print((unk[ii]))
 
-    print ''
-    print 'ALL: In Lu not in Do'
+    print('')
+    print('ALL: In Lu not in Do')
     for ii in range(len(d.name)):
         if (d.name[ii] not in names) and (str.upper(d.name[ii]) not in names):
-            print d.name[ii], d.kp_ext[ii], d.kp[ii], d.x[ii], d.y[ii], d.prob[ii], d.prob_err[ii]
+            print((d.name[ii], d.kp_ext[ii], d.kp[ii], d.x[ii], d.y[ii], d.prob[ii], d.prob_err[ii]))
 
 
 def sim_age_monte_carlo():
@@ -8583,8 +8553,8 @@ def sim_age_monte_carlo():
 
         # Sum up all the probability until you reach the true input age and
         # see at what confidence the true age is found.
-        print 'Confidence that age = 4 Myr: %.3f' % \
-            (confidence)
+        print(('Confidence that age = 4 Myr: %.3f' % \
+            (confidence)))
 
         grid[ii].text(8.5, 1.3, '%2d%%' % (confidence*100))
 
@@ -8713,14 +8683,14 @@ def plot_klf_with_tmt():
     Mcl1_01_1 = (cluster1.systemMasses[cluster1.mass < 1] * weights1).sum()
     Mcl2_01_1 = (cluster2.systemMasses[cluster2.mass < 1] * weights2).sum()
 
-    print 'Cluster with multiples:'
-    print '     Total Cluster Mass = %d' % Mcl1
-    print '    Mass [1 - 150] Msun = %d' % Mcl1_1_150
-    print '    Mass [0.1 - 1] Msun = %d' % Mcl1_01_1
-    print 'Cluster with singles:'
-    print '     Total Cluster Mass = %d' % Mcl2
-    print '    Mass [1 - 150] Msun = %d' % Mcl2_1_150
-    print '    Mass [0.1 - 1] Msun = %d' % Mcl2_01_1
+    print('Cluster with multiples:')
+    print(('     Total Cluster Mass = %d' % Mcl1))
+    print(('    Mass [1 - 150] Msun = %d' % Mcl1_1_150))
+    print(('    Mass [0.1 - 1] Msun = %d' % Mcl1_01_1))
+    print('Cluster with singles:')
+    print(('     Total Cluster Mass = %d' % Mcl2))
+    print(('    Mass [1 - 150] Msun = %d' % Mcl2_1_150))
+    print(('    Mass [0.1 - 1] Msun = %d' % Mcl2_01_1))
 
     # Assign arbitrary magnitudes for WR stars. Uniformly distributed from Kp=9-11
     idx = np.where(cluster1.isWR == True)[0]
@@ -9035,4 +9005,469 @@ def nstasr_vs_age_mass():
     
                 
     
+
+def get_Kp_Ks(age, AKs, dist, temp):
+    # Define isochrone parameters
+    logAge = np.log10(age) # Age in log(years)
     
+    # Define evolution/atmosphere models and extinction law
+    evo_model = evolution.MergedBaraffePisaEkstromParsec()
+    atm_func = atmospheres.get_merged_atmosphere
+    red_law = reddening.RedLawHosek18b()
+    
+    # Also specify filters for synthetic photometry (optional). Here we use
+    # the HST WFC3-IR F127M, F139M, and F153M filters
+    filt_list = ['nirc2,Kp', '2mass,Ks']
+
+    # Make Isochrone object. Note that is calculation will take a few minutes, unless the
+    # isochrone has been generated previously.
+    my_iso = synthetic.IsochronePhot(logAge, AKs, dist, metallicity=0,
+                                evo_model=evo_model, atm_func=atm_func,
+                                red_law=red_law, filters=filt_list,
+                                iso_dir='/g/lu/scratch/siyao/work/3_young/imf/isochrone/')
+
+    idx = np.abs(my_iso.points['Teff'] - temp).argmin()
+    return my_iso.points[idx]['m_nirc2_Kp'] -  my_iso.points[idx]['m_2mass_Ks']
+
+def spec_completeness_by_fields(plot=True):
+    """
+    Calculate spectroscopic KLF and completeness curves for each field
+    """
+    # Load spectral identifications at each filed
+    s = load_spec_id_all_stars(flatten=False)
+    fields = s.fields
+
+    # Define magnitude bins in which to calculate the completeness
+    magStep = klf_mag_bins[1] - klf_mag_bins[0]
+    magHalfStep = magStep / 2.0
+    magBins = klf_mag_bins
+
+    # Load up Tuan's completeness simulations for the unknown stars.
+    specSims = load_unknown_sims()
+
+    # loop through each field
+    for i,field in enumerate(fields):
+
+        # count the number of young, old, unknown stars with obs mag
+        cnt_yng = np.zeros(len(magBins), dtype=float)
+        cnt_old = np.zeros(len(magBins), dtype=float)
+        cnt_unk = np.zeros(len(magBins), dtype=float)
+        cnt_unk_yng = np.zeros(len(magBins), dtype=float)
+        cnt_unk_old = np.zeros(len(magBins), dtype=float)
+        cnt_yng_noWR = np.zeros(len(magBins), dtype=float)
+
+        # count the number of young, old, unknown stars with extinction corrected mag
+        cnt_ext_yng = np.zeros(len(magBins), dtype=float)
+        cnt_ext_old = np.zeros(len(magBins), dtype=float)
+        cnt_ext_unk = np.zeros(len(magBins), dtype=float)
+        cnt_ext_unk_yng = np.zeros(len(magBins), dtype=float)
+        cnt_ext_unk_old = np.zeros(len(magBins), dtype=float)
+        cnt_ext_yng_noWR = np.zeros(len(magBins), dtype=float)
+
+        # the error on the number of unknown stars 
+        adderr_unk_yng = np.zeros(len(magBins), dtype=float)
+        adderr_unk_old = np.zeros(len(magBins), dtype=float)
+        adderr_ext_unk_yng = np.zeros(len(magBins), dtype=float)
+        adderr_ext_unk_old = np.zeros(len(magBins), dtype=float)
+
+        # Lets keep a copy of all possible young stars
+        # (including those with low probabilities) since
+        # this will feed into the bayesian analysis.
+        # Only keep the extinction corrected magnitudes.
+        # Also, don't include the WR stars.
+        yng_kp = np.array([], dtype=float)
+        yng_kp_err = np.array([], dtype=float)
+        yng_prob = np.array([], dtype=float)
+
+        # Also Make a complete table of all possible young stars
+        # (including the WR stars). This may be printed in the table.
+        allyng_name = np.array([], dtype='S15')
+        allyng_x = np.array([], dtype=float)
+        allyng_y = np.array([], dtype=float)
+        allyng_kp = np.array([], dtype=float)
+        allyng_kp_ext = np.array([], dtype=float)
+        allyng_kp_err = np.array([], dtype=float)
+        allyng_isWR = np.array([], dtype=bool)
+        allyng_prob = np.array([], dtype=float)
+        allyng_prob_err = np.array([], dtype=float)
+
+        # Make a complete table of all stars
+        # (including the WR stars and old stars).
+        all_name = np.array([], dtype='S15')
+        all_x = np.array([], dtype=float)
+        all_y = np.array([], dtype=float)
+        all_kp = np.array([], dtype=float)
+        all_kp_ext = np.array([], dtype=float)
+        all_kp_err = np.array([], dtype=float)
+        all_isWR = np.array([], dtype=bool)
+        all_prob = np.array([], dtype=float)
+        all_prob_err = np.array([], dtype=float)
+
+        # Also keep track of the number of WR stars
+        idx = np.where(s.isWR_yng == True)[0]
+        yng_N_WR = len(idx)
+
+        for mm in range(len(magBins)):
+            magLo = magBins[mm] - magHalfStep
+            magHi = magBins[mm] + magHalfStep
+
+            print(('Working on mag bin %.2f - %.2f' % (magLo, magHi)))
+
+            # Before extinction correction, figure out which stars
+            # fall into the magnitude bin and radius range.
+            yy = np.where((s.kp_yng[i] >= magLo) & (s.kp_yng[i] < magHi))[0]
+            oo = np.where((s.kp_old[i] >= magLo) & (s.kp_old[i] < magHi)) [0] 
+            nn = np.where((s.kp_nirc2[i] >= magLo) & (s.kp_nirc2[i] < magHi))[0]
+            yy_noWR = np.where((s.kp_yng[i] >= magLo) & (s.kp_yng[i] < magHi) &
+                               (s.isWR_yng[i] == False))[0]
+
+            cnt_yng[mm] = len(yy)
+            cnt_old[mm] = len(oo)
+            cnt_unk[mm] = len(nn) - len(yy) - len(oo)
+            cnt_yng_noWR[mm] = len(yy_noWR)
+
+            # Gather up all the unknown sources and find them in the
+            # Monte Carlo simulations table (specSims)
+            unk_probY = []
+            unk_probO = []
+            unk_probYerr = []
+            unk_probOerr = []
+            unk_sdx = []
+
+            for ni in nn:
+                name = s.name_nirc2[i][ni]
+                if (name in s.name_yng[i]) or (name in s.name_old[i]):
+                    continue
+
+                unk_sdx.append(ni)
+
+                # Find this unkonwn source in the spectral star planting results
+                idx = np.where(name == specSims['name'])[0]
+                if len(idx) == 0:
+                    print(('    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
+                        (name, s.kp_nirc2[i][ni], s.field_nirc2[i][ni])))
+                    priorYngRad, priorOldRad = priorsAtRadius(np.hypot(s.x_nirc2[i][ni], s.y_nirc2[i][ni]))
+                    unk_probY.append( priorYngRad )
+                    unk_probO.append( priorOldRad )
+                    unk_probYerr.append( 0.1 )
+                    unk_probOerr.append( 0.1 )
+                else:
+                    unk_probY.append( specSims['probYng'][idx[0]] )
+                    unk_probO.append( specSims['probOld'][idx[0]] )
+                    unk_probYerr.append( specSims['probYngErr'][idx[0]] )
+                    unk_probOerr.append( specSims['probOldErr'][idx[0]] )
+
+            unk_probY = np.array(unk_probY)
+            unk_probO = np.array(unk_probO)
+            unk_probYerr = np.array(unk_probYerr)
+            unk_probOerr = np.array(unk_probOerr)
+            unk_sdx = np.array(unk_sdx)
+
+            if len(unk_probY) != cnt_unk[mm]:
+                print('Incorrect number of unknown sources:')
+                print((mm, len(unk_probY), cnt_unk[mm], len(nn), len(yy), len(oo)))
+                pdb.set_trace()
+                
+            # For the unknown sources, figure out how many are likely
+            # to be young and how many are likely to be old.
+            cnt_unk_yng[mm] = unk_probY.sum()
+            cnt_unk_old[mm] = unk_probO.sum()
+            adderr_unk_yng[mm] = math.sqrt((unk_probYerr**2).sum())
+            adderr_unk_old[mm] = math.sqrt((unk_probOerr**2).sum())
+
+            print(('  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d noWR (observed)' % \
+                (cnt_yng[mm], cnt_old[mm], cnt_unk[mm],
+                 cnt_unk_yng[mm], cnt_unk_old[mm], cnt_yng_noWR[mm])))
+
+            ##########
+            # After extinction correction
+            ##########
+            yy = np.where((s.kp_ext_yng[i] >= magLo) & (s.kp_ext_yng[i] < magHi))[0]
+            oo = np.where((s.kp_ext_old[i] >= magLo) & (s.kp_ext_old[i] < magHi))[0]
+            nn = np.where((s.kp_ext_nirc2[i] >= magLo) & (s.kp_ext_nirc2[i] < magHi))[0]
+            yy_noWR = np.where((s.kp_ext_yng[i] >= magLo) & (s.kp_ext_yng[i] < magHi) & 
+                               (s.isWR_yng[i] == False))[0]
+
+            cnt_ext_yng[mm] = len(yy)
+            cnt_ext_old[mm] = len(oo)
+            cnt_ext_unk[mm] = len(nn) - len(yy) - len(oo)
+            cnt_ext_yng_noWR[mm] = len(yy_noWR)
+
+            yng_kp = np.append(yng_kp, s.kp_ext_yng[i][yy_noWR])
+            yng_kp_err = np.append(yng_kp_err, s.kperr_yng[i][yy_noWR])
+            yng_prob = np.append(yng_prob, np.ones(len(yy_noWR)))
+
+            # Append the known young stars to the "allyng" list. 
+            allyng_name = np.append(allyng_name, s.name_yng[i][yy])
+            allyng_x = np.append(allyng_x, s.x_yng[i][yy])
+            allyng_y = np.append(allyng_y, s.y_yng[i][yy])
+            allyng_kp = np.append(allyng_kp, s.kp_yng[i][yy])
+            allyng_kp_err = np.append(allyng_kp_err, s.kperr_yng[i][yy])
+            allyng_kp_ext = np.append(allyng_kp_ext, s.kp_ext_yng[i][yy])
+            allyng_prob = np.append(allyng_prob, np.ones(len(yy)))
+            allyng_isWR = np.append(allyng_isWR, s.isWR_yng[i][yy])
+
+            # Append the known young stars to the "all" list. 
+            all_name = np.append(all_name, s.name_yng[i][yy])
+            all_x = np.append(all_x, s.x_yng[i][yy])
+            all_y = np.append(all_y, s.y_yng[i][yy])
+            all_kp = np.append(all_kp, s.kp_yng[i][yy])
+            all_kp_err = np.append(all_kp_err, s.kperr_yng[i][yy])
+            all_kp_ext = np.append(all_kp_ext, s.kp_ext_yng[i][yy])
+            all_prob = np.append(all_prob, np.ones(len(yy)))
+            all_prob_err = np.append(all_prob_err, np.zeros(len(yy)))
+            all_isWR = np.append(all_isWR, s.isWR_yng[i][yy])
+
+            # Append the known old stars to the "all" list. 
+            all_name = np.append(all_name, s.name_old[i][oo])
+            all_x = np.append(all_x, s.x_old[i][oo])
+            all_y = np.append(all_y, s.y_old[i][oo])
+            all_kp = np.append(all_kp, s.kp_old[i][oo])
+            all_kp_err = np.append(all_kp_err, s.kperr_old[i][oo])
+            all_kp_ext = np.append(all_kp_ext, s.kp_ext_old[i][oo])
+            all_prob = np.append(all_prob, np.zeros(len(oo), dtype=float))
+            all_prob_err = np.append(all_prob_err, np.zeros(len(oo), dtype=float))
+            all_isWR = np.append(all_isWR, np.zeros(len(oo), dtype=bool))
+
+            # Gather up all the unknown sources and find them in the
+            # Monte Carlo simulations table (specSims)
+            unk_probY = []
+            unk_probO = []
+            unk_probYerr = []
+            unk_probOerr = []
+            unk_sdx = []
+
+            for ni in nn:
+                name = s.name_nirc2[i][ni]
+                if (name in s.name_yng[i]) or (name in s.name_old[i]):
+                    continue
+
+                unk_sdx.append(ni)
+                
+                idx = np.where(name == specSims['name'])[0]
+                if len(idx) == 0:
+                    print(('    Unknown source %s (Kp = %5.2f, field = %s) not in MC sim. Resorting to priors.' % \
+                        (name, s.kp_nirc2[i][ni], s.field_nirc2[i][ni])))
+
+                    priorYngRad, priorOldRad = priorsAtRadius(np.hypot(s.x_nirc2[i][ni],s.y_nirc2[i][ni]))
+                    unk_probY.append( priorYngRad )
+                    unk_probO.append( priorOldRad )
+                    unk_probYerr.append( 0.1 )
+                    unk_probOerr.append( 0.1 )
+                else:
+                    unk_probY.append( specSims['probYng'][idx[0]] )
+                    unk_probO.append( specSims['probOld'][idx[0]] )
+                    unk_probYerr.append( specSims['probYngErr'][idx[0]] )
+                    unk_probOerr.append( specSims['probOldErr'][idx[0]] )
+
+            unk_probY = np.array(unk_probY)
+            unk_probO = np.array(unk_probO)
+            unk_probYerr = np.array(unk_probYerr)
+            unk_probOerr = np.array(unk_probOerr)
+            unk_sdx = np.array(unk_sdx)
+
+            if len(unk_probY) != cnt_ext_unk[mm]:
+                print('Incorrect number of unknown sources:')
+                print((mm, len(unk_probY), cnt_ext_unk[mm], len(nn), len(yy), len(oo)))
+
+            # For the unknown sources, figure out how many are likely
+            # to be young and how many are likely to be old.
+            cnt_ext_unk_yng[mm] = unk_probY.sum()
+            cnt_ext_unk_old[mm] = unk_probO.sum()
+            adderr_ext_unk_yng[mm] = math.sqrt((unk_probYerr**2).sum())
+            adderr_ext_unk_old[mm] = math.sqrt((unk_probOerr**2).sum())
+
+            print(('  %3d yng, %3d old, %3d unkown (%4.1f yng, %4.1f old), %3d no WR (extinction corrected)' % \
+                (cnt_ext_yng[mm], cnt_ext_old[mm], cnt_ext_unk[mm],
+                 cnt_ext_unk_yng[mm], cnt_ext_unk_old[mm], cnt_ext_yng_noWR[mm])))
+
+            # Save the unknown sources (that are young) to our lists.
+            ndx = np.where(unk_probY != 0)[0]
+            if (len(ndx) != 0):
+                yng_kp = np.append(yng_kp, s.kp_ext_nirc2[i][unk_sdx[ndx]])
+                yng_kp_err = np.append(yng_kp_err, s.kperr_nirc2[i][unk_sdx[ndx]])
+                yng_prob = np.append(yng_prob, unk_probY[ndx])
+
+                allyng_name = np.append(allyng_name, s.name_nirc2[i][unk_sdx[ndx]])
+                allyng_x = np.append(allyng_x, s.x_nirc2[i][unk_sdx[ndx]])
+                allyng_y = np.append(allyng_y, s.y_nirc2[i][unk_sdx[ndx]])
+                allyng_kp = np.append(allyng_kp, s.kp_nirc2[i][unk_sdx[ndx]])
+                allyng_kp_err = np.append(allyng_kp_err, s.kperr_nirc2[i][unk_sdx[ndx]])
+                allyng_kp_ext = np.append(allyng_kp_ext, s.kp_ext_nirc2[i][unk_sdx[ndx]])
+                allyng_prob = np.append(allyng_prob, unk_probY[ndx])
+                allyng_prob_err = np.append(allyng_prob_err, unk_probYerr[ndx])
+                allyng_isWR = np.append(allyng_isWR, np.zeros(len(ndx), dtype=bool))
+
+            # Append all the unkown stars to the list.
+            if len(unk_sdx) > 0:
+                all_name = np.append(all_name, s.name_nirc2[i][unk_sdx])
+                all_x = np.append(all_x, s.x_nirc2[i][unk_sdx])
+                all_y = np.append(all_y, s.y_nirc2[i][unk_sdx])
+                all_kp = np.append(all_kp, s.kp_nirc2[i][unk_sdx])
+                all_kp_err = np.append(all_kp_err, s.kperr_nirc2[i][unk_sdx])
+                all_kp_ext = np.append(all_kp_ext, s.kp_ext_nirc2[i][unk_sdx])
+                all_prob = np.append(all_prob, unk_probY)
+                all_prob_err = np.append(all_prob_err, unk_probYerr)
+                all_isWR = np.append(all_isWR, np.zeros(len(unk_sdx), dtype=bool))
+
+
+        
+        comp = (cnt_yng + cnt_old) / (cnt_yng + cnt_old + cnt_unk)
+        comp_ext = (cnt_ext_yng + cnt_ext_old) / (cnt_ext_yng + cnt_ext_old + cnt_ext_unk)
+        comp_fix = fix_osiris_spectral_comp(magBins, comp)
+        comp_ext_fix = fix_osiris_spectral_comp(magBins, comp_ext)
+
+        comp_yng = cnt_yng / (cnt_yng + cnt_unk_yng)
+        comp_ext_yng = cnt_ext_yng / (cnt_ext_yng + cnt_ext_unk_yng)
+        comp_fix_yng = fix_osiris_spectral_comp(magBins, comp_yng)
+        comp_ext_fix_yng = fix_osiris_spectral_comp(magBins, comp_ext_yng)
+
+        comp_old = cnt_old / (cnt_old + cnt_unk_old)
+        comp_ext_old = cnt_ext_old / (cnt_ext_old + cnt_ext_unk_old)
+        comp_fix_old = fix_osiris_spectral_comp(magBins, comp_old)
+        comp_ext_fix_old = fix_osiris_spectral_comp(magBins, comp_ext_old)
+
+        outRoot = '%sspec_completeness_field_%s' % (workDir, field)
+
+        if plot == True:
+            # Total completeness
+            py.clf()
+            py.plot(magBins, comp_ext_fix, 'ks-', label='Ext. Correct, Fixed')
+            py.plot(magBins, comp_ext, 'ks--', label='Ext. Correct')
+            py.plot(magBins, comp, 'r^--', label='Raw')
+            py.xlabel('Kp Magnitude')
+            py.ylabel('Completeness')
+            py.title('field %s' %(field))
+            py.ylim(0, 1.1)
+            py.xlim(9, 18)
+            py.legend(loc='lower left')
+            py.savefig(outRoot + '.png')
+
+            # Completeness to young stars
+            py.clf()
+            py.plot(magBins, comp_ext_fix_yng, 'ks-', label='Ext. Correct, Fixed')
+            py.plot(magBins, comp_ext_yng, 'ks--', label='Ext. Correct')
+            py.plot(magBins, comp_yng, 'r^--', label='Raw')
+            py.xlabel('Kp Magnitude')
+            py.ylabel('Completeness')
+            py.title('field %s' % (field))
+            py.ylim(0, 1.1)
+            py.xlim(9, 18)
+            py.legend(loc='lower left')
+            py.savefig(outRoot + '_yng.png')
+
+            # Completeness to old stars 
+            py.clf()
+            py.plot(magBins, comp_ext_fix_old, 'ks-', label='Ext. Correct, Fixed')
+            py.plot(magBins, comp_ext_old, 'ks--', label='Ext. Correct')
+            py.plot(magBins, comp_old, 'r^--', label='Raw')
+            py.xlabel('Kp Magnitude')
+            py.ylabel('Completeness')
+            py.title('field %s' % (field))
+            py.ylim(0, 1.1)
+            py.ylim(0, 1.1)
+            py.xlim(9, 18)
+            py.legend(loc='lower left')
+            py.savefig(outRoot + '_old.png')
+
+            # Completeness compared
+            py.clf()
+            py.plot(magBins, comp_ext_fix, 'ks-', label='Total Spec. Comp.')
+            py.plot(magBins, comp_ext_fix_yng, 'bo-', label='Young Spec. Comp.')
+            py.plot(magBins, comp_ext_fix_old, 'r^-', label='Old Spec. Comp.')
+            py.xlabel('Kp Magnitude')
+            py.ylabel('Completeness')
+            py.title('field %s' % (field))
+            py.ylim(0, 1.1)
+            py.xlim(9, 18)
+            py.legend(loc='lower left')
+            py.savefig(outRoot + '_yng_v_old.png')
+
+        # Save the original list of young star magnitudes
+        _pick2 = open(outRoot + '_yng_kp.pickle', 'wb')
+        pickle.dump(yng_kp, _pick2)
+        pickle.dump(yng_kp_err, _pick2)
+        pickle.dump(yng_prob, _pick2)
+        pickle.dump(yng_N_WR, _pick2)
+        _pick2.close()
+
+        # Save the original list of young star -- complete info
+        _pick3 = open(outRoot + '_yng_info.pickle', 'wb')
+        pickle.dump(allyng_name, _pick3)
+        pickle.dump(allyng_x, _pick3)
+        pickle.dump(allyng_y, _pick3)
+        pickle.dump(allyng_kp, _pick3)
+        pickle.dump(allyng_kp_ext, _pick3)
+        pickle.dump(allyng_kp_err, _pick3)
+        pickle.dump(allyng_isWR, _pick3)
+        pickle.dump(allyng_prob, _pick3)
+        pickle.dump(allyng_prob_err, _pick3)
+        _pick3.close()
+
+        # Save the original list of all stars -- complete info
+        _pick3 = open(outRoot + '_all_info.pickle', 'wb')
+        pickle.dump(all_name, _pick3)
+        pickle.dump(all_x, _pick3)
+        pickle.dump(all_y, _pick3)
+        pickle.dump(all_kp, _pick3)
+        pickle.dump(all_kp_ext, _pick3)
+        pickle.dump(all_kp_err, _pick3)
+        pickle.dump(all_isWR, _pick3)
+        pickle.dump(all_prob, _pick3)
+        pickle.dump(all_prob_err, _pick3)
+        _pick3.close()
+
+        # Save the completeness and KLF curves
+        _pick = open(outRoot + '.pickle', 'wb')
+        pickle.dump(magBins, _pick)
+        pickle.dump(cnt_yng, _pick)
+        pickle.dump(cnt_old, _pick)
+        pickle.dump(cnt_unk, _pick)
+        pickle.dump(cnt_yng_noWR, _pick)
+        pickle.dump(cnt_unk_yng, _pick)
+        pickle.dump(cnt_unk_old, _pick)
+        pickle.dump(adderr_unk_yng, _pick)
+        pickle.dump(adderr_unk_old, _pick)
+        pickle.dump(cnt_ext_yng, _pick)
+        pickle.dump(cnt_ext_old, _pick)
+        pickle.dump(cnt_ext_unk, _pick)
+        pickle.dump(cnt_ext_yng_noWR, _pick)
+        pickle.dump(cnt_ext_unk_yng, _pick)
+        pickle.dump(cnt_ext_unk_old, _pick)
+        pickle.dump(adderr_ext_unk_yng, _pick)
+        pickle.dump(adderr_ext_unk_old, _pick)
+        pickle.dump(comp, _pick)
+        pickle.dump(comp_ext, _pick)
+        pickle.dump(comp_fix, _pick)
+        pickle.dump(comp_ext_fix, _pick)
+        pickle.dump(comp_yng, _pick)
+        pickle.dump(comp_ext_yng, _pick)
+        pickle.dump(comp_fix_yng, _pick)
+        pickle.dump(comp_ext_fix_yng, _pick)
+        pickle.dump(comp_old, _pick)
+        pickle.dump(comp_ext_old, _pick)
+        pickle.dump(comp_fix_old, _pick)
+        pickle.dump(comp_ext_fix_old, _pick)
+        _pick.close()
+
+        # Text file
+        t = Table()
+        t['mag'] = magBins
+        t['comp_yng'] = comp_fix_yng
+        t['comp_ext_yng'] = comp_ext_fix_yng
+        t['cnt_ext_yng'] = cnt_ext_yng
+        t['cnt_ext_yng_noWR'] = cnt_ext_yng_noWR
+        t['cnt_ext_old'] = cnt_ext_old
+        t['cnt_ext_unk'] = cnt_ext_unk
+        t['cnt_ext_unk_yng'] = cnt_ext_unk_yng
+        t['cnt_ext_unk_old'] = cnt_ext_unk_old
+
+        t['comp_yng'].format = '5.2f'
+        t['comp_ext_yng'].format = '5.2f'
+        t['cnt_ext_unk_yng'].format = '6.1f'
+        t['cnt_ext_unk_old'].format = '6.1f'
+        t.write(outRoot+'.txt', format='ascii.fixed_width', delimiter='|')
+
+        pdb.set_trace()
+
+

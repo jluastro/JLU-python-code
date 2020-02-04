@@ -3,7 +3,7 @@ from gcwork import starTables
 from gcwork import objects
 import numpy as np
 import pylab as py
-import pyfits
+#import pyfits
 from gcreduce import gcutil
 import os, shutil
 import glob
@@ -143,7 +143,7 @@ class Simulation(object):
                         # Save off the starlist
                         newStars.saveToFile(newStarlist)
 
-                        print 'Made simulated image: ', newFitsFile
+                        print('Made simulated image: ', newFitsFile)
 
                     newFitsFiles.append(newFitsFile)
                     newStarlists.append(newStarlist)
@@ -155,7 +155,7 @@ class Simulation(object):
         self.cooStar = cooStar
         self.psfStars = psfStars
 
-        print 'Making IDL batch files'
+        print('Making IDL batch files')
         for ii in range(len(self.newFitsFiles)):
             # Write an IDL batch file
             fileIDLbatch = 'idl_' + self.newFitsFiles[ii].replace('.fits', '.batch')
@@ -172,7 +172,7 @@ class Simulation(object):
 
     def runStarfinder(self):
         for ii in range(len(self.newFitsFiles)):
-            print 'Running starfinder on ', self.newFitsFiles[ii]
+            print('Running starfinder on ', self.newFitsFiles[ii])
             # Write an IDL batch file
             fileIDLbatch = 'idl_' + self.newFitsFiles[ii].replace('.fits', '.batch')
             fileIDLlog = fileIDLbatch.replace('.batch', '.log')
@@ -251,8 +251,8 @@ def addStar(img, psf, xpos, ypos, flux):
 
 
 def gather_results(alignDir, mag0=None, flux0=None):
-    print 'Gathering results from '
-    print '   %s' % alignDir
+    print('Gathering results from ')
+    print('   %s' % alignDir)
 
     # Get all the align output files... these should correspond to each
     # simulated image.
@@ -289,7 +289,7 @@ def gather_results(alignDir, mag0=None, flux0=None):
 
     # Loop through each of the align runs and gather data.
     for ii in range(len(velFiles)):
-        print 'Adding data from ', velFiles[ii]
+        print('Adding data from ', velFiles[ii])
         s = starset.StarSet(velFiles[ii].replace('.vel', ''))
 
         # Get flux zeropoint
@@ -318,8 +318,8 @@ def gather_results(alignDir, mag0=None, flux0=None):
 
         good = np.where((x_sim >= x_orig.min()) & (x_sim <= x_orig.max()) & 
                         (y_sim >= y_orig.min()) & (y_sim <= y_orig.max()))[0]
-        print 'Trimming out %d of %d stars in padded regions.' % \
-            (len(simStars) - len(good), len(simStars))
+        print('Trimming out %d of %d stars in padded regions.' % \
+            (len(simStars) - len(good), len(simStars)))
         s.stars = [simStars[gg] for gg in good]
         
         # Original info is what we planted
@@ -345,7 +345,7 @@ def gather_results(alignDir, mag0=None, flux0=None):
             midx.append([])
             munique.append(currentMag)
 
-        midx[-1].extend(range(len(x_in), len(x_in)+len(x_in_ii), 1))
+        midx[-1].extend(list(range(len(x_in), len(x_in)+len(x_in_ii), 1)))
 
         x_in.extend(x_in_ii)
         y_in.extend(y_in_ii)
@@ -398,7 +398,7 @@ def gather_results(alignDir, mag0=None, flux0=None):
                 countAtEachPixel = len(idx)
 
             if len(idx) != countAtEachPixel:
-                print 'Different number of stars at this pixel. '
+                print('Different number of stars at this pixel. ')
 
     xunique = np.array(xunique)
     yunique = np.array(yunique)
@@ -416,8 +416,8 @@ def gather_results(alignDir, mag0=None, flux0=None):
 
         completeness[mm] = float(countFound[mm]) / float(countPlanted[mm])
         
-        print 'Mag = %.2f   Completeness = %.2f   (%4d planted, %4d found)' % \
-            (munique[mm], completeness[mm], countPlanted[mm], countFound[mm])
+        print('Mag = %.2f   Completeness = %.2f   (%4d planted, %4d found)' % \
+            (munique[mm], completeness[mm], countPlanted[mm], countFound[mm]))
 
 
     # Save Everything to Pickle Files
@@ -500,13 +500,13 @@ def plot_results(alignDir):
     py.ylabel('Number of Simulated Stars')
     py.savefig(alignDir + 'star_plant_mdiff_hist.png')
     
-    print 'xdiff = %5.2f +/- %4.2f pix' % (xdiff.mean(), xdiff.std())
-    print 'ydiff = %5.2f +/- %4.2f pix' % (ydiff.mean(), ydiff.std())
-    print 'mdiff = %5.2f +/- %4.2f mag' % (mdiff.mean(), mdiff.std())
+    print('xdiff = %5.2f +/- %4.2f pix' % (xdiff.mean(), xdiff.std()))
+    print('ydiff = %5.2f +/- %4.2f pix' % (ydiff.mean(), ydiff.std()))
+    print('mdiff = %5.2f +/- %4.2f mag' % (mdiff.mean(), mdiff.std()))
 
-    print 'median(abs( xdiff )) = %5.3f pix' % (np.median(np.abs(xdiff)))
-    print 'median(abs( ydiff )) = %5.3f pix' % (np.median(np.abs(ydiff)))
-    print 'median(abs( mdiff )) = %5.3f mag' % (np.median(np.abs(mdiff)))
+    print('median(abs( xdiff )) = %5.3f pix' % (np.median(np.abs(xdiff))))
+    print('median(abs( ydiff )) = %5.3f pix' % (np.median(np.abs(ydiff))))
+    print('median(abs( mdiff )) = %5.3f mag' % (np.median(np.abs(mdiff))))
 
 
 def plot_completeness(alignDir):
@@ -535,8 +535,8 @@ def plot_completeness(alignDir):
     _out.write('#%12s  %13s  %13s  %13s\n' %
                ('K_mag', 'Completness', 'N_planted', 'N_found'))
     for mm in range(len(munique)):
-        print 'Mag = %.2f   Completeness = %.2f   (%4d planted, %4d found)' % \
-            (munique[mm], completeness[mm], countPlanted[mm], countFound[mm])
+        print('Mag = %.2f   Completeness = %.2f   (%4d planted, %4d found)' % \
+            (munique[mm], completeness[mm], countPlanted[mm], countFound[mm]))
         _out.write('%13.2f  %13.2f  %13d  %13d\n' %
                    (munique[mm], completeness[mm], 
                     countPlanted[mm], countFound[mm]))
@@ -604,8 +604,8 @@ def plot_completeness(alignDir):
 
 
 def load_completeness(alignDir):
-    print 'Loading star planting data from:'
-    print '   %s' % alignDir + 'all_results.dat'
+    print('Loading star planting data from:')
+    print('   %s' % alignDir + 'all_results.dat')
 
     _pickleFile = open(alignDir + 'all_results.dat', 'r')
     

@@ -94,14 +94,14 @@ def pymc_model(yng=None, rmin=0, rmax=30):
                    logAge=logAge, AKs=AKs, distance=dist,
                    imfSlope=alpha, clusterMass=Mcl,
                    minMass=m_min, maxMass=m_max, magCut=magCut):
-        print 'likelihood: '
-        print '    logAge      = %.2f' % logAge
-        print '    AKs         = %.2f' % AKs
-        print '    distance    = %d' % dist
-        print '    imfSlope    = %.2f' % alpha
-        print '    clusterMass = %.2e' % Mcl
-        print '    minMass     = %.1f' % m_min
-        print '    maxMass     = %d' % m_max
+        print('likelihood: ')
+        print(('    logAge      = %.2f' % logAge))
+        print(('    AKs         = %.2f' % AKs))
+        print(('    distance    = %d' % dist))
+        print(('    imfSlope    = %.2f' % alpha))
+        print(('    clusterMass = %.2e' % Mcl))
+        print(('    minMass     = %.1f' % m_min))
+        print(('    maxMass     = %d' % m_max))
 
         # Get the PDF(k|model) -- the simulated luminosity function
         mod_sims = fetch_model_from_sims(logAge, AKs, distance,
@@ -392,7 +392,7 @@ def pymc_model2(yng=None, rmin=0, rmax=30):
     # Binomial Coefficient
     @pymc.potential(verbose=verbose)
     def likely_binomial(yng=yng, N_yng=N_yng, N_yng_obs=N_yng_obs):
-        print 'N_yng = %3d, N_yng_obs = %3d' % (N_yng, N_yng_obs)
+        print(('N_yng = %3d, N_yng_obs = %3d' % (N_yng, N_yng_obs)))
         if N_yng_obs >= N_yng:
             log_binom_coeff = -np.Inf
         else:
@@ -450,13 +450,13 @@ def pymc_model3(yng=None, rmin=0, rmax=30):
                    logAge=logAge, AKs=AKs, distance=dist,
                    imfSlope=alpha, clusterMass=Mcl,
                    minMass=m_min, maxMass=m_max, magCut=magCut):
-        print '    logAge      = %.2f' % logAge
-        print '    AKs         = %.2f' % AKs
-        print '    distance    = %d' % dist
-        print '    imfSlope    = %.2f' % alpha
-        print '    clusterMass = %.2e' % Mcl
-        print '    minMass     = %.1f' % m_min
-        print '    maxMass     = %d' % m_max
+        print(('    logAge      = %.2f' % logAge))
+        print(('    AKs         = %.2f' % AKs))
+        print(('    distance    = %d' % dist))
+        print(('    imfSlope    = %.2f' % alpha))
+        print(('    clusterMass = %.2e' % Mcl))
+        print(('    minMass     = %.1f' % m_min))
+        print(('    maxMass     = %d' % m_max))
 
         # Get the PDF(k|model) -- the simulated luminosity function
         mod_sims = fetch_model_from_sims(logAge, AKs, distance,
@@ -573,13 +573,13 @@ def pymc_model4(yng=None, rmin=0, rmax=30):
                   imfSlope=alpha, clusterMass=Mcl, minMass=m_min, maxMass=m_max,
                   magCut=magCut):
 
-        print '    logAge             = %.2f' % logAge
-        print '    AKs (mag)          = %.2f' % AKs
-        print '    distance (kpc)     = %.2f' % dist
-        print '    imfSlope           = %.2f' % alpha
-        print '    Mcl (x10^3 Msun)   = %.2f' % Mcl
-        print '    minMass (Msun)     = %.1f' % m_min
-        print '    maxMass (Msun)     = %d' % m_max
+        print(('    logAge             = %.2f' % logAge))
+        print(('    AKs (mag)          = %.2f' % AKs))
+        print(('    distance (kpc)     = %.2f' % dist))
+        print(('    imfSlope           = %.2f' % alpha))
+        print(('    Mcl (x10^3 Msun)   = %.2f' % Mcl))
+        print(('    minMass (Msun)     = %.1f' % m_min))
+        print(('    maxMass (Msun)     = %d' % m_max))
 
         # Get the PDF(k|model) -- the simulated luminosity function
         mod_sims = fetch_model_from_sims(logAge, AKs, distance*10**3,
@@ -659,7 +659,7 @@ def pymc_model4(yng=None, rmin=0, rmax=30):
     # This is here for book keeping purposes.
     @pymc.deterministic(verbose=1)
     def sim_N_WR(yng=yng, sim_model=sim_model):
-        print 'sim_N_WR = %3d vs. %3d observed' % (sim_model[0], yng.N_WR)
+        print(('sim_N_WR = %3d vs. %3d observed' % (sim_model[0], yng.N_WR)))
         return sim_model[0]
 
 
@@ -684,7 +684,7 @@ def pymc_model4(yng=None, rmin=0, rmax=30):
         bb = idx[-1] # Take only a part of the last bin (depending on where the magCut falls)
         N_yng_sim += sim_k_pdf[bb] * (magCut - sim_k_bins[bb]) / sim_k_bin_widths[bb]
 
-        print 'sim_N_yng = %3d vs. %d observed' % (N_yng_sim, N_yng_obs)
+        print(('sim_N_yng = %3d vs. %d observed' % (N_yng_sim, N_yng_obs)))
 
         return N_yng_sim
 
@@ -860,7 +860,7 @@ def fetch_model_from_sims_no_mass(logAge, AKs, imfSlope, minMass, maxMass,
             sim_k_pdf = pickle.load(_sim)
             sim_k_pdf_norm = pickle.load(_sim)
         except EOFError:
-            print 'Bad file: ', modelFile
+            print(('Bad file: ', modelFile))
             raise
 
         # Summary parameters
@@ -887,21 +887,21 @@ def fetch_model_from_sims_no_mass(logAge, AKs, imfSlope, minMass, maxMass,
             (maxMass != tmp_maxIMFmass) or (MFamp != tmp_MFamp) or (MFindex != tmp_MFindex) or
             (CSFamp != tmp_CSFamp) or (CSFindex != tmp_CSFindex) or (CSFmax != tmp_CSFmax)):
 
-            print 'fetch_model_from_sims_no_mass: You need to re-generate this cluster.'
-            print ' logAge       Need %10.2f, found %10.2f' % (logAge, tmp_logAge)
-            print ' filter       Need %10s, found %10s' % (filterName, tmp_filt)
-            print ' AKs          Need %10.2f, found %10.2f' % (AKs, tmp_AKs)
-            print ' distance     Need %10d, found %10d' % (distance, tmp_distance)
-            print ' imfSlope     Need %10.2f, found %10.2f' % (imfSlope, tmp_imfSlope)
-            print ' clusterMass  Need %10d, found %10d' % (clusterMass, tmp_sumIMFmass)
-            print ' minMass      Need %10.3f, found %10.3f' % (minMass, tmp_minIMFmass)
-            print ' maxMass      Need %10.3f, found %10.3f' % (maxMass, tmp_maxIMFmass)
-            print ' multiples    Need %10s, found %10s' % (str(makeMultiples), str(tmp_makeMultiples))
-            print ' MFamp        Need %10.2f, found %10.2f' % (MFamp, tmp_MFamp)
-            print ' MFindex      Need %10.2f, found %10.2f' % (MFindex, tmp_MFindex)
-            print ' CSFamp       Need %10.2f, found %10.2f' % (CSFamp, tmp_CSFamp)
-            print ' CSFindex     Need %10.2f, found %10.2f' % (CSFindex, tmp_CSFindex)
-            print ' CSFmax       Need %10.2f, found %10.2f' % (CSFmax, tmp_CSFmax)
+            print('fetch_model_from_sims_no_mass: You need to re-generate this cluster.')
+            print((' logAge       Need %10.2f, found %10.2f' % (logAge, tmp_logAge)))
+            print((' filter       Need %10s, found %10s' % (filterName, tmp_filt)))
+            print((' AKs          Need %10.2f, found %10.2f' % (AKs, tmp_AKs)))
+            print((' distance     Need %10d, found %10d' % (distance, tmp_distance)))
+            print((' imfSlope     Need %10.2f, found %10.2f' % (imfSlope, tmp_imfSlope)))
+            print((' clusterMass  Need %10d, found %10d' % (clusterMass, tmp_sumIMFmass)))
+            print((' minMass      Need %10.3f, found %10.3f' % (minMass, tmp_minIMFmass)))
+            print((' maxMass      Need %10.3f, found %10.3f' % (maxMass, tmp_maxIMFmass)))
+            print((' multiples    Need %10s, found %10s' % (str(makeMultiples), str(tmp_makeMultiples))))
+            print((' MFamp        Need %10.2f, found %10.2f' % (MFamp, tmp_MFamp)))
+            print((' MFindex      Need %10.2f, found %10.2f' % (MFindex, tmp_MFindex)))
+            print((' CSFamp       Need %10.2f, found %10.2f' % (CSFamp, tmp_CSFamp)))
+            print((' CSFindex     Need %10.2f, found %10.2f' % (CSFindex, tmp_CSFindex)))
+            print((' CSFmax       Need %10.2f, found %10.2f' % (CSFmax, tmp_CSFmax)))
             pdb.set_trace()
     else:
         cluster = model_young_cluster(logAge, AKs=AKs, 
@@ -1027,7 +1027,7 @@ def model_young_cluster(logAge, filterName=defaultFilter,
                     f2 = 10**(-iso.mag[mdx_cc]/2.5)
                     mag[ii] = -2.5 * np.log10(f1 + f2)
                 else:
-                    print 'Rejected a companion %.2f' % compMasses[ii][cc]
+                    print(('Rejected a companion %.2f' % compMasses[ii][cc]))
         
 
     # Get rid of the bad ones
@@ -1035,8 +1035,8 @@ def model_young_cluster(logAge, filterName=defaultFilter,
     cdx = np.where(temp == 0)[0]
 
     if len(cdx) > 0 and verbose:
-        print 'Found %d stars out of mass range: Minimum bad mass = %.1f' % \
-            (len(cdx), mass[cdx].min())
+        print(('Found %d stars out of mass range: Minimum bad mass = %.1f' % \
+            (len(cdx), mass[cdx].min())))
 
     mass = mass[idx]
     mag = mag[idx]
@@ -1144,7 +1144,7 @@ def model_young_cluster_new(logAge, filterName=defaultFilter,
                     f2 = 10**(-iso.mag[mdx_cc]/2.5)
                     mag[ii] = -2.5 * np.log10(f1 + f2)
                 else:
-                    print 'Rejected a companion %.2f' % compMasses[ii][cc]
+                    print(('Rejected a companion %.2f' % compMasses[ii][cc]))
         
 
     # Get rid of the bad ones
@@ -1152,8 +1152,8 @@ def model_young_cluster_new(logAge, filterName=defaultFilter,
     cdx = np.where(temp == 0)[0]
 
     if len(cdx) > 0 and verbose:
-        print 'Found %d stars out of mass range: Minimum bad mass = %.1f' % \
-            (len(cdx), mass[cdx].min())
+        print(('Found %d stars out of mass range: Minimum bad mass = %.1f' % \
+            (len(cdx), mass[cdx].min())))
 
     mass = mass[idx]
     mag = mag[idx]
@@ -1205,9 +1205,9 @@ def make_observed_isochrone(logAge, filterName=defaultFilter,
                             AKs=defaultAKs, distance=defaultDist, verbose=False):
     startTime = time.time()
 
-    print 'Making isochrone: log(t) = %.2f  filt = %s  AKs = %.2f  dist = %d' % \
-        (logAge, filterName, AKs, distance)
-    print '     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'
+    print(('Making isochrone: log(t) = %.2f  filt = %s  AKs = %.2f  dist = %d' % \
+        (logAge, filterName, AKs, distance)))
+    print(('     Starting at: ', datetime.datetime.now(), '  Usually takes ~5 minutes'))
 
     outFile = '/u/jlu/work/gc/imf/klf/models/iso/'
     outFile += 'iso_%.2f_%s_%4.2f_%4s.pickle' % (logAge, filterName, AKs,
@@ -1272,8 +1272,8 @@ def make_observed_isochrone(logAge, filterName=defaultFilter,
         mag[ii] = synthetic.mag_in_filter(star, filt, red, flux0, mag0)
 
         if verbose:
-            print 'M = %7.3f Msun   T = %5d K   R = %2.1f Rsun   logg = %4.2f   mag = %4.2f' % \
-                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag[ii])
+            print(('M = %7.3f Msun   T = %5d K   R = %2.1f Rsun   logg = %4.2f   mag = %4.2f' % \
+                (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii], mag[ii])))
 
 
     iso = objects.DataHolder()
@@ -1294,7 +1294,7 @@ def make_observed_isochrone(logAge, filterName=defaultFilter,
     _out.close()
 
     endTime = time.time()
-    print '      Time taken: %d seconds' % (endTime - startTime)
+    print(('      Time taken: %d seconds' % (endTime - startTime)))
 
 def load_isochrone(logAge=6.78, filterName=defaultFilter,
                    AKs=defaultAKs, distance=defaultDist):
@@ -1330,7 +1330,7 @@ def grid_of_isochrones():
     imfSlopeGrid = np.arange(0.25, 2.85, 0.1)
     clusterMass = np.array([7500, 10000, 25000, 50000, 75000, 10**5])
 
-    print len(ageGrid)*len(imfSlopeGrid)*len(clusterMass)
+    print((len(ageGrid)*len(imfSlopeGrid)*len(clusterMass)))
 
 
     # logAge, filterName=defaultFilter,
@@ -1357,8 +1357,8 @@ def sample_imf(totalMass, minMass, maxMass, imfSlope,
     IMF Slope is 2.35 for Salpeter.
     """
     if (maxMass > totalMass) and verbose:
-        print 'sample_imf: Setting maximum allowed mass to %d' % \
-            (totalMass)
+        print(('sample_imf: Setting maximum allowed mass to %d' % \
+            (totalMass)))
         maxMass = totalMass
 
     # p(m) = A * m^-imfSlope
@@ -1464,8 +1464,8 @@ def sample_imf(totalMass, minMass, maxMass, imfSlope,
         masses = np.append(masses, newMasses)
 
         if (loopCnt >= 0) and verbose:
-            print 'sample_imf: Loop %d added %.2e Msun to previous total of %.2e Msun' % \
-                (loopCnt, newSimTotalMass, simTotalMass)
+            print(('sample_imf: Loop %d added %.2e Msun to previous total of %.2e Msun' % \
+                (loopCnt, newSimTotalMass, simTotalMass)))
 
         simTotalMass += newSimTotalMass
         newStarCount = meanNumber * 0.1  # increase by 20% each pass
@@ -1552,7 +1552,7 @@ def test_dist_plot():
     kp_pdf = np.zeros((Nclusters, len(kpBins)-1), dtype=float)
     
     for ii in range(Nclusters):
-        print 'Cluster ', ii
+        print(('Cluster ', ii))
         _f = open(files[ii], 'rb')
         cluster = pickle.load(_f)
         _f.close()
@@ -1612,7 +1612,7 @@ def test_dist_numWR():
         outRoot = '/u/jlu/work/gc/imf/klf/models/test_distributions/clusters/'
         outRoot += 'sim_t%.2f_a%.2f_m%d.pickle' % (clusterAge, clusterIMF, clusterMass[mm])
 
-        print 'Generating %d clusters with M = %.1e' % (Nclusters, clusterMass[mm])
+        print(('Generating %d clusters with M = %.1e' % (Nclusters, clusterMass[mm])))
 
         for ii in range(Nclusters):
             cluster = model_young_cluster(clusterAge,
@@ -1651,7 +1651,7 @@ def test_dist_plot_numWR():
         if Nclusters > 300:
             Nclusters = 300
 
-        print 'Gathering %d clusters with M = %.2e Msun' % (Nclusters, clusterMass[mm])
+        print(('Gathering %d clusters with M = %.2e Msun' % (Nclusters, clusterMass[mm])))
         
         N_WR = np.zeros(Nclusters)
         N_WR_all.append(N_WR)
@@ -1685,7 +1685,7 @@ def test_dist_plot_numWR():
         foo = poisson.pmf(binsWR)
         py.plot(binsWR+0.5, foo, linestyle='--', color=colors[mm])
 
-        print 'M = %.1e  <N_WR> = %.1f' % (clusterMass[mm], N_WR_mean[mm])
+        print(('M = %.1e  <N_WR> = %.1f' % (clusterMass[mm], N_WR_mean[mm])))
 
     py.legend()
     py.xlabel('Number of WR stars')
@@ -1727,7 +1727,7 @@ def test_dist_kp():
         outRoot = '/u/jlu/work/gc/imf/klf/models/test_distributions/clusters/'
         outRoot += 'sim_t%.2f_a%.2f_m%d.pickle' % (clusterAge, clusterIMF, clusterMass[mm])
 
-        print 'Generating %d clusters with M = %.1e' % (1, clusterMass[mm])
+        print(('Generating %d clusters with M = %.1e' % (1, clusterMass[mm])))
 
         cluster = model_young_cluster(clusterAge,
                                       imfSlope=clusterIMF,
@@ -1758,7 +1758,7 @@ def test_dist_plot_kp():
 
         files = glob.glob(outRoot + '*.pickle')
 
-        print 'Gathering %d clusters with M = %.2e Msun' % (1, clusterMass[mm])
+        print(('Gathering %d clusters with M = %.2e Msun' % (1, clusterMass[mm])))
         _f = open(files[0], 'rb')
         cluster = pickle.load(_f)
         _f.close()

@@ -1,6 +1,6 @@
 import numpy as np
 import pylab as py
-import pyfits
+#import pyfits
 import os
 import math
 import urllib

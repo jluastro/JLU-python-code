@@ -109,17 +109,17 @@ class plfit:
                 sigma = ((av-1)/numpy.sqrt(len(z)-numpy.arange(len(z))))[argxmins]
                 dat = dat[goodvals]
                 av = av[goodvals]
-                if not quiet: print "FORTRAN plfit executed in %f seconds" % (time.time()-t)
+                if not quiet: print("FORTRAN plfit executed in %f seconds" % (time.time()-t))
             elif usecy and cyok:
                 dat,av = cplfit.plfit_loop(z,nosmall=nosmall,zunique=xmins,argunique=argxmins)
                 goodvals=dat>0
                 sigma = (av-1)/numpy.sqrt(len(z)-argxmins)
                 dat = dat[goodvals]
                 av = av[goodvals]
-                if not quiet: print "CYTHON plfit executed in %f seconds" % (time.time()-t)
+                if not quiet: print("CYTHON plfit executed in %f seconds" % (time.time()-t))
             else:
-                av  = numpy.asarray( map(self.alpha_(z),xmins) ,dtype='float')
-                dat = numpy.asarray( map(self.kstest_(z),xmins),dtype='float')
+                av  = numpy.asarray( list(map(self.alpha_(z),xmins)) ,dtype='float')
+                dat = numpy.asarray( list(map(self.kstest_(z),xmins)),dtype='float')
                 if nosmall:
                     # test to make sure the number of data points is high enough
                     # to provide a reasonable s/n on the computed alpha
@@ -130,8 +130,8 @@ class plfit:
                         dat = dat[:nmax]
                         av = av[:nmax]
                     else:
-                        print "Not enough data left after flagging - using all data."
-                if not quiet: print "PYTHON plfit executed in %f seconds" % (time.time()-t)
+                        print("Not enough data left after flagging - using all data.")
+                if not quiet: print("PYTHON plfit executed in %f seconds" % (time.time()-t))
             self._av = av
             self._xmin_kstest = dat
             self._sigma = sigma
@@ -142,7 +142,7 @@ class plfit:
         if finite:
             alpha = alpha*(n-1.)/n+1./n
         if n < 50 and not finite and not silent:
-            print '(PLFIT) Warning: finite-size bias may be present. n=%i' % n
+            print('(PLFIT) Warning: finite-size bias may be present. n=%i' % n)
         ks = max(abs( numpy.arange(n)/float(n) - (1-(xmin/z)**(alpha-1)) ))
         L = n*log((alpha-1)/xmin) - alpha*sum(log(z/xmin))
         #requires another map... Larr = arange(len(unique(x))) * log((av-1)/unique(x)) - av*sum
@@ -155,7 +155,7 @@ class plfit:
         self._ngtx = n
 
         if not quiet:
-            print "xmin: %g  n(>xmin): %i  alpha: %g +/- %g  Likelihood: %g  ks: %g" % (xmin,n,alpha,self._alphaerr,L,ks)
+            print("xmin: %g  n(>xmin): %i  alpha: %g +/- %g  Likelihood: %g  ks: %g" % (xmin,n,alpha,self._alphaerr,L,ks))
 
         return xmin,alpha
 
@@ -298,7 +298,7 @@ class plfit:
         nrandtail = ntot - nrandnot         # and the rest will be sampled from the powerlaw
 
         ksv = []
-        for i in xrange(niter):
+        for i in range(niter):
             # first, randomly sample from power law
             # with caveat!  
             nonplind = numpy.floor(npr.rand(nrandnot)*nnot).astype('int')
@@ -315,7 +315,7 @@ class plfit:
         self._pval = p
         self._ks_rand = ksv
 
-        print "p(%i) = %0.3f" % (niter,p)
+        print("p(%i) = %0.3f" % (niter,p))
 
         return p,ksv
 
@@ -340,8 +340,8 @@ def plexp(x,xm=1,a=2.5):
     """
 
     C = 1/(-xm/(1 - a) - xm/a + exp(a)*xm/a)
-    Ppl = lambda(X): 1+C*(xm/(1-a)*(X/xm)**(1-a))
-    Pexp = lambda(X): C*xm/a*exp(a)-C*(xm/a)*exp(-a*(X/xm-1))
+    Ppl = lambda X: 1+C*(xm/(1-a)*(X/xm)**(1-a))
+    Pexp = lambda X: C*xm/a*exp(a)-C*(xm/a)*exp(-a*(X/xm-1))
     d=Ppl(x)
     d[x<xm]=Pexp(x)
     return d
@@ -404,8 +404,8 @@ def test_fitter(xmin=1.0,alpha=2.5,niter=500,npts=1000,invcdf=plexp_inv):
     lx = len(xmin)
     sz = [niter,lx]
     xmarr,alphaf_v,ksv,nxarr = numpy.zeros(sz),numpy.zeros(sz),numpy.zeros(sz),numpy.zeros(sz)
-    for j in xrange(lx):
-        for i in xrange(niter):
+    for j in range(lx):
+        for i in range(niter):
             randarr = npr.rand(npts)
             fakedata = invcdf(randarr,xmin[j],alpha)
             TEST = plfit(fakedata,quiet=True,silent=True,nosmall=True)
