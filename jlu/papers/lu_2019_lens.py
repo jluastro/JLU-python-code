@@ -1903,74 +1903,60 @@ def OB120169_OGLE_phot_table():
     rchi2_1 = ob120169_add[1][0] # CHECK THIS!!!!!!!
     rchi2_2 = ob120169_add[1][1] 
 
-    t = Table.read(ogle_phot['ob120169_add'] + 'c3_summary.fits')
-    
-    t0_1 = t['MaxLike_t0'][1]
-    u0_amp_1 = t['MaxLike_u0_amp'][1]
-    tE_1 = t['MaxLike_tE'][1]
-    piE_E_1 = t['MaxLike_piE_E'][1]
-    piE_N_1 = t['MaxLike_piE_N'][1]
-    b_sff_1 = t['MaxLike_b_sff'][1]
-    mag_src_1 = t['MaxLike_mag_src'][1]
-    add_err_1 = t['MaxLike_add_err'][1]
-    logZ_1 = t['logZ'][1]
-    logL_1 = t['maxlogL'][1]
+    data = munge.getdata2('ob120169',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
 
-    t0_2 = t['MaxLike_t0'][2]
-    u0_amp_2 = t['MaxLike_u0_amp'][2]
-    tE_2 = t['MaxLike_tE'][2]
-    piE_E_2 = t['MaxLike_piE_E'][2]
-    piE_N_2 = t['MaxLike_piE_N'][2]
-    b_sff_2 = t['MaxLike_b_sff'][2]
-    mag_src_2 = t['MaxLike_mag_src'][2]
-    add_err_2 = t['MaxLike_add_err'][2]
-    logZ_2 = t['logZ'][2]
-    logL_2 = t['maxlogL'][2]    
+    dir = ogle_phot['ob120169_add']
+    runid = 'c3_'
 
-    with open('OB120169_OGLE_phot.txt', 'w+') as tab_file:
-        tab_file.write('log$\mathcal{Z}$' + ' & ' 
-                       + '{0:.2f}'.format(logZ_1) + ' & ' 
-                       + '{0:.2f}'.format(logZ_2) + r' \\ ' + '\n'
-                       +
-                       'log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(logL_1) + ' & ' 
-                       + '{0:.2f}'.format(logL_2) + r' \\ ' + '\n'
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    # Posterior separated by modes.
+    res = fitter.load_mnest_modes_results_for_dynesty()
+
+    mode1_ci = []
+    mode2_ci = []
+    mode1_ml = []
+    mode2_ml = []
+
+    for nn in np.arange(len(labels)):
+        # Calculate 68%  credible interval.                                  
+        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
+        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
+        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
+        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
+
+    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
+    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
+
+    with open('OB120169_OGLE_phot.txt', 'a+') as tab_file:
+        tab_file.write('log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
+                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
                        +
                        '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2_1) + ' & ' 
-                       + '{0:.2f}'.format(rchi2_2) + r' \\ ' + '\n'
-                       +
-                       '$t_0$ (MJD)' + ' & ' 
-                       + '{0:.2f}'.format(t0_1) + ' & ' 
-                       + '{0:.2f}'.format(t0_2) + r' \\ ' + '\n'
-                       +
-                       '$u_0$' + ' & ' 
-                       + '{0:.2f}'.format(u0_amp_1) + ' & ' 
-                       + '{0:.2f}'.format(u0_amp_2) + r' \\ ' + '\n'
-                       +
-                       '$t_E$ (days)' + ' & ' 
-                       + '{0:.2f}'.format(tE_1) + ' & ' 
-                       + '{0:.2f}'.format(tE_2) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,E}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_E_1) + ' & ' 
-                       + '{0:.2f}'.format(piE_E_2) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,N}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_N_1) + ' & ' 
-                       + '{0:.2f}'.format(piE_N_2) + r' \\ ' + '\n'
-                       +
-                       '$b_{SFF}$' + ' & ' 
-                       + '{0:.2f}'.format(b_sff_1) + ' & ' 
-                       + '{0:.2f}'.format(b_sff_2) + r' \\ ' + '\n'
-                       +
-                       '$I_{src}$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(mag_src_1) + ' & ' 
-                       + '{0:.2f}'.format(mag_src_2) + r' \\ ' + '\n'
-                       +
-                       r'$\varepsilon_a$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(add_err_1) + ' & ' 
-                       + '{0:.2f}'.format(add_err_2) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
+                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
+                       + r'\hline ' + '\n')
+        for ll, label in enumerate(labels):
+            if label == r'$\varepsilon_a$ (mag)':
+                tab_file.write(label + ' & ' 
+                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+            else:       
+                tab_file.write(label + ' & ' 
+                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+
     return
 
 
@@ -1984,6 +1970,11 @@ def OB120169_OGLE_phot_plot_fits():
 
     fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
                                                         outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    # Complete posterior.
     res = fitter.load_mnest_results_for_dynesty()
     smy = fitter.load_mnest_summary()
 
@@ -1993,12 +1984,9 @@ def OB120169_OGLE_phot_plot_fits():
         maxL1.append(smy['MaxLike_' + param][1]) 
         maxL2.append(smy['MaxLike_' + param][2]) 
 
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    model_fitter.postplot(res, labels=labels, quantiles=None,
-                          show_titles=False, truths1=maxL1, truths2=maxL2)
-    plt.savefig('OB120169_OGLE_phot_posterior.png')
+#    model_fitter.postplot(res, labels=labels, quantiles=None, 
+#                          show_titles=False, truths1=maxL1, truths2=maxL2)
+#    plt.savefig('OB120169_OGLE_phot_posterior.png')
 
     model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
                                    truths1=maxL1, truths2=maxL2)
@@ -2006,26 +1994,29 @@ def OB120169_OGLE_phot_plot_fits():
     ax.tick_params(axis='both', which='major', labelsize=10)
     plt.savefig('OB120169_OGLE_phot_corner.png')
 
-#    # Local. not sure if correct yet
-#    res_list = fitter.load_mnest_modes_results_for_dynesty()
-#    smy = fitter.load_mnest_summary()
+    # Posterior separated by modes.
+    res = fitter.load_mnest_modes_results_for_dynesty()
+
+    model_fitter.postplot(res[0], labels=labels, truths1=maxL1, # truths2=res[0]['samples'][-1],
+                          post_color='red',
+                          quantiles=[0.16, 0.84], show_titles=False)
+    plt.savefig('OB120169_OGLE_mode1_phot_posterior.png')
+
+    model_fitter.postplot(res[1], labels=labels, truths2=maxL2, # truths1=res[1]['samples'][-1],
+                          quantiles=[0.16, 0.84], show_titles=False)
+    plt.savefig('OB120169_OGLE_mode2_phot_posterior.png')
+
+#    model_fitter.cornerplot_2truth(res[0], labels=labels, quantiles=None,
+#                                   truths1=maxL1)
+#    ax = plt.gca()
+#    ax.tick_params(axis='both', which='major', labelsize=10)
+#    plt.savefig('OB120169_OGLE_mode1_phot_corner.png')
 #
-#    maxL1 = []
-#    maxL2 = []
-#    for param in fitter.all_param_names:
-#        maxL1.append(smy['MaxLike_' + param][1]) 
-#        maxL2.append(smy['MaxLike_' + param][2]) 
-#        
-#    labelz = ['$t_0$', '$u_0$', '$t_E$', '$\pi_{E,E}$',
-#              '$\pi_{E,E}$', '$b_{SFF}$', '$I_{src}$', r'$\varepsilon_m$'] 
-#
-#    dyplot.postplot(res_list[0], labels=labelz, quantiles = None,
-#                    show_titles=False, truths1=maxL1)
-#    plt.subplots_adjust(hspace=0.7)
-#
-#    dyplot.postplot(res_list[1], labels=labelz, quantiles = None,
-#                    show_titles=False, truths1=maxL2)
-#    plt.subplots_adjust(hspace=0.7)
+#    model_fitter.cornerplot_2truth(res[1], labels=labels, quantiles=None,
+#                                   truths2=maxL2)
+#    ax = plt.gca()
+#    ax.tick_params(axis='both', which='major', labelsize=10)
+#    plt.savefig('OB120169_OGLE_mode2_phot_corner.png')
 
 
 def OB150211_OGLE_phot_table():
@@ -2035,74 +2026,60 @@ def OB150211_OGLE_phot_table():
     rchi2_1 = ob150211_add[1][0] # CHECK THIS!!!!!!!
     rchi2_2 = ob150211_add[1][1] 
 
-    t = Table.read(ogle_phot['ob150211_add'] + 'a4_summary.fits')
-    
-    t0_1 = t['MaxLike_t0'][1]
-    u0_amp_1 = t['MaxLike_u0_amp'][1]
-    tE_1 = t['MaxLike_tE'][1]
-    piE_E_1 = t['MaxLike_piE_E'][1]
-    piE_N_1 = t['MaxLike_piE_N'][1]
-    b_sff_1 = t['MaxLike_b_sff'][1]
-    mag_src_1 = t['MaxLike_mag_src'][1]
-    add_err_1 = t['MaxLike_add_err'][1]
-    logZ_1 = t['logZ'][1]
-    logL_1 = t['maxlogL'][1]
+    data = munge.getdata2('ob150211',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
 
-    t0_2 = t['MaxLike_t0'][2]
-    u0_amp_2 = t['MaxLike_u0_amp'][2]
-    tE_2 = t['MaxLike_tE'][2]
-    piE_E_2 = t['MaxLike_piE_E'][2]
-    piE_N_2 = t['MaxLike_piE_N'][2]
-    b_sff_2 = t['MaxLike_b_sff'][2]
-    mag_src_2 = t['MaxLike_mag_src'][2]
-    add_err_2 = t['MaxLike_add_err'][2]
-    logZ_2 = t['logZ'][2]
-    logL_2 = t['maxlogL'][2]    
+    dir = ogle_phot['ob150211_add']
+    runid = 'a4_'
 
-    with open('OB150211_OGLE_phot.txt', 'w+') as tab_file:
-        tab_file.write('log$\mathcal{Z}$' + ' & ' 
-                       + '{0:.2f}'.format(logZ_1) + ' & ' 
-                       + '{0:.2f}'.format(logZ_2) + r' \\ ' + '\n'
-                       +
-                       'log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(logL_1) + ' & ' 
-                       + '{0:.2f}'.format(logL_2) + r' \\ ' + '\n'
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    # Posterior separated by modes.
+    res = fitter.load_mnest_modes_results_for_dynesty()
+
+    mode1_ci = []
+    mode2_ci = []
+    mode1_ml = []
+    mode2_ml = []
+
+    for nn in np.arange(len(labels)):
+        # Calculate 68%  credible interval.                                  
+        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
+        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
+        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
+        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
+
+    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
+    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
+
+    with open('OB150211_OGLE_phot.txt', 'a+') as tab_file:
+        tab_file.write('log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
+                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
                        +
                        '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2_1) + ' & ' 
-                       + '{0:.2f}'.format(rchi2_2) + r' \\ ' + '\n'
-                       +
-                       '$t_0$ (MJD)' + ' & ' 
-                       + '{0:.2f}'.format(t0_1) + ' & ' 
-                       + '{0:.2f}'.format(t0_2) + r' \\ ' + '\n'
-                       +
-                       '$u_0$' + ' & ' 
-                       + '{0:.2f}'.format(u0_amp_1) + ' & ' 
-                       + '{0:.2f}'.format(u0_amp_2) + r' \\ ' + '\n'
-                       +
-                       '$t_E$ (days)' + ' & ' 
-                       + '{0:.2f}'.format(tE_1) + ' & ' 
-                       + '{0:.2f}'.format(tE_2) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,E}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_E_1) + ' & ' 
-                       + '{0:.2f}'.format(piE_E_2) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,N}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_N_1) + ' & ' 
-                       + '{0:.2f}'.format(piE_N_2) + r' \\ ' + '\n'
-                       +
-                       '$b_{SFF}$' + ' & ' 
-                       + '{0:.2f}'.format(b_sff_1) + ' & ' 
-                       + '{0:.2f}'.format(b_sff_2) + r' \\ ' + '\n'
-                       +
-                       '$I_{src}$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(mag_src_1) + ' & ' 
-                       + '{0:.2f}'.format(mag_src_2) + r' \\ ' + '\n'
-                       +
-                       r'$\varepsilon_a$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(add_err_1) + ' & ' 
-                       + '{0:.2f}'.format(add_err_2) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
+                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
+                       + r'\hline ' + '\n')
+        for ll, label in enumerate(labels):
+            if label == r'$\varepsilon_a$ (mag)':
+                tab_file.write(label + ' & ' 
+                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+            else:       
+                tab_file.write(label + ' & ' 
+                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+
     return
 
 
@@ -2116,6 +2093,11 @@ def OB150211_OGLE_phot_plot_fits():
 
     fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
                                                         outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    # Complete posterior.
     res = fitter.load_mnest_results_for_dynesty()
     smy = fitter.load_mnest_summary()
 
@@ -2125,12 +2107,9 @@ def OB150211_OGLE_phot_plot_fits():
         maxL1.append(smy['MaxLike_' + param][1]) 
         maxL2.append(smy['MaxLike_' + param][2]) 
 
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    model_fitter.postplot(res, labels=labels, quantiles=None,
-                          show_titles=False, truths1=maxL1, truths2=maxL2)
-    plt.savefig('OB150211_OGLE_phot_posterior.png')
+#    model_fitter.postplot(res, labels=labels, quantiles=None,
+#                          show_titles=False, truths1=maxL1, truths2=maxL2)
+#    plt.savefig('OB150211_OGLE_phot_posterior.png')
 
     model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
                                    truths1=maxL1, truths2=maxL2)
@@ -2138,26 +2117,29 @@ def OB150211_OGLE_phot_plot_fits():
     ax.tick_params(axis='both', which='major', labelsize=10)
     plt.savefig('OB150211_OGLE_phot_corner.png')
 
-#    # Local. not sure if correct yet
-#    res_list = fitter.load_mnest_modes_results_for_dynesty()
-#    smy = fitter.load_mnest_summary()
+    # Posterior separated by modes.
+    res = fitter.load_mnest_modes_results_for_dynesty()
+
+    model_fitter.postplot(res[0], labels=labels, truths1=maxL1, # truths2=res[0]['samples'][-1],
+                          post_color='red',
+                          quantiles=[0.16, 0.84], show_titles=False)
+    plt.savefig('OB150211_OGLE_mode1_phot_posterior.png')
+
+    model_fitter.postplot(res[1], labels=labels, truths2=maxL2, # truths1=res[1]['samples'][-1],
+                          quantiles=[0.16, 0.84], show_titles=False)
+    plt.savefig('OB150211_OGLE_mode2_phot_posterior.png')
+
+#    model_fitter.cornerplot_2truth(res[0], labels=labels, quantiles=None,
+#                                   truths1=maxL1)
+#    ax = plt.gca()
+#    ax.tick_params(axis='both', which='major', labelsize=10)
+#    plt.savefig('OB150211_OGLE_mode1_phot_corner.png')
 #
-#    maxL1 = []
-#    maxL2 = []
-#    for param in fitter.all_param_names:
-#        maxL1.append(smy['MaxLike_' + param][1]) 
-#        maxL2.append(smy['MaxLike_' + param][2]) 
-#        
-#    labelz = ['$t_0$', '$u_0$', '$t_E$', '$\pi_{E,E}$',
-#              '$\pi_{E,E}$', '$b_{SFF}$', '$I_{src}$', r'$\varepsilon_m$'] 
-#
-#    dyplot.postplot(res_list[0], labels=labelz, quantiles = None,
-#                    show_titles=False, truths1=maxL1)
-#    plt.subplots_adjust(hspace=0.7)
-#
-#    dyplot.postplot(res_list[1], labels=labelz, quantiles = None,
-#                    show_titles=False, truths1=maxL2)
-#    plt.subplots_adjust(hspace=0.7)
+#    model_fitter.cornerplot_2truth(res[1], labels=labels, quantiles=None,
+#                                   truths2=maxL2)
+#    ax = plt.gca()
+#    ax.tick_params(axis='both', which='major', labelsize=10)
+#    plt.savefig('OB150211_OGLE_mode2_phot_corner.png')
 
 
 def OB140613_OGLE_phot_table():
@@ -2167,52 +2149,43 @@ def OB140613_OGLE_phot_table():
     ob140613_mult = get_Rchi2('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_')
     rchi2 = ob140613_mult[0]
 
-    t = Table.read(ogle_phot['ob140613_mult'] + 'c8_summary.fits')
+    data = munge.getdata2('ob140613',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
 
-    t0 = t['MaxLike_t0'][0]
-    u0_amp = t['MaxLike_u0_amp'][0]
-    tE = t['MaxLike_tE'][0]
-    piE_E = t['MaxLike_piE_E'][0]
-    piE_N = t['MaxLike_piE_N'][0]
-    b_sff = t['MaxLike_b_sff'][0]
-    mag_src = t['MaxLike_mag_src'][0]
-    mult_err = t['MaxLike_mult_err'][0]
-    logZ = t['logZ'][0]
-    logL = t['maxlogL'][0]
+    dir = ogle_phot['ob140613_mult']
+    runid = 'c8_'
 
-    with open('OB140613_OGLE_phot.txt', 'w+') as tab_file:
-        tab_file.write('log$\mathcal{Z}$' + ' & ' 
-                       + '{0:.2f}'.format(logZ) + r' \\ ' + '\n'
-                       +
-                       'log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(logL) + r' \\ ' + '\n'
+    fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
+                                                         outputfiles_basename=dir + runid)
+    
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_m$'] 
+
+    res = fitter.load_mnest_results_for_dynesty()
+
+    ci = []
+    ml = []
+
+    for nn in np.arange(len(labels)):
+        # Calculate 68%  credible interval.                                  
+        ci.append(model_fitter.weighted_quantile(res['samples'][:, nn], [0.16, 0.84], sample_weight=res['weights']))
+        ml.append(res['samples'][-1, nn]) # CHECK
+
+    maxlogL = -0.5 * res['loglike'][-1]
+
+    with open('OB140613_OGLE_phot.txt', 'a+') as tab_file:
+        tab_file.write('log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(maxlogL) + r' & \\ ' + '\n'
                        +
                        '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2) + r' \\ ' + '\n'
-                       +
-                       '$t_0$ (MJD)' + ' & ' 
-                       + '{0:.2f}'.format(t0) + r' \\ ' + '\n'
-                       +
-                       '$u_0$' + ' & ' 
-                       + '{0:.2f}'.format(u0_amp) + r' \\ ' + '\n'
-                       +
-                       '$t_E$ (days)' + ' & ' 
-                       + '{0:.2f}'.format(tE) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,E}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_E) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,N}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_N) + r' \\ ' + '\n'
-                       +
-                       '$b_{SFF}$' + ' & ' 
-                       + '{0:.2f}'.format(b_sff) + r' \\ ' + '\n'
-                       +
-                       '$I_{src}$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(mag_src) + r' \\ ' + '\n'
-                       +
-                       r'$\varepsilon_m$' + ' & ' 
-                       + '{0:.2f}'.format(mult_err) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(rchi2) + r' & \\ ' + '\n'
+                       + r'\hline ' + '\n')
+        for ll, label in enumerate(labels):
+            tab_file.write(label + ' & ' 
+                           + '{0:.2f}'.format(ml[ll]) + ' & '
+                           + '[{0:.2f}, {1:.2f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+
     return
 
 def OB140613_OGLE_phot_plot_fits():
@@ -2253,52 +2226,48 @@ def OB150029_OGLE_phot_table():
     ob150029_add = get_Rchi2('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
     rchi2 = ob150029_add[0]
 
-    t = Table.read(ogle_phot['ob150029_add'] + 'd8_summary.fits')
+    data = munge.getdata2('ob150029',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
 
-    t0 = t['MaxLike_t0'][0]
-    u0_amp = t['MaxLike_u0_amp'][0]
-    tE = t['MaxLike_tE'][0]
-    piE_E = t['MaxLike_piE_E'][0]
-    piE_N = t['MaxLike_piE_N'][0]
-    b_sff = t['MaxLike_b_sff'][0]
-    mag_src = t['MaxLike_mag_src'][0]
-    add_err = t['MaxLike_add_err'][0]
-    logZ = t['logZ'][0]
-    logL = t['maxlogL'][0]
+    dir = ogle_phot['ob150029_add']
+    runid = 'd8_'
 
-    with open('OB150029_OGLE_phot.txt', 'w+') as tab_file:
-        tab_file.write('log$\mathcal{Z}$' + ' & ' 
-                       + '{0:.2f}'.format(logZ) + r' \\ ' + '\n'
-                       +
-                       'log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(logL) + r' \\ ' + '\n'
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    res = fitter.load_mnest_results_for_dynesty()
+
+    ci = []
+    ml = []
+
+    for nn in np.arange(len(labels)):
+        # Calculate 68%  credible interval.                                  
+        ci.append(model_fitter.weighted_quantile(res['samples'][:, nn], [0.16, 0.84], sample_weight=res['weights']))
+        ml.append(res['samples'][-1, nn]) # CHECK
+
+    maxlogL = -0.5 * res['loglike'][-1]
+
+    with open('OB150029_OGLE_phot.txt', 'a+') as tab_file:
+        tab_file.write('log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(maxlogL) + r' & \\ ' + '\n'
                        +
                        '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2) + r' \\ ' + '\n'
-                       +
-                       '$t_0$ (MJD)' + ' & ' 
-                       + '{0:.2f}'.format(t0) + r' \\ ' + '\n'
-                       +
-                       '$u_0$' + ' & ' 
-                       + '{0:.2f}'.format(u0_amp) + r' \\ ' + '\n'
-                       +
-                       '$t_E$ (days)' + ' & ' 
-                       + '{0:.2f}'.format(tE) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,E}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_E) + r' \\ ' + '\n'
-                       +
-                       '$\pi_{E,N}$' + ' & ' 
-                       + '{0:.2f}'.format(piE_N) + r' \\ ' + '\n'
-                       +
-                       '$b_{SFF}$' + ' & ' 
-                       + '{0:.2f}'.format(b_sff) + r' \\ ' + '\n'
-                       +
-                       '$I_{src}$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(mag_src) + r' \\ ' + '\n'
-                       +
-                       r'$\varepsilon_a$ (mag)' + ' & ' 
-                       + '{0:.2f}'.format(add_err) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(rchi2) + r' & \\ ' + '\n'
+                       + r'\hline ' + '\n')
+        for ll, label in enumerate(labels):
+            if label == r'$\varepsilon_a$ (mag)':
+                tab_file.write(label + ' & ' 
+                               + '{0:.4f}'.format(ml[ll]) + ' & '
+                               + '[{0:.4f}, {1:.4f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+            else:
+                tab_file.write(label + ' & ' 
+                               + '{0:.2f}'.format(ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+
     return
 
 
