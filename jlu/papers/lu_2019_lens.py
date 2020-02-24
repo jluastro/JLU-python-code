@@ -81,10 +81,10 @@ pspl_phot = {'ob120169' : a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/u0
              'ob150029' : a_dir['ob150029'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
              'ob150211' : a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_'}
 
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/8_fit_multiphot_astrom_parallax2/aa_',
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/8_fit_multiphot_astrom_parallax2/dd_'}
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_a/,
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/}
 
 pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
                   'ob140613' : a_dir['ob140613'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
