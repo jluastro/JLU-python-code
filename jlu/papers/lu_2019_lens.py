@@ -107,7 +107,7 @@ ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_para
 
 # Is this ok to do?
 ogle_phot['ob120169'] = ogle_phot['ob120169_add']
-ogle_phot['ob140613'] = ogle_phot['ob140613_add']
+ogle_phot['ob140613'] = ogle_phot['ob140613_mult']
 ogle_phot['ob150029'] = ogle_phot['ob150029_add']
 ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
