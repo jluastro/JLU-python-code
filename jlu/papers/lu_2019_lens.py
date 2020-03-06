@@ -20,6 +20,8 @@ from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
 import pickle
 import math
+import copy
+import yaml
 from scipy.stats import norm
 
 mpl_o = '#ff7f0e'
@@ -70,27 +72,6 @@ for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + '.fits'
 
-photom_spitzer = {'ob120169': None,
-                  'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
-                  'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
-                  'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
-
-
-pspl_phot = {'ob120169' : a_dir['ob120169'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
-             'ob140613' : a_dir['ob140613'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
-             'ob150029' : a_dir['ob150029'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_',
-             'ob150211' : a_dir['ob150211'] + 'model_fits/3_fit_phot_parallax/u0_plusminus/aa_'}
-
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_a/,
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/',
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_a/}
-
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
-
 # added 12/20/19: might supersede pspl_phot.
 ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
              'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
@@ -104,6 +85,27 @@ ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_para
              'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
              'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
              'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
+    
+photom_spitzer = {'ob120169': None,
+                  'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
+                  'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
+                  'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
+
+pspl_phot = {'ob120169' : ogle_phot['ob120169_add']  + 'c3_',
+             'ob140613' : ogle_phot['ob140613_mult'] + 'c8_',
+             'ob150029' : ogle_phot['ob150029_add']  + 'd8_',
+             'ob150211' : ogle_phot['ob150211_add']  + 'a4_'}
+
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c2_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/b1_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/b3_',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/b2_'}
+
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
+                  'ob140613' : a_dir['ob140613'] + 'model_fits/9_fit_multiphot_only_parallax/bb_',
+                  'ob150029' : a_dir['ob150029'] + 'model_fits/9_fit_multiphot_only_parallax/aa_',
+                  'ob150211' : a_dir['ob150211'] + 'model_fits/9_fit_multiphot_only_parallax/aa_'}
+
 
 # Is this ok to do?
 ogle_phot['ob120169'] = ogle_phot['ob120169_add']
@@ -111,43 +113,7 @@ ogle_phot['ob140613'] = ogle_phot['ob140613_add']
 ogle_phot['ob150029'] = ogle_phot['ob150029_add']
 ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
-def calc_from_stats(stats_fits_file):
-    t = Table.read(stats_fits_file)
 
-
-def summarize_fits():
-    """
-    For personal use
-    """
-    ob120169_ogle = np.loadtxt(a_dir['ob120169'] + 'OGLE-2012-BLG-0169.dat')
-    ob140613_ogle = np.loadtxt(a_dir['ob140613'] + 'OGLE-2014-BLG-0613.dat')
-    ob150029_ogle = np.loadtxt(a_dir['ob150029'] + 'OGLE-2015-BLG-0029.dat')
-    ob150211_ogle = np.loadtxt(a_dir['ob150211'] + 'OGLE-2015-BLG-0211.dat')
-
-    n_ob120169_ogle = ob120169_ogle.shape[0]
-    n_ob140613_ogle = ob140613_ogle.shape[0]
-    n_ob150029_ogle = ob150029_ogle.shape[0]
-    n_ob150211_ogle = ob150211_ogle.shape[0]
-
-    ob120169_keck = Table.read(a_dir['ob120169'] + 'ob120169_astrom_' + 
-                               astrom_pass['ob120169'] + '_' + a_date['ob120169'] + '.fits')
-    ob140613_keck = Table.read(a_dir['ob140613'] + 'ob140613_astrom_' + 
-                               astrom_pass['ob140613'] + '_' + a_date['ob140613'] + '.fits')
-    ob150029_keck = Table.read(a_dir['ob150029'] + 'ob150029_astrom_' + 
-                               astrom_pass['ob150029'] + '_' + a_date['ob150029'] + '.fits')
-    ob150211_keck = Table.read(a_dir['ob150211'] + 'ob150211_astrom_' + 
-                               astrom_pass['ob150211'] + '_' + a_date['ob150211'] + '.fits')
-     
-    n_ob120169_keck = ob120169_keck['x'].shape[1]
-    n_ob140613_keck = ob140613_keck['x'].shape[1]
-    n_ob150029_keck = ob150029_keck['x'].shape[1]
-    n_ob150211_keck = ob150211_keck['x'].shape[1]
-
-    n_params_3_fit = 8
-    n_params_8_fit = 16 # For 2 photometric data sets.
-    n_params_9_fit = 9 # For 2 photometric data sets.
-
-    
 def all_paper():
     plot_images()
     make_obs_table()
@@ -1750,43 +1716,169 @@ def compare_all_linear_motions(save_all=False):
 
     os.chdir(ret_dir)
 
+def table_ob150211_phot_astrom():
+    # Load up the params file so we know what kind of 
+    # data and model we are working with. Note that we 
+    # are assuming that all the Nruns are using the same
+    # parameters.
+    stats = load_summary_statistics(pspl_ast_multiphot['ob150211'])
+
+    return stats
+    
+
+def load_summary_statistics(mnest_base):
+    info_file = open(mnest_base + 'params.yaml', 'r')
+    info = yaml.full_load(info_file)
+    
+    my_model = getattr(model, info['model'])
+    my_data = munge.getdata2(info['target'].lower(), 
+                             phot_data=info['phot_data'], 
+                             ast_data=info['astrom_data'])
+
+    # Load up the first fitter object to get the parameter names.
+    fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      add_error_on_photometry = info['add_error_on_photometry'],
+                                      multiply_error_on_photometry = info['multiply_error_on_photometry'],
+                                      outputfiles_basename = mnest_base)
+
+    stats = calc_summary_statistics(fitter)
+
+    return stats
+    
+
+def calc_summary_statistics(fitter):
+    # Get the number of modes.
+    summ_tab = Table.read(fitter.outputfiles_basename + 'summary.txt', format='ascii')
+    N_modes = len(summ_tab) - 1
+    
+    # Calculate the number of data points we have all together.
+    N_data = get_num_data_points(fitter.data)
+    N_params = len(fitter.fitter_param_names)
+    N_dof = N_data - N_params
+
+    # First, we want the statistics for the following types of solutions.
+    sol_types = ['maxl', 'mean', 'map', 'median']
+    sol_prefix = {'maxl': 'MaxLike_',
+                  'mean': 'Mean_',
+                  'map': 'MAP_',
+                  'median': 'Med_' }
+    
+    tab_list = fitter.load_mnest_modes()
+    smy = fitter.load_mnest_summary()
+
+    # Make a deepcopy of this table and set everything to zeros.
+    # This will contain our final results.
+    stats = copy.deepcopy(smy)
+    for col in stats.colnames:
+        stats[col] = np.nan
+
+    # Loop through the different modes.
+    for nn in range(N_modes):
+            
+        # Loop through different types of "solutions"
+        for sol in sol_types:
+
+            # Loop through the parameters and get the best fit values.
+            foo = fitter.calc_best_fit(tab_list[nn], smy, s_idx=nn, def_best=sol)
+
+            if sol == 'maxl' or sol == 'map':
+                best_par = foo
+            else:
+                best_par = foo[0]
+                best_parerr = foo[1]
+
+            for param in fitter.all_param_names:
+                if sol_prefix[sol] + param not in stats.colnames:
+                    stats[sol_prefix[sol] + param] = 0.0
+                stats[sol_prefix[sol] + param][nn] = best_par[param]
+
+            # Add chi^2 to the table.
+            chi2 = fitter.calc_chi2(best_par)
+            if sol_prefix[sol] + 'chi2' not in stats.colnames:
+                stats[sol_prefix[sol] + 'chi2'] = 0.0
+            stats[sol_prefix[sol] + 'chi2'][nn] = chi2
+
+            # Add reduced chi^2 to the table.
+            rchi2 = chi2 / N_dof
+            if sol_prefix[sol] + 'rchi2' not in stats.colnames:
+                stats[sol_prefix[sol] + 'rchi2'] = 0.0
+            stats[sol_prefix[sol] + 'rchi2'][nn] = rchi2
+
+            # Add log-likelihood to the table. 
+            logL = fitter.log_likely(best_par)
+            if sol_prefix[sol] + 'logL' not in stats.colnames:
+                stats[sol_prefix[sol] + 'logL'] = 0.0
+            stats[sol_prefix[sol] + 'logL'][nn] = logL
+
+            # BIC
+            if sol_prefix[sol] + 'BIC' not in stats.colnames:
+                stats[sol_prefix[sol] + 'BIC'] = 0.0
+            stats[sol_prefix[sol] + 'BIC'][nn] = calc_BIC(N_data, N_params, stats[sol_prefix[sol] + 'logL'][nn])        
+            
+            # Next figure out the errors.
+            # Only need to do this once.
+            if sol == 'median':
+                for param in fitter.all_param_names:
+                    if 'lo68_' + param not in stats.colnames:
+                        stats['lo68_' + param] = 0.0
+                        stats['hi68_' + param] = 0.0
+                    stats['lo68_' + param][nn] = best_parerr[param][0]
+                    stats['hi68_' + param][nn] = best_parerr[param][1]
+
+                
+            
+        # Get the evidence values out of the _stats.dat file.
+        if 'logZ' not in stats.colnames:
+            stats['logZ'] = 0.0
+        stats['logZ'][nn] = smy['logZ'][nn]
+
+
+    # Sort such that the modes are in reverse order of evidence.
+    # Increasing logZ (nan's are at the end)
+    zdx = np.argsort(stats['logZ'])
+    non_nan = np.where(np.isfinite(stats['logZ'][zdx]))[0]
+    zdx = zdx[non_nan[::-1]]
+
+    stats = stats[zdx]
+
+    return stats
+    
 def make_BIC_comparison_table():
     # Use the one with the highest likelihood solution.
-    ob120169_none = get_Rchi2_and_BIC('ob120169', 'none', ogle_phot['ob120169_none'], 'd7_')
-    ob120169_add = get_Rchi2_and_BIC('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_') 
-    ob120169_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob120169_mult'], 'a0_')
+    ob120169_none = load_summary_statistics(ogle_phot['ob120169_none'] + 'd7_')
+    ob120169_add  = load_summary_statistics(ogle_phot['ob120169_add'] + 'c3_') 
+    ob120169_mult = load_summary_statistics(ogle_phot['ob120169_mult'] + 'a0_')
 
-    ob140613_none = get_Rchi2_and_BIC('ob140613', 'none', ogle_phot['ob140613_none'], 'c2_') 
-    ob140613_add = get_Rchi2_and_BIC('ob140613', 'add', ogle_phot['ob140613_add'], 'b3_') 
-    ob140613_mult = get_Rchi2_and_BIC('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_') 
+    ob140613_none = load_summary_statistics(ogle_phot['ob140613_none'] + 'c2_') 
+    ob140613_add  = load_summary_statistics(ogle_phot['ob140613_add']  + 'b3_') 
+    ob140613_mult = load_summary_statistics(ogle_phot['ob140613_mult'] + 'c8_') 
 
-    ob150029_none = get_Rchi2_and_BIC('ob150029', 'none', ogle_phot['ob150029_none'], 'b5_') 
-    ob150029_add = get_Rchi2_and_BIC('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
-    ob150029_mult = get_Rchi2_and_BIC('ob120169', 'mult', ogle_phot['ob150029_mult'], 'd2_') 
+    ob150029_none = load_summary_statistics(ogle_phot['ob150029_none'] + 'b5_') 
+    ob150029_add  = load_summary_statistics(ogle_phot['ob150029_add']  + 'd8_')
+    ob150029_mult = load_summary_statistics(ogle_phot['ob150029_mult'] + 'd2_') 
 
-    ob150211_none = get_Rchi2_and_BIC('ob150211', 'none', ogle_phot['ob150211_none'], 'a1_')
-    ob150211_add = get_Rchi2_and_BIC('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
-    ob150211_mult = get_Rchi2_and_BIC('ob150211', 'mult', ogle_phot['ob150211_mult'], 'd5_')
+    ob150211_none = load_summary_statistics(ogle_phot['ob150211_none'] + 'a1_')
+    ob150211_add  = load_summary_statistics(ogle_phot['ob150211_add']  + 'a4_')
+    ob150211_mult = load_summary_statistics(ogle_phot['ob150211_mult'] + 'd5_')
 
-#    with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
-    with open('BIC_comparison.txt', 'w+') as tab_file:
+    with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
         tab_file.write('No error term' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_none[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_none[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_none[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_none[1]) + r' \\ ' + '\n'
+                       + '{0:.2f}'.format(ob120169_none['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_none['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_none['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_none['MaxLike_BIC']) + r' \\ ' + '\n'
                        + 
                        'Multiplicative' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_mult[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_mult[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_mult[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_mult[1]) + r' \\ ' + '\n'
+                       + '{0:.2f}'.format(ob120169_mult['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_mult['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_mult['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_mult['MaxLike_BIC']) + r' \\ ' + '\n'
                        +
                        'Additive' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_add[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_add[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_add[1]) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_add[1]) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(ob120169_add['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob140613_add['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150029_add['MaxLike_BIC']) + ' & ' 
+                       + '{0:.2f}'.format(ob150211_add['MaxLike_BIC']) + r' \\ ' + '\n')
 
     return
                        
@@ -1834,6 +1926,55 @@ def get_Rchi2_and_BIC(target, errtype, dir, runid):
     bic = calc_BIC(ndata, nparams, maxlogL)
 
     return Rchi2, bic
+
+
+def calc_reduced_chi2(target, errtype, dir, runid):
+    """
+    Calculate the reduced chi2 and BIC values for a run.
+
+    target : 'ob120169', 'ob140613', 'ob150029', or 'ob150211'
+
+    errtype : 'add', 'mult', or 'none'
+
+    dir : path to the run's data
+
+    runid : the run's outputfiles_basename
+    """
+    data = munge.getdata2(target, 
+                          phot_data=['I_OGLE'], 
+                          ast_data=['Kp_Keck'])
+    ndata = len(data['mag'])
+
+    # Determine fitter based on error
+    if errtype == 'none':
+        fitter = model_fitter.PSPL_phot_parallax_Solver(data,
+                                                        outputfiles_basename = dir + runid)
+
+    if errtype == 'mult':
+        fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
+                                                             outputfiles_basename = dir + runid)
+
+    if errtype == 'add':
+        fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                            outputfiles_basename = dir + runid)
+
+    nparams = fitter.n_dims 
+
+    outdir = './'
+    os.makedirs(outdir, exist_ok=True)
+
+    # Rchi2 global
+    param = fitter.get_best_fit(def_best='maxl')
+    Rchi2 = fitter.calc_chi2()/(ndata - nparams)
+
+    # Rchi2 modes
+    modes = fitter.get_best_fit_modes(def_best='maxl')
+    Rchi2_modes = []
+    for mm in np.arange(len(modes)):
+        Rchi2 = fitter.calc_chi2(modes[mm])/(ndata - nparams)
+        Rchi2_modes.append(Rchi2)
+    
+    return Rchi2, Rchi2_modes
 
 
 def get_Rchi2(target, errtype, dir, runid):
@@ -1897,6 +2038,70 @@ def calc_BIC(n, k, maxlogL):
     return bic
 
 def OB120169_OGLE_phot_table():
+    # Figure out what chi2 for the maxlikelihood solution is.
+    ob120169_add = get_Rchi2('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_')
+
+    rchi2_1 = ob120169_add[1][0] # CHECK THIS!!!!!!!
+    rchi2_2 = ob120169_add[1][1] 
+
+    data = munge.getdata2('ob120169',
+                          phot_data=['I_OGLE'],
+                          ast_data=['Kp_Keck'])  
+
+    dir = ogle_phot['ob120169_add']
+    runid = 'c3_'
+
+    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+                                                        outputfiles_basename=dir + runid)
+
+    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+    # Posterior separated by modes.
+    res = fitter.load_mnest_modes_results_for_dynesty()
+
+    mode1_ci = []
+    mode2_ci = []
+    mode1_ml = []
+    mode2_ml = []
+
+    for nn in np.arange(len(labels)):
+        # Calculate 68%  credible interval.                                  
+        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
+        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
+        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
+        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
+
+    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
+    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
+
+    with open('OB120169_OGLE_phot.txt', 'a+') as tab_file:
+        tab_file.write('log$\mathcal{L}$' + ' & ' 
+                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
+                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
+                       +
+                       '$\chi^2_{dof}$' + ' & ' 
+                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
+                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
+                       + r'\hline ' + '\n')
+        for ll, label in enumerate(labels):
+            if label == r'$\varepsilon_a$ (mag)':
+                tab_file.write(label + ' & ' 
+                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+            else:       
+                tab_file.write(label + ' & ' 
+                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
+                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
+                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
+
+    return
+
+
+def OB120169_OGLE_phot_astrom_table():
     # Figure out what chi2 for the maxlikelihood solution is.
     ob120169_add = get_Rchi2('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_')
 
@@ -4757,3 +4962,20 @@ def plot_vpd():
 
     return
         
+def get_num_data_points(data_dict):
+    N_data = 0
+
+    # Loop through photometry data
+    for pp in range(len(data_dict['phot_files'])):
+        N_data += len(data_dict['t_phot{0:d}'.format(pp+1)])
+
+    # Loop through astrometry data
+    for aa in range(len(data_dict['ast_files'])):
+        if len(data_dict['ast_files']) > 1:
+            N_data += len(data_dict['t_ast{0:d}'.format(pp+1)])
+        else:
+            N_data += len(data_dict['t_ast'])
+
+    return N_data
+
+
