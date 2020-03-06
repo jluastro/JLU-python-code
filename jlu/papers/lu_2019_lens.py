@@ -109,7 +109,7 @@ pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/9_fit_multiphot_o
 
 # Is this ok to do?
 ogle_phot['ob120169'] = ogle_phot['ob120169_add']
-ogle_phot['ob140613'] = ogle_phot['ob140613_add']
+ogle_phot['ob140613'] = ogle_phot['ob140613_mult']
 ogle_phot['ob150029'] = ogle_phot['ob150029_add']
 ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
