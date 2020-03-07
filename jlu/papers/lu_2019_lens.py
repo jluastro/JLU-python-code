@@ -1861,6 +1861,7 @@ def make_BIC_comparison_table():
     ob150211_add  = load_summary_statistics(ogle_phot['ob150211_add']  + 'a4_')
     ob150211_mult = load_summary_statistics(ogle_phot['ob150211_mult'] + 'd5_')
 
+    
     with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
         tab_file.write('No error term' + ' & ' 
                        + '{0:.2f}'.format(ob120169_none['MaxLike_BIC']) + ' & ' 
