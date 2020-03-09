@@ -3,7 +3,7 @@ import pylab as plt
 import pdb
 import math
 import os
-# from jlu.observe import skycalc
+from jlu.observe import skycalc
 from microlens.jlu import munge
 # from microlens.jlu import residuals
 from microlens.jlu import model_fitter, model
@@ -28,12 +28,346 @@ from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
 import pickle
 from scipy.stats import norm
+import yaml
 
 # Default matplotlib color cycles.
 mpl_b = '#1f77b4'
 mpl_o = '#ff7f0e'
 mpl_g = '#2ca02c'
 mpl_r = '#d62728'
+
+# run directory
+ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
+ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
+ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+
+# run id
+ob120169_id = 'c2'
+ob140613_id = 'b1'
+ob150029_id = 'b3'
+ob150211_id = 'b2'
+
+prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+
+def piE_tE_deltac():
+    span=0.999999426697
+    smooth=0.02
+    quantiles_2d=None
+    hist2d_kwargs=None
+    labels=None
+    label_kwargs=None
+    show_titles=False 
+    title_fmt=".2f" 
+    title_kwargs=None
+    """
+    !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    ON THE WAY THIS PLOT LOOKS !!!
+    Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    Also plot PopSyCLE simulations simultaneously.
+    """
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    ob120169_yaml = open(ob120169_dir + ob120169_id +  '_params.yaml').read() 
+    params_120169 = yaml.safe_load(ob120169_yaml)
+    ob140613_yaml = open(ob140613_dir + ob140613_id +  '_params.yaml').read() 
+    params_140613 = yaml.safe_load(ob140613_yaml)
+    ob150029_yaml = open(ob150029_dir + ob150029_id +  '_params.yaml').read() 
+    params_150029 = yaml.safe_load(ob150029_yaml)
+    ob150211_yaml = open(ob150211_dir + ob150211_id +  '_params.yaml').read() 
+    params_150211 = yaml.safe_load(ob150211_yaml)
+
+    # OB120169 fit results.
+    data_120169 = munge.getdata2('ob120169',
+                                 phot_data=params_120169['phot_data'],
+                                 ast_data=params_120169['astrom_data'])  
+
+    fitter_120169 = model_fitter.PSPL_Solver(data_120169,
+                                             getattr(model, params_120169['model']),
+                                             add_error_on_photometry=params_120169['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params_120169['multiply_error_on_photometry'],
+                                             outputfiles_basename=ob120169_dir + ob120169_id + '_')
+
+    results_120169 = fitter_120169.load_mnest_results_for_dynesty()
+    smy_120169 = fitter_120169.load_mnest_summary()
+    
+    # OB140613 fit results.
+    data_140613 = munge.getdata2('ob140613',
+                                 phot_data=params_140613['phot_data'],
+                                 ast_data=params_140613['astrom_data'])  
+
+    fitter_140613 = model_fitter.PSPL_Solver(data_140613,
+                                             getattr(model, params_140613['model']),
+                                             add_error_on_photometry=params_140613['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params_140613['multiply_error_on_photometry'],
+                                             outputfiles_basename=ob140613_dir + ob140613_id + '_')
+
+    results_140613 = fitter_140613.load_mnest_results_for_dynesty()
+    smy_140613 = fitter_140613.load_mnest_summary()
+
+    # OB150029 fit results.
+    data_150029 = munge.getdata2('ob150029',
+                                 phot_data=params_150029['phot_data'],
+                                 ast_data=params_150029['astrom_data'])  
+
+    fitter_150029 = model_fitter.PSPL_Solver(data_150029,
+                                             getattr(model, params_150029['model']),
+                                             add_error_on_photometry=params_150029['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params_150029['multiply_error_on_photometry'],
+                                             outputfiles_basename=ob150029_dir + ob150029_id + '_')
+
+    results_150029 = fitter_150029.load_mnest_results_for_dynesty()
+    smy_150029 = fitter_150029.load_mnest_summary()
+
+    # OB150211 fit results.
+    data_150211 = munge.getdata2('ob150211',
+                                 phot_data=params_150211['phot_data'],
+                                 ast_data=params_150211['astrom_data'])  
+
+    fitter_150211 = model_fitter.PSPL_Solver(data_150211,
+                                             getattr(model, params_150211['model']),
+                                             add_error_on_photometry=params_150211['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params_150211['multiply_error_on_photometry'],
+                                             outputfiles_basename=ob150211_dir + ob150211_id + '_')
+
+    results_150211 = fitter_150211.load_mnest_results_for_dynesty()
+    smy_150211 = fitter_150211.load_mnest_summary()
+
+    # Extract weighted samples.
+    samples_120169 = results_120169['samples']
+    samples_140613 = results_140613['samples']
+    samples_150029 = results_150029['samples']
+    samples_150211 = results_150211['samples']
+
+    try:
+        weights_120169 = np.exp(results_120169['logwt'] - results_120169['logz'][-1])
+        weights_140613 = np.exp(results_140613['logwt'] - results_140613['logz'][-1])
+        weights_150029 = np.exp(results_150029['logwt'] - results_150029['logz'][-1])
+        weights_150211 = np.exp(results_150211['logwt'] - results_150211['logz'][-1])
+    except:
+        weights_120169 = results_120169['weights']
+        weights_140613 = results_140613['weights']
+        weights_150029 = results_150029['weights']
+        weights_150211 = results_150211['weights']
+
+    # Deal with 1D results. A number of extra catches are also here
+    # in case users are trying to plot other results besides the `Results`
+    # instance generated by `dynesty`.
+    samples_120169 = np.atleast_1d(samples_120169)
+    if len(samples_120169.shape) == 1:
+        samples_120169 = np.atleast_2d(samples_120169)
+    else:
+        assert len(samples_120169.shape) == 2, "Samples must be 1- or 2-D."
+        samples_120169 = samples_120169.T
+    assert samples_120169.shape[0] <= samples_120169.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+    
+    samples_140613 = np.atleast_1d(samples_140613)
+    if len(samples_140613.shape) == 1:
+        samples_140613 = np.atleast_2d(samples_140613)
+    else:
+        assert len(samples_140613.shape) == 2, "Samples must be 1- or 2-D."
+        samples_140613 = samples_140613.T
+    assert samples_140613.shape[0] <= samples_140613.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+
+    samples_150029 = np.atleast_1d(samples_150029)
+    if len(samples_150029.shape) == 1:
+        samples_150029 = np.atleast_2d(samples_150029)
+    else:
+        assert len(samples_150029.shape) == 2, "Samples must be 1- or 2-D."
+        samples_150029 = samples_150029.T
+    assert samples_150029.shape[0] <= samples_150029.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+
+    samples_150211 = np.atleast_1d(samples_150211)
+    if len(samples_150211.shape) == 1:
+        samples_150211 = np.atleast_2d(samples_150211)
+    else:
+        assert len(samples_150211.shape) == 2, "Samples must be 1- or 2-D."
+        samples_150211 = samples_150211.T
+    assert samples_150211.shape[0] <= samples_150211.shape[1], "There are more " \
+                                                 "dimensions than samples!"
+
+    # Plot the piE-tE 2D posteriors.
+    # tE = 2; piEE,N = 3, 4 
+    fig, ax = plt.subplots(1, 2, figsize=(14,6), sharey=True,
+                           gridspec_kw={'width_ratios': [1, 1.4]})
+    plt.subplots_adjust(left=0.1, bottom=0.15, wspace=0.1)
+
+#    import pdb
+#    pdb.set_trace()
+
+    tE_120169 = samples_120169[2]
+    tE_140613 = samples_140613[2]
+    tE_150029 = samples_150029[2]
+    tE_150211 = samples_150211[2]
+
+    thetaE_120169 = samples_120169[3]
+    thetaE_140613 = samples_140613[3]
+    thetaE_150029 = samples_150029[3]
+    thetaE_150211 = samples_150211[3]
+
+    piE_120169 = np.hypot(samples_120169[5], samples_120169[6])
+    piE_140613 = np.hypot(samples_140613[5], samples_140613[6])
+    piE_150029 = np.hypot(samples_150029[5], samples_150029[6])
+    piE_150211 = np.hypot(samples_150211[5], samples_150211[6])
+
+    sx = smooth
+    sy = smooth
+
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours',
+                                                       False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
+                                                       True)
+    model_fitter.contour2d_alpha(thetaE_120169/np.sqrt(8), piE_120169, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_120169, ax=ax[0], smooth=[sy, sx], color='blue',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(thetaE_140613/np.sqrt(8), piE_140613, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_140613, ax=ax[0], smooth=[sy, sx], color='hotpink', 
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(thetaE_150029/np.sqrt(8), piE_150029, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150029, ax=ax[0], smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(thetaE_150211/np.sqrt(8), piE_150211, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150211, ax=ax[0], smooth=[sy, sx], color='dodgerblue', 
+                                 **hist2d_kwargs, plot_density=False)
+
+    model_fitter.contour2d_alpha(tE_120169, piE_120169, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_120169, ax=ax[1], smooth=[sy, sx], color='blue',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_140613, piE_140613, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_140613, ax=ax[1], smooth=[sy, sx], color='hotpink', 
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_150029, piE_150029, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150029, ax=ax[1], smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE_150211, piE_150211, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights_150211, ax=ax[1], smooth=[sy, sx], color='dodgerblue', 
+                                 **hist2d_kwargs, plot_density=False)
+
+    ax[1].plot(0.01, 100, color='blue', label='OB120169')
+    ax[1].plot(0.01, 100, color='hotpink', label='OB140613')
+    ax[1].plot(0.01, 100, color='red', label='OB150029')
+    ax[1].plot(0.01, 100, color='dodgerblue', label='OB150211')
+
+    # Add the PopSyCLE simulation points.
+    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
+
+    bh_idx = np.where(t['rem_id_L'] == 103)[0]
+    ns_idx = np.where(t['rem_id_L'] == 102)[0]
+    wd_idx = np.where(t['rem_id_L'] == 101)[0]
+    st_idx = np.where(t['rem_id_L'] == 0)[0]
+
+    u0_arr = t['u0']
+    thetaE_arr = t['theta_E']
+    
+    # Stores the maximum astrometric shift
+    final_delta_arr = np.zeros(len(u0_arr))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    final_u_arr = np.zeros(len(u0_arr))
+
+    # Sort by whether the maximum astrometric shift happens
+    # before or after the maximum photometric amplification
+    big_idx = np.where(u0_arr > np.sqrt(2))[0]
+    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+    g_arr = np.nan_to_num(g_arr)
+
+    for i in np.arange(len(u0_arr)):
+        g = g_arr[i] 
+        thetaE = thetaE_arr[i]    
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        if u0_arr[i] < np.sqrt(2):
+            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+            delta_arr = np.zeros(len(u_arr))
+            for j in np.arange(len(u_arr)):
+                u = u_arr[j] 
+                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+                delta = (u * thetaE/(1 + g)) * (numer/denom)
+                delta_arr[j] = delta
+            max_idx = np.argmax(delta_arr)
+            final_delta_arr[i] = delta_arr[max_idx]
+            final_u_arr[i] = u_arr[max_idx]
+        # Maximum astrometric shift will occur at sqrt(2)
+        if u0_arr[i] > np.sqrt(2):
+            u = u0_arr[i]
+            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+            delta = (u * thetaE/(1 + g)) * (numer/denom)
+            final_delta_arr[i] = delta
+            final_u_arr[i] = u
+
+    ax[0].scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'gold')
+    ax[0].scatter(final_delta_arr[wd_idx], t['pi_E'][wd_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'goldenrod')
+    ax[0].scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'sienna')
+    ax[0].scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
+                  alpha = 0.8, marker = '.', s = 25,
+                  c = 'black')
+    
+    ax[1].scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
+                alpha = 0.4, marker = '.', s = 25, 
+                color = 'gold')
+    ax[1].scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
+                alpha = 0.4, marker = '.', s = 25, 
+                color = 'goldenrod')
+    ax[1].scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+                alpha = 0.4, marker = '.', s = 25, 
+                color = 'sienna')
+    ax[1].scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
+                alpha = 0.8, marker = '.', s = 25, 
+                color = 'black')
+    # Trickery to make the legend darker
+    ax[1].scatter(0.01, 100, 
+                alpha = 0.8, marker = 'o', s = 25, 
+                label = 'Star', color = 'gold')
+    ax[1].scatter(0.01, 100, 
+                alpha = 0.8, marker = 'o', s = 25,
+                label = 'WD', color = 'goldenrod')
+    ax[1].scatter(0.01, 100,
+                alpha = 0.8, marker = 'o', s = 25, 
+                label = 'NS', color = 'sienna')
+    ax[1].scatter(0.01, 100,
+                alpha = 0.8, marker = 'o', s = 25, 
+                label = 'BH', color = 'black')
+    ax[0].set_xlabel('$\delta_{c,max}$ (mas)')
+    ax[0].set_ylabel('$\pi_E$')
+    ax[0].set_xscale('log')
+    ax[0].set_yscale('log')
+    ax[0].set_xlim(0.005, 4)
+    ax[0].set_ylim(0.009, 0.5)
+    ax[1].set_xlim(10, 400)
+    ax[1].set_ylim(0.009, 0.5)
+    ax[1].set_xlabel('$t_E$ (days)')
+    ax[1].set_xscale('log')
+    ax[1].set_yscale('log')
+    box = ax[1].get_position()
+    ax[1].set_position([box.x0, box.y0, box.width * 0.7, box.height])
+    ax[1].legend(bbox_to_anchor=(1.5, 0.5), loc="center right")
+    plt.savefig('piE_tE_deltac.png')
 
 def plot_how_many():
     """
@@ -667,18 +1001,17 @@ def plot_airmass_moon():
     # coordinates to center of OGLE field BLG502 (2017 objects)
     ra = "18:00:00"
     dec = "-30:00:00"
-    months = np.array([4, 5, 6, 7])
-    days = np.array([10, 15, 15, 30])
+    months = np.array([8, 8, 9])
+    days = np.array([15, 30, 15])
     # outdir = '/Users/jlu/doc/proposals/keck/uc/18A/'
-    outdir = '/Users/fatima/Desktop/'
-    # outdir = '/Users/casey/scratch/'
+    outdir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 
     # Keck 2
-    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_20A.png', date_idx=-1)
-    skycalc.plot_moon(ra, dec, 2020, months, outfile=outdir + 'microlens_moon_20A.png')
+    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_20B.png', date_idx=-1)
+    skycalc.plot_moon(ra, dec, 2020, np.array([8, 9]), outfile=outdir + 'microlens_moon_20B.png')
 
     # Keck 1
-    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_20A.png', date_idx=-1)
+    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_20B.png', date_idx=-1)
     
     return
 
