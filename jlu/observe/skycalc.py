@@ -8,6 +8,18 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import pdb
 
+##################
+# Added March 2020
+##################
+# Workaround for our out-of-date Astropy
+# The USNO IERS services (needed by PyLIMA for
+# calculating the sidereal time) are being modernized,
+# so mirror sites have been set up to obtain the IERS tables.
+# Updated Astropy has this internalized.
+from astropy.utils.iers import conf as iers_conf
+iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'
+iers_conf.auto_max_age = None
+
 def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
@@ -68,7 +80,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     py.close(3)
     py.figure(3, figsize=(7, 7))
     py.clf()
-    py.subplots_adjust(left=0.1)
+    py.subplots_adjust(left=0.15)
     for ii in range(len(days)):
         midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[ii], days[ii])) - utc_offset
         delta_midnight = np.arange(-7, 7, 0.2) * u.hour
@@ -174,7 +186,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     py.close(3)
     py.figure(3, figsize=(7, 7))
     py.clf()
-    py.subplots_adjust(left=0.1)
+    py.subplots_adjust(left=0.15)
 
     for mm in range(len(months)):
         for dd in range(len(daysInMonth)):
