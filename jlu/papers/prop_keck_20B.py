@@ -35,6 +35,9 @@ mpl_o = '#ff7f0e'
 mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
+def plot_parallax_sensitivity():
+    return
+
 def plot_how_many():
     """
     How many BHs needed to detect in order to constrain

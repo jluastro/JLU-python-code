@@ -115,17 +115,23 @@ ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
 
 def all_paper():
-    plot_images()
-    make_obs_table()
-    plot_pos_err()
+    # plot_images()
+    # make_obs_table()
+    # plot_pos_err()
 
-    plot_ob120169_phot_ast()
-    plot_ob140613_phot_ast()
-    plot_ob150029_phot_ast()
-    plot_ob150211_phot_ast()
+    # plot_ob120169_phot_ast()
+    # plot_ob140613_phot_ast()
+    # plot_ob150029_phot_ast()
+    # plot_ob150211_phot_ast()
+
+    # PSPL Fit Tables
+    table_ob120169_phot_astrom()
+    table_ob140613_phot_astrom()
+    table_ob150029_phot_astrom()
+    table_ob150211_phot_astrom()
 
     # Appendix
-    make_BIC_comparison_table()
+    # make_BIC_comparison_table()
 
     return
 
@@ -880,7 +886,7 @@ def weighted_avg_and_std(values, weights):
     return (average, np.sqrt(variance))
 
 
-def make_tab_9_fit():
+def old_make_tab_9_fit():
     """
     Make a table with phot only (Keck + OGLE) fit
     9_fit_multiphot_only_parallax
@@ -978,7 +984,7 @@ def make_tab_9_fit():
             output.close()
 
 
-def make_tab_8_fit():
+def old_make_tab_8_fit():
     """
     Make a table with the Kains parametrization
     8_fit_multiphot_astrom_parallax2
@@ -1716,17 +1722,471 @@ def compare_all_linear_motions(save_all=False):
 
     os.chdir(ret_dir)
 
+def table_ob120169_phot_astrom():
+    # Load up the params file so we know what kind of 
+    # data and model we are working with. Note that we 
+    # are assuming that all the Nruns are using the same
+    # parameters.
+    target = 'ob120169'
+    
+    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_src1': '$I_{src}$ (mag)',
+              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'thetaE':   '$\\theta_E$ (mas)',
+              'piS':      '$\pi_S$ (mas)',
+              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
+              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
+              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
+              'xS0_N':    '$x_{S0,\delta}$ (mas)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+             }
+    scale = {'t0':      1.0,
+             'u0_amp':  1.0,
+             'tE':      1.0,
+             'piE_E':   1.0,
+             'piE_N':   1.0,
+             'b_sff1':  1.0,
+             'mag_src1':1.0,
+             'add_err1':1e3,
+             'thetaE':  1.0,
+             'piS':     1.0,
+             'muS_E':   1.0,
+             'muS_N':   1.0,
+             'xS0_E':   1e3,
+             'xS0_N':   1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'add_err2':1e3,
+        }
+    sig_digits = {'t0':       '0.2f',
+                  'u0_amp':   '0.2f',
+                  'tE':       '0.1f',
+                  'piE_E':    '0.3f',
+                  'piE_N':    '0.3f',
+                  'b_sff1':   '0.3f',
+                  'mag_src1': '0.3f',
+                  'add_err1': '0.1f',
+                  'thetaE':   '0.2f',
+                  'piS':      '0.3f',
+                  'muS_E':    '0.2f',
+                  'muS_N':    '0.2f',
+                  'xS0_E':    '0.2f',
+                  'xS0_N':    '0.2f',
+                  'b_sff2':   '0.2f',
+                  'mag_src2': '0.2f',
+                  'add_err2': '0.1f'
+                  }
+
+    pho_u0m = 1
+    pho_u0p = 0
+    ast_u0m = 0
+    ast_u0p = 1
+    
+    tab_file = open(target + '_OGLE_phot_ast.txt', 'w')
+    tab_file.write('log$\mathcal{L}$ '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0m]) + ' \\\ \n ')
+    tab_file.write('$\chi^2_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0m]) + ' \\\ \n')
+    tab_file.write('$N_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' \\\ \n'
+                   + r'\hline ' + '\n')
+    
+    for key, label in labels.items():
+        # We will have 4 solutions... each has a value and error bar.
+        # Setup an easy way to walk through them (and rescale) as necessary.
+        val_dict = [stats_pho, stats_pho, stats_ast]
+        val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+
+        tab_file.write(label)
+                           
+        for ss in range(len(val_dict)):
+            stats = val_dict[ss]
+            
+            if ('MaxLike_' + key in stats.colnames) and (val_mode[ss] < len(stats)):
+                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                
+                val = stats['MaxLike_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+
+                val *= scale[key]
+                elo *= scale[key]
+                ehi *= scale[key]
+
+                tab_file.write(fmt.format(val, elo, ehi))
+            else:
+                fmt = ' & & '
+                tab_file.write(fmt)
+
+        tab_file.write(' \\\ \n')
+    
+    return
+
+def table_ob140613_phot_astrom():
+    # Load up the params file so we know what kind of 
+    # data and model we are working with. Note that we 
+    # are assuming that all the Nruns are using the same
+    # parameters.
+    target = 'ob140613'
+    
+    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mult_err1': '$\\varepsilon_{m,I}$',
+              'thetaE':   '$\\theta_E$ (mas)',
+              'piS':      '$\pi_S$ (mas)',
+              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
+              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
+              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
+              'xS0_N':    '$x_{S0,\delta}$ (mas)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'mult_err2': '$\\varepsilon_{m,Kp}$'
+             }
+    scale = {'t0':      1.0,
+             'u0_amp':  1.0,
+             'tE':      1.0,
+             'piE_E':   1.0,
+             'piE_N':   1.0,
+             'b_sff1':  1.0,
+             'mag_src1':1.0,
+             'mult_err1':1.0,
+             'thetaE':  1.0,
+             'piS':     1.0,
+             'muS_E':   1.0,
+             'muS_N':   1.0,
+             'xS0_E':   1e3,
+             'xS0_N':   1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'mult_err2':1.0,
+        }
+    sig_digits = {'t0':       '0.2f',
+                  'u0_amp':   '0.2f',
+                  'tE':       '0.1f',
+                  'piE_E':    '0.3f',
+                  'piE_N':    '0.3f',
+                  'b_sff1':   '0.3f',
+                  'mag_src1': '0.3f',
+                  'mult_err1': '0.1f',
+                  'thetaE':   '0.2f',
+                  'piS':      '0.3f',
+                  'muS_E':    '0.2f',
+                  'muS_N':    '0.2f',
+                  'xS0_E':    '0.2f',
+                  'xS0_N':    '0.2f',
+                  'b_sff2':   '0.2f',
+                  'mag_src2': '0.2f',
+                  'mult_err2': '0.1f'
+                  }
+
+    pho_u0m = 0
+    pho_u0p = 1
+    ast_u0m = 0
+    ast_u0p = 1
+    
+    tab_file = open(target + '_OGLE_phot_ast.txt', 'w')
+    tab_file.write('log$\mathcal{L}$ '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$\chi^2_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$N_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + r'\hline ' + '\n')
+    
+    for key, label in labels.items():
+        # We will have 4 solutions... each has a value and error bar.
+        # Setup an easy way to walk through them (and rescale) as necessary.
+        val_dict = [stats_pho, stats_ast]
+        val_mode = [pho_u0m, ast_u0m]
+
+        tab_file.write(label)
+                           
+        for ss in range(len(val_dict)):
+            stats = val_dict[ss]
+            
+            if ('MaxLike_' + key in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                
+                val = stats['MaxLike_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+
+                val *= scale[key]
+                elo *= scale[key]
+                ehi *= scale[key]
+
+                tab_file.write(fmt.format(val, elo, ehi))
+            else:
+                fmt = ' & & '
+                tab_file.write(fmt)
+
+        tab_file.write(' \\\ \n')
+    
+    return
+
+def table_ob150029_phot_astrom():
+    # Load up the params file so we know what kind of 
+    # data and model we are working with. Note that we 
+    # are assuming that all the Nruns are using the same
+    # parameters.
+    target = 'ob150029'
+    
+    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_src1': '$I_{src}$ (mag)',
+              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'thetaE':   '$\\theta_E$ (mas)',
+              'piS':      '$\pi_S$ (mas)',
+              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
+              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
+              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
+              'xS0_N':    '$x_{S0,\delta}$ (mas)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+             }
+    scale = {'t0':      1.0,
+             'u0_amp':  1.0,
+             'tE':      1.0,
+             'piE_E':   1.0,
+             'piE_N':   1.0,
+             'b_sff1':  1.0,
+             'mag_src1':1.0,
+             'add_err1':1e3,
+             'thetaE':  1.0,
+             'piS':     1.0,
+             'muS_E':   1.0,
+             'muS_N':   1.0,
+             'xS0_E':   1e3,
+             'xS0_N':   1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'add_err2':1e3,
+        }
+    sig_digits = {'t0':       '0.2f',
+                  'u0_amp':   '0.2f',
+                  'tE':       '0.1f',
+                  'piE_E':    '0.3f',
+                  'piE_N':    '0.3f',
+                  'b_sff1':   '0.3f',
+                  'mag_src1': '0.3f',
+                  'add_err1': '0.1f',
+                  'thetaE':   '0.2f',
+                  'piS':      '0.3f',
+                  'muS_E':    '0.2f',
+                  'muS_N':    '0.2f',
+                  'xS0_E':    '0.2f',
+                  'xS0_N':    '0.2f',
+                  'b_sff2':   '0.2f',
+                  'mag_src2': '0.2f',
+                  'add_err2': '0.1f'
+                  }
+
+    pho_u0m = 0
+    pho_u0p = 1
+    ast_u0m = 0
+    ast_u0p = 1
+    
+    tab_file = open(target + '_OGLE_phot_ast.txt', 'w')
+    tab_file.write('log$\mathcal{L}$ '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$\chi^2_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$N_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + r'\hline ' + '\n')
+    
+    for key, label in labels.items():
+        # We will have 4 solutions... each has a value and error bar.
+        # Setup an easy way to walk through them (and rescale) as necessary.
+        val_dict = [stats_pho, stats_ast]
+        val_mode = [pho_u0m, ast_u0m]
+
+        tab_file.write(label)
+                           
+        for ss in range(len(val_dict)):
+            stats = val_dict[ss]
+            
+            if ('MaxLike_' + key in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                
+                val = stats['MaxLike_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+
+                val *= scale[key]
+                elo *= scale[key]
+                ehi *= scale[key]
+
+                tab_file.write(fmt.format(val, elo, ehi))
+            else:
+                fmt = ' & & '
+                tab_file.write(fmt)
+
+        tab_file.write(' \\\ \n')
+    
+    return
+
 def table_ob150211_phot_astrom():
     # Load up the params file so we know what kind of 
     # data and model we are working with. Note that we 
     # are assuming that all the Nruns are using the same
     # parameters.
-    stats = load_summary_statistics(pspl_ast_multiphot['ob150211'])
-
-    return stats
+    target = 'ob150211'
     
+    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
-def load_summary_statistics(mnest_base):
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_src1': '$I_{src}$ (mag)',
+              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'thetaE':   '$\\theta_E$ (mas)',
+              'piS':      '$\pi_S$ (mas)',
+              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
+              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
+              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
+              'xS0_N':    '$x_{S0,\delta}$ (mas)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+             }
+    scale = {'t0':      1.0,
+             'u0_amp':  1.0,
+             'tE':      1.0,
+             'piE_E':   1.0,
+             'piE_N':   1.0,
+             'b_sff1':  1.0,
+             'mag_src1':1.0,
+             'add_err1':1e3,
+             'thetaE':  1.0,
+             'piS':     1.0,
+             'muS_E':   1.0,
+             'muS_N':   1.0,
+             'xS0_E':   1e3,
+             'xS0_N':   1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'add_err2':1e3,
+        }
+    sig_digits = {'t0':       '0.2f',
+                  'u0_amp':   '0.2f',
+                  'tE':       '0.1f',
+                  'piE_E':    '0.3f',
+                  'piE_N':    '0.3f',
+                  'b_sff1':   '0.3f',
+                  'mag_src1': '0.3f',
+                  'add_err1': '0.1f',
+                  'thetaE':   '0.2f',
+                  'piS':      '0.3f',
+                  'muS_E':    '0.2f',
+                  'muS_N':    '0.2f',
+                  'xS0_E':    '0.2f',
+                  'xS0_N':    '0.2f',
+                  'b_sff2':   '0.2f',
+                  'mag_src2': '0.2f',
+                  'add_err2': '0.1f'
+                  }
+
+    pho_u0m = 1
+    pho_u0p = 0
+    ast_u0m = 0
+    ast_u0p = 1
+    
+    tab_file = open(target + '_OGLE_phot_ast.txt', 'w')
+    tab_file.write('log$\mathcal{L}$ '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0m]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$\chi^2_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0m]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+    tab_file.write('$N_{dof}$ ' 
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' & '
+                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + r'\hline ' + '\n')
+    
+    for key, label in labels.items():
+        # We will have 4 solutions... each has a value and error bar.
+        # Setup an easy way to walk through them (and rescale) as necessary.
+        val_dict = [stats_pho, stats_ast, stats_pho, stats_ast]
+        val_mode = [pho_u0m, ast_u0m, pho_u0p, ast_u0p]
+
+        tab_file.write(label)
+                           
+        for ss in range(len(val_dict)):
+            stats = val_dict[ss]
+            
+            if ('MaxLike_' + key in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                
+                val = stats['MaxLike_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+
+                val *= scale[key]
+                elo *= scale[key]
+                ehi *= scale[key]
+
+                tab_file.write(fmt.format(val, elo, ehi))
+            else:
+                fmt = ' & & '
+                tab_file.write(fmt)
+
+        tab_file.write(' \\\ \n')
+    
+    return
+
+
+
+
+def load_summary_statistics(mnest_base, verbose=False):
     info_file = open(mnest_base + 'params.yaml', 'r')
     info = yaml.full_load(info_file)
     
@@ -1741,20 +2201,28 @@ def load_summary_statistics(mnest_base):
                                       multiply_error_on_photometry = info['multiply_error_on_photometry'],
                                       outputfiles_basename = mnest_base)
 
-    stats = calc_summary_statistics(fitter)
+    stats = calc_summary_statistics(fitter, verbose=verbose)
 
-    return stats
+    return stats, my_data, my_model
     
 
-def calc_summary_statistics(fitter):
+def calc_summary_statistics(fitter, verbose=False):
     # Get the number of modes.
     summ_tab = Table.read(fitter.outputfiles_basename + 'summary.txt', format='ascii')
     N_modes = len(summ_tab) - 1
     
     # Calculate the number of data points we have all together.
-    N_data = get_num_data_points(fitter.data)
+    N_data = get_num_data_points(fitter.data,
+                                 astrometryFlag=fitter.model_class.astrometryFlag,
+                                 verbose=verbose)
+    
     N_params = len(fitter.fitter_param_names)
     N_dof = N_data - N_params
+
+    if verbose:
+        print('**** calc_summary_statistics: ****')
+        print('Model = ', type(fitter.model_class).__name__)
+        print('Data = ', fitter.data.keys())
 
     # First, we want the statistics for the following types of solutions.
     sol_types = ['maxl', 'mean', 'map', 'median']
@@ -1822,16 +2290,17 @@ def calc_summary_statistics(fitter):
                     if 'lo68_' + param not in stats.colnames:
                         stats['lo68_' + param] = 0.0
                         stats['hi68_' + param] = 0.0
-                    stats['lo68_' + param][nn] = best_parerr[param][0]
-                    stats['hi68_' + param][nn] = best_parerr[param][1]
-
-                
+                    # Add back in the median to get the actual value (not diff on something).
+                    stats['lo68_' + param][nn] = best_par[param] - best_parerr[param][0]
+                    stats['hi68_' + param][nn] = best_par[param] + best_parerr[param][1]
             
         # Get the evidence values out of the _stats.dat file.
         if 'logZ' not in stats.colnames:
             stats['logZ'] = 0.0
         stats['logZ'][nn] = smy['logZ'][nn]
 
+    # Add number of degrees of freedom
+    stats['N_dof'] = N_dof
 
     # Sort such that the modes are in reverse order of evidence.
     # Increasing logZ (nan's are at the end)
@@ -2037,256 +2506,6 @@ def calc_BIC(n, k, maxlogL):
     bic = np.log(n) * k - 2 * maxlogL
 
     return bic
-
-def OB120169_OGLE_phot_table():
-    # Figure out what chi2 for the maxlikelihood solution is.
-    ob120169_add = get_Rchi2('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_')
-
-    rchi2_1 = ob120169_add[1][0] # CHECK THIS!!!!!!!
-    rchi2_2 = ob120169_add[1][1] 
-
-    data = munge.getdata2('ob120169',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob120169_add']
-    runid = 'c3_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    # Posterior separated by modes.
-    res = fitter.load_mnest_modes_results_for_dynesty()
-
-    mode1_ci = []
-    mode2_ci = []
-    mode1_ml = []
-    mode2_ml = []
-
-    for nn in np.arange(len(labels)):
-        # Calculate 68%  credible interval.                                  
-        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
-        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
-        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
-        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
-
-    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
-    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
-
-    with open('OB120169_OGLE_phot.txt', 'a+') as tab_file:
-        tab_file.write('log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
-                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
-                       +
-                       '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
-                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
-                       + r'\hline ' + '\n')
-        for ll, label in enumerate(labels):
-            if label == r'$\varepsilon_a$ (mag)':
-                tab_file.write(label + ' & ' 
-                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-            else:       
-                tab_file.write(label + ' & ' 
-                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-
-    return
-
-
-def OB120169_OGLE_phot_astrom_table():
-    # Figure out what chi2 for the maxlikelihood solution is.
-    ob120169_add = get_Rchi2('ob120169', 'add', ogle_phot['ob120169_add'], 'c3_')
-
-    rchi2_1 = ob120169_add[1][0] # CHECK THIS!!!!!!!
-    rchi2_2 = ob120169_add[1][1] 
-
-    data = munge.getdata2('ob120169',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob120169_add']
-    runid = 'c3_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    # Posterior separated by modes.
-    res = fitter.load_mnest_modes_results_for_dynesty()
-
-    mode1_ci = []
-    mode2_ci = []
-    mode1_ml = []
-    mode2_ml = []
-
-    for nn in np.arange(len(labels)):
-        # Calculate 68%  credible interval.                                  
-        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
-        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
-        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
-        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
-
-    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
-    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
-
-    with open('OB120169_OGLE_phot.txt', 'a+') as tab_file:
-        tab_file.write('log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
-                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
-                       +
-                       '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
-                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
-                       + r'\hline ' + '\n')
-        for ll, label in enumerate(labels):
-            if label == r'$\varepsilon_a$ (mag)':
-                tab_file.write(label + ' & ' 
-                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-            else:       
-                tab_file.write(label + ' & ' 
-                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-
-    return
-
-
-def OB120169_OGLE_phot_plot_fits():
-    data = munge.getdata2('ob120169',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob120169_add']
-    runid = 'c3_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    # Complete posterior.
-    res = fitter.load_mnest_results_for_dynesty()
-    smy = fitter.load_mnest_summary()
-
-    maxL1 = []
-    maxL2 = []
-    for param in fitter.all_param_names:
-        maxL1.append(smy['MaxLike_' + param][1]) 
-        maxL2.append(smy['MaxLike_' + param][2]) 
-
-#    model_fitter.postplot(res, labels=labels, quantiles=None, 
-#                          show_titles=False, truths1=maxL1, truths2=maxL2)
-#    plt.savefig('OB120169_OGLE_phot_posterior.png')
-
-    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
-                                   truths1=maxL1, truths2=maxL2)
-    ax = plt.gca()
-    ax.tick_params(axis='both', which='major', labelsize=10)
-    plt.savefig('OB120169_OGLE_phot_corner.png')
-
-    # Posterior separated by modes.
-    res = fitter.load_mnest_modes_results_for_dynesty()
-
-    model_fitter.postplot(res[0], labels=labels, truths1=maxL1, # truths2=res[0]['samples'][-1],
-                          post_color='red',
-                          quantiles=[0.16, 0.84], show_titles=False)
-    plt.savefig('OB120169_OGLE_mode1_phot_posterior.png')
-
-    model_fitter.postplot(res[1], labels=labels, truths2=maxL2, # truths1=res[1]['samples'][-1],
-                          quantiles=[0.16, 0.84], show_titles=False)
-    plt.savefig('OB120169_OGLE_mode2_phot_posterior.png')
-
-#    model_fitter.cornerplot_2truth(res[0], labels=labels, quantiles=None,
-#                                   truths1=maxL1)
-#    ax = plt.gca()
-#    ax.tick_params(axis='both', which='major', labelsize=10)
-#    plt.savefig('OB120169_OGLE_mode1_phot_corner.png')
-#
-#    model_fitter.cornerplot_2truth(res[1], labels=labels, quantiles=None,
-#                                   truths2=maxL2)
-#    ax = plt.gca()
-#    ax.tick_params(axis='both', which='major', labelsize=10)
-#    plt.savefig('OB120169_OGLE_mode2_phot_corner.png')
-
-
-def OB150211_OGLE_phot_table():
-    # Figure out what chi2 for the maxlikelihood solution is.
-    ob150211_add = get_Rchi2('ob150211', 'add', ogle_phot['ob150211_add'], 'a4_')
-
-    rchi2_1 = ob150211_add[1][0] # CHECK THIS!!!!!!!
-    rchi2_2 = ob150211_add[1][1] 
-
-    data = munge.getdata2('ob150211',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob150211_add']
-    runid = 'a4_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    # Posterior separated by modes.
-    res = fitter.load_mnest_modes_results_for_dynesty()
-
-    mode1_ci = []
-    mode2_ci = []
-    mode1_ml = []
-    mode2_ml = []
-
-    for nn in np.arange(len(labels)):
-        # Calculate 68%  credible interval.                                  
-        mode1_ci.append(model_fitter.weighted_quantile(res[0]['samples'][:, nn], [0.16, 0.84], sample_weight=res[0]['weights']))
-        mode2_ci.append(model_fitter.weighted_quantile(res[1]['samples'][:, nn], [0.16, 0.84], sample_weight=res[1]['weights']))
-        mode1_ml.append(res[0]['samples'][-1, nn]) # CHECK
-        mode2_ml.append(res[1]['samples'][-1, nn]) # CHECK
-
-    maxlogL_1 = -0.5 * res[0]['loglike'][-1]
-    maxlogL_2 = -0.5 * res[1]['loglike'][-1]
-
-    with open('OB150211_OGLE_phot.txt', 'a+') as tab_file:
-        tab_file.write('log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(maxlogL_1) + ' & & ' 
-                       + '{0:.2f}'.format(maxlogL_2) + r' & \\ ' + '\n'
-                       +
-                       '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2_1) + ' & & ' 
-                       + '{0:.2f}'.format(rchi2_2) + r' & \\ ' + '\n'
-                       + r'\hline ' + '\n')
-        for ll, label in enumerate(labels):
-            if label == r'$\varepsilon_a$ (mag)':
-                tab_file.write(label + ' & ' 
-                               + '{0:.3f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.3f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.3f}, {1:.3f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-            else:       
-                tab_file.write(label + ' & ' 
-                               + '{0:.2f}'.format(mode1_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode1_ci[ll][0], mode1_ci[ll][1]) + ' & '
-                               + '{0:.2f}'.format(mode2_ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(mode2_ci[ll][0], mode2_ci[ll][1]) + r' \\ ' + '\n')
-
-    return
 
 
 def OB150211_OGLE_phot_plot_fits():
@@ -4963,20 +5182,29 @@ def plot_vpd():
 
     return
         
-def get_num_data_points(data_dict):
+def get_num_data_points(data_dict, astrometryFlag=True, verbose=False):
     N_data = 0
 
     # Loop through photometry data
     for pp in range(len(data_dict['phot_files'])):
-        N_data += len(data_dict['t_phot{0:d}'.format(pp+1)])
+        N_phot_pp = len(data_dict['t_phot{0:d}'.format(pp+1)])
+        if verbose: print('N_phot_pp = ', N_phot_pp)
+        N_data += N_phot_pp
 
     # Loop through astrometry data
-    for aa in range(len(data_dict['ast_files'])):
-        if len(data_dict['ast_files']) > 1:
-            N_data += len(data_dict['t_ast{0:d}'.format(pp+1)])
-        else:
-            N_data += len(data_dict['t_ast'])
+    if astrometryFlag:
+        for aa in range(len(data_dict['ast_files'])):
+            # Multiply astrometry by 2 to account for X and Y independent positions.
+            if len(data_dict['ast_files']) > 1:
+                N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(pp+1)])
+            else:
+                N_ast_aa = 2 * len(data_dict['t_ast'])
+                
+            if verbose: print('N_ast_aa = ', N_ast_aa)
+            N_data += N_ast_aa
 
+    if verbose: print('N_data = ', N_data)
+    
     return N_data
 
 
