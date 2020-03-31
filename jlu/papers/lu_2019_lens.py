@@ -115,14 +115,14 @@ ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 
 
 def all_paper():
-    # plot_images()
-    # make_obs_table()
-    # plot_pos_err()
+    plot_images()
+    make_obs_table()
+    plot_pos_err()
 
-    # plot_ob120169_phot_ast()
-    # plot_ob140613_phot_ast()
-    # plot_ob150029_phot_ast()
-    # plot_ob150211_phot_ast()
+    plot_ob120169_phot_ast()
+    plot_ob140613_phot_ast()
+    plot_ob150029_phot_ast()
+    plot_ob150211_phot_ast()
 
     # PSPL Fit Tables
     table_ob120169_phot_astrom()
@@ -130,8 +130,16 @@ def all_paper():
     table_ob150029_phot_astrom()
     table_ob150211_phot_astrom()
 
+    # Mass Posteriors
+
+    # tE vs. piE vs. deltaC plots
+    tE_piE()
+    shift_vs_piE()
+
+    plot_cmds()
+
     # Appendix
-    # make_BIC_comparison_table()
+    make_BIC_comparison_table()
 
     return
 
@@ -488,10 +496,7 @@ def plot_images():
 
 
 def plot_ob120169_phot_ast():
-    data = munge.getdata('ob120169', use_astrom_phot=True)
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
-                           outputfiles_basename = pspl_ast_multiphot['ob120169'])
+    mod_fit, data = get_data_and_fitter(pspl_ast_multiphot['ob120169'])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     img_f = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
 
@@ -501,10 +506,7 @@ def plot_ob120169_phot_ast():
     plot_4panel(data, mod_all[0], 'ob120169', 1, img_f, inset_kw) #ref: 2016-05-24
 
 def plot_ob140613_phot_ast():
-    data = munge.getdata('ob140613', use_astrom_phot=True)
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
-                           outputfiles_basename = pspl_ast_multiphot['ob140613'])
+    mod_fit, data = get_data_and_fitter(pspl_ast_multiphot['ob120169'])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     img_f = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
 
@@ -514,10 +516,7 @@ def plot_ob140613_phot_ast():
     plot_4panel(data, mod_all[0], 'ob140613', 6, img_f, inset_kw) #ref: 2018-08-16
 
 def plot_ob150029_phot_ast():
-    data = munge.getdata('ob150029', use_astrom_phot=True)
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
-                           outputfiles_basename = pspl_ast_multiphot['ob150029'])
+    mod_fit, data = get_data_and_fitter(pspl_ast_multiphot['ob120169'])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     img_f = '/g/lu/data/microlens/17jul19/combo/mag17jul19_ob150029_kp.fits'
 
@@ -527,10 +526,7 @@ def plot_ob150029_phot_ast():
     plot_4panel(data, mod_all[0], 'ob150029', 6, img_f, inset_kw) #ref: 2017-07-19
 
 def plot_ob150211_phot_ast():
-    data = munge.getdata('ob150211', use_astrom_phot=True)
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data,
-                           outputfiles_basename = pspl_ast_multiphot['ob150211'])
+    mod_fit, data = get_data_and_fitter(pspl_ast_multiphot['ob120169'])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     img_f = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
 
@@ -886,326 +882,6 @@ def weighted_avg_and_std(values, weights):
     return (average, np.sqrt(variance))
 
 
-def old_make_tab_9_fit():
-    """
-    Make a table with phot only (Keck + OGLE) fit
-    9_fit_multiphot_only_parallax
-    """
-    # In the order we want them in the table. Use an empty param to indicate
-    # break between fit parameters and unfit parameters.
-    params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
-                   'b_sff1', 'mag1', 'b_sff2', 'mag2', '',
-                   'log_piE']
-
-    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
-              'u0_amp' : [r'$u_0$ ', '${0:.3f}$'],
-              'tE' : [r'$t_E$ (days)', '${0:.1f}$'],
-              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'],
-              'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}$'],
-              'piE' : [r'$\pi_E$', '${0:.3f}$'],
-              'b_sff1' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag1' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
-              'b_sff2' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag2' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
-              'log_piE' : [r'$\mathrm{log}\pi_E$', '${0:.3f}$']}
-
-    # We need a string description of each parameter.
-    desc = {'t0'      : r'Time of closest approach.',
-            'u0_amp'  : r'Closest approach in $\theta_E$ units.',
-            'tE'      : r'Einstein crossing time.',
-            'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
-            'piE_N'   : r'Microlensing parallax in the $\delta$ direction.',
-            'piE'     : r'Microlensing parallax.',
-            'b_sff1'  : r'The source flux fraction in the OGLE aperture, unlensed.',
-            'mag1'    : r'OGLE I-band magnitude of the unlensed source.',
-            'b_sff2'  : r'The source flux fraction in the Keck aperture, unlensed.',
-            'mag2'    : r'Keck Kp-band magnitude of the unlensed source.',
-            'log_piE' : r'Log (base 10) of $\pi_E$.'
-            }
-
-    # Get the data
-    targets = list(epochs.keys())
-    for target in targets:
-        tab = Table.read(pspl_multiphot[target] + 'summary.fits')
-        output = open(paper_dir + target + '_tab_9_fit.txt', 'w')
-        ##########################################
-        # This stuff needs to be done by hand.
-        # If one solution, use global.
-        # If degenerate solutions, give them both.
-        ##########################################
-        if ((target == 'ob120169') | (target == 'ob140613') | (target == 'ob150029')):
-            output.write('Fit & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][0])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
-
-        if target == 'ob150211':
-            output.write('Fit & {}  & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][1])
-                sol2 = p[1].format(tab['MAP_' + pp][2])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
-
-
-def old_make_tab_8_fit():
-    """
-    Make a table with the Kains parametrization
-    8_fit_multiphot_astrom_parallax2
-    """
-    # In the order we want them in the table. Use an empty param to indicate
-    # break between fit parameters and unfit parameters.
-    params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
-                   'b_sff1', 'mag_src1', 'b_sff2', 'mag_src2', 'log_thetaE',
-                   'xS0_E', 'xS0_N', 'muS_E', 'muS_N', 'piS', '',
-                   'log_mL', 'muL_E', 'muL_N', 'muRel_E',
-                   'muRel_N', 'piL', 'piRel', 'log_piE']
-
-    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
-              'u0_amp' : [r'$u_0$ ', '${0:.3f}$'],
-              'tE' : [r'$t_E$ (days)', '${0:.1f}$'],
-              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'],
-              'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}$'],
-              'log_piE' : [r'$\mathrm{log}\pi_E$', '${0:.3f}$'],
-              'b_sff1' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag_src1' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
-              'b_sff2' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag_src2' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
-              'log_mL' : [r'$\mathrm{log}M_L (M_\odot$)', '${0:.1f}$'],
-              'xS0_E' : [r"$x_{S,0,E}$ ($''$)", '${0:.4f}$'],
-              'xS0_N' : [r"$x_{S,0,N}$ ($''$)", '${0:.4f}$'],
-              'beta' : [r'$\beta$ (mas)', '${0:.2f}$'],
-              'muL_E' : [r'$\mu_{L,E}$ (mas/yr)', '${0:.2f}$'],
-              'muL_N' : [r'$\mu_{L,N}$ (mas/yr)', '${0:.2f}$'],
-              'muS_E' : [r'$\mu_{S,E}$ (mas/yr)', '${0:.2f}$'],
-              'muS_N' : [r'$\mu_{S,N}$ (mas/yr)', '${0:.2f}$'],
-              'dL' : [r'$d_L$ (pc)', '${0:.0f}$'],
-              'dS' : [r'$d_S$ (pc)', '${0:.0f}$'],
-              'piL' : [r'$\pi_L$ (mas)', '${0:.4f}$'],
-              'piS' : [r'$\pi_S$ (mas)', '${0:.4f}$'],
-              'piRel' : [r'$\pi_{rel}$ (mas)', '${0:.4f}$'],
-              'dL_dS' : [r'$d_L/d_S$', '${0:.3f}$'],
-              'log_thetaE' : [r'$\mathrm{log}\theta_E$ (mas)', '${0:.2f}$'],
-              'muRel_E' : [r'$\mu_{rel,E}$ (mas/yr)', '${0:.2f}$'],
-              'muRel_N' : [r'$\mu_{rel,N}$ (mas/yr)', '${0:.2f}$']}
-
-    # We need a string description of each parameter.
-    desc = {'t0'      : r'Time of closest approach.',
-            'u0_amp'  : r'Closest approach in $\theta_E$ units.',
-            'tE'      : r'Einstein crossing time.',
-            'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
-            'piE_N'   : r'Microlensing parallax in the $\delta$ direction.',
-            'log_piE'     : r'Log (base 10) of the microlensing parallax.',
-            'b_sff1'  : r'The source flux fraction in the OGLE aperture, unlensed.',
-            'mag_src1'    : r'OGLE I-band magnitude of the unlensed source.',
-            'b_sff2'  : r'The source flux fraction in the Keck aperture, unlensed.',
-            'mag_src2'    : r'Keck Kp-band magnitude of the unlensed source.',
-            'log_mL'      : r'Log (base 10) of the mass of the lens.',
-            'xS0_E'   : r'Relative $\alpha^*$ source position at $t_0$.',
-            'xS0_N'   : r'Relative $\delta$ source positions at $t_0$.',
-            'beta'    : r'Closest angular approach distance.',
-            'muL_E'   : r'Proper motion of the lens in the $\alpha^*$ direction',
-            'muL_N'   : r'Proper motion of the lens in the $\delta$ direction',
-            'muS_E'   : r'Proper motion of the source in the $\alpha^*$ direction',
-            'muS_N'   : r'Proper motion of the source in the $\delta$ direction',
-            'dL'      : r'Distance to the lens.',
-            'dS'      : r'Distance to the source.',
-            'piL'     : r'Lens parallax.',
-            'piS'     : r'Source parallax.',
-            'piRel'   : r'Relative parallax.',
-            'dL_dS'   : r'Distance ratio of lens to source.',
-            'log_thetaE'  : r'Log (base 10) of the angular Einstein radius',
-            'muRel_E' : r'Relative source-lens proper motion in the $\alpha^*$ direction.',
-            'muRel_N' : r'Relative source-lens proper motion in the $\delta$ direction.'
-            }
-
-    # Get the data
-    targets = list(epochs.keys())
-    for target in targets:
-        tab = Table.read(pspl_ast_multiphot[target] + 'summary.fits')
-        output = open(paper_dir + target + '_tab_8_fit.txt', 'w')
-        ##########################################
-        # This stuff needs to be done by hand.
-        # If one solution, use global.
-        # If degenerate solutions, give them both.
-        ##########################################
-        if ((target == 'ob120169') | (target == 'ob140613') | (target == 'ob150029')):
-            output.write('Fit & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][0])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
-
-        if target == 'ob150211':
-            output.write('Fit & {}  & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][1])
-                sol2 = p[1].format(tab['MAP_' + pp][2])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
-
-def make_tab_3_fit():
-    """
-    Make a table with OGLE phot only fit
-    3_fit_phot_parallax
-    """
-    # In the order we want them in the table. Use an empty param to indicate
-    # break between fit parameters and unfit parameters.
-    params_list = ['t0', 'u0_amp', 'tE', 'piE_E', 'piE_N',
-                   'b_sff', 'mag_src']
-
-    params = {'t0' : [r'$t_0$ (MJD)', '${0:.2f}$'],
-              'u0_amp' : [r'$u_0$ ', '${0:.3f}$'],
-              'tE' : [r'$t_E$ (days)', '${0:.1f}$'],
-              'piE_E' : [r'$\pi_{E,E}$ ', '${0:.3f}$'],
-              'piE_N' : [r'$\pi_{E,N}$ ', '${0:.3f}$'],
-              'piE' : [r'$\pi_E$', '${0:.3f}$'],
-              'b_sff' : [r'$b_{SFF}$', '${0:.3f}$'],
-              'mag_src' : [r'$I_{OGLE}$ (mag)', '${0:.4f}$'],
-              'piE' : [r'$\mathrm{log}\pi_E$', '${0:.3f}$']}
-
-    # We need a string description of each parameter.
-    desc = {'t0'      : r'Time of closest approach.',
-            'u0_amp'  : r'Closest approach in $\theta_E$ units.',
-            'tE'      : r'Einstein crossing time.',
-            'piE_E'   : r'Microlensing parallax in the $\alpha^*$ direction.',
-            'piE_N'   : r'Microlensing parallax in the $\delta$ direction.',
-            'piE'     : r'Microlensing parallax.',
-            'b_sff'  : r'The source flux fraction in the OGLE aperture, unlensed.',
-            'mag_src'    : r'OGLE I-band magnitude of the unlensed source.',
-            'log_piE' : r'Microlensing parallax.'
-            }
-
-    # Get the data
-    targets = list(epochs.keys())
-    for target in targets:
-        tab = Table.read(pspl_phot[target] + 'summary.fits')
-        output = open(paper_dir + target + '_tab_3_fit.txt', 'w')
-        ##########################################
-        # This stuff needs to be done by hand.
-        # If one solution, use global.
-        # If degenerate solutions, give them both.
-        ##########################################
-        if ((target == 'ob140613') | (target == 'ob150029')):
-            output.write('Fit & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][0])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][0]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
-
-        if ((target == 'ob120169') | (target == 'ob150211')):
-            output.write('Fit & {}  & {} & {} \\\\\n')
-            output.write('\hline \n')
-            for pp in params_list:
-                # Check if we should switch to derived parameters when we
-                # encounter a '' in the parameters list.
-                if pp == '':
-                    output.write('\hline\n')
-                    output.write('Derived & {} & {} & {} \\\\\n')
-                    output.write('\hline\n')
-                    continue
-
-                p = params[pp]
-
-                sol1 = p[1].format(tab['MAP_' + pp][1])
-                sol2 = p[1].format(tab['MAP_' + pp][2])
-
-                output.write(p[0] + ' & ' + sol1 + ' & ' + sol2 + ' & ' + desc[pp] + ' \\\\\n')
-
-            output.write('log$\mathcal{Z}$' + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][1]) + ' & ' +
-                         '{:.2f}'.format(tab['logZ'][2]) + ' & ' +
-                         'Local Evidence')
-
-            output.close()
 
 
 def tE_piE():
@@ -1487,7 +1163,7 @@ def calc_velocity():
     import astropy.units as u
 
     data = munge_ob150211.getdata()
-    mnest_root = pspl_ast_phot['ob150211']
+    mnest_root = pspl_ast_multiphot['ob150211']
 
     # Load up the best-fit data
     _in = open(mnest_root + '_best.fits', 'rb')
@@ -2183,8 +1859,23 @@ def table_ob150211_phot_astrom():
     
     return
 
+def get_data_and_fitter(mnest_base):
+    info_file = open(mnest_base + 'params.yaml', 'r')
+    info = yaml.full_load(info_file)
+    
+    my_model = getattr(model, info['model'])
+    my_data = munge.getdata2(info['target'].lower(), 
+                             phot_data=info['phot_data'], 
+                             ast_data=info['astrom_data'])
 
+    # Load up the first fitter object to get the parameter names.
+    fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      add_error_on_photometry = info['add_error_on_photometry'],
+                                      multiply_error_on_photometry = info['multiply_error_on_photometry'],
+                                      outputfiles_basename = mnest_base)
 
+    return fitter, my_data
+    
 
 def load_summary_statistics(mnest_base, verbose=False):
     info_file = open(mnest_base + 'params.yaml', 'r')
@@ -2447,284 +2138,238 @@ def calc_reduced_chi2(target, errtype, dir, runid):
     return Rchi2, Rchi2_modes
 
 
-def get_Rchi2(target, errtype, dir, runid):
-    """
-    Calculate the reduced chi2 and BIC values for a run.
+# def get_Rchi2(target, errtype, dir, runid):
+#     """
+#     Calculate the reduced chi2 and BIC values for a run.
 
-    target : 'ob120169', 'ob140613', 'ob150029', or 'ob150211'
+#     target : 'ob120169', 'ob140613', 'ob150029', or 'ob150211'
 
-    errtype : 'add', 'mult', or 'none'
+#     errtype : 'add', 'mult', or 'none'
 
-    dir : path to the run's data
+#     dir : path to the run's data
 
-    runid : the run's outputfiles_basename
-    """
-    data = munge.getdata2(target, 
-                          phot_data=['I_OGLE'], 
-                          ast_data=['Kp_Keck'])
-    ndata = len(data['mag'])
+#     runid : the run's outputfiles_basename
+#     """
+#     data = munge.getdata2(target, 
+#                           phot_data=['I_OGLE'], 
+#                           ast_data=['Kp_Keck'])
+#     ndata = len(data['mag'])
 
-    # Determine fitter based on error
-    if errtype == 'none':
-        fitter = model_fitter.PSPL_phot_parallax_Solver(data,
-                                                        outputfiles_basename = dir + runid)
+#     # Determine fitter based on error
+#     if errtype == 'none':
+#         fitter = model_fitter.PSPL_phot_parallax_Solver(data,
+#                                                         outputfiles_basename = dir + runid)
 
-    if errtype == 'mult':
-        fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
-                                                             outputfiles_basename = dir + runid)
+#     if errtype == 'mult':
+#         fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
+#                                                              outputfiles_basename = dir + runid)
 
-    if errtype == 'add':
-        fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                            outputfiles_basename = dir + runid)
+#     if errtype == 'add':
+#         fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+#                                                             outputfiles_basename = dir + runid)
 
-    nparams = fitter.n_dims 
+#     nparams = fitter.n_dims 
 
-    outdir = './'
-    os.makedirs(outdir, exist_ok=True)
+#     outdir = './'
+#     os.makedirs(outdir, exist_ok=True)
 
-    # Rchi2 global
-    param = fitter.get_best_fit(def_best='maxl')
-    Rchi2 = fitter.calc_chi2()/(ndata - nparams)
+#     # Rchi2 global
+#     param = fitter.get_best_fit(def_best='maxl')
+#     Rchi2 = fitter.calc_chi2()/(ndata - nparams)
 
-    # Rchi2 modes
-    modes = fitter.get_best_fit_modes(def_best='maxl')
-    Rchi2_modes = []
-    for mm in np.arange(len(modes)):
-        Rchi2 = fitter.calc_chi2(modes[mm])/(ndata - nparams)
-        Rchi2_modes.append(Rchi2)
+#     # Rchi2 modes
+#     modes = fitter.get_best_fit_modes(def_best='maxl')
+#     Rchi2_modes = []
+#     for mm in np.arange(len(modes)):
+#         Rchi2 = fitter.calc_chi2(modes[mm])/(ndata - nparams)
+#         Rchi2_modes.append(Rchi2)
     
-    return Rchi2, Rchi2_modes
+#     return Rchi2, Rchi2_modes
 
 
-def calc_BIC(n, k, maxlogL):
-    """
-    maxL = maximized value of the LOG likelihood function
-    n = number of data points
-    k = number of parameters in model
-    """
+# def calc_BIC(n, k, maxlogL):
+#     """
+#     maxL = maximized value of the LOG likelihood function
+#     n = number of data points
+#     k = number of parameters in model
+#     """
 
-    bic = np.log(n) * k - 2 * maxlogL
+#     bic = np.log(n) * k - 2 * maxlogL
 
-    return bic
-
-
-def OB150211_OGLE_phot_plot_fits():
-    data = munge.getdata2('ob150211',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob150211_add']
-    runid = 'a4_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    # Complete posterior.
-    res = fitter.load_mnest_results_for_dynesty()
-    smy = fitter.load_mnest_summary()
-
-    maxL1 = []
-    maxL2 = []
-    for param in fitter.all_param_names:
-        maxL1.append(smy['MaxLike_' + param][1]) 
-        maxL2.append(smy['MaxLike_' + param][2]) 
-
-#    model_fitter.postplot(res, labels=labels, quantiles=None,
-#                          show_titles=False, truths1=maxL1, truths2=maxL2)
-#    plt.savefig('OB150211_OGLE_phot_posterior.png')
-
-    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
-                                   truths1=maxL1, truths2=maxL2)
-    ax = plt.gca()
-    ax.tick_params(axis='both', which='major', labelsize=10)
-    plt.savefig('OB150211_OGLE_phot_corner.png')
-
-    # Posterior separated by modes.
-    res = fitter.load_mnest_modes_results_for_dynesty()
-
-    model_fitter.postplot(res[0], labels=labels, truths1=maxL1, # truths2=res[0]['samples'][-1],
-                          post_color='red',
-                          quantiles=[0.16, 0.84], show_titles=False)
-    plt.savefig('OB150211_OGLE_mode1_phot_posterior.png')
-
-    model_fitter.postplot(res[1], labels=labels, truths2=maxL2, # truths1=res[1]['samples'][-1],
-                          quantiles=[0.16, 0.84], show_titles=False)
-    plt.savefig('OB150211_OGLE_mode2_phot_posterior.png')
-
-#    model_fitter.cornerplot_2truth(res[0], labels=labels, quantiles=None,
-#                                   truths1=maxL1)
-#    ax = plt.gca()
-#    ax.tick_params(axis='both', which='major', labelsize=10)
-#    plt.savefig('OB150211_OGLE_mode1_phot_corner.png')
-#
-#    model_fitter.cornerplot_2truth(res[1], labels=labels, quantiles=None,
-#                                   truths2=maxL2)
-#    ax = plt.gca()
-#    ax.tick_params(axis='both', which='major', labelsize=10)
-#    plt.savefig('OB150211_OGLE_mode2_phot_corner.png')
+#     return bic
 
 
-def OB140613_OGLE_phot_table():
-    """
-    One mode, global solution is reported.
-    """
-    ob140613_mult = get_Rchi2('ob140613', 'mult', ogle_phot['ob140613_mult'], 'c8_')
-    rchi2 = ob140613_mult[0]
+# def OB150211_OGLE_phot_plot_fits():
+#     data = munge.getdata2('ob150211',
+#                           phot_data=['I_OGLE'],
+#                           ast_data=['Kp_Keck'])  
 
-    data = munge.getdata2('ob140613',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
+#     dir = ogle_phot['ob150211_add']
+#     runid = 'a4_'
 
-    dir = ogle_phot['ob140613_mult']
-    runid = 'c8_'
+#     fitter = model_fitter.PSPL_Solver(data,
+#                                       outputfiles_basename=dir + runid)
 
-    fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
-                                                         outputfiles_basename=dir + runid)
+#     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+#               '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+#     # Complete posterior.
+#     res = fitter.load_mnest_results_for_dynesty()
+#     smy = fitter.load_mnest_summary()
+
+#     maxL1 = []
+#     maxL2 = []
+#     for param in fitter.all_param_names:
+#         maxL1.append(smy['MaxLike_' + param][1]) 
+#         maxL2.append(smy['MaxLike_' + param][2]) 
+
+# #    model_fitter.postplot(res, labels=labels, quantiles=None,
+# #                          show_titles=False, truths1=maxL1, truths2=maxL2)
+# #    plt.savefig('OB150211_OGLE_phot_posterior.png')
+
+#     model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
+#                                    truths1=maxL1, truths2=maxL2)
+#     ax = plt.gca()
+#     ax.tick_params(axis='both', which='major', labelsize=10)
+#     plt.savefig('OB150211_OGLE_phot_corner.png')
+
+#     # Posterior separated by modes.
+#     res = fitter.load_mnest_modes_results_for_dynesty()
+
+#     model_fitter.postplot(res[0], labels=labels, truths1=maxL1, # truths2=res[0]['samples'][-1],
+#                           post_color='red',
+#                           quantiles=[0.16, 0.84], show_titles=False)
+#     plt.savefig('OB150211_OGLE_mode1_phot_posterior.png')
+
+#     model_fitter.postplot(res[1], labels=labels, truths2=maxL2, # truths1=res[1]['samples'][-1],
+#                           quantiles=[0.16, 0.84], show_titles=False)
+#     plt.savefig('OB150211_OGLE_mode2_phot_posterior.png')
+
+# #    model_fitter.cornerplot_2truth(res[0], labels=labels, quantiles=None,
+# #                                   truths1=maxL1)
+# #    ax = plt.gca()
+# #    ax.tick_params(axis='both', which='major', labelsize=10)
+# #    plt.savefig('OB150211_OGLE_mode1_phot_corner.png')
+# #
+# #    model_fitter.cornerplot_2truth(res[1], labels=labels, quantiles=None,
+# #                                   truths2=maxL2)
+# #    ax = plt.gca()
+# #    ax.tick_params(axis='both', which='major', labelsize=10)
+# #    plt.savefig('OB150211_OGLE_mode2_phot_corner.png')
+
+
+# def OB140613_OGLE_phot_plot_fits():
+#     data = munge.getdata2('ob140613',
+#                           phot_data=['I_OGLE'],
+#                           ast_data=['Kp_Keck'])  
+
+#     dir = ogle_phot['ob140613_mult']
+#     runid = 'c8_'
+
+#     fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
+#                                                          outputfiles_basename=dir + runid)
+#     res = fitter.load_mnest_results_for_dynesty()
+#     smy = fitter.load_mnest_summary()
     
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_m$'] 
+#     maxL1 = []
+#     for param in fitter.all_param_names:
+#         maxL1.append(smy['MaxLike_' + param][0]) 
 
-    res = fitter.load_mnest_results_for_dynesty()
+#     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+#               '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_m$'] 
 
-    ci = []
-    ml = []
+#     model_fitter.postplot(res, labels=labels, quantiles=None,
+#                           show_titles=False, truths1=maxL1)
+#     plt.savefig('OB140613_OGLE_phot_posterior.png')
 
-    for nn in np.arange(len(labels)):
-        # Calculate 68%  credible interval.                                  
-        ci.append(model_fitter.weighted_quantile(res['samples'][:, nn], [0.16, 0.84], sample_weight=res['weights']))
-        ml.append(res['samples'][-1, nn]) # CHECK
+#     model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
+#                                    truths1=maxL1)
+#     ax = plt.gca()
+#     ax.tick_params(axis='both', which='major', labelsize=10)
+#     plt.savefig('OB140613_OGLE_phot_corner.png')
 
-    maxlogL = -0.5 * res['loglike'][-1]
 
-    with open('OB140613_OGLE_phot.txt', 'a+') as tab_file:
-        tab_file.write('log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(maxlogL) + r' & \\ ' + '\n'
-                       +
-                       '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2) + r' & \\ ' + '\n'
-                       + r'\hline ' + '\n')
-        for ll, label in enumerate(labels):
-            tab_file.write(label + ' & ' 
-                           + '{0:.2f}'.format(ml[ll]) + ' & '
-                           + '[{0:.2f}, {1:.2f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+# def OB150029_OGLE_phot_table():
+#     """
+#     One mode, global solution is reported.
+#     """
+#     ob150029_add = get_Rchi2('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
+#     rchi2 = ob150029_add[0]
 
-    return
+#     data = munge.getdata2('ob150029',
+#                           phot_data=['I_OGLE'],
+#                           ast_data=['Kp_Keck'])  
 
-def OB140613_OGLE_phot_plot_fits():
-    data = munge.getdata2('ob140613',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
+#     dir = ogle_phot['ob150029_add']
+#     runid = 'd8_'
 
-    dir = ogle_phot['ob140613_mult']
-    runid = 'c8_'
+#     fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+#                                                         outputfiles_basename=dir + runid)
 
-    fitter = model_fitter.PSPL_phot_parallax_merr_Solver(data,
-                                                         outputfiles_basename=dir + runid)
-    res = fitter.load_mnest_results_for_dynesty()
-    smy = fitter.load_mnest_summary()
+#     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+#               '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
+
+#     res = fitter.load_mnest_results_for_dynesty()
+
+#     ci = []
+#     ml = []
+
+#     for nn in np.arange(len(labels)):
+#         # Calculate 68%  credible interval.                                  
+#         ci.append(model_fitter.weighted_quantile(res['samples'][:, nn], [0.16, 0.84], sample_weight=res['weights']))
+#         ml.append(res['samples'][-1, nn]) # CHECK
+
+#     maxlogL = -0.5 * res['loglike'][-1]
+
+#     with open('OB150029_OGLE_phot.txt', 'a+') as tab_file:
+#         tab_file.write('log$\mathcal{L}$' + ' & ' 
+#                        + '{0:.2f}'.format(maxlogL) + r' & \\ ' + '\n'
+#                        +
+#                        '$\chi^2_{dof}$' + ' & ' 
+#                        + '{0:.2f}'.format(rchi2) + r' & \\ ' + '\n'
+#                        + r'\hline ' + '\n')
+#         for ll, label in enumerate(labels):
+#             if label == r'$\varepsilon_a$ (mag)':
+#                 tab_file.write(label + ' & ' 
+#                                + '{0:.4f}'.format(ml[ll]) + ' & '
+#                                + '[{0:.4f}, {1:.4f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+#             else:
+#                 tab_file.write(label + ' & ' 
+#                                + '{0:.2f}'.format(ml[ll]) + ' & '
+#                                + '[{0:.2f}, {1:.2f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
+
+#     return
+
+
+# def OB150029_OGLE_phot_plot_fits():
+#     data = munge.getdata2('ob150029',
+#                           phot_data=['I_OGLE'],
+#                           ast_data=['Kp_Keck'])  
+
+#     dir = ogle_phot['ob150029_add']
+#     runid = 'd8_'
+
+#     fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
+#                                                         outputfiles_basename=dir + runid)
+#     res = fitter.load_mnest_results_for_dynesty()
+#     smy = fitter.load_mnest_summary()
     
-    maxL1 = []
-    for param in fitter.all_param_names:
-        maxL1.append(smy['MaxLike_' + param][0]) 
+#     maxL1 = []
+#     for param in fitter.all_param_names:
+#         maxL1.append(smy['MaxLike_' + param][0]) 
 
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_m$'] 
+#     labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
+#               '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
 
-    model_fitter.postplot(res, labels=labels, quantiles=None,
-                          show_titles=False, truths1=maxL1)
-    plt.savefig('OB140613_OGLE_phot_posterior.png')
+#     model_fitter.postplot(res, labels=labels, quantiles=None,
+#                           show_titles=False, truths1=maxL1)
+#     plt.savefig('OB150029_OGLE_phot_posterior.png')
 
-    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
-                                   truths1=maxL1)
-    ax = plt.gca()
-    ax.tick_params(axis='both', which='major', labelsize=10)
-    plt.savefig('OB140613_OGLE_phot_corner.png')
-
-
-def OB150029_OGLE_phot_table():
-    """
-    One mode, global solution is reported.
-    """
-    ob150029_add = get_Rchi2('ob150029', 'add', ogle_phot['ob150029_add'], 'd8_')
-    rchi2 = ob150029_add[0]
-
-    data = munge.getdata2('ob150029',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob150029_add']
-    runid = 'd8_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    res = fitter.load_mnest_results_for_dynesty()
-
-    ci = []
-    ml = []
-
-    for nn in np.arange(len(labels)):
-        # Calculate 68%  credible interval.                                  
-        ci.append(model_fitter.weighted_quantile(res['samples'][:, nn], [0.16, 0.84], sample_weight=res['weights']))
-        ml.append(res['samples'][-1, nn]) # CHECK
-
-    maxlogL = -0.5 * res['loglike'][-1]
-
-    with open('OB150029_OGLE_phot.txt', 'a+') as tab_file:
-        tab_file.write('log$\mathcal{L}$' + ' & ' 
-                       + '{0:.2f}'.format(maxlogL) + r' & \\ ' + '\n'
-                       +
-                       '$\chi^2_{dof}$' + ' & ' 
-                       + '{0:.2f}'.format(rchi2) + r' & \\ ' + '\n'
-                       + r'\hline ' + '\n')
-        for ll, label in enumerate(labels):
-            if label == r'$\varepsilon_a$ (mag)':
-                tab_file.write(label + ' & ' 
-                               + '{0:.4f}'.format(ml[ll]) + ' & '
-                               + '[{0:.4f}, {1:.4f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
-            else:
-                tab_file.write(label + ' & ' 
-                               + '{0:.2f}'.format(ml[ll]) + ' & '
-                               + '[{0:.2f}, {1:.2f}]'.format(ci[ll][0], ci[ll][1]) + r' \\ ' + '\n')
-
-    return
-
-
-def OB150029_OGLE_phot_plot_fits():
-    data = munge.getdata2('ob150029',
-                          phot_data=['I_OGLE'],
-                          ast_data=['Kp_Keck'])  
-
-    dir = ogle_phot['ob150029_add']
-    runid = 'd8_'
-
-    fitter = model_fitter.PSPL_phot_parallax_err_Solver(data,
-                                                        outputfiles_basename=dir + runid)
-    res = fitter.load_mnest_results_for_dynesty()
-    smy = fitter.load_mnest_summary()
-    
-    maxL1 = []
-    for param in fitter.all_param_names:
-        maxL1.append(smy['MaxLike_' + param][0]) 
-
-    labels = ['$t_0$ (MJD)', '$u_0$', '$t_E$ (days)', '$\pi_{E,E}$',
-              '$\pi_{E,N}$', '$b_{SFF}$', '$I_{src}$ (mag)', r'$\varepsilon_a$ (mag)'] 
-
-    model_fitter.postplot(res, labels=labels, quantiles=None,
-                          show_titles=False, truths1=maxL1)
-    plt.savefig('OB150029_OGLE_phot_posterior.png')
-
-    model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
-                                   truths1=maxL1)
-    ax = plt.gca()
-    ax.tick_params(axis='both', which='major', labelsize=10)
-    plt.savefig('OB150029_OGLE_phot_corner.png')
+#     model_fitter.cornerplot_2truth(res, labels=labels, quantiles=None,
+#                                    truths1=maxL1)
+#     ax = plt.gca()
+#     ax.tick_params(axis='both', which='major', labelsize=10)
+#     plt.savefig('OB150029_OGLE_phot_corner.png')
 
 
 def piE_tE_phot_only_fits():
@@ -3291,7 +2936,7 @@ def plot_astrometry(target):
     #                                    np.array([best['muS_E'], best['muS_N']]),
     #                                    best['dL'], best['dS'], best['b_sff'], best['mag_src'])
 
-    fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_phot[target])
+    fitter = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=pspl_ast_multiphot[target])
     fitter.load_mnest_results()
     mymodel = fitter.get_best_fit_model(use_median=True)
 
@@ -3451,8 +3096,9 @@ def plot_ob150211_mass_posterior():
     fontsize1 = 18
     fontsize2 = 14
 
-    tab = Table.read(pspl_ast_phot['ob150211'] + '.fits')
-    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    tab = Table.read(pspl_ast_multiphot['ob150211'] + '.fits')
+    smy = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
+    
     print(smy['MAP mL'])
     mmax = tab['mL'].max()
     mmin = tab['mL'].min()
@@ -3591,8 +3237,8 @@ def plot_ob150211_mass_posterior():
     fontsize1 = 18
     fontsize2 = 14
 
-    tab = Table.read(pspl_ast_phot['ob150211'] + '.fits')
-    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    tab = Table.read(pspl_ast_multiphot['ob150211'] + '.fits')
+    smy = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
     print(smy['MAP mL'])
     mmax = tab['mL'].max()
     mmin = tab['mL'].min()
@@ -3731,8 +3377,8 @@ def plot_ob150211_mass_posterior():
     fontsize1 = 18
     fontsize2 = 14
 
-    tab = Table.read(pspl_ast_phot['ob150211'] + '.fits')
-    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    tab = Table.read(pspl_ast_multiphot['ob150211'] + '.fits')
+    smy = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
     print(smy['MAP mL'])
     mmax = tab['mL'].max()
     mmin = tab['mL'].min()
@@ -3871,8 +3517,8 @@ def plot_ob150211_mass_posterior():
     fontsize1 = 18
     fontsize2 = 14
 
-    tab = Table.read(pspl_ast_phot['ob150211'] + '.fits')
-    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
+    tab = Table.read(pspl_ast_multiphot['ob150211'] + '.fits')
+    smy = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
     print(smy['MAP mL'])
     mmax = tab['mL'].max()
     mmin = tab['mL'].min()
@@ -4564,7 +4210,7 @@ def make_ob150211_tab():
     mnest_tab_phot_only_sol2 = np.loadtxt(mnest_root_phot_only + 'mode1.dat')
 
     # Get the phot+astrom data
-    mnest_root_phot_astr = pspl_ast_phot['ob150211']
+    mnest_root_phot_astr = pspl_ast_multiphot['ob150211']
 
     best_arr_phot_astr = np.loadtxt(mnest_root_phot_astr + 'summary.txt')
     best_phot_astr_sol1 = best_arr_phot_astr[1][42:63]
@@ -4657,7 +4303,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
     """
     # Get the phot+astrom data
 
-    mnest_root = pspl_ast_phot['ob150211']
+    mnest_root = pspl_ast_multiphot['ob150211']
     data = munge_ob150211.getdata()
 
     if os.path.exists(mnest_root + '_best.fits') and recalc is False:
@@ -4675,7 +4321,7 @@ def make_ob150211_astrom_fit_tab(recalc=False):
 
         _in.close()
     else:
-        mnest_root = pspl_ast_phot['ob150211']
+        mnest_root = pspl_ast_multiphot['ob150211']
         data = munge_ob150211.getdata()
 
         mfit = model_fitter.PSPL_parallax_Solver(data, outputfiles_basename=mnest_root)
@@ -4806,8 +4452,8 @@ def make_ob150211_map_fit_tab():
     """
     # Get the phot+astrom data
 
-    smy = Table.read(pspl_ast_phot['ob150211'] + 'summary.fits')
-    smy_err = Table.read(pspl_ast_phot_err['ob150211'] + 'summary.fits')
+    smy = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
+    smy_err = Table.read(pspl_ast_multiphot['ob150211'] + 'summary.fits')
     print(smy.keys())
 
     # In the order we want them in the table. Use an empty param to indicate
