@@ -117,7 +117,10 @@ ogle_phot['ob150211'] = ogle_phot['ob150211_add']
 def all_paper():
     plot_images()
     make_obs_table()
+    calc_base_mag()
     plot_pos_err()
+
+    plot_linear_fits()
 
     separate_modes_all()
 
@@ -244,6 +247,39 @@ def make_obs_table():
     print(final_table)
 
     final_table.write(paper_dir + 'data_table.tex', format='aastex', overwrite=True)
+
+    return
+
+def calc_base_mag():
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+
+    fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(16, 6))
+    plt.subplots_adjust(left=0.1)
+
+    for tt in range(len(targets)):
+        target = targets[tt]
+        
+        fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+
+        # Figure out the first MJD day of NIRC2 observations for this target.
+        first_year = np.floor(data['t_phot2'].min())
+
+        # Get out all epochs that are after the first year.
+        base_idx = np.where(data['t_phot2'] > (first_year + 365))[0]
+
+        # Average the photometry.
+        kp_base = data['mag2'][base_idx].mean()
+
+        print('{0:10s} Kp_base = {1:.2f}'.format(target, kp_base))
+
+        axs[tt].errorbar(data['t_phot2'], data['mag2'], yerr=data['mag_err2'])
+        axs[tt].axhline(kp_base, linestyle='--')
+        axs[tt].set_title(target)
+        axs[tt].invert_yaxis()
+        axs[tt].set_xlabel('MJD')
+
+        if tt == 0:
+            axs[tt].set_ylabel('Kp (mag)')
 
     return
 
