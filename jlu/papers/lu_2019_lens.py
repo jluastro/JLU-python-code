@@ -1717,6 +1717,20 @@ def compare_all_linear_motions(save_all=False):
 
     os.chdir(ret_dir)
 
+def plot_linear_motion(target):
+    # Plot the linear motion of the target
+    # with a proper motion fit that excludes the peak year.
+
+    output_dir = paper_dir
+    ret_dir = os.getcwd()
+    os.chdir(output_dir)
+
+    fitob = fit_velocities.StarTable(target)
+    fitob.fit(time_cut=fitob.time_cut)
+    fitob.plot_target()
+
+    os.chdir(ret_dir)
+
 def table_ob120169_phot_astrom():
     # Load up the params file so we know what kind of 
     # data and model we are working with. Note that we 
