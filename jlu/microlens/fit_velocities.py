@@ -9,8 +9,8 @@ import pdb
 
 astrom_data = lu.astrom_data
 
-res_dict = {'ob120169': 1.1, 'ob140613': 0.4, 'ob150029': 1.1, 'ob150211': 1.3}
 time_cuts = {'ob120169': 2012, 'ob140613': 2015, 'ob150029': 2015, 'ob150211': 2015}
+res_dict = {'ob120169': 1.1, 'ob140613': 0.6, 'ob150029': 1.1, 'ob150211': 1.3}
 
 class StarTable(Table):
     """
@@ -27,6 +27,7 @@ class StarTable(Table):
 
         self['name'] = self['name'].astype('U20')
         self.cut = False # Tracks whether the data has been cut or not
+        self.time_cut = time_cuts[target]
 
         return
 
@@ -447,7 +448,7 @@ class StarTable(Table):
         if return_res:
             return xr, yr
 
-    def plot_target(self, fign=1):
+    def plot_target(self, fign=1, save=True):
         '''
         Plots the linear fit for the target only. The figure is saved.
         
@@ -456,6 +457,9 @@ class StarTable(Table):
         fign : int, optional
             Figure number.
             Default is 1.
+        save : bool, optional
+            Save the figure.
+            Default is True.
         '''
         res_rng = res_dict[self.target]
 
@@ -544,8 +548,11 @@ class StarTable(Table):
         ax_resY.plot(tmod, ymode*1e3, 'b--')
         ax_resY.plot(tmod, -ymode*1e3, 'b--')
         ax_resX.set_xlabel('Date (yr)')
-        ax_resX.set_ylim(-res_rng, res_rng)
-        ax_resY.set_ylim(-res_rng, res_rng)
+
+        xresrng = xres + np.sign(xres)*(xrese + 0.1)
+        ax_resX.set_ylim(xresrng.min(), xresrng.max())
+        yresrng = yres + np.sign(yres)*(yrese + 0.1)
+        ax_resY.set_ylim(yresrng.min(), yresrng.max())
         ax_resY.get_xaxis().set_visible(False)
         ax_resX.set_ylabel(r'$\alpha^*$')
         ax_resY.set_ylabel(r'$\delta$')
@@ -555,7 +562,8 @@ class StarTable(Table):
         cb_ax = fig.add_axes([0.8, 0.60, 0.02, 0.3])
         plt.colorbar(sc, cax=cb_ax, label='Year')
 
-        plt.savefig("{}_linear_fit.pdf".format(self.target))
+        if save:
+            plt.savefig("{}_linear_fit.pdf".format(self.target))
 
     def compare_linear_motion(self, return_results=False, fign_start=1, save_all=False):
         """
@@ -593,13 +601,13 @@ class StarTable(Table):
             Returned if return_results = True.
             The variance of the average above in mas^2.
         """
-        # Plot the linear fit from the astrometry
+        # Plot the linear fit from the astrometry analysis
         self.plot_fit(title = 'all', fign=fign_start, save_plot=save_all)
         all_chi2, all_chi2_red = self.calc_chi2(self.target)
         
         # Plot the linear fit without the peak year and get the residuals
         time_cut = time_cuts[self.target]
-        self.fit(time_cut=time_cut) # Fit without the peak year
+        self.fit(time_cut=self.time_cut) # Fit without the peak year
         # Plot the fit for the target. This figure will always be saved.
         self.plot_target(fign=(fign_start+1))
         xr, yr = self.plot_fit(title = 'off_peak', fign=(fign_start + 2),

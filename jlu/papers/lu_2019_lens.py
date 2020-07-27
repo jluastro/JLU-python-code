@@ -37,10 +37,10 @@ ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
                '18may11', '18aug02', '18aug16']
 
 ep_ob150029 = ['15jun07', '15jul23', '16may24', '16jul14', '17may21',
-               '17jul14', '17jul19', '18aug21']
+               '17jul14', '17jul19', '18aug21', '19apr17']
 
 ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
-               '17jun05', '17jul14', '18may11', '18aug16']
+               '17jun05', '17jul14', '18may11', '18aug16', '19apr17']
 
 
 epochs = {'ob120169': ep_ob120169, 'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
@@ -465,7 +465,7 @@ def plot_pos_err():
             plt.semilogy(p_mag, scale * 1e3 * perr_v_mag(p_mag, *res_lsq2.x), label=epoch_label, color=col)
 
         plt.legend(fontsize=12, loc='upper left', ncol=2)
-        plt.xlabel('Kp mag')
+        plt.xlabel('Kp (mag)')
         plt.ylabel('$\sigma_{ast}$ (mas)')
         plt.title(target.upper())
         plt.ylim(3e-2, 10)
@@ -1772,6 +1772,20 @@ def compare_all_linear_motions(save_all=False):
     tab.write('astrom_significance.tex', format='aastex', overwrite=True)
 
     print(tab)
+
+    os.chdir(ret_dir)
+
+def plot_linear_motion(target):
+    # Plot the linear motion of the target
+    # with a proper motion fit that excludes the peak year.
+
+    output_dir = paper_dir
+    ret_dir = os.getcwd()
+    os.chdir(output_dir)
+
+    fitob = fit_velocities.StarTable(target)
+    fitob.fit(time_cut=fitob.time_cut)
+    fitob.plot_target()
 
     os.chdir(ret_dir)
 
