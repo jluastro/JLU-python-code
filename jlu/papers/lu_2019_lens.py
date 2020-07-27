@@ -120,7 +120,7 @@ def all_paper():
     calc_base_mag()
     plot_pos_err()
 
-    plot_linear_fits()
+    # plot_linear_fits()
 
     separate_modes_all()
 
@@ -560,12 +560,17 @@ def separate_modes_all():
         # OGLE phot, Keck phot + astrom
         print('  OGLE phot, Keck phot + astrom')
         mod_fit_ast, data_ast = get_data_and_fitter(pspl_ast_multiphot[targ])
+        # Force remake of all FITS files. 
+        tab = mod_fit.load_mnest_results(remake_fits=True)
+        smy = mod_fit.load_mnest_summary(remake_fits=True)
         mod_fit_ast.separate_modes()
         mod_fit_ast.plot_dynesty_style()
 
         # OGLE phot
         print('  OGLE phot')
         mod_fit_phot, data_phot = get_data_and_fitter(pspl_phot[targ])
+        tab_phot = mod_fit_phot.load_mnest_results(remake_fits=True)
+        smy_phot = mod_fit_phot.load_mnest_summary(remake_fits=True)
         mod_fit_phot.separate_modes()
         mod_fit_phot.plot_dynesty_style()
 
@@ -1407,13 +1412,33 @@ def calc_velocity(target):
 
     return
 
+def calc_zp_ob150211():
+    # Load up the Keck photometry (on arbitrary flux scale) and the
+    # 2MASS photometry. 
+    ast = Table.read(data['ast_files'][0])
+    tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
+
+    tt_t = np.where(tmass['name'] == 'ob150211')[0][0]
+    tt_a = np.where(ast['name'] == 'ob150211')[0][0]
+
+    # Get the Keck stars within 4" radius.
+    rad = np.hypot(ast['x'] - ast['x'][tt_a], ast['y'] - ast['y'][tt_a])
+    rdx = np.where(rad < 4.)
+
+    
+
+    
+
 
 def plot_cmds():
+    plot_cmd_ob150211()
+    return
+
+def plot_cmd_ob150211():
     """
     Everything is in
     /Users/jlu/work/microlens/OB150211/a_2019_05_04/notes/7_other_phot.ipynb
     """
-
     # Read in the Gaia and 2MASS catalogs.
     tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
     gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
@@ -1421,13 +1446,41 @@ def plot_cmds():
     tt_t = np.where(tmass['name'] == 'ob150211')
     tt_g = np.where(gaia['name'] == 'ob150211')
 
+    # Also fetch our best fit and figure out the source and lens/neighbor
+    # brightness.
+    fitter, data = get_data_and_fitter(pspl_ast_multiphot['ob150211'])
+    params = fitter.get_best_fit(def_best='maxl')
+    magS_I = params['mag_src1']
+    magS_Kp = params['mag_src2']
+    magLN_I = magS_I - 2.5 * math.log10((1.0 - params['b_sff1']) / params['b_sff1'])
+    magLN_Kp = magS_Kp - 2.5 * math.log10((1.0 - params['b_sff2']) / params['b_sff2'])
+
+    # Get the baseline magnitude (with all blending)
+    magSLN_I = magS_I - 2.5 * math.log10((2.0 - params['b_sff1']) / params['b_sff1'])
+    magSLN_Kp = magS_Kp - 2.5 * math.log10((2.0 - params['b_sff2']) / params['b_sff2'])
+    
+    # Assume J-K color is the same for the lens, source, and baseline.
+    jk_color = tmass['Jmag'][tt_t[0][0]] - tmass['Kmag'][tt_t[0][0]]
+    magS_J = magS_Kp + jk_color
+    magLN_J = magLN_Kp + jk_color
+    magSLN_J = magSLN_Kp + jk_color
+
+    print('        {0:5s} {1:5s} {2:5s}'.format('I', 'J', 'Kp'))
+    print('magS:   {0:5.2f} {1:5.2f} {2:5.2f}'.format(magS_I, magS_J, magS_Kp))
+    print('magLN:  {0:5.2f} {1:5.2f} {2:5.2f}'.format(magLN_I, magLN_J, magLN_Kp))
+    print('magSLN: {0:5.2f} {1:5.2f} {2:5.2f}'.format(magSLN_I, magSLN_J, magSLN_Kp))
+
+
     plt.close(1)
     plt.figure(1, figsize=(10, 4))
     plt.subplots_adjust(bottom=0.2, left=0.1, right=0.8, wspace=0.4)
 
     plt.subplot(1, 2, 1)
-    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Jmag'], 'k.', alpha=0.5)
-    plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Jmag'][tt_t], 'ro', ms=10)
+    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Jmag'], 'k.', alpha=0.5, mec='none')
+    plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Jmag'][tt_t], 'ro', ms=5)
+    plt.plot(magS_J - magS_Kp, magS_J, 'rs', ms=5)
+    plt.plot(magLN_J - magLN_Kp, magLN_J, 'bs', ms=5)
+    plt.plot(magSLN_J - magSLN_Kp, magSLN_J, 'g*', ms=5)
     plt.xlim(0, 3)
     plt.gca().invert_yaxis()
     plt.xlabel('J-K (mag)')
@@ -1435,9 +1488,14 @@ def plot_cmds():
     plt.title('2MASS')
 
     plt.subplot(1, 2, 2)
-    sc = plt.scatter(gaia['bp_rp'], gaia['phot_g_mean_mag'], c=gaia['parallax'], s=10,
+
+    # color code only those sources with significant parallax
+    good_par = np.where(np.abs(gaia['parallax']) > (3*gaia['parallax_error']))[0]
+    plt.plot(gaia['bp_rp'], gaia['phot_g_mean_mag'], 'k.', ms=8, alpha=0.5, zorder=1, mec='none')
+    sc = plt.scatter(gaia['bp_rp'][good_par], gaia['phot_g_mean_mag'][good_par],
+                     c=gaia['parallax'][good_par], s=10, zorder=2, edgecolors='none',
                      vmin=-1, vmax=2, cmap=plt.cm.viridis)
-    plt.plot(gaia['bp_rp'][tt_g], gaia['phot_g_mean_mag'][tt_g], 'ro', ms=10)
+    plt.plot(gaia['bp_rp'][tt_g], gaia['phot_g_mean_mag'][tt_g], 'ro', ms=5, zorder=3)
     plt.xlim(0, 6.5)
     plt.gca().invert_yaxis()
     plt.xlabel('G$_{BP}$ - G$_{RP}$ (mag)')
