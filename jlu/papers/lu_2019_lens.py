@@ -561,8 +561,8 @@ def separate_modes_all():
         print('  OGLE phot, Keck phot + astrom')
         mod_fit_ast, data_ast = get_data_and_fitter(pspl_ast_multiphot[targ])
         # Force remake of all FITS files. 
-        tab = mod_fit.load_mnest_results(remake_fits=True)
-        smy = mod_fit.load_mnest_summary(remake_fits=True)
+        tab_ast = mod_fit_ast.load_mnest_results(remake_fits=True)
+        smy_ast = mod_fit_ast.load_mnest_summary(remake_fits=True)
         mod_fit_ast.separate_modes()
         mod_fit_ast.plot_dynesty_style()
 
