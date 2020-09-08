@@ -3,7 +3,7 @@ import pylab as plt
 import pdb
 import math
 import os
-# from jlu.observe import skycalc
+from jlu.observe import skycalc
 from microlens.jlu import munge
 # from microlens.jlu import residuals
 from microlens.jlu import model_fitter, model
@@ -670,15 +670,17 @@ def plot_airmass_moon():
     months = np.array([4, 5, 6, 7])
     days = np.array([10, 15, 15, 30])
     # outdir = '/Users/jlu/doc/proposals/keck/uc/18A/'
-    outdir = '/Users/fatima/Desktop/'
-    # outdir = '/Users/casey/scratch/'
+    outdir = ''
 
     # Keck 2
-    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_20A.png', date_idx=-1)
-    skycalc.plot_moon(ra, dec, 2020, months, outfile=outdir + 'microlens_moon_20A.png')
+    skycalc.plot_airmass(ra, dec, 2021, months, days, 'keck2', 
+                         outfile=outdir + 'microlens_airmass_keck2_21A.png', date_idx=-1)
+    skycalc.plot_moon(ra, dec, 2021, months, 
+                      outfile=outdir + 'microlens_moon_21A.png')
 
     # Keck 1
-    skycalc.plot_airmass(ra, dec, 2020, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_20A.png', date_idx=-1)
+    skycalc.plot_airmass(ra, dec, 2021, months, days, 'keck1',
+                         outfile=outdir + 'microlens_airmass_keck1_21A.png', date_idx=-1)
     
     return
 
