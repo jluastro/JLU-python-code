@@ -109,11 +109,16 @@ def piE_tE(fit_type = 'ast'):
                           'ob140613': [190, 0.15],
                           'ob150029': [55, 0.18],
                           'ob150211': [150, 0.008],
-                          'ob170019': [150, 0.04],
+                          'ob170019': [140, 0.04],
                           'ob170095': [35, 0.02],
                           'ob190017': [200, 0.28],
                           'kb200101': [180, 0.02]}}
 
+    label_pos_ast = {'ob120169': [0.006, 0.25],
+                     'ob140613': [0.04, 0.1],
+                     'ob150029': [0.04, 0.2],
+                     'ob150211': [0.006, 0.012]}
+                 
     colors = {'ob120169': 'purple',
               'ob140613': 'red',
               'ob150029': 'coral',
@@ -131,6 +136,7 @@ def piE_tE(fit_type = 'ast'):
     new_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101']
     tE = {}
     piE = {}
+    theta_E = {}
     weights = {}
 
     for targ in targets:
@@ -149,6 +155,7 @@ def piE_tE(fit_type = 'ast'):
 
         tE[targ] = res_targ['tE']
         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+        theta_E[targ] = res_targ['thetaE']
         weights[targ] = res_targ['weights']
 
     for targ in new_targets:
@@ -195,8 +202,22 @@ def piE_tE(fit_type = 'ast'):
     piE_110022 = np.hypot(piEE_110022, piEN_110022)
     tE_110022 = 61.4
 
+    dcmax_110022 = 2.19/np.sqrt(8)
+    dcmax_110022_pe = 1.06/np.sqrt(8)
+    dcmax_110022_me = 1.17/np.sqrt(8)
+
+    # MB19284 from Dave Bennett.
+    piEE_19284 = -0.06339
+    piEN_19284 = 0.05600
+    piE_19284 = np.hypot(piEE_19284, piEN_19284)
+    tE_19284 = 648.454
+
+    # Plotting OB110022 and MB19284.
     plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='indigo')
-    axes.text(20, 0.38, 'OB110022', color='indigo')
+    axes.text(18, 0.38, 'OB110022', color='indigo')
+
+#    plt.scatter(tE_19284, piE_19284, marker = 'o', s = 30, color='lime')
+#    axes.text(300, 0.1, 'MB19284', color='lime')
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
@@ -206,6 +227,51 @@ def piE_tE(fit_type = 'ast'):
     ns_idx = np.where(t['rem_id_L'] == 102)[0]
     wd_idx = np.where(t['rem_id_L'] == 101)[0]
     st_idx = np.where(t['rem_id_L'] == 0)[0]
+
+    u0_arr = t['u0']
+    thetaE_arr = t['theta_E']
+    
+    # Stores the maximum astrometric shift
+    final_delta_arr = np.zeros(len(u0_arr))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    final_u_arr = np.zeros(len(u0_arr))
+
+    # Sort by whether the maximum astrometric shift happens
+    # before or after the maximum photometric amplification
+    big_idx = np.where(u0_arr > np.sqrt(2))[0]
+    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+    g_arr = np.nan_to_num(g_arr)
+
+    for i in np.arange(len(u0_arr)):
+        g = g_arr[i] 
+        thetaE = thetaE_arr[i]    
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        if u0_arr[i] < np.sqrt(2):
+            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+            delta_arr = np.zeros(len(u_arr))
+            for j in np.arange(len(u_arr)):
+                u = u_arr[j] 
+                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+                delta = (u * thetaE/(1 + g)) * (numer/denom)
+                delta_arr[j] = delta
+            max_idx = np.argmax(delta_arr)
+            final_delta_arr[i] = delta_arr[max_idx]
+            final_u_arr[i] = u_arr[max_idx]
+        # Maximum astrometric shift will occur at sqrt(2)
+        if u0_arr[i] > np.sqrt(2):
+            u = u0_arr[i]
+            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+            delta = (u * thetaE/(1 + g)) * (numer/denom)
+            final_delta_arr[i] = delta
+            final_u_arr[i] = u
 
     axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
                  alpha = 0.4, marker = '.', s = 25, 
@@ -219,6 +285,7 @@ def piE_tE(fit_type = 'ast'):
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
                  alpha = 0.4, marker = '.', s = 25, 
                  color = 'dimgray')
+
     # Trickery to make the legend darker
     axes.scatter(0.01, 100, 
                  alpha = 0.8, marker = '.', s = 25, 
@@ -233,7 +300,7 @@ def piE_tE(fit_type = 'ast'):
                  alpha = 0.8, marker = '.', s = 25, 
                  label = 'BH', color = 'dimgray')
 
-    axes.set_xlim(10, 500)
+    axes.set_xlim(10, 700)
     axes.set_ylim(0.005, 0.5)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
@@ -242,6 +309,51 @@ def piE_tE(fit_type = 'ast'):
     axes.legend(loc=3)
     plt.savefig('piE_tE_' + fit_type + '.png')
     plt.show()
+
+    # Plot the deltac-piE 2D posteriors.
+    plt.close(1)
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    axes.errorbar(dcmax_110022, piE_110022, 
+                   xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+                   fmt = 'o', color = 'indigo', markersize = 5,
+                   xuplims = True)
+    axes.text(0.5, 0.3, 'OB110022', color='indigo')
+
+    for targ in targets:
+        model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                 **hist2d_kwargs, plot_density=False)
+
+
+        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
+                  targ.upper(), color=colors[targ])    
+
+    axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'paleturquoise')
+    axes.scatter(final_delta_arr[wd_idx], t['pi_E'][wd_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'aqua')
+    axes.scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'blue')
+    axes.scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
+                  alpha = 0.8, marker = '.', s = 25,
+                  c = 'dimgray')
+
+    axes.set_xlabel('$\delta_{c,max}$ (mas)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.set_xlim(0.005, 4)
+    axes.set_ylim(0.009, 0.5)
+    plt.savefig('piE_deltac.png')
+    plt.show()
+
 
 def deltac_vs_time_BH15_targets(target, t_obs_prop=None, dtmax=None):
     """
@@ -302,23 +414,41 @@ def deltac_vs_time_BH15_targets(target, t_obs_prop=None, dtmax=None):
             t_dec = dtUtil.toYearFraction(t_strp)
             t_obs_prop_dec[idx] = t_dec
 
-#    plt.figure(1)
-#    plt.clf()
-#    plt.errorbar(t_ast_dec, x, yerr=xe, fmt='k.', alpha=1, zorder = 1000)
-#    plt.scatter(t_mod_ast_dec, xmod, s = 1)
-#    plt.title(target)
-#    plt.xlabel('Time (Year)')
-#    plt.ylabel('$\delta$RA (mas)')
-#    plt.show()
+    plt.figure(1)
+    plt.clf()
+    plt.errorbar(t_ast_dec, x, yerr=xe, fmt='k.', alpha=1, zorder = 1000, label='Data')
+    plt.scatter(t_mod_ast_dec, xmod, s = 1)
+    plt.title(target)
+    plt.xlabel('Time (Year)')
+    plt.ylabel('$\delta$RA (mas)')
+    if t_obs_prop is not None:
+        for obs in t_obs_prop_dec:
+            plt.axvline(x = obs, color='red', ls=':')
+        plt.axvline(x = 0, color='red', ls=':', label='Proposed')
+        plt.xlim(t_mod_ast_dec.min() - 0.1, t_mod_ast_dec.max() + 0.1)
+    plt.axhline(y=0, color='black', alpha=0.5)
+    plt.legend(loc=1)
+    plt.title(target)
+    plt.savefig(target + '_deltac_RA_vs_time.png')
+    plt.show()
 
-#    plt.figure(2)
-#    plt.clf()
-#    plt.errorbar(t_ast_dec, y, yerr=ye, fmt='k.', alpha=1, zorder = 1000)
-#    plt.scatter(t_mod_ast_dec, ymod, s = 1)
-#    plt.title(target)
-#    plt.xlabel('Time (Year)')
-#    plt.ylabel('$\delta$Dec (mas)')
-#    plt.show()
+    plt.figure(2)
+    plt.clf()
+    plt.errorbar(t_ast_dec, y, yerr=ye, fmt='k.', alpha=1, zorder = 1000, label='Data')
+    plt.scatter(t_mod_ast_dec, ymod, s = 1)
+    plt.title(target)
+    plt.xlabel('Time (Year)')
+    plt.ylabel('$\delta$Dec (mas)')
+    if t_obs_prop is not None:
+        for obs in t_obs_prop_dec:
+            plt.axvline(x = obs, color='red', ls=':')
+        plt.axvline(x = 0, color='red', ls=':', label='Proposed')
+        plt.xlim(t_mod_ast_dec.min() - 0.1, t_mod_ast_dec.max() + 0.1)
+    plt.axhline(y=0, color='black', alpha=0.5)
+    plt.legend(loc=1)
+    plt.title(target)
+    plt.savefig(target + '_deltac_Dec_vs_time.png')
+    plt.show()
 
     plt.figure(3)
     plt.clf()
@@ -339,29 +469,34 @@ def deltac_vs_time_BH15_targets(target, t_obs_prop=None, dtmax=None):
     plt.show()
 
 def make_plots_BH15():
-    deltac_vs_time_BH15_targets('OB120169')
+#    deltac_vs_time_BH15_targets('OB120169')
     deltac_vs_time_BH15_targets('OB140613',
-                                t_obs_prop=['2021-05-15', '2021-06-15'],
+                                t_obs_prop=['2021-04-01', '2021-07-30'],
                                 dtmax=1000)
-    deltac_vs_time_BH15_targets('OB150029')
-    deltac_vs_time_BH15_targets('OB150211')
+#    deltac_vs_time_BH15_targets('OB150029')
+#    deltac_vs_time_BH15_targets('OB150211')
 
 def make_plots():
     deltac_vs_time(0.061, 200/365.25, 4, '2020-06-22', 
                    ['2020-07-12', '2020-07-22', '2020-08-22', '2020-09-03'],
-                   t_obs_prop=['2021-04-15', '2021-06-01',  '2021-07-15'],
+                   t_obs_prop=['2021-04-01', '2021-06-01',  '2021-07-30'],
                    title='KB200101')
 
     deltac_vs_time(0.18, 258.6/365.25, 4, '2019-04-13', 
                    ['2019-04-21', '2019-05-13', '2020-07-22', '2020-08-23', '2020-09-03'],
-                   t_obs_prop=['2021-04-15', '2021-06-01', '2021-07-15'],
+                   t_obs_prop=['2021-04-01', '2021-06-01', '2021-07-30'],
                    title='OB190017')
 
     deltac_vs_time(0.03, 105.9/365.25, 5, '2017-05-19', 
                    ['2017-05-21', '2017-06-08', '2017-07-14', '2017-07-19', 
                     '2020-06-13', '2020-08-23', '2020-09-04'],
-                   t_obs_prop=['2021-05-15', '2021-06-15'],
+                   t_obs_prop=['2021-04-01', '2021-07-30'],
                    title='OB170095')
+
+    deltac_vs_time(0.165, 648.454/365.25, 5, '2020-12-23', 
+                   ['2020-06-25', '2020-07-12', '2020-07-22', '2020-08-22'], 
+                   t_obs_prop=['2021-04-01', '2021-06-01',  '2021-07-30'],
+                   title='MB19284')
 
 #    # u0 > 0, Keck + OGLE values.
 #    deltac_vs_time(0.45, 128.3/365.25, 7, '2015-07-09', 
@@ -403,6 +538,8 @@ def deltac_vs_time(u0, tE, dt_max, t0, t_obs, t_obs_prop=None, title=''):
     t0_strp = dt.strptime(t0, '%Y-%m-%d')
     t0_dec = dtUtil.toYearFraction(t0_strp)
     t_arr = np.linspace(t0_dec - 0.1, t0_dec + dt_max, 200) 
+    if title=='MB19284':
+        t_arr = np.linspace(t0_dec - 1, t0_dec + dt_max, 200) 
 
     # Turn the epoch YYYY-MM-DD into a decimal.
     t_obs_dec = np.zeros(len(t_obs))
