@@ -22,7 +22,7 @@ import pickle
 import math
 import copy
 import yaml
-from scipy.stats import norm
+from scipy.stats import norm, poisson
 
 mpl_o = '#ff7f0e'
 mpl_b = '#1f77b4'
@@ -101,7 +101,7 @@ pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multi
                       'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c5_',
                       'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/b2_'}
 
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_fit_multiphot_parallax_aerr/b0_',
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_fit_phot_multiphot_parallax_aerr/b0_',
                   'ob140613' : a_dir['ob140613'] + 'model_fits/111_fit_multiphot_parallax_merr/b0_',
                   'ob150029' : a_dir['ob150029'] + 'model_fits/113_fit_multiphot_parallax_aerr/aa_',
                   'ob150211' : a_dir['ob150211'] + 'model_fits/113_fit_multiphot_parallax_aerr/aa_'}
@@ -157,6 +157,17 @@ def all_paper():
 
     # Appendix
     make_BIC_comparison_table()
+
+    return
+
+def calibrate_nirc2_phot(recalc=True):
+    """
+    Some of our early photometric calibrations were incorrect. 
+    Since then, new VVV data has been released and the photometric
+    calibrations are much better. 
+    """
+
+    # First we need to calculate the zeropoints.
 
     return
 
@@ -282,6 +293,109 @@ def calc_base_mag():
             axs[tt].set_ylabel('Kp (mag)')
 
     return
+
+def calc_poisson_prob_detection():
+    """
+    Calculate the probability of finding 0 black holes from 
+    a sample of 5 events with $t_E > $ 120 days.
+    """
+    samp_size = 5
+    sim_prob_bh_mean = 0.42
+    sim_prob_bh_err = 0.06
+
+    sigma = np.arange(-3, 3.1, 1)
+    colors = plt.cm.get_cmap('plasma_r', len(sigma)).colors    # discrete colors
+    
+    sim_prob_bh = sim_prob_bh_mean + sigma * sim_prob_bh_err
+
+    mu_all = samp_size * sim_prob_bh
+
+    n_bh = np.arange(0, 11)
+    
+    plt.figure(1)
+    for ss in range(len(sigma)):
+        prob_dist = poisson(mu_all[ss])
+        legend_str = '{0:.0f}$\sigma$'.format(sigma[ss])
+
+        plt.vlines(n_bh + (ss*0.1), 0, prob_dist.pmf(n_bh),
+                     colors=colors[ss], linestyles='-', lw=4,
+                     label=legend_str)
+        
+    plt.legend(loc='best', frameon=False)
+    plt.xlabel('Number of black holes')
+    plt.ylabel('Probability of detection')
+
+    return
+
+    
+def calc_date_resolved():
+    """
+    Calculate 
+    """
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    
+    for tt in range(len(targets)):
+        target = targets[tt]
+        
+        fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+        stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+        tab_list = fitter.load_mnest_modes()
+
+        # Get the magnitude of muRel for the maximum-likelihood solution.
+        muRel = np.hypot( stats_ast['MaxLike_muRel_E'][0], stats_ast['MaxLike_muRel_N'][0])
+
+        # Calculate the credicble intervals on muRel
+        sigma_vals = np.array([0.682689, 0.9545, 0.9973])
+        credi_ints_lo = (1.0 - sigma_vals) / 2.0
+        credi_ints_hi = (1.0 + sigma_vals) / 2.0
+        credi_ints_med = np.array([0.5])
+        credi_ints = np.concatenate([credi_ints_med, credi_ints_lo, credi_ints_hi])
+
+        sumweights = np.sum(tab_list[0]['weights'])
+        weights = tab_list[0]['weights'] / sumweights
+                
+        # Calculate median, 1 sigma lo, and 1 sigma hi credible interval.
+        muRel_all = np.hypot( tab_list[0]['muRel_E'], tab_list[0]['muRel_N'] )
+        tmp = model_fitter.weighted_quantile(muRel_all, credi_ints, sample_weight=weights)
+
+        print('')
+        print('*** ' + target + ' ***')
+        print('MaxL muRel = {0:.3f} mas/yr'.format(muRel))
+        print('    68.3% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[1], tmp[4]))
+        print('    95.5% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[2], tmp[5]))
+        print('    99.7% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[3], tmp[6]))
+
+        # Figure out when the objects will be resolvable using
+        # ~Keck 2 micron diffraction limit.
+        dr_resolve = 0.25 * 2.0 * 1e3 / 10.0  # mas
+
+        from astropy.time import Time
+        import datetime
+        
+        t0 = Time(stats_ast['MaxLike_t0'][0], format='mjd', scale='utc')
+        t0_yr = t0.decimalyear
+
+        t0_resolve = (dr_resolve / muRel) + t0_yr
+
+        print('')
+        print('Resolvable in {0:.1f} (at Keck 2 micron resolution of {1:.1f} mas)'.format(t0_resolve, dr_resolve))
+
+        # Figure out when the objects will be resolvable using
+        # ~Keck 1 micron diffraction limit.
+        dr_resolve = 0.25 * 1.0 * 1e3 / 10.0  # mas
+        t0_resolve = (dr_resolve / muRel) + t0_yr
+
+        print('Resolvable in {0:.1f} (at Keck 1 micron resolution of {1:.1f} mas)'.format(t0_resolve, dr_resolve))
+        
+        # Figure out when the objects will be resolvable using
+        # ~TMT 1 micron diffraction limit.
+        dr_resolve = 0.25 * 1.0 * 1e3 / 30.0  # mas
+        t0_resolve = (dr_resolve / muRel) + t0_yr
+
+        print('Resolvable in {0:.1f} (at TMT 1 micron resolution of {1:.1f} mas)'.format(t0_resolve, dr_resolve))
+        
+    return
+
 
 def epoch_figure():
     '''
@@ -1452,12 +1566,12 @@ def plot_cmd_ob150211():
     params = fitter.get_best_fit(def_best='maxl')
     magS_I = params['mag_src1']
     magS_Kp = params['mag_src2']
-    magLN_I = magS_I - 2.5 * math.log10((1.0 - params['b_sff1']) / params['b_sff1'])
-    magLN_Kp = magS_Kp - 2.5 * math.log10((1.0 - params['b_sff2']) / params['b_sff2'])
+    magLN_I = magS_I - 2.5 * math.log10((1.0 - params['b_sff1']) / params['b_sff1']**2)
+    magLN_Kp = magS_Kp - 2.5 * math.log10((1.0 - params['b_sff2']) / params['b_sff2']**2)
 
     # Get the baseline magnitude (with all blending)
-    magSLN_I = magS_I - 2.5 * math.log10((2.0 - params['b_sff1']) / params['b_sff1'])
-    magSLN_Kp = magS_Kp - 2.5 * math.log10((2.0 - params['b_sff2']) / params['b_sff2'])
+    magSLN_I = magS_I + 2.5 * math.log10(params['b_sff1'])
+    magSLN_Kp = magS_Kp + 2.5 * math.log10(params['b_sff2'])
     
     # Assume J-K color is the same for the lens, source, and baseline.
     jk_color = tmass['Jmag'][tt_t[0][0]] - tmass['Kmag'][tt_t[0][0]]
@@ -1465,27 +1579,31 @@ def plot_cmd_ob150211():
     magLN_J = magLN_Kp + jk_color
     magSLN_J = magSLN_Kp + jk_color
 
-    print('        {0:5s} {1:5s} {2:5s}'.format('I', 'J', 'Kp'))
+    print('        {0:5s} {1:5s} {2:5s}    {3:7s} {4:7s}'.format('I', 'J', 'Kp', 'J_2MASS', 'K_2MASS'))
+    print('b_SFF:  {0:5.2f} {1:5.2f} {2:5.2f}'.format(params['b_sff1'], -1, params['b_sff2']))
     print('magS:   {0:5.2f} {1:5.2f} {2:5.2f}'.format(magS_I, magS_J, magS_Kp))
     print('magLN:  {0:5.2f} {1:5.2f} {2:5.2f}'.format(magLN_I, magLN_J, magLN_Kp))
-    print('magSLN: {0:5.2f} {1:5.2f} {2:5.2f}'.format(magSLN_I, magSLN_J, magSLN_Kp))
-
+    print('magSLN: {0:5.2f} {1:5.2f} {2:5.2f}    {3:7.2f} {4:7.2f}'.format(magSLN_I, magSLN_J, magSLN_Kp,
+                                                                               tmass['Jmag'][tt_t[0][0]],
+                                                                               tmass['Kmag'][tt_t[0][0]]
+                                                                               ))
 
     plt.close(1)
     plt.figure(1, figsize=(10, 4))
     plt.subplots_adjust(bottom=0.2, left=0.1, right=0.8, wspace=0.4)
 
     plt.subplot(1, 2, 1)
-    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Jmag'], 'k.', alpha=0.5, mec='none')
-    plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Jmag'][tt_t], 'ro', ms=5)
-    plt.plot(magS_J - magS_Kp, magS_J, 'rs', ms=5)
-    plt.plot(magLN_J - magLN_Kp, magLN_J, 'bs', ms=5)
-    plt.plot(magSLN_J - magSLN_Kp, magSLN_J, 'g*', ms=5)
+    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Kmag'], 'k.', alpha=0.5, mec='none')
+    plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Kmag'][tt_t], 'ro', ms=5, label='2MASS @ target')
+    plt.plot(magS_J - magS_Kp, magS_Kp, 'rs', ms=5, label='Source')
+    plt.plot(magLN_J - magLN_Kp, magLN_Kp, 'bs', ms=5, label='Lens + Neighbors')
+    plt.plot(magSLN_J - magSLN_Kp, magSLN_Kp, 'g*', ms=10, label='Total')
     plt.xlim(0, 3)
     plt.gca().invert_yaxis()
     plt.xlabel('J-K (mag)')
-    plt.ylabel('J (mag)')
+    plt.ylabel('K (mag)')
     plt.title('2MASS')
+    plt.legend(fontsize=10)
 
     plt.subplot(1, 2, 2)
 
@@ -1815,7 +1933,14 @@ def table_ob120169_phot_astrom():
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
               'b_sff2':   '$b_{SFF,Kp}$',
               'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'mL':       '$M_L$ ($\msun$)',
+              'piL':      '$\pi_L$ (mas)',
+              'piRel':    '$\pi_{rel}$ (mas)',
+              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
+              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
+              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
+              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -1834,7 +1959,14 @@ def table_ob120169_phot_astrom():
              'b_sff2':  1.0,
              'mag_src2':1.0,
              'add_err2':1e3,
-        }
+             'mL':      1.0,
+             'piL':     1.0,
+             'piRel':   1.0,
+             'muL_E':   1.0,
+             'muL_N':   1.0,
+             'muRel_E': 1.0,
+             'muRel_N': 1.0
+            }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
                   'tE':       '0.1f',
@@ -1851,7 +1983,14 @@ def table_ob120169_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
-                  'add_err2': '0.1f'
+                  'add_err2': '0.1f',
+                  'mL':       '0.1f',
+                  'piL':      '0.3f',
+                  'piRel':    '0.3f',
+                  'muL_E':    '0.2f',
+                  'muL_N':    '0.2f',
+                  'muRel_E':  '0.2f',
+                  'muRel_N':  '0.2f'
                   }
 
     pho_u0m = 1
@@ -1873,12 +2012,19 @@ def table_ob120169_phot_astrom():
                    + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
                    + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' \\\ \n'
                    + r'\hline ' + '\n')
+
+    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+    start_extra_params = False
     
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_pho, stats_ast]
         val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+
+        if (key in mod_ast.additional_param_names) and not start_extra_params:
+            tab_file.write('\\tableline\n')
+            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -1931,7 +2077,14 @@ def table_ob140613_phot_astrom():
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
               'b_sff2':   '$b_{SFF,Kp}$',
               'mag_src2': '$Kp_{src}$ (mag)',
-              'mult_err2': '$\\varepsilon_{m,Kp}$'
+              'mult_err2': '$\\varepsilon_{m,Kp}$',
+              'mL':       '$M_L$ ($\msun$)',
+              'piL':      '$\pi_L$ (mas)',
+              'piRel':    '$\pi_{rel}$ (mas)',
+              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
+              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
+              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
+              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -1950,6 +2103,13 @@ def table_ob140613_phot_astrom():
              'b_sff2':  1.0,
              'mag_src2':1.0,
              'mult_err2':1.0,
+             'mL':      1.0,
+             'piL':     1.0,
+             'piRel':   1.0,
+             'muL_E':   1.0,
+             'muL_N':   1.0,
+             'muRel_E': 1.0,
+             'muRel_N': 1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -1967,7 +2127,14 @@ def table_ob140613_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
-                  'mult_err2': '0.1f'
+                  'mult_err2': '0.1f',
+                  'mL':       '0.1f',
+                  'piL':      '0.3f',
+                  'piRel':    '0.3f',
+                  'muL_E':    '0.2f',
+                  'muL_N':    '0.2f',
+                  'muRel_E':  '0.2f',
+                  'muRel_N':  '0.2f'
                   }
 
     pho_u0m = 0
@@ -1987,11 +2154,18 @@ def table_ob140613_phot_astrom():
                    + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
                    + r'\hline ' + '\n')
     
+    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+    start_extra_params = False
+    
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast]
         val_mode = [pho_u0m, ast_u0m]
+
+        if (key in mod_ast.additional_param_names) and not start_extra_params:
+            tab_file.write('\\tableline\n')
+            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -2044,7 +2218,14 @@ def table_ob150029_phot_astrom():
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
               'b_sff2':   '$b_{SFF,Kp}$',
               'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'mL':       '$M_L$ ($\msun$)',
+              'piL':      '$\pi_L$ (mas)',
+              'piRel':    '$\pi_{rel}$ (mas)',
+              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
+              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
+              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
+              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -2063,6 +2244,13 @@ def table_ob150029_phot_astrom():
              'b_sff2':  1.0,
              'mag_src2':1.0,
              'add_err2':1e3,
+             'mL':      1.0,
+             'piL':     1.0,
+             'piRel':   1.0,
+             'muL_E':   1.0,
+             'muL_N':   1.0,
+             'muRel_E': 1.0,
+             'muRel_N': 1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -2080,7 +2268,14 @@ def table_ob150029_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
-                  'add_err2': '0.1f'
+                  'add_err2': '0.1f',
+                  'mL':       '0.1f',
+                  'piL':      '0.3f',
+                  'piRel':    '0.3f',
+                  'muL_E':    '0.2f',
+                  'muL_N':    '0.2f',
+                  'muRel_E':  '0.2f',
+                  'muRel_N':  '0.2f'
                   }
 
     pho_u0m = 0
@@ -2100,11 +2295,18 @@ def table_ob150029_phot_astrom():
                    + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
                    + r'\hline ' + '\n')
     
+    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+    start_extra_params = False
+
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast]
         val_mode = [pho_u0m, ast_u0m]
+
+        if (key in mod_ast.additional_param_names) and not start_extra_params:
+            tab_file.write('\\tableline\n')
+            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -2157,7 +2359,14 @@ def table_ob150211_phot_astrom():
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
               'b_sff2':   '$b_{SFF,Kp}$',
               'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)'
+              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'mL':       '$M_L$ ($\msun$)',
+              'piL':      '$\pi_L$ (mas)',
+              'piRel':    '$\pi_{rel}$ (mas)',
+              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
+              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
+              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
+              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -2176,6 +2385,13 @@ def table_ob150211_phot_astrom():
              'b_sff2':  1.0,
              'mag_src2':1.0,
              'add_err2':1e3,
+             'mL':      1.0,
+             'piL':     1.0,
+             'piRel':   1.0,
+             'muL_E':   1.0,
+             'muL_N':   1.0,
+             'muRel_E': 1.0,
+             'muRel_N': 1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -2193,7 +2409,14 @@ def table_ob150211_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
-                  'add_err2': '0.1f'
+                  'add_err2': '0.1f',
+                  'mL':       '0.1f',
+                  'piL':      '0.3f',
+                  'piRel':    '0.3f',
+                  'muL_E':    '0.2f',
+                  'muL_N':    '0.2f',
+                  'muRel_E':  '0.2f',
+                  'muRel_N':  '0.2f'
                   }
 
     pho_u0m = 1
@@ -2219,11 +2442,18 @@ def table_ob150211_phot_astrom():
                    + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
                    + r'\hline ' + '\n')
     
+    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+    start_extra_params = False
+    
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast, stats_pho, stats_ast]
         val_mode = [pho_u0m, ast_u0m, pho_u0p, ast_u0p]
+
+        if (key in mod_ast.additional_param_names) and not start_extra_params:
+            tab_file.write('\\tableline\n')
+            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -2262,7 +2492,7 @@ def results_best_params_all():
               'b_sff1', 'mag_src1', 'add_err1',
               'b_sff2', 'mag_src2', 'add_err2']
         
-    fmt = '   {0:13s} = {1:12.5f} [{2:12.5f} - {3:12.5f}]'
+    fmt = '   {0:13s} = {1:12.5f}  [{2:12.5f} - {3:12.5f}]  [{4:12.5f} - {5:12.5f}]'
 
     def get_68CI(samples, weights):
         sumweights = np.sum(weights)
@@ -2276,13 +2506,26 @@ def results_best_params_all():
                                              sample_weight = tmp_weights)
 
         return tmp[0], tmp[1]
+
+    def get_99CI(samples, weights):
+        sumweights = np.sum(weights)
+        tmp_weights = weights / sumweights
         
+        sig1 = 0.9973
+        sig1_lo = (1. - sig1) / 2.
+        sig1_hi = 1. - sig1_lo
+
+        tmp = model_fitter.weighted_quantile(samples, [sig1_lo, sig1_hi],
+                                             sample_weight = tmp_weights)
+
+        return tmp[0], tmp[1]
+    
         
 
     for targ in targets:
         print('')
         print('**********')
-        print('Best-Fit (Max L, 68% CI) Parameters for ', targ)
+        print('Best-Fit (Max L, 68.3% CI, 99.7% CI) Parameters for ', targ)
         print('**********')
         stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[targ])
 
@@ -2295,7 +2538,9 @@ def results_best_params_all():
                 
             print(fmt.format(par, stats_ast['MaxLike_' + par][mdx],
                                   stats_ast['lo68_' + par][mdx],
-                                  stats_ast['hi68_' + par][mdx]))
+                                  stats_ast['hi68_' + par][mdx],
+                                  stats_ast['lo99_' + par][mdx],
+                                  stats_ast['hi99_' + par][mdx]))
 
         # Print a few more summary params
         muRel = np.hypot(stats_ast['MaxLike_muRel_E'][mdx], stats_ast['MaxLike_muRel_N'][mdx])
@@ -2317,15 +2562,20 @@ def results_best_params_all():
         Amp_samp = (u0**2 + 2.0) / (np.abs(u0) * np.sqrt(u0**2 + 4.0))
         deltaC_samp = thetaE_samp * 2**0.5 / 4.0
 
-        muRel_lo, muRel_hi = get_68CI(muRel_samp, samps['weights'])
-        piE_lo, piE_hi = get_68CI(piE_samp, samps['weights'])
-        Amp_lo, Amp_hi = get_68CI(Amp_samp, samps['weights'])
-        deltaC_lo, deltaC_hi = get_68CI(deltaC_samp, samps['weights'])
+        muRel_lo1, muRel_hi1 = get_68CI(muRel_samp, samps['weights'])
+        piE_lo1, piE_hi1 = get_68CI(piE_samp, samps['weights'])
+        Amp_lo1, Amp_hi1 = get_68CI(Amp_samp, samps['weights'])
+        deltaC_lo1, deltaC_hi1 = get_68CI(deltaC_samp, samps['weights'])
+
+        muRel_lo3, muRel_hi3 = get_99CI(muRel_samp, samps['weights'])
+        piE_lo3, piE_hi3 = get_99CI(piE_samp, samps['weights'])
+        Amp_lo3, Amp_hi3 = get_99CI(Amp_samp, samps['weights'])
+        deltaC_lo3, deltaC_hi3 = get_99CI(deltaC_samp, samps['weights'])
         
-        print(fmt.format('muRel', muRel, muRel_lo, muRel_hi))
-        print(fmt.format('piE', piE, piE_lo, piE_hi))
-        print(fmt.format('A', Amp, Amp_lo, Amp_hi))
-        print(fmt.format('deltaC_max', deltaC, deltaC_lo, deltaC_hi))
+        print(fmt.format('muRel', muRel, muRel_lo1, muRel_hi1, muRel_lo3, muRel_hi3))
+        print(fmt.format('piE', piE, piE_lo1, piE_hi1, piE_lo3, piE_hi3))
+        print(fmt.format('A', Amp, Amp_lo1, Amp_hi1, Amp_lo3, Amp_hi3))
+        print(fmt.format('deltaC_max', deltaC, deltaC_lo1, deltaC_hi1, deltaC_lo3, deltaC_hi3))
     
     return
 
@@ -2673,13 +2923,39 @@ def calc_summary_statistics(fitter, verbose=False):
             # Next figure out the errors.
             # Only need to do this once.
             if sol == 'median':
+                sigma_vals = np.array([0.682689, 0.9545, 0.9973])
+                credi_ints_lo = (1.0 - sigma_vals) / 2.0
+                credi_ints_hi = (1.0 + sigma_vals) / 2.0
+                credi_ints_med = np.array([0.5])
+                credi_ints = np.concatenate([credi_ints_med, credi_ints_lo, credi_ints_hi])
+
+                sumweights = np.sum(tab_list[nn]['weights'])
+                weights = tab_list[nn]['weights'] / sumweights
+                
                 for param in fitter.all_param_names:
+                    # Calculate median, 1 sigma lo, and 1 sigma hi credible interval.
+                    tmp = model_fitter.weighted_quantile(tab_list[nn][param], credi_ints, sample_weight=weights)
+                    ci_med_val = tmp[0]
+                    ci_lo = tmp[1:1+len(sigma_vals)]
+                    ci_hi = tmp[1+len(sigma_vals):]
+
                     if 'lo68_' + param not in stats.colnames:
                         stats['lo68_' + param] = 0.0
                         stats['hi68_' + param] = 0.0
+                    if 'lo95_' + param not in stats.colnames:
+                        stats['lo95_' + param] = 0.0
+                        stats['hi95_' + param] = 0.0
+                    if 'lo99_' + param not in stats.colnames:
+                        stats['lo99_' + param] = 0.0
+                        stats['hi99_' + param] = 0.0
+                        
                     # Add back in the median to get the actual value (not diff on something).
-                    stats['lo68_' + param][nn] = best_par[param] - best_parerr[param][0]
-                    stats['hi68_' + param][nn] = best_par[param] + best_parerr[param][1]
+                    stats['lo68_' + param][nn] = ci_lo[0]
+                    stats['hi68_' + param][nn] = ci_hi[0]
+                    stats['lo95_' + param][nn] = ci_lo[1]
+                    stats['hi95_' + param][nn] = ci_hi[1]
+                    stats['lo99_' + param][nn] = ci_lo[2]
+                    stats['hi99_' + param][nn] = ci_hi[2]
             
         # Get the evidence values out of the _stats.dat file.
         if 'logZ' not in stats.colnames:
@@ -3059,6 +3335,7 @@ def piE_tE(fit_type = 'ast'):
     axes.set_yscale('log')
     axes.legend(loc=3)
     plt.savefig(paper_dir + 'piE_tE_' + fit_type + '.png')
+
 
 ####################################
 ### PopSyCLE Visualization Stuff ###
