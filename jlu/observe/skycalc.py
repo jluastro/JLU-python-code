@@ -153,8 +153,8 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     # Observatory (for symbol)
     keck_loc = EarthLocation.of_site('keck')
     keck = ephem.Observer()
-    keck.long = keck_loc.longitude.value
-    keck.lat = keck_loc.latitude.value
+    keck.long = keck_loc.lon.value
+    keck.lat = keck_loc.lat.value
     
     # Setup Object
     obj = ephem.FixedBody()
@@ -214,7 +214,8 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
 
     py.plot([0,31], [30,30], 'k')
     py.legend(loc=2, numpoints=1)
-    py.title('Moon distance and %% Illumination (RA = %s, DEC = %s)' % (ra, dec), fontsize=14)
+    py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), 
+             fontsize=16)
     py.xlabel('Day of Month (UT)', fontsize = 16)
     py.ylabel('Moon Distance (degrees)', fontsize = 16)
     py.axis([0, 31, 0, 200])

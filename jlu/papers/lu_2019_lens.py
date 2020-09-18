@@ -46,8 +46,8 @@ ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
 epochs = {'ob120169': ep_ob120169, 'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
 
 # paper_dir = '/u/jlu/doc/papers/ob150211/'
-paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
-
+# paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
+paper_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 mlens_dir = '/u/jlu/work/microlens/'
 
 a_date = {'ob120169': '2019_06_26',
@@ -97,7 +97,8 @@ pspl_phot = {'ob120169' : ogle_phot['ob120169_add']  + 'c3_',
              'ob150211' : ogle_phot['ob150211_add']  + 'a4_'}
 
 pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c5_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/b1_',
+                      'ob140613' : '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_b/b1_',
+#                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/b1_',
                       'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c5_',
                       'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/b2_'}
 
