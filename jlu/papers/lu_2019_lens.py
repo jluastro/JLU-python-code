@@ -32,28 +32,29 @@ mpl_r = '#d62728'
 ep_ob120169 = ['12jun',   '12jul',   '13apr',   '13jul', '15may05',
                '15jun07', '16may24', '16jul14']
 
-ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
-               '16jul14', '16aug02', '17jun05', '17jun08', '17jul19',
-               '18may11', '18aug02', '18aug16']
+ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
+               '17jun05', '17jul14', '18may11', '18aug16', '19apr17',
+               '19apr21os']
 
 ep_ob150029 = ['15jun07', '15jul23', '16may24', '16jul14', '17may21',
                '17jul14', '17jul19', '18aug21', '19apr17']
 
-ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
-               '17jun05', '17jul14', '18may11', '18aug16', '19apr17']
+ep_ob150211 = ['15may05', '15jun07', '15jun28', '15jul23', '16may03',
+               '16jul14', '16aug02', '17jun05', '17jun08', '17jul19',
+               '18may11', '18aug02', '18aug16']
 
 
 epochs = {'ob120169': ep_ob120169, 'ob140613': ep_ob140613, 'ob150029': ep_ob150029, 'ob150211': ep_ob150211}
 
 # paper_dir = '/u/jlu/doc/papers/ob150211/'
-# paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
-paper_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+paper_dir = '/u/jlu/doc/papers/2015_bh_lenses/'
+# paper_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 mlens_dir = '/u/jlu/work/microlens/'
 
-a_date = {'ob120169': '2019_06_26',
-          'ob140613': '2019_06_26',
-          'ob150029': '2019_06_26',
-          'ob150211': '2019_06_26'}
+a_date = {'ob120169': '2020_08_18',
+          'ob140613': '2020_08_18',
+          'ob150029': '2020_08_18',
+          'ob150211': '2020_08_18'}
 
 comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
               'ob140613': ['S002_15_0.7', 'S001_15_0.9'],
@@ -65,55 +66,57 @@ astrom_pass = {'ob120169': 'p5',
                'ob150029': 'p4',
                'ob150211': 'p5'}
 
+astrom_suffix = {'ob120169': '',
+                 'ob140613': '_os',
+                 'ob150029': '',
+                 'ob150211': ''}
+
 a_dir = {}
 astrom_data = {}
 
 for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
-    astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + '.fits'
+    astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + astrom_suffix[targ] + '.fits'
 
 # added 12/20/19: might supersede pspl_phot.
-ogle_phot = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
-             'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
-             'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
-             'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
-             'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
-             'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/',
-             'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
-             'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/', 
-             'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
-             'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
-             'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
-             'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
+ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
+                 'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
+                 'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
+                 'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
+                 'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
+                 'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/',
+                 'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
+                 'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/', 
+                 'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
+                 'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
+                 'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
+                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
     
 photom_spitzer = {'ob120169': None,
                   'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-pspl_phot = {'ob120169' : ogle_phot['ob120169_add']  + 'c3_',
-             'ob140613' : ogle_phot['ob140613_mult'] + 'c8_',
-             'ob150029' : ogle_phot['ob150029_add']  + 'd8_',
-             'ob150211' : ogle_phot['ob150211_add']  + 'a4_'}
+pspl_phot = {'ob120169' : ogle_phot_all['ob120169_add']  + 'c3_',
+             'ob140613' : ogle_phot_all['ob140613_mult'] + 'c8_',
+             'ob150029' : ogle_phot_all['ob150029_add']  + 'd8_',
+             'ob150211' : ogle_phot_all['ob150211_add']  + 'a4_'}
 
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c5_',
-                      'ob140613' : '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_b/b1_',
-#                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/b1_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/c5_',
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/b2_'}
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a1_', #FIX
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_', #FIX
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a3_'}
 
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_fit_phot_multiphot_parallax_aerr/b0_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/111_fit_multiphot_parallax_merr/b0_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/113_fit_multiphot_parallax_aerr/aa_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/113_fit_multiphot_parallax_aerr/aa_'}
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a2_',
+                  'ob140613' : a_dir['ob140613'] + 'model_fits/113_phot_parallax_merr_ogle_keck/base_a/a3_',
+                  'ob150029' : a_dir['ob150029'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a3_',
+                  'ob150211' : a_dir['ob150211'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a5_'}
 
-
-# Is this ok to do?
-ogle_phot['ob120169'] = ogle_phot['ob120169_add']
-ogle_phot['ob140613'] = ogle_phot['ob140613_mult']
-ogle_phot['ob150029'] = ogle_phot['ob150029_add']
-ogle_phot['ob150211'] = ogle_phot['ob150211_add']
-
+ogle_phot = {}
+ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
+ogle_phot['ob140613'] = ogle_phot_all['ob140613_mult']
+ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
+ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
 
 def all_paper():
     plot_images()
@@ -213,6 +216,9 @@ def make_obs_table():
             date[ee] = hdr['DATE-OBS'].strip()
             tint[ee] = np.round(float(hdr['ITIME']) * float(hdr['COADDS']), 0)
 
+            if epoch.endswith('os'):
+                tint[ee] = np.round(float(hdr['ITIME0']) * float(hdr['COADDS']) / 1e6, 0)
+
             # From the log file, average Strehl and FWHM
             _log = Table.read(log_file, format='ascii')
             _log.rename_column('col2', 'fwhm')
@@ -274,15 +280,20 @@ def calc_base_mag():
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
 
         # Figure out the first MJD day of NIRC2 observations for this target.
-        first_year = np.floor(data['t_phot2'].min())
+        keck_first_mjd = np.floor(data['t_phot2'].min())
 
         # Get out all epochs that are after the first year.
-        base_idx = np.where(data['t_phot2'] > (first_year + 365))[0]
+        keck_base_idx = np.where(data['t_phot2'] > (keck_first_mjd + 365))[0]
+
+        # Figure out the peak yar of the OGLE observations for this target.
+        ogle_peak_mjd = data['t_phot1'][data['mag1'].argmin()]
+        ogle_base_idx = np.where(data['t_phot1'] > (ogle_peak_mjd + 365))[0]
 
         # Average the photometry.
-        kp_base = data['mag2'][base_idx].mean()
+        I_base = data['mag1'][ogle_base_idx].mean()
+        kp_base = data['mag2'][keck_base_idx].mean()
 
-        print('{0:10s} Kp_base = {1:.2f}'.format(target, kp_base))
+        print('{0:10s} OGLE_I_base = {1:.2f}  Kp_base = {2:.2f}'.format(target, I_base, kp_base))
 
         axs[tt].errorbar(data['t_phot2'], data['mag2'], yerr=data['mag_err2'])
         axs[tt].axhline(kp_base, linestyle='--')
@@ -529,6 +540,13 @@ def plot_pos_err():
 
             lis = starlists.StarList.from_lis_file(pos_file)
 
+            # Trim down to stars within 4" of the target
+            tdx = np.where(lis['name'] == target)[0][0]
+            r2d = np.hypot(lis['x'] - lis['x'][tdx], lis['y'] - lis['y'][tdx])
+            idx = np.where(r2d < 450)[0]
+
+            lis = lis[idx]
+
             # Calc the 1D astrometric error by using the average over X and Y
             perr = 0.5 * (lis['xe'] + lis['ye'])
             kmag = lis['m'] + np.random.rand(len(lis))*1e-5
@@ -561,12 +579,16 @@ def plot_pos_err():
             p0 = [1e-7, 0.7, 5, 1e-3]
             res_lsq2 = least_squares(fit_perr_v_mag, p0, args=(kmag, perr), loss='cauchy', f_scale=0.01)
 
-            day = epoch[-2:]
+            if epoch.endswith('os'):
+                day = epoch[-4:-2]
+            else:
+                day = epoch[-2:]
+                
             if target == 'ob120169':
                 if epoch == '12jun': day = '23'
                 if epoch == '12jul': day = '10' 
                 if epoch == '13apr': day = '30'
-                if epoch == '13jul': day = '15' 
+                if epoch == '13jul': day = '15'
                 
             epoch_label = '20{0:2s} {1:s}{2:s} {3:2s}'.format(epoch[0:2], epoch[2:3].upper(), epoch[3:5], day)
 
@@ -574,7 +596,7 @@ def plot_pos_err():
             p_mag = np.arange(kmag.min(), kmag.max(), 0.05)
 
             # Plot the data
-            # if ee == 0:
+            # if target == 'ob140613' and ee == n_epochs-1:
             #     plt.plot(kmag, perr * scale * 1e3, '.', label=epoch_label + ' (obs)', color=col, ms=2)
 
             plt.semilogy(p_mag, scale * 1e3 * perr_v_mag(p_mag, *res_lsq2.x), label=epoch_label, color=col)
@@ -2978,21 +3000,21 @@ def calc_summary_statistics(fitter, verbose=False):
     
 def make_BIC_comparison_table():
     # Use the one with the highest likelihood solution.
-    ob120169_none = load_summary_statistics(ogle_phot['ob120169_none'] + 'd7_')
-    ob120169_add  = load_summary_statistics(ogle_phot['ob120169_add'] + 'c3_') 
-    ob120169_mult = load_summary_statistics(ogle_phot['ob120169_mult'] + 'a0_')
+    ob120169_none = load_summary_statistics(ogle_phot_all['ob120169_none'] + 'd7_')
+    ob120169_add  = load_summary_statistics(ogle_phot_all['ob120169_add'] + 'c3_') 
+    ob120169_mult = load_summary_statistics(ogle_phot_all['ob120169_mult'] + 'a0_')
 
-    ob140613_none = load_summary_statistics(ogle_phot['ob140613_none'] + 'c2_') 
-    ob140613_add  = load_summary_statistics(ogle_phot['ob140613_add']  + 'b3_') 
-    ob140613_mult = load_summary_statistics(ogle_phot['ob140613_mult'] + 'c8_') 
+    ob140613_none = load_summary_statistics(ogle_phot_all['ob140613_none'] + 'c2_') 
+    ob140613_add  = load_summary_statistics(ogle_phot_all['ob140613_add']  + 'b3_') 
+    ob140613_mult = load_summary_statistics(ogle_phot_all['ob140613_mult'] + 'c8_') 
 
-    ob150029_none = load_summary_statistics(ogle_phot['ob150029_none'] + 'b5_') 
-    ob150029_add  = load_summary_statistics(ogle_phot['ob150029_add']  + 'd8_')
-    ob150029_mult = load_summary_statistics(ogle_phot['ob150029_mult'] + 'd2_') 
+    ob150029_none = load_summary_statistics(ogle_phot_all['ob150029_none'] + 'b5_') 
+    ob150029_add  = load_summary_statistics(ogle_phot_all['ob150029_add']  + 'd8_')
+    ob150029_mult = load_summary_statistics(ogle_phot_all['ob150029_mult'] + 'd2_') 
 
-    ob150211_none = load_summary_statistics(ogle_phot['ob150211_none'] + 'a1_')
-    ob150211_add  = load_summary_statistics(ogle_phot['ob150211_add']  + 'a4_')
-    ob150211_mult = load_summary_statistics(ogle_phot['ob150211_mult'] + 'd5_')
+    ob150211_none = load_summary_statistics(ogle_phot_all['ob150211_none'] + 'a1_')
+    ob150211_add  = load_summary_statistics(ogle_phot_all['ob150211_add']  + 'a4_')
+    ob150211_mult = load_summary_statistics(ogle_phot_all['ob150211_mult'] + 'd5_')
 
     
     with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
