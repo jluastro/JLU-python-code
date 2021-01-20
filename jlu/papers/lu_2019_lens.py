@@ -1941,7 +1941,7 @@ def table_ob120169_phot_astrom():
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -2085,7 +2085,7 @@ def table_ob140613_phot_astrom():
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -2226,7 +2226,7 @@ def table_ob150029_phot_astrom():
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -2367,7 +2367,7 @@ def table_ob150211_phot_astrom():
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
