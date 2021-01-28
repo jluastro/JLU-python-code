@@ -2799,7 +2799,6 @@ def plot_trace_corner(target):
     
     return
 
-    
 def get_data_and_fitter(mnest_base):
     info_file = open(mnest_base + 'params.yaml', 'r')
     info = yaml.full_load(info_file)
