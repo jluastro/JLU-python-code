@@ -80,16 +80,16 @@ for targ in a_date:
 
 # added 12/20/19: might supersede pspl_phot.
 ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
-                 'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/',
+                 'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/c3_',
                  'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
                  'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
                  'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
-                 'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/',
+                 'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/c8_',
                  'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
-                 'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/', 
+                 'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/d8_', 
                  'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
                  'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
-                 'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/',
+                 'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/a4_',
                  'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
     
 photom_spitzer = {'ob120169': None,
@@ -97,15 +97,15 @@ photom_spitzer = {'ob120169': None,
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-pspl_phot = {'ob120169' : ogle_phot_all['ob120169_add']  + 'c3_',
-             'ob140613' : ogle_phot_all['ob140613_mult'] + 'c8_',
-             'ob150029' : ogle_phot_all['ob150029_add']  + 'd8_',
-             'ob150211' : ogle_phot_all['ob150211_add']  + 'a4_'}
+pspl_phot = {'ob120169' : ogle_phot_all['ob120169_add'],
+             'ob140613' : ogle_phot_all['ob140613_mult'],
+             'ob150029' : ogle_phot_all['ob150029_add'],
+             'ob150211' : ogle_phot_all['ob150211_add']}
 
 pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a1_', #FIX
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_', #FIX
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a3_'}
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_', # need PSBL
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_'}
 
 pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a2_',
                   'ob140613' : a_dir['ob140613'] + 'model_fits/113_phot_parallax_merr_ogle_keck/base_a/a3_',
@@ -154,7 +154,7 @@ def all_paper():
 
     # tE vs. piE vs. deltaC plots
     piE_tE(fit_type='ast')
-    #shift_vs_piE()
+    shift_vs_piE()
 
     # CMDs
     plot_cmds()
@@ -268,11 +268,14 @@ def make_obs_table():
 
     return
 
-def calc_base_mag():
+def calc_base_mag(plot=True):
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
 
-    fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(16, 6))
-    plt.subplots_adjust(left=0.1)
+    base_mags = {}
+
+    if plot:
+        fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(16, 6))
+        plt.subplots_adjust(left=0.1)
 
     for tt in range(len(targets)):
         target = targets[tt]
@@ -293,18 +296,23 @@ def calc_base_mag():
         I_base = data['mag1'][ogle_base_idx].mean()
         kp_base = data['mag2'][keck_base_idx].mean()
 
-        print('{0:10s} OGLE_I_base = {1:.2f}  Kp_base = {2:.2f}'.format(target, I_base, kp_base))
+        base_mags[target] = {}
+        base_mags[target]['OGLE_I'] = I_base
+        base_mags[target]['NIRC2_Kp'] = kp_base
 
-        axs[tt].errorbar(data['t_phot2'], data['mag2'], yerr=data['mag_err2'])
-        axs[tt].axhline(kp_base, linestyle='--')
-        axs[tt].set_title(target)
-        axs[tt].invert_yaxis()
-        axs[tt].set_xlabel('MJD')
 
-        if tt == 0:
-            axs[tt].set_ylabel('Kp (mag)')
+        if plot:
+            print('{0:10s} OGLE_I_base = {1:.2f}  Kp_base = {2:.2f}'.format(target, I_base, kp_base))
+            axs[tt].errorbar(data['t_phot2'], data['mag2'], yerr=data['mag_err2'])
+            axs[tt].axhline(kp_base, linestyle='--')
+            axs[tt].set_title(target)
+            axs[tt].invert_yaxis()
+            axs[tt].set_xlabel('MJD')
 
-    return
+            if tt == 0:
+                axs[tt].set_ylabel('Kp (mag)')
+
+    return base_mags
 
 def calc_poisson_prob_detection():
     """
@@ -665,7 +673,9 @@ def plot_images():
         # plt.ylim(-0.5, 0.5)
 
         return
-
+    
+    plt.close('all')
+    
     plt.figure(4)
     plt.clf()
     plot_image_for_source('ob120169', 10, 5e5)
@@ -787,6 +797,8 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
     from mpl_toolkits.axes_grid1.colorbar import colorbar
+
+    plt.close('all')
 
     # Sample time
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
@@ -986,6 +998,8 @@ def plot_comparison_stars(target, res_rng=0.8):
     res_rng : float
         +/- range of residuals in milli-arcseconds.
     """
+    plt.close('all')
+    
     ast_data_file = astrom_data[target]
 
     data = Table.read(ast_data_file)
@@ -1123,6 +1137,8 @@ def weighted_avg_and_std(values, weights):
 # This one only has stars.... good for public talk. 
 ##########
 def tE_piE():
+    plt.close('all')
+    
     t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
 
     mas_to_rad = 4.848 * 10**-9
@@ -1203,6 +1219,8 @@ def tE_piE():
     return
 
 def shift_vs_piE():
+    plt.close('all')
+    
     # This assumes blending from source and lens.
     t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
 
@@ -1471,9 +1489,17 @@ def calc_velocity(target):
     print('\n*** Source ***')
     print_vel_info(data['raL'], data['decL'], muS_E, muS_N, muSe_E, muSe_N, dS)
     
-
+    # Fetch the base magnitudes.
+    base_mags = calc_base_mag(plot=False)
+    
     # Load up PopSyCLE
     sim = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
+
+    # Filter out really faint stuff. CHOOSE NOT TO TRIM becuase we are
+    # looking at the whole field of stars, not just the target. 
+    # sdx = np.where(sim['ubv_i_app_LSN'] < (base_mags[target]['OGLE_I'] + 0.5))[0]
+    # print('Keeping sims: {0:d} of {1:d}'.format(len(sdx), len(sim)))
+    # sim = sim[sdx]
 
     sim_coo = coord.Galactic(l=sim['glon_S']*u.degree, b=sim['glat_S']*u.degree,
                 distance=sim['px_S']*u.pc,
@@ -1497,7 +1523,7 @@ def calc_velocity(target):
     ast['vxe'] *= 1e3
     ast['vye'] *= 1e3
 
-    # Sihft the observed astrometry into the popsycle reference frame.
+    # Shift the observed astrometry into the popsycle reference frame.
     weights = 1.0 / np.hypot(ast['vxe'], ast['vye'])
     vx_obs_mean = np.average(ast['vx'], weights=weights)
     vy_obs_mean = np.average(ast['vy'], weights=weights)
@@ -1515,16 +1541,18 @@ def calc_velocity(target):
     muL_N += dvy
     muS_E += dvx
     muS_N += dvy
-    
+
+    plt.close(1)
     plt.figure(1, figsize=(6, 6))
     plt.clf()
     plt.plot(ast['vx'][tdx], ast['vy'][tdx], 'r*', ms=10, label='Src, Keck')
     plt.errorbar([muS_E], [muS_N], xerr=[muSe_E], yerr=[muSe_N],
-                     marker='s', color='red', label='Src, Fit', ms=10, lw=2)
+                     marker='s', color='red', label='Src, Fit', ms=10, lw=2, mfc='none', mew=4)
     plt.errorbar([muL_E], [muL_N], xerr=[muLe_E], yerr=[muLe_N],
-                     marker='s', color='black', label='Lens, Fit', ms=10, lw=2)
+                     marker='s', color='black', label='Lens, Fit', ms=10, lw=2, mfc='none', mew=4)
     
-    plt.plot(ast['vx'], ast['vy'], 'b.', label='Other, Keck', alpha=0.5)
+    plt.errorbar(ast['vx'], ast['vy'], xerr=ast['vxe'], yerr=ast['vye'], fmt='b.', color='b',
+                     label='Other, Keck', alpha=0.3)
     plt.scatter(sim_muS_astar, sim_muS_delta, 
                  alpha = 0.2, marker = '.', s = 10, 
                  color = 'grey', label='PopSyCLE')
@@ -1561,10 +1589,6 @@ def calc_zp_ob150211():
     # Get the Keck stars within 4" radius.
     rad = np.hypot(ast['x'] - ast['x'][tt_a], ast['y'] - ast['y'][tt_a])
     rdx = np.where(rad < 4.)
-
-    
-
-    
 
 
 def plot_cmds():
@@ -1768,7 +1792,7 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     ##########
     # Geocentric plot
     ##########
-    # plt.close(1)
+    plt.close(1)
     plt.figure(1)
     plt.clf()
     cir = plt.Circle((xL_unlens_geo[tidx, 0]*1e3,
@@ -1808,7 +1832,7 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     ##########
     # Geocentric plot
     ##########
-    # plt.close(2)
+    plt.close(2)
     plt.figure(2)
     plt.clf()
     cir = plt.Circle((xL_unlens_sun[tidx, 0]*1e3,
@@ -3692,6 +3716,8 @@ def make_obs_table_ob150211():
 def plot_astrometry(target):
     data = munge_ob150211.getdata()
 
+    plt.close('all')
+
     best = {}
     best['mL'] = 10.386
     best['t0'] = 57211.845
@@ -3835,6 +3861,7 @@ def plot_astrometry(target):
     print(t_year)
     print(x_year)
 
+
     plt.figure(5)
     plt.clf()
     plt.scatter(x_year*1e3, y_year*1e3, c=t_year,
@@ -3900,6 +3927,7 @@ def plot_ob150211_posterior_tE_piE_phot_astrom():
     y = (tab['piE_E']**2 + tab['piE_N']**2)**0.5
     weights = tab['weights']
 
+    plt.close(1)
     fig = plt.figure(1)
     plt.clf()
     ax = plt.gca()
@@ -4079,6 +4107,7 @@ def plot_ob150211_posterior_deltac_piE_phot_astrom():
     y = (tab['piE_E']**2 + tab['piE_N']**2)**0.5
     weights = tab['weights']
 
+    plt.close(1)
     fig = plt.figure(1)
     plt.clf()
     ax = plt.gca()
@@ -4259,6 +4288,7 @@ def plot_ob150211_posterior_tE_piE_phot_only():
     y = (tab['piE_E']**2 + tab['piE_N']**2)**0.5
     weights = tab['weights']
 
+    plt.close(2)
     fig = plt.figure(2)
     plt.clf()
     ax = plt.gca()
@@ -4434,6 +4464,7 @@ def marginalize_tE_piE():
     st_idx = np.where(t['rem_id_L'] == 0)[0]
 
     # start with a rectangular Figure
+    plt.close(15)
     plt.figure(15, figsize=(8, 8))
     plt.clf()
 
@@ -4542,7 +4573,7 @@ def plot_photometry_single(target):
     amp_mod_t_dat1 = mod.get_amplification(data['t_phot1'])
     amp_mod_t_dat2 = mod.get_amplification(data['t_phot2'])
 
-    #plt.close(1)
+    plt.close(1)
     fig_a = plt.figure(1, figsize=(6,6))
     fig_a.clf()
 
@@ -4587,7 +4618,7 @@ def plot_photometry_single(target):
     print(par['b_sff1'], par['b_sff2'])
     print(base1, base2, dbase)
 
-    #plt.close(2)
+    plt.close(2)
     fig_b = plt.figure(2, figsize=(6,6))
     fig_b.clf()
 
@@ -4642,6 +4673,27 @@ def get_base_photometry():
 
     return
 
+def get_num_ref_stars():
+    all_targets = epochs.keys()
+    
+    print('Number of reference stars for transformation:')
+    
+    for target in all_targets:
+        ast_data_file = astrom_data[target]
+        data5 = Table.read(ast_data_file)
+
+        if target != 'ob150029':
+            ast_data_file = ast_data_file.replace('p5', 'p4')
+            data4 = Table.read(ast_data_file)
+        else:
+            data4 = data5
+
+        print('{0:s} N={1:d} N_final={2:d}'.format(target,
+                                                    data4['use_in_trans'].sum(),
+                                                    data5['use_in_trans'].sum()))
+        
+    return
+    
 
 def plot_vpd():
     all_targets = epochs.keys()
@@ -4678,6 +4730,7 @@ def plot_vpd():
         tdx = np.where(data['name'] == target)[0]
 
         # Plot the proper motion VPD.
+        plt.close(1)
         plt.figure(1)
         plt.clf()
         plt.errorbar(data['vx'], data['vy'], xerr=data['vxe'], yerr=data['vye'], fmt='k.')
