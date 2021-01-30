@@ -35,6 +35,34 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from flystar import analysis
+import yaml
+
+
+mb09260_data = munge.getdata2('mb09260', phot_data=['MOA', 'HST'], ast_data = [])  
+mb10364_data = munge.getdata2('mb10364', phot_data=['MOA', 'HST'], ast_data = [])  
+ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+
+# Some of these may still require rerunning... 
+mb09260_dir = '/u/jlu/work/microlens/MB09260/a_2020_03_26/model_fits/202_fit_multiphot_parallax/b0_'
+mb10364_dir = '/u/jlu/work/microlens/MB10364/a_2020_02_18/model_fits/202_fit_multiphot_parallax/b0_'
+ob110037_dir = '/u/jlu/work/microlens/OB110037/a_2020_01_22/model_fits/302_fit_3phot_parallax/b0_'
+ob110310_dir = '/u/jlu/work/microlens/OB110310/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
+ob110462_dir = '/u/jlu/work/microlens/OB110462/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
+
+# run directory                                                                                             
+ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
+ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
+ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+
+# run id                                                                                          
+ob120169_id = 'c2'
+ob140613_id = 'b1'
+ob150029_id = 'b3'
+ob150211_id = 'b2'
+
 
 def piE_tE():
     # Plot the piE-tE 2D posteriors.
@@ -469,6 +497,62 @@ def piE_tE_phot_only_fits():
     Plot piE-tE 2D posteriors from OGLE photometry only fits.
     Also plot PopSyCLE simulations simultaneously.
     """
+
+    mb09260_yaml = open(mb09260_dir + 'params.yaml').read() 
+    params_09260 = yaml.safe_load(mb09260_yaml)
+    mb10364_yaml = open(mb10364_dir + 'params.yaml').read() 
+    params_10364 = yaml.safe_load(mb10364_yaml)
+    ob110037_yaml = open(ob110037_dir + 'params.yaml').read() 
+    params_110037 = yaml.safe_load(ob110037_yaml)
+    ob110310_yaml = open(ob110310_dir + 'params.yaml').read() 
+    params_110310 = yaml.safe_load(ob110310_yaml)
+    ob110462_yaml = open(ob110462_dir + 'params.yaml').read() 
+    params_110462 = yaml.safe_load(ob110462_yaml)
+
+    # Cycle 17-24 Sahu results tE-piE.
+    fitter_09260 = model_fitter.PSPL_Solver(mb09260_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb09260_dir)
+
+    smy_09260 = fitter_09260.load_mnest_summary()
+
+    fitter_10364 = model_fitter.PSPL_Solver(mb10364_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb10364_dir)
+
+    smy_10364 = fitter_10364.load_mnest_summary()
+
+    fitter_110037 = model_fitter.PSPL_Solver(ob110037_data,
+                                              model.PSPL_Phot_Par_Param1,
+                                              outputfiles_basename=ob110037_dir)
+
+    smy_110037 = fitter_110037.load_mnest_summary()
+
+    fitter_110310 = model_fitter.PSPL_Solver(ob110310_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110310_dir)
+
+    smy_110310 = fitter_110310.load_mnest_summary()
+
+    fitter_110462 = model_fitter.PSPL_Solver(ob110462_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110462_dir)
+    smy_110462 = fitter_110462.load_mnest_summary()
+
+
+    # Maximum likelihood vals                                                                                         
+    smy_list = [smy_09260, smy_10364, smy_110037, smy_110310, smy_110462]
+
+    smy_name = ['MB09260','MB10364', 'OB110037', 'OB110310', 'OB110462']
+    maxl = {}
+
+    for ss, smy in enumerate(smy_list):
+        print(smy_name[ss])
+        print('tE : ', smy['MaxLike_tE'][0])
+        print('piE : ', np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0]))
+        maxl[smy_name[ss]] = {'tE' : smy['MaxLike_tE'][0],
+                              'piE' : np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0])}
+
     span = 0.999999426697
     smooth = 0.02
     quantiles_2d = None
@@ -520,7 +604,7 @@ def piE_tE_phot_only_fits():
     plt.clf()
     fig.set_size_inches(6.0, 6.0, forward=True)
     axes = fig.gca()
-    plt.subplots_adjust(bottom=0.15)
+    plt.subplots_adjust(bottom=0.15, left=0.2)
 
     sx = smooth
     sy = smooth
@@ -531,7 +615,19 @@ def piE_tE_phot_only_fits():
     model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
                                  ax=axes, smooth=[sy, sx], color='red',
                                  **hist2d_kwargs, plot_density=False)
-    axes.text(430, 0.018, 'MB190284', color='red')    
+    axes.text(430, 0.025, 'MB190284', color='red')    
+
+    axes.plot(maxl['MB09260']['tE'], maxl['MB09260']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['MB10364']['tE'], maxl['MB10364']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110037']['tE'], maxl['OB110037']['piE'], 
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110310']['tE'], maxl['OB110310']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110462']['tE'], maxl['OB110462']['piE'], 
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.text(12, 0.35, ' Cycle 17-24 \nTargets (Sahu)', color='brown')
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
@@ -570,7 +666,7 @@ def piE_tE_phot_only_fits():
                  label = 'BH', color = 'dimgray')
 
     axes.set_xlim(10, 2000)
-    axes.set_ylim(0.005, 0.5)
+    axes.set_ylim(0.005, 0.8)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
@@ -579,6 +675,226 @@ def piE_tE_phot_only_fits():
     plt.savefig('piE_tE_phot_only_MB190284.png')
 
     return
+
+
+def piE_tE_deltac_hst():
+#    span=0.999999426697
+#    smooth=0.02
+#    quantiles_2d=None
+#    hist2d_kwargs=None
+#    labels=None
+#    label_kwargs=None
+#    show_titles=False 
+#    title_fmt=".2f" 
+#    title_kwargs=None
+#    """
+#    !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+#    ON THE WAY THIS PLOT LOOKS !!!
+#    Plot piE-tE 2D posteriors from OGLE photometry only fits.
+#    Also plot PopSyCLE simulations simultaneously.
+#    """
+#    # Initialize values.
+#    if label_kwargs is None:
+#        label_kwargs = dict()
+#    if title_kwargs is None:
+#        title_kwargs = dict()
+#    if hist2d_kwargs is None:
+#        hist2d_kwargs = dict()
+#
+#    # Set defaults.
+#    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+#    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    mb09260_yaml = open(mb09260_dir + 'params.yaml').read() 
+    params_09260 = yaml.safe_load(mb09260_yaml)
+    mb10364_yaml = open(mb10364_dir + 'params.yaml').read() 
+    params_10364 = yaml.safe_load(mb10364_yaml)
+    ob110037_yaml = open(ob110037_dir + 'params.yaml').read() 
+    params_110037 = yaml.safe_load(ob110037_yaml)
+    ob110310_yaml = open(ob110310_dir + 'params.yaml').read() 
+    params_110310 = yaml.safe_load(ob110310_yaml)
+    ob110462_yaml = open(ob110462_dir + 'params.yaml').read() 
+    params_110462 = yaml.safe_load(ob110462_yaml)
+
+    # MB09260 fit results.
+    fitter_09260 = model_fitter.PSPL_Solver(mb09260_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb09260_dir)
+
+    results_09260 = fitter_09260.load_mnest_results_for_dynesty()
+    smy_09260 = fitter_09260.load_mnest_summary()
+
+    # MB10364 fit results.
+    fitter_10364 = model_fitter.PSPL_Solver(mb10364_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb10364_dir)
+
+    results_10364 = fitter_10364.load_mnest_results_for_dynesty()
+    smy_10364 = fitter_10364.load_mnest_summary()
+
+    # OB110037 fit results.
+    fitter_110037 = model_fitter.PSPL_Solver(ob110037_data,
+                                              model.PSPL_Phot_Par_Param1,
+                                              outputfiles_basename=ob110037_dir)
+
+    results_110037 = fitter_110037.load_mnest_results_for_dynesty()
+    smy_110037 = fitter_110037.load_mnest_summary()
+
+    # OB110310 fit results.
+    fitter_110310 = model_fitter.PSPL_Solver(ob110310_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110310_dir)
+
+    results_110310 = fitter_110310.load_mnest_results_for_dynesty()
+    smy_110310 = fitter_110310.load_mnest_summary()
+
+    # OB110462 fit results.
+    fitter_110462 = model_fitter.PSPL_Solver(ob110462_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110462_dir)
+
+    results_110462 = fitter_110462.load_mnest_results_for_dynesty()
+    smy_110462 = fitter_110462.load_mnest_summary()
+
+#    # Extract weighted samples.
+#    samples_09260 = results_09260['samples']
+#    samples_10364 = results_10364['samples']
+#    samples_110037 = results_110037['samples']
+#    samples_110310 = results_110310['samples']
+#    samples_110462 = results_110462['samples']
+#
+#    try:
+#        weights_09260 = np.exp(results_09260['logwt'] - results_09260['logz'][-1])
+#        weights_10364 = np.exp(results_10364['logwt'] - results_10364['logz'][-1])
+#        weights_110037 = np.exp(results_110037['logwt'] - results_110037['logz'][-1])
+#        weights_110310 = np.exp(results_110310['logwt'] - results_110310['logz'][-1])
+#        weights_110462 = np.exp(results_110462['logwt'] - results_110462['logz'][-1])
+#    except:
+#        weights_09260 = results_09260['weights']
+#        weights_10364 = results_10364['weights']
+#        weights_110037 = results_110037['weights']
+#        weights_110310 = results_110310['weights']
+#        weights_110462 = results_110462['weights']
+#
+#    # Deal with 1D results. A number of extra catches are also here
+#    # in case users are trying to plot other results besides the `Results`
+#    # instance generated by `dynesty`.
+#    samples_09260 = np.atleast_1d(samples_09260)
+#    if len(samples_09260.shape) == 1:
+#        samples_09260 = np.atleast_2d(samples_09260)
+#    else:
+#        assert len(samples_09260.shape) == 2, "Samples must be 1- or 2-D."
+#        samples_09260 = samples_09260.T
+#    assert samples_09260.shape[0] <= samples_09260.shape[1], "There are more " \
+#                                                 "dimensions than samples!"
+#    
+#    samples_10364 = np.atleast_1d(samples_10364)
+#    if len(samples_10364.shape) == 1:
+#        samples_10364 = np.atleast_2d(samples_10364)
+#    else:
+#        assert len(samples_10364.shape) == 2, "Samples must be 1- or 2-D."
+#        samples_10364 = samples_10364.T
+#    assert samples_10364.shape[0] <= samples_10364.shape[1], "There are more " \
+#                                                 "dimensions than samples!"
+#
+#    samples_110037 = np.atleast_1d(samples_110037)
+#    if len(samples_110037.shape) == 1:
+#        samples_110037 = np.atleast_2d(samples_110037)
+#    else:
+#        assert len(samples_110037.shape) == 2, "Samples must be 1- or 2-D."
+#        samples_110037 = samples_110037.T
+#    assert samples_110037.shape[0] <= samples_110037.shape[1], "There are more " \
+#                                                 "dimensions than samples!"
+#
+#    samples_110310 = np.atleast_1d(samples_110310)
+#    if len(samples_110310.shape) == 1:
+#        samples_110310 = np.atleast_2d(samples_110310)
+#    else:
+#        assert len(samples_110310.shape) == 2, "Samples must be 1- or 2-D."
+#        samples_110310 = samples_110310.T
+#    assert samples_110310.shape[0] <= samples_110310.shape[1], "There are more " \
+#                                                 "dimensions than samples!"
+#
+#    samples_110462 = np.atleast_1d(samples_110462)
+#    if len(samples_110462.shape) == 1:
+#        samples_110462 = np.atleast_2d(samples_110462)
+#    else:
+#        assert len(samples_110462.shape) == 2, "Samples must be 1- or 2-D."
+#        samples_110462 = samples_110462.T
+#    assert samples_110462.shape[0] <= samples_110462.shape[1], "There are more " \
+#                                                 "dimensions than samples!"
+
+    # Maximum likelihood vals                                                                                         
+    smy_list = [smy_09260, smy_10364, smy_110037, smy_110310, smy_110462]
+
+    smy_name = ['MB09260','MB10364', 'OB110037', 'OB110310', 'OB110462']
+    maxl = {}
+
+    for ss, smy in enumerate(smy_list):
+        print(smy_name[ss])
+        print('tE : ', smy['MaxLike_tE'][0])
+        print('piE : ', np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0]))
+        maxl[smy_name[ss]] = {'tE' : smy['MaxLike_tE'][0],
+                              'piE' : np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0])}
+
+    #############
+    # The observations. 
+    # Finished targets are phot + astrom solutions
+    # Ongoing targets are phot parallax solutions 
+    # (global MEDIAN +/- 1 sigma)
+    #############
+    # Plot the piE-tE 2D posteriors.
+    # tE = 2; piEE,N = 3, 4 
+    fig, ax = plt.subplots(1, 2, figsize=(14,6), sharey=True,
+                           gridspec_kw={'width_ratios': [1, 1.4]})
+    plt.subplots_adjust(left=0.1, bottom=0.15, wspace=0.1)
+
+#    tE_09260 = samples_09260[2]
+#    tE_10364 = samples_10364[2]
+#    tE_110037 = samples_110037[2]
+#    tE_110310 = samples_110310[2]
+#    tE_110462 = samples_110462[2]
+#
+#    piE_09260 = np.hypot(samples_09260[3], samples_09260[4])
+#    piE_10364 = np.hypot(samples_10364[3], samples_10364[4])
+#    piE_110037 = np.hypot(samples_110037[3], samples_110037[4])
+#    piE_110310 = np.hypot(samples_110310[3], samples_110310[4])
+#    piE_110462 = np.hypot(samples_110462[3], samples_110462[4])
+
+#    sx = smooth
+#    sy = smooth
+
+#    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours',
+#                                                       False)
+#    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
+#                                                       True)
+
+#    model_fitter.contour2d_alpha(tE_09260, piE_09260, span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights_09260, ax=ax[1], smooth=[sy, sx], color='magenta',
+#                                 **hist2d_kwargs, plot_density=False)
+    ax[1].plot(maxl['MB09260']['tE'], maxl['MB09260']['piE'], 
+               color='magenta', marker = 's', ms = 10, alpha=0.8)
+    ax[1].plot(maxl['MB10364']['tE'], maxl['MB10364']['piE'], 
+               color='darkgreen', marker = 's', ms = 10, alpha=0.8)
+    ax[1].plot(maxl['OB110037']['tE'], maxl['OB110037']['piE'], 
+               color='springgreen', marker='s', ms = 10, alpha=0.8)
+#    model_fitter.contour2d_alpha(tE_110310, piE_110310, span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights_110310, ax=ax[1], smooth=[sy, sx], color='orangered', 
+#                                 **hist2d_kwargs, plot_density=False)
+    ax[1].plot(maxl['OB110310']['tE'], maxl['OB110310']['piE'], 
+               color='orangered', marker = 's', ms = 10, alpha=0.8)
+    ax[1].plot(maxl['OB110462']['tE'], maxl['OB110462']['piE'], 
+               color='blueviolet', marker='s', ms = 10, alpha=0.8)
+
+    ax[1].plot(0.01, 100, color='magenta', label='MB09260')
+    ax[1].plot(0.01, 100, color='darkgreen', label='MB10364')
+    ax[1].plot(0.01, 100, color='springgreen', label='OB110037')
+    ax[1].plot(0.01, 100, color='orangered', label='OB110310')
+    ax[1].plot(0.01, 100, color = 'blueviolet', label='OB110642')
+    ax[1].set_xlim(10, 1000)
+    ax[1].set_ylim(0.01, 1)
+    ax[1].set_xscale('log')
+    ax[1].set_yscale('log')
 
 def plot_gaia():
     raL_str = '18:05:55.06'
