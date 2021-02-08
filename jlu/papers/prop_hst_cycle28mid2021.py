@@ -615,7 +615,7 @@ def piE_tE_phot_only_fits():
     model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
                                  ax=axes, smooth=[sy, sx], color='red',
                                  **hist2d_kwargs, plot_density=False)
-    axes.text(430, 0.025, 'MB190284', color='red')    
+    axes.text(430, 0.025, 'MB19284', color='red')    
 
     axes.plot(maxl['MB09260']['tE'], maxl['MB09260']['piE'], 
                color='brown', marker = 'X', ms = 8, alpha=0.8)
@@ -627,7 +627,13 @@ def piE_tE_phot_only_fits():
                color='brown', marker = 'X', ms = 8, alpha=0.8)
     axes.plot(maxl['OB110462']['tE'], maxl['OB110462']['piE'], 
                color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.text(12, 0.35, ' Cycle 17-24 \nTargets (Sahu)', color='brown')
+    axes.plot(100.171, 0.35319,
+              color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(127.957, 0.32037,
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(178.804, 0.10864,
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.text(20, 0.35, 'Sahu HST \n  targets', color='brown')
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
