@@ -667,13 +667,13 @@ class SemiMajorAxis_Solver(object):
         # p_a_nk = broken_powerlaw_trunc(self.a_pdfs, alpha1, alpha2, a_break,
         #                                    a_min=self.a_min, a_max=2e7)
         p_a_nk = powerlaw_trunc(self.a_pdfs, alpha1,
-                                           a_min=self.a_min, a_max=2e7)
+                                           a_min=self.a_min, a_max=self.a_max)
         
         # Weight by disk membership
         p_a_nk_wgt = p_a_nk * self.weights
         
         # Sum over all the samples for each star.
-        # Also normalize by K
+        # Also normalize by K (number of trials)
         p_a_n = p_a_nk_wgt.sum(axis=1) / self.a_pdfs.shape[1]
 
         zdx = np.where(p_a_n == 0)[0]
