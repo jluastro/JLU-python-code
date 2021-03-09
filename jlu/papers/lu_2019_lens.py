@@ -22,7 +22,7 @@ import pickle
 import math
 import copy
 import yaml
-from scipy.stats import norm
+from scipy.stats import norm, poisson
 
 mpl_o = '#ff7f0e'
 mpl_b = '#1f77b4'
