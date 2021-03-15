@@ -29,12 +29,11 @@ import pdb
 import pickle
 from scipy.stats import norm
 import yaml
-
-# Default matplotlib color cycles.
-mpl_b = '#1f77b4'
-mpl_o = '#ff7f0e'
-mpl_g = '#2ca02c'
-mpl_r = '#d62728'
+from flystar import analysis
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from astropy.io import fits
+from astropy.wcs import WCS
 
 # run directory
 ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
@@ -49,6 +48,316 @@ ob150029_id = 'b3'
 ob150211_id = 'b2'
 
 prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+
+# Target coordinates
+ra_ob190017 = '17:59:03.5200'
+dec_ob190017 = '-27:32:49.2000'
+
+ra_ob170095 = '17:51:27.9400'
+dec_ob170095 = '-33:08:06.600'
+
+ra_kb200101 = '17:45:11.0300'
+dec_kb200101 = '-25:24:28.9800'
+
+ra_mb19284 = '18:05:55.0600'
+dec_mb19284 = '-30:20:12.9400'
+
+ra_ob170019 = '17:52:18.7400'
+dec_ob170019 = '-33:00:04.000'
+
+# Gaia stuff
+# NOTE: OB190017 is NOT in Gaia.
+# Still trying to figure out for OB170095
+# gaia_ob190017 = analysis.query_gaia(ra_ob190017, dec_ob190017, search_radius=30.0, table_name='gaiaedr3')
+# gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
+# gaia_kb200101 = analysis.query_gaia(ra_kb200101, dec_kb200101, search_radius=30.0, table_name='gaiaedr3')
+# gaia_mb19284 = analysis.query_gaia(ra_mb19284, dec_mb19284, search_radius=30.0, table_name='gaiaedr3')
+# gaia_ob170019 = analysis.query_gaia(ra_ob170019, dec_ob170019, search_radius=30.0, table_name='gaiaedr3')
+# 
+# gaia_ob190017.write('gaia_ob190017.gz', overwrite=True, format='ascii')
+# gaia_ob170095.write('gaia_ob170095.gz', overwrite=True, format='ascii')
+# gaia_kb200101.write('gaia_kb200101.gz', overwrite=True, format='ascii')
+# gaia_mb19284.write('gaia_mb19284.gz', overwrite=True, format='ascii')
+# gaia_ob170019.write('gaia_ob170019.gz', overwrite=True, format='ascii')
+
+gaia_ob190017 = Table.read('gaia_ob190017.gz', format='ascii')
+gaia_ob170095 = Table.read('gaia_ob170095.gz', format='ascii')
+gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
+gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
+gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
+
+def gaia_info():
+    print('OB190017 : too faint to be in Gaia')
+    print('')
+    print('OB170095 : no parallax or PMs')
+    print('designation : ', gaia_ob170095['designation'][0])
+#    print('OB170095 : not 100% sure this is the target')
+#    print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_ob170095['parallax'][0], gaia_ob170095['parallax_error'][0]))
+#    print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_ob170095['pmra'][0], gaia_ob170095['pmra_error'][0]))
+#    print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_ob170095['pmdec'][0], gaia_ob170095['pmdec_error'][0]))
+    print('')
+    print('KB200101')
+    print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_kb200101['parallax'][0], gaia_kb200101['parallax_error'][0]))
+    print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_kb200101['pmra'][0], gaia_kb200101['pmra_error'][0]))
+    print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_kb200101['pmdec'][0], gaia_kb200101['pmdec_error'][0]))
+    print('')
+    print('MB19284')
+    print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_mb19284['parallax'][0], gaia_mb19284['parallax_error'][0]))
+    print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_mb19284['pmra'][0], gaia_mb19284['pmra_error'][0]))
+    print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_mb19284['pmdec'][0], gaia_mb19284['pmdec_error'][0]))
+    print('')
+    print('OB170019')
+    print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_ob170019['parallax'][0], gaia_ob170019['parallax_error'][0]))
+    print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_ob170019['pmra'][0], gaia_ob170019['pmra_error'][0]))
+    print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_ob170019['pmdec'][0], gaia_ob170019['pmdec_error'][0]))
+
+
+def gaia_CMDs():
+    plt.figure(1)
+    plt.clf()
+    plt.title('OB170095')
+    plt.plot(gaia_ob170095['bp_rp'], gaia_ob170095['phot_g_mean_mag'], '.')
+    plt.plot(gaia_ob170095['bp_rp'][0], gaia_ob170095['phot_g_mean_mag'][0], 'o')
+    plt.xlabel('BP - RP')
+    plt.ylabel('G')
+    plt.gca().invert_yaxis()
+
+    plt.figure(2)
+    plt.clf()
+    plt.title('MB19284')
+    plt.plot(gaia_mb19284['bp_rp'], gaia_mb19284['phot_g_mean_mag'], '.')
+    plt.plot(gaia_mb19284['bp_rp'][0], gaia_mb19284['phot_g_mean_mag'][0], 'o')
+    plt.xlabel('BP - RP')
+    plt.ylabel('G')
+    plt.gca().invert_yaxis()
+
+    plt.figure(3)
+    plt.clf()
+    plt.title('KB200101')
+    plt.plot(gaia_kb200101['bp_rp'], gaia_kb200101['phot_g_mean_mag'], '.')
+    plt.plot(gaia_kb200101['bp_rp'][0], gaia_kb200101['phot_g_mean_mag'][0], 'o')
+    plt.xlabel('BP - RP')
+    plt.ylabel('G')
+    plt.gca().invert_yaxis()
+
+    plt.figure(4)
+    plt.clf()
+    plt.title('OB170019')
+    plt.plot(gaia_ob170019['bp_rp'], gaia_ob170019['phot_g_mean_mag'], '.')
+    plt.plot(gaia_ob170019['bp_rp'][0], gaia_ob170019['phot_g_mean_mag'][0], 'o')
+    plt.xlabel('BP - RP')
+    plt.ylabel('G')
+    plt.gca().invert_yaxis()
+
+
+def gaia_VPDs():
+    plt.figure(2)
+    plt.clf()
+    plt.title('MB19284')
+    plt.errorbar(gaia_mb19284['pmra'], gaia_mb19284['pmdec'], 
+                 xerr=gaia_mb19284['pmra_error'], yerr=gaia_mb19284['pmdec_error'], 
+                 marker='.', ls='none')
+    plt.errorbar(gaia_mb19284['pmra'][0], gaia_mb19284['pmdec'][0], 
+                 xerr=gaia_mb19284['pmra_error'][0], yerr=gaia_mb19284['pmdec_error'][0], 
+                 marker='.', ls='none')
+    plt.xlabel('PM RA (mas/yr)')
+    plt.ylabel('PM Dec (mas/yr)')
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+
+    plt.figure(3)
+    plt.clf()
+    plt.title('KB200101')
+    plt.errorbar(gaia_kb200101['pmra'], gaia_kb200101['pmdec'], 
+                 xerr=gaia_kb200101['pmra_error'], yerr=gaia_kb200101['pmdec_error'], 
+                 marker='.', ls='none')
+    plt.errorbar(gaia_kb200101['pmra'][0], gaia_kb200101['pmdec'][0], 
+                 xerr=gaia_kb200101['pmra_error'][0], yerr=gaia_kb200101['pmdec_error'][0], 
+                 marker='.', ls='none')
+    plt.xlabel('PM RA (mas/yr)')
+    plt.ylabel('PM Dec (mas/yr)')
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+
+    plt.figure(4)
+    plt.clf()
+    plt.title('OB170019')
+    plt.errorbar(gaia_ob170019['pmra'], gaia_ob170019['pmdec'], 
+                 xerr=gaia_ob170019['pmra_error'], yerr=gaia_ob170019['pmdec_error'], 
+                 marker='.', ls='none')
+    plt.errorbar(gaia_ob170019['pmra'][0], gaia_ob170019['pmdec'][0], 
+                 xerr=gaia_ob170019['pmra_error'][0], yerr=gaia_ob170019['pmdec_error'][0], 
+                 marker='.', ls='none')
+    plt.xlabel('PM RA (mas/yr)')
+    plt.ylabel('PM Dec (mas/yr)')
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+
+
+def plot_ob170095():
+    # THIS IS NO USE
+    gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
+
+    hdu = fits.open('/g/lu/data/microlens/20sep04os/raw/i200904_a012003_flip.fits')[0]
+    wcs = WCS(hdu.header)
+
+    image_data = hdu.data
+
+    fig = plt.figure()
+    ax = fig.add_axes([0.15, 0.1, 0.8, 0.8], projection=wcs)
+    ax.imshow(hdu.data, cmap='gray', norm=LogNorm(), origin='lower')
+    overlay = ax.get_coords_overlay('icrs')
+#    ax.scatter(gaia_ob170095['ra'][0], gaia_ob170095['dec'][0], transform=ax.get_transform(), s=300,
+#               edgecolor='white', facecolor='none')
+    print('Min:', np.min(image_data))
+    print('Max:', np.max(image_data))
+    print('Mean:', np.mean(image_data))
+    print('Stdev:', np.std(image_data))
+
+def get_gaia_centered():
+    ob190017 = SkyCoord(ra_ob190017, dec_ob190017, frame='icrs', unit=(u.hourangle, u.deg))
+    ob170095 = SkyCoord(ra_ob170095, dec_ob170095, frame='icrs', unit=(u.hourangle, u.deg))
+    kb200101 = SkyCoord(ra_kb200101, dec_kb200101, frame='icrs', unit=(u.hourangle, u.deg))
+    mb19284 = SkyCoord(ra_mb19284, dec_mb19284, frame='icrs', unit=(u.hourangle, u.deg))
+    ob170019 = SkyCoord(ra_ob170019, dec_ob170019, frame='icrs', unit=(u.hourangle, u.deg))
+
+    plt.figure(1)
+    plt.clf()
+    plt.title('OB190017')
+    plt.scatter((gaia_ob190017['ra'] - ob190017.ra.deg)*3600, 
+                (gaia_ob190017['dec'] - ob190017.dec.deg)*3600,
+                s=gaia_ob190017['phot_g_mean_flux']/100)
+    plt.scatter((gaia_ob190017['ra'][0] - ob190017.ra.deg)*3600, 
+                (gaia_ob190017['dec'][0] - ob190017.dec.deg)*3600, 
+                s=gaia_ob190017['phot_g_mean_flux'][0]/100)
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.gca().invert_xaxis()
+    plt.xlabel('$\Delta$ RA (arcsec)')
+    plt.ylabel('$\Delta$ Dec (arcsec)')
+
+    plt.figure(2)
+    plt.clf()
+    plt.title('OB170095')
+    plt.scatter((gaia_ob170095['ra'] - ob170095.ra.deg)*3600, 
+                (gaia_ob170095['dec'] - ob170095.dec.deg)*3600,
+                s=gaia_ob170095['phot_g_mean_flux']/100)
+    plt.scatter((gaia_ob170095['ra'][0] - ob170095.ra.deg)*3600, 
+                (gaia_ob170095['dec'][0] - ob170095.dec.deg)*3600, 
+                s=gaia_ob170095['phot_g_mean_flux'][0]/100)
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.gca().invert_xaxis()
+    plt.xlabel('$\Delta$ RA (arcsec)')
+    plt.ylabel('$\Delta$ Dec (arcsec)')
+
+    plt.figure(3)
+    plt.clf()
+    plt.title('KB200101')
+    plt.scatter((gaia_kb200101['ra'] - kb200101.ra.deg)*3600, 
+                (gaia_kb200101['dec'] - kb200101.dec.deg)*3600,
+                s=gaia_kb200101['phot_g_mean_flux']/100)
+    plt.scatter((gaia_kb200101['ra'][0] - kb200101.ra.deg)*3600, 
+                (gaia_kb200101['dec'][0] - kb200101.dec.deg)*3600, 
+                s=gaia_kb200101['phot_g_mean_flux'][0]/100)
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.gca().invert_xaxis()
+    plt.xlabel('$\Delta$ RA (arcsec)')
+    plt.ylabel('$\Delta$ Dec (arcsec)')
+
+    plt.figure(4)
+    plt.clf()
+    plt.title('MB19284')
+    plt.scatter((gaia_mb19284['ra'] - mb19284.ra.deg)*3600, 
+                (gaia_mb19284['dec'] - mb19284.dec.deg)*3600,
+                s=gaia_mb19284['phot_g_mean_flux']/100)
+    plt.scatter((gaia_mb19284['ra'][0] - mb19284.ra.deg)*3600, 
+                (gaia_mb19284['dec'][0] - mb19284.dec.deg)*3600, 
+                s=gaia_mb19284['phot_g_mean_flux'][0]/100)
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.gca().invert_xaxis()
+    plt.xlabel('$\Delta$ RA (arcsec)')
+    plt.ylabel('$\Delta$ Dec (arcsec)')
+
+    plt.figure(5)
+    plt.clf()
+    plt.title('OB170019')
+    plt.scatter((gaia_ob170019['ra'] - ob170019.ra.deg)*3600, 
+                (gaia_ob170019['dec'] - ob170019.dec.deg)*3600,
+                s=gaia_ob170019['phot_g_mean_flux']/100)
+    plt.scatter((gaia_ob170019['ra'][0] - ob170019.ra.deg)*3600, 
+                (gaia_ob170019['dec'][0] - ob170019.dec.deg)*3600, 
+                s=gaia_ob170019['phot_g_mean_flux'][0]/100)
+    plt.grid(True)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.gca().invert_xaxis()
+    plt.xlabel('$\Delta$ RA (arcsec)')
+    plt.ylabel('$\Delta$ Dec (arcsec)')
+
+    return
+
+
+def get_gaia():
+    plt.figure(1)
+    plt.clf()
+    plt.title('OB190017')
+#    plt.scatter(gaia_ob190017['ra'], gaia_ob190017['dec'], s=gaia_ob190017['phot_rp_mean_flux']/100)
+    plt.scatter(gaia_ob190017['ra'], gaia_ob190017['dec'], s=gaia_ob190017['phot_g_mean_flux']/100)
+    plt.scatter(gaia_ob190017['ra'][0], gaia_ob190017['dec'][0], s=gaia_ob190017['phot_g_mean_flux'][0]/100)
+    plt.gca().invert_xaxis()
+
+    plt.figure(2)
+    plt.clf()
+    plt.title('OB170095')
+#    plt.scatter(gaia_ob170095['ra'], gaia_ob170095['dec'], s=gaia_ob170095['phot_rp_mean_flux']/100)
+    plt.scatter(gaia_ob170095['ra'], gaia_ob170095['dec'], s=gaia_ob170095['phot_g_mean_flux']/100)
+    plt.scatter(gaia_ob170095['ra'][0], gaia_ob170095['dec'][0], s=gaia_ob170095['phot_g_mean_flux'][0]/100)
+    plt.gca().invert_xaxis()
+
+    plt.figure(3)
+    plt.clf()
+    plt.title('KB200101')
+#    plt.scatter(gaia_kb200101['ra'], gaia_kb200101['dec'], s=gaia_kb200101['phot_rp_mean_flux']/100)
+    plt.scatter(gaia_kb200101['ra'], gaia_kb200101['dec'], s=gaia_kb200101['phot_g_mean_flux']/100)
+    plt.scatter(gaia_kb200101['ra'][0], gaia_kb200101['dec'][0], s=gaia_kb200101['phot_g_mean_flux'][0]/100)
+    plt.gca().invert_xaxis()
+
+    plt.figure(4)
+    plt.clf()
+    plt.title('MB19284')
+#    plt.scatter(gaia_mb19284['ra'], gaia_mb19284['dec'], s=gaia_mb19284['phot_rp_mean_flux']/100)
+    plt.scatter(gaia_mb19284['ra'], gaia_mb19284['dec'], s=gaia_mb19284['phot_g_mean_flux']/100)
+    plt.scatter(gaia_mb19284['ra'][0], gaia_mb19284['dec'][0], s=gaia_mb19284['phot_g_mean_flux'][0]/100)
+    plt.gca().invert_xaxis()
+
+    plt.figure(5)
+    plt.clf()
+    plt.title('OB170019')
+#    plt.scatter(gaia_ob170019['ra'], gaia_ob170019['dec'], s=gaia_ob170019['phot_rp_mean_flux']/100)
+    plt.scatter(gaia_ob170019['ra'], gaia_ob170019['dec'], s=gaia_ob170019['phot_g_mean_flux']/100)
+    plt.scatter(gaia_ob170019['ra'][0], gaia_ob170019['dec'][0], s=gaia_ob170019['phot_g_mean_flux'][0]/100)
+    plt.gca().invert_xaxis()
+
+    return
+
+def make_reg_file():
+    table_file = 'mb19284.reg'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    ra = gaia_mb19284['ra']
+    dec = gaia_mb19284['dec']
+
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:
+        tb.write('global color=green dashlist=8 3 width=1 font="helvetica 10 normal" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1 \n')
+        tb.write('icrs \n')
+        for i in np.arange(len(ra)):
+            tb.write('circle( {0}, {1}, 0.0001) \n'.format(ra[i], dec[i]))
 
 def tE_BH():
     """
@@ -73,18 +382,18 @@ def tE_BH():
     plt.clf()
     plt.subplots_adjust(left = 0.17, top = 0.8, bottom = 0.2)
     plt.hist(t['t_E'], bins = bins,
-             histtype = 'step', color = mpl_b)
+             histtype = 'step', color = 'tab:blue')
     plt.hist(t['t_E'][bh_idx], bins = bins,
-             histtype = 'step', color = mpl_o)
-    plt.text(0.3, 100, 'All events', color = mpl_b)
-    plt.text(2.2, 8, 'BH events', color = mpl_o)
+             histtype = 'step', color = 'tab:orange')
+    plt.text(0.3, 100, 'All events', color = 'tab:blue')
+    plt.text(2.2, 8, 'BH events', color = 'tab:orange')
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('$t_E$ (days)')
     plt.ylabel('Number of events')
     plt.ylim(1, 5000)
-    plt.axvline(x = 120, color = mpl_r)
-    plt.text(130, 60, '$t_E = 120$ days', color = mpl_r, rotation=90)
+    plt.axvline(x = 120, color = 'tab:red')
+    plt.text(130, 60, '$t_E = 120$ days', color = 'tab:red', rotation=90)
     plt.savefig('tE.png')
 
     return
@@ -854,12 +1163,12 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
     fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
     fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
-                 color = mpl_b, fmt='.', alpha=0.05)
+                 color = 'tab:blue', fmt='.', alpha=0.05)
     # fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
     #              fmt='k.', alpha=0.9)
     fm1.plot(t_mod_pho, m_lens_mod, 'r-')
     fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                 color = mpl_b, fmt='.', alpha=0.05)
+                 color = 'tab:blue', fmt='.', alpha=0.05)
     # fm2.errorbar(data['t_phot2'], data['mag2'] + r_min_k - m_lens_mod_at_phot2, yerr=data['mag_err2'],
     #              fmt='k.', alpha=0.9)
 #    fm2.set_yticks(np.array([0.0, 0.2]))
