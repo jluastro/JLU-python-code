@@ -114,18 +114,19 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
 
         py.text(-3.5,
                 airmass[15] + (ii*0.1) - 0.35,
-                labels[ii], color=colors[ii])
+                labels[ii], color=colors[ii], fontsize=20)
 
     # Make observatory name nice for title
     if observatory == "keck1":
         observatory = 'Keck I'
     if observatory == "keck2":
         observatory = 'Keck II'
-        
-    py.title('Obs. RA = 18:00, DEC = -30:00 from %s' %observatory, fontsize = 18)
+
+    py.tick_params(labelsize=20)      
+    py.title('Obs. RA = 18:00, DEC = -30:00 from %s' %observatory, fontsize = 20, y=1.02)
 #    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
-    py.xlabel('Local Time in Hours (0 = midnight)', fontsize=16)
-    py.ylabel('Air Mass', fontsize=16)
+    py.xlabel('Local Time in Hours (0 = midnight)', fontsize=20)
+    py.ylabel('Air Mass', fontsize=20)
 
     loAirmass = 1
     hiAirmass = 2.2
@@ -206,18 +207,22 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
             print( 'Day: %2d   Moon Illum: %4.1f   Moon Dist: %4.1f' % \
                   (daysInMonth[dd], moonillum[dd], moondist[dd]))
 
-        py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
+        # py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
+        py.scatter(daysInMonth, moondist, c=moonillum, s = 250, cmap='Greys_r',edgecolors=colors[mm], label=labels[mm])
 
-        for dd in range(len(daysInMonth)):
-            py.text(daysInMonth[dd] + 0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
-                    color=colors[mm])
+        # for dd in range(len(daysInMonth)):
+        #     py.text(daysInMonth[dd] + 0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
+        #             color=colors[mm], fontsize=14)
 
     py.plot([0,31], [30,30], 'k')
-    py.legend(loc=2, numpoints=1)
-    py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), 
-             fontsize=16)
-    py.xlabel('Day of Month (UT)', fontsize = 16)
-    py.ylabel('Moon Distance (degrees)', fontsize = 16)
+    legend = py.legend(loc=9, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
+    [handle.set_facecolor('w') for handle in legend.legendHandles]
+    py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), fontsize=20)
+    py.xlabel('Day of Month (UT)', fontsize = 20)
+    py.ylabel('Moon Distance (degrees)', fontsize = 20)
+    py.tick_params(labelsize=20)  
     py.axis([0, 31, 0, 200])
-
+    py.yticks([0,30,60,90,120,150,180])
+    py.xticks([0,5,10,15,20,25,30])
+    # py.show()
     py.savefig(outfile)
