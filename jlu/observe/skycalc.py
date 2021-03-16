@@ -113,7 +113,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         py.plot(times, airmass, colors[ii] + '-')
 
         py.text(-3.5,
-                airmass[15] + (ii*0.1) - 0.65,
+                airmass[15] + (ii*0.1) - 0.35,
                 labels[ii], color=colors[ii])
 
     # Make observatory name nice for title
