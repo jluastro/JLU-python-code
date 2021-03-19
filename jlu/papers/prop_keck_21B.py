@@ -151,37 +151,37 @@ def piE_tE(fit_type = 'ast'):
                           'ob170095': [0, 0.04],
                           'ob190017': [0, 0.04],
                           'kb200101': [0, 0]},
-                 'ast':  {'ob120169': [40, 0.1],
-                          'ob140613': [250, 0.16],
-                          'ob150029': [40, 0.2],
-                          'ob150211': [150, 0.008],
-                          'ob170019': [140, 0.04],
-                          'ob170095': [30, 0.02],
-                          'ob190017': [200, 0.28],
-                          'kb200101': [180, 0.015]}}
+                 'ast':  {'ob120169': [45, 0.12],
+                          'ob140613': [250, 0.15],
+                          'ob150029': [40, 0.22],
+                          'ob150211': [140, 0.01],
+                          'ob170019': [120, 0.042],
+                          'ob170095': [30, 0.04],
+                          'ob190017': [180, 0.28],
+                          'kb200101': [180, 0.016]}}
 
-    label_pos_ast = {'ob120169': [0.006, 0.25],
-                     'ob140613': [0.04, 0.1],
-                     'ob150029': [0.04, 0.2],
-                     'ob150211': [0.006, 0.012]}
+    label_pos_ast = {'ob120169': [0.006, 0.06],
+                     'ob140613': [0.04, 0.145],
+                     'ob150029': [0.02, 0.25],
+                     'ob150211': [0.03, 0.012]}
                  
 #    colors = {'ob120169': 'purple',
 #              'ob140613': 'red',
-#              'ob150029': 'coral',
-#              'ob150211': 'darkorange',
+#              'ob150029': 'green',
+#              'ob150211': 'magenta',
 #              'ob170019': 'navy',
 #              'ob170095': 'brown',
 #              'ob190017': 'green',
-#              'kb200101': 'magenta'}
+#              'kb200101': 'green'}
 
-    colors = {'ob120169': 'slateblue',
-              'ob140613': 'darkslateblue',
-              'ob150029': 'mediumslateblue',
-              'ob150211': 'mediumpurple',
-              'ob170019': 'fuchsia',
+    colors = {'ob120169': 'gray',
+              'ob140613': 'gray',
+              'ob150029': 'gray',
+              'ob150211': 'gray',
+              'ob170019': 'red',
               'ob170095': 'red',
-              'ob190017': 'orangered',
-              'kb200101': 'crimson'}
+              'ob190017': 'red',
+              'kb200101': 'red'}
 
     # Set defaults.
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
@@ -270,15 +270,15 @@ def piE_tE(fit_type = 'ast'):
     for targ in targets + new_targets:
         model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                 **hist2d_kwargs, plot_density=False)
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
         axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
                       targ.upper(), color=colors[targ])    
 
     model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 ax=axes, smooth=[sy, sx], color='deeppink',
-                                 **hist2d_kwargs, plot_density=False)
-    axes.text(300, 0.025, 'MB19284', color='deeppink')
+                                 ax=axes, smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+    axes.text(300, 0.025, 'MB19284', color='red')
 
     # OB110022 from Lu+16.
     piEE_110022 = -0.393
@@ -299,8 +299,8 @@ def piE_tE(fit_type = 'ast'):
     # Plotting OB110022 and MB19284.
 #    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='indigo')
 #    axes.text(18, 0.38, 'OB110022', color='indigo')
-    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='rebeccapurple')
-    axes.text(17, 0.38, 'OB110022', color='rebeccapurple')
+    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='gray')
+    axes.text(17, 0.38, 'OB110022', color='gray')
 
 #    plt.scatter(tE_19284, piE_19284, marker = 'o', s = 30, color='lime')
 #    axes.text(300, 0.1, 'MB19284', color='lime')
@@ -369,7 +369,7 @@ def piE_tE(fit_type = 'ast'):
                  alpha = 0.4, marker = '.', s = 25, 
                  color = 'blue')
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.8, marker = '.', s = 25, 
                  color = 'black')
 
     # Trickery to make the legend darker
@@ -406,15 +406,15 @@ def piE_tE(fit_type = 'ast'):
     axes.errorbar(dcmax_110022, piE_110022, 
                    xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
 #                   fmt = 'o', color = 'indigo', markersize = 5,
-                   fmt = 'o', color = 'goldenrod', markersize = 5,
+                   fmt = 'o', color = 'gray', markersize = 5,
                    xuplims = True)
 #    axes.text(0.5, 0.3, 'OB110022', color='indigo')
-    axes.text(0.5, 0.3, 'OB110022', color='goldenrod')
+    axes.text(0.5, 0.3, 'OB110022', color='gray')
 
     for targ in targets:
         model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                 **hist2d_kwargs, plot_density=False)
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
 
         axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
@@ -447,23 +447,26 @@ def gaia_info():
     print('OB190017 : too faint to be in Gaia')
     print('')
     print('OB170095 : no parallax or PMs')
-    print('designation : ', gaia_ob170095['designation'][0])
+    print('Mag (G) : ', gaia_ob170095['phot_g_mean_mag'][0])
 #    print('OB170095 : not 100% sure this is the target')
 #    print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_ob170095['parallax'][0], gaia_ob170095['parallax_error'][0]))
 #    print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_ob170095['pmra'][0], gaia_ob170095['pmra_error'][0]))
 #    print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_ob170095['pmdec'][0], gaia_ob170095['pmdec_error'][0]))
     print('')
     print('KB200101')
+    print('Mag (G) : ', gaia_kb200101['phot_g_mean_mag'][0])
     print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_kb200101['parallax'][0], gaia_kb200101['parallax_error'][0]))
     print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_kb200101['pmra'][0], gaia_kb200101['pmra_error'][0]))
     print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_kb200101['pmdec'][0], gaia_kb200101['pmdec_error'][0]))
     print('')
     print('MB19284')
+    print('Mag (G) : ', gaia_mb19284['phot_g_mean_mag'][0])
     print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_mb19284['parallax'][0], gaia_mb19284['parallax_error'][0]))
     print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_mb19284['pmra'][0], gaia_mb19284['pmra_error'][0]))
     print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_mb19284['pmdec'][0], gaia_mb19284['pmdec_error'][0]))
     print('')
     print('OB170019')
+    print('Mag (G) : ', gaia_ob170019['phot_g_mean_mag'][0])
     print('Parallax : {0:2f} +/- {1:2f}'.format(gaia_ob170019['parallax'][0], gaia_ob170019['parallax_error'][0]))
     print('PM RA : {0:2f} +/- {1:2f}'.format(gaia_ob170019['pmra'][0], gaia_ob170019['pmra_error'][0]))
     print('PM Dec : {0:2f} +/- {1:2f}'.format(gaia_ob170019['pmdec'][0], gaia_ob170019['pmdec_error'][0]))
