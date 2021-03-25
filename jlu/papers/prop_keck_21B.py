@@ -10,6 +10,7 @@ from microlens.jlu import model_fitter, model
 import shutil, os, sys
 import scipy
 import scipy.stats
+from scipy.stats import chi2
 # from gcwork import starset
 # from gcwork import starTables
 from astropy.table import Table
@@ -29,6 +30,7 @@ import pdb
 import pickle
 from scipy.stats import norm
 import yaml
+from flystar import plots
 
 # Default matplotlib color cycles.
 mpl_b = '#1f77b4'
@@ -37,18 +39,35 @@ mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
 # run directory
-ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
-ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
-ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
-ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+# ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
+# ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
+# ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+# ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+
+ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
+ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/'
+ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/'
+ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
 
 # run id
-ob120169_id = 'c2'
-ob140613_id = 'b1'
-ob150029_id = 'b3'
-ob150211_id = 'b2'
+# ob120169_id = 'c2'
+# ob140613_id = 'b1'
+# ob150029_id = 'b3'
+# ob150211_id = 'b2'
 
-prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+ob120169_id = 'a5'
+ob140613_id = 'a2'
+ob150029_id = 'a1'
+ob150211_id = 'a5'
+
+mod_roots = {'ob120169': ob120169_dir + ob120169_id + '_',
+             'ob140613': ob140613_dir + ob140613_id + '_',
+             'ob150029': ob150029_dir + ob150029_id + '_',
+             'ob150211': ob150211_dir + ob150211_id + '_'}
+
+
+# prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+prop_dir = '/u/jlu/doc/proposals/keck/uc/21A/'
 
 def tE_BH():
     """
@@ -783,36 +802,110 @@ def plot_3_targs():
     return
 
 def plot_ob140613_phot_ast():
-    data = munge.getdata('ob140613', use_astrom_phot=True)
-    mod_base = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/'
-    mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
+    mod_root = ob140613_dir + ob140613_id + '_'
+    target = 'ob140613'
+    
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
 
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
-    #mod_fit.separate_modes()
-    mod_fit.summarize_results_modes()
+    # OB140613 fit results.
+    data = munge.getdata2(target,
+                          phot_data=params['phot_data'],
+                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                             getattr(model, params['model']),
+                                             add_error_on_photometry=params['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                             outputfiles_basename=mod_root)
+    
 
     mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
     tab_all = mod_fit.load_mnest_modes()
 
-    plot_4panel(data, mod_all[0], tab_all[0], 'ob140613_phot_astrom.png', r_min_k=4.0, mass_max_lim=2, log=False)
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0, mass_max_lim=4, log=False)
 
     return
 
 def plot_ob150211_phot_ast():
-    data = munge.getdata('ob150211', use_astrom_phot=True)
-    mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
-    mod_base += '8_fit_multiphot_astrom_parallax2/tmp/aa_'
+    mod_root = ob150211_dir + ob150211_id + '_'
+    target = 'ob150211'
+    
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
 
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
-    #mod_fit.separate_modes()
-    #mod_fit.summarize_results_modes()
+    # fit results.
+    data = munge.getdata2(target,
+                          phot_data=params['phot_data'],
+                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                             getattr(model, params['model']),
+                                             add_error_on_photometry=params['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                             outputfiles_basename=mod_root)
+    
 
     mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
     tab_all = mod_fit.load_mnest_modes()
 
-    tab_all[0]['weights'] = tab_all[0]['weights'] / tab_all[0]['weights'].sum()
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0, mass_max_lim=4, log=False)
 
-    plot_4panel(data, mod_all[0], tab_all[0], 'ob150211_phot_astrom.png', mass_max_lim=10, log=True)
+    return
+
+def plot_ob120169_phot_ast():
+    mod_root = ob120169_dir + ob120169_id + '_'
+    target = 'ob120169'
+    
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
+
+    # fit results.
+    data = munge.getdata2(target,
+                          phot_data=params['phot_data'],
+                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                             getattr(model, params['model']),
+                                             add_error_on_photometry=params['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                             outputfiles_basename=mod_root)
+    
+
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
+    tab_all = mod_fit.load_mnest_modes()
+
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0, mass_max_lim=4, log=False)
+
+    return
+
+def plot_ob150029_phot_ast():
+    mod_root = ob150029_dir + ob150029_id + '_'
+    target = 'ob150029'
+    
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
+
+    # fit results.
+    data = munge.getdata2(target,
+                          phot_data=params['phot_data'],
+                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                             getattr(model, params['model']),
+                                             add_error_on_photometry=params['add_error_on_photometry'],
+                                             multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                             outputfiles_basename=mod_root)
+    
+
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
+    tab_all = mod_fit.load_mnest_modes()
+
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0, mass_max_lim=4, log=False)
 
     return
 
@@ -843,8 +936,9 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     print('r_min_k = ', r_min_k)
 
     # Plotting        
-    plt.close(2)
-    plt.figure(2, figsize=(18, 4))
+    # plt.close(3)
+    plt.figure(3, figsize=(18, 4))
+    plt.clf()
 
     pan_wid = 0.15
     pan_pad = 0.09
@@ -888,6 +982,7 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
     f2.axhline(0, linestyle='--', color='r')
     f2.xaxis.set_major_locator(plt.MaxNLocator(3))
+    f2.set_ylim(-0.8, 0.8)
     f2.set_xlabel('Time (HJD)')
     f2.set_ylabel('Res.')
 
@@ -910,12 +1005,14 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     f4.axhline(0, linestyle='--', color='r')
     f4.xaxis.set_major_locator(plt.MaxNLocator(3))
 #    f4.set_yticks(np.array([0.0, -0.2])) # For OB140613
+    f4.set_ylim(-0.8, 0.8)
     f4.set_xlabel('Time (HJD)')
     f4.set_ylabel('Res.')
 
 
     # Mass posterior
-    masses = 10**tab['log_thetaE'] / (8.14 * 10**tab['log_piE'])
+    # masses = 10**tab['log_thetaE'] / (8.14 * 10**tab['log_piE'])
+    masses = tab['thetaE'] / (8.14 * np.hypot(tab['piE_E'], tab['piE_N']))
     weights = tab['weights']
     
     f5 = plt.gcf().add_axes([fig_pos[3], 0.18, pan_wid, 0.8])
@@ -924,6 +1021,114 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
     f5.set_xlabel('Mass (M$_\odot$)')
     f5.set_ylabel('Probability')
     f5.set_xlim(0, mass_max_lim)
+
+    plt.savefig(outfile)
+
+    return
+
+def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, log=False):
+    # Calculate the model on a similar timescale to the data.
+    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
+
+    # Get the linear motion curves for the source (includes parallax)
+    p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+
+    # Get the lensed motion curves for the source
+    p_lens_mod = mod.get_astrometry(t_mod_ast)
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+
+    # Geth the photometry
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
+    m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+
+    # Calculate the delta-mag between R-band and K-band from the
+    # flat part at the end.
+    tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast'][-1]))
+    if r_min_k == None:
+        r_min_k = data['mag1'][tidx] - data['mag2'][-1]
+    print('r_min_k = ', r_min_k)
+
+    # Plotting        
+    # plt.close(3)
+    plt.figure(3, figsize=(14, 4))
+    plt.clf()
+
+    pan_wid = 0.22
+    pan_pad = 0.09
+    fig_pos = np.arange(0, 3) * (pan_wid + pan_pad) + 1.5*pan_pad
+
+    plt.figtext(0.25*pan_pad, 0.55, target.upper(), rotation='vertical',
+                    fontweight='bold', fontsize=20,
+                    va='center', ha='center')
+
+    # Brightness vs. time
+    fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
+    fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2])
+    fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    # fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
+    #              fmt='k.', alpha=0.9)
+    fm1.plot(t_mod_pho, m_lens_mod, 'r-')
+    fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    # fm2.errorbar(data['t_phot2'], data['mag2'] + r_min_k - m_lens_mod_at_phot2, yerr=data['mag_err2'],
+    #              fmt='k.', alpha=0.9)
+#    fm2.set_yticks(np.array([0.0, 0.2]))
+    fm1.yaxis.set_major_locator(plt.MaxNLocator(4))
+    fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
+    fm2.axhline(0, linestyle='--', color='r')
+    fm2.set_xlabel('Time (HJD)')
+    fm1.set_ylabel('Magnitude')
+    fm1.invert_yaxis()
+    fm2.set_ylabel('Res.')
+    
+    
+    # RA vs. time
+    f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
+    f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
+    f1.errorbar(data['t_ast'], data['xpos']*1e3,
+                    yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
+    f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
+    f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
+    f1.get_xaxis().set_visible(False)
+    f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
+    f1.get_shared_x_axes().join(f1, f2)
+    
+    f2.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+                yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
+    f2.axhline(0, linestyle='--', color='r')
+    f2.xaxis.set_major_locator(plt.MaxNLocator(3))
+    f2.set_ylim(-0.8, 0.8)
+    f2.set_xlabel('Time (HJD)')
+    f2.set_ylabel('Res.')
+
+    
+    # Dec vs. time
+    f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
+    f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
+    f3.errorbar(data['t_ast'], data['ypos']*1e3,
+                    yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
+    f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
+    f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
+    f3.set_ylabel(r'$\Delta \delta$ (mas)')
+    f3.yaxis.set_major_locator(plt.MaxNLocator(4))
+    f3.get_xaxis().set_visible(False)
+    f3.get_shared_x_axes().join(f3, f4)
+    
+    f4.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
+                yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
+    f4.axhline(0, linestyle='--', color='r')
+    f4.xaxis.set_major_locator(plt.MaxNLocator(3))
+#    f4.set_yticks(np.array([0.0, -0.2])) # For OB140613
+    f4.set_ylim(-0.8, 0.8)
+    f4.set_xlabel('Time (HJD)')
+    f4.set_ylabel('Res.')
 
     plt.savefig(outfile)
 
@@ -1092,3 +1297,176 @@ def summarize_results(tab):
 
     
     return
+
+def plot_pm_chi2_hist():
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    # targets = ['ob150029']
+
+    rcut = {'ob120169': 1.3,
+            'ob140613': 1.5,
+            'ob150029': 1.5,
+            'ob150211': 1.5}
+    mcut = {'ob120169': 19.7,
+            'ob140613': 18,
+            'ob150029': 18,
+            'ob150211': 17.2}
+
+    plt.close('all')
+
+    chi2red_hist = None
+    chi2red_bins = None
+    chi2red_targ = []
+
+    for tt in range(len(targets)):
+        target = targets[tt]
+        mod_root = mod_roots[target]
+        print('*** ' + target + ' ***')
+    
+        mod_yaml = open(mod_root +  'params.yaml').read() 
+        params = yaml.safe_load(mod_yaml)
+
+        # Load up the table
+        stars_tab = Table.read(munge.data_sets[target]['Kp_Keck'])
+
+        # Trim out stars with too few epochs
+        good = np.where(stars_tab['n_vfit'] > 5)[0]
+        stars_tab = stars_tab[good]
+        
+
+        tdx = np.where(stars_tab['name'] == target)[0][0]
+        
+        print('Sample Orig: ', len(stars_tab))
+        stars_tab['r0'] = np.hypot(stars_tab['x0'] - stars_tab['x0'][tdx],
+                                   stars_tab['y0'] - stars_tab['y0'][tdx])
+
+        # Fetch the 5 closest stars + target within a magnitude cut.
+        mdx = np.where(stars_tab['m0'] < mcut[target])[0]
+        stars_tab = stars_tab[mdx]
+        print('Sample Mag Cut: ', len(stars_tab))
+        
+        rdx = stars_tab['r0'].argsort()[0:6]
+        print('Sample Rad Cut: ', len(rdx))
+
+
+        hn, hb, tc = plot_chi2_dist(stars_tab[rdx], stars_tab['x'][rdx].shape[1], target)
+
+        if tt == 0:
+            chi2red_hist = hn
+            chi2red_bins = hb
+        else:
+            chi2red_hist += hn
+            
+        chi2red_targ.append(tc)
+
+    chi2red_hist /= chi2red_hist.sum()
+
+    plt.figure(figsize=(6,6))
+    plt.step(chi2red_bins[1:], chi2red_hist, label='Data', where='pre')
+
+    colors = ['red', 'orange', 'black', 'purple']
+    for tt in range(len(targets)):
+        arr_y = 0.1
+        arr_dy = -0.05
+        plt.arrow(chi2red_targ[tt], arr_y, dx=0, dy=arr_dy, label=targets[tt].upper(),
+                      color=colors[tt], width=0.04, head_width=0.08, head_length=0.02)
+    
+    plt.xlim(0, 5)
+    plt.legend()
+    plt.xlabel(r'$\tilde{\chi}^2$')
+    plt.ylabel('PDF')
+
+
+
+def plot_chi2_dist(tab, Ndetect, target, xlim=5, n_bins=15):
+    """
+    tab = flystar table
+    Ndetect = Number of epochs star detected in
+    """
+    chi2_x_list = []
+    chi2_y_list = []
+    chi2_list = []
+    fnd_list = [] # Number of non-NaN error measurements
+
+    tdx = np.where(tab['name'] == target)[0][0]
+
+    for ii in range(len(tab['xe'])):
+        # Ignore the NaNs 
+        fnd = np.argwhere(~np.isnan(tab['xe'][ii,:]))
+        fnd_list.append(len(fnd))
+        
+        time = tab['t'][ii, fnd]
+        x = tab['x'][ii, fnd]
+        y = tab['y'][ii, fnd]
+        xerr = tab['xe'][ii, fnd]
+        yerr = tab['ye'][ii, fnd]
+
+        dt = tab['t'][ii, fnd] - tab['t0'][ii]
+        fitLineX = tab['x0'][ii] + (tab['vx'][ii] * dt)
+        fitLineY = tab['y0'][ii] + (tab['vy'][ii] * dt)
+
+        diffX = x - fitLineX
+        diffY = y - fitLineY
+        sigX = diffX / xerr
+        sigY = diffY / yerr
+        
+        chi2_x = np.sum(sigX**2)
+        chi2_y = np.sum(sigY**2)
+        chi2_x_list.append(chi2_x)
+        chi2_y_list.append(chi2_y)
+        chi2_list.append(chi2_x + chi2_y)
+
+        print('{0:15s} {1:4.1f} {2:4.1f} {3:4.1f} {4:2d}'.format(tab['name'][ii], chi2_x, chi2_y, chi2_x + chi2_y, fnd_list[ii]))
+
+    x = np.array(chi2_x_list)
+    y = np.array(chi2_y_list)
+    t = np.array(chi2_list)
+    fnd = np.array(fnd_list)
+
+    chi2red_x = x / (fnd - 2)
+    chi2red_y = y / (fnd - 2)
+    chi2red_t = t / (2.0 * (fnd - 2))
+
+    idx = np.where((fnd == Ndetect) & (tab['name'] != target))[0]
+    tdx = np.where(tab['name'] == target)[0]
+    
+    # Fitting position and velocity... so subtract 2 to get Ndof
+    Ndof = 2 * (Ndetect - 2)
+    chi2_xaxis = np.linspace(0, xlim, n_bins*10)
+    chi2_bins = np.linspace(0, xlim, n_bins)
+
+    plt.figure(figsize=(6,4))
+    plt.clf()
+    hn, hb, hp = plt.hist(chi2red_t[idx], bins=chi2_bins, histtype='step', label='Data', density=True)
+    plt.arrow(chi2red_t[tdx], hn.max()*0.5, dx=0, dy=hn.max()*0.1)
+
+    chi2_mod = chi2.pdf(chi2_xaxis*Ndof, Ndof) * Ndof
+    plt.plot(chi2_xaxis, chi2_mod, 'r-', alpha=0.6, 
+             label='$\chi^2$ ' + str(Ndof) + ' dof')
+    
+    plt.title('$N_{epoch} = $' + str(Ndetect) + ', $N_{dof} = $' + str(Ndof))
+    plt.xlim(0, xlim)
+    plt.legend()
+    plt.xlabel(r'$\tilde{\chi}^2$')
+    plt.ylabel('PDF')
+
+    print('Ndetect = {0:d}'.format(Ndetect))
+    print('Mean reduced chi^2: (Ndetect = {0:d} of {1:d})'.format(len(idx), len(tab)))
+    fmt = '   {0:s} = {1:.1f} for N_detect and {2:.1f} for all'
+    med_chi2red_x_f = np.median(chi2red_x[idx])
+    med_chi2red_x_a = np.median(chi2red_x)
+    med_chi2red_y_f = np.median(chi2red_y[idx])
+    med_chi2red_y_a = np.median(chi2red_y)
+    med_chi2red_t_f = np.median(chi2red_t[idx])
+    med_chi2red_t_a = np.median(chi2red_t)
+    print(fmt.format('  X', med_chi2red_x_f, med_chi2red_x_a))
+    print(fmt.format('  Y', med_chi2red_y_f, med_chi2red_y_a))
+    print(fmt.format('Tot', med_chi2red_t_f, med_chi2red_t_a))
+
+    print('')
+    print('Target chi^2: ')
+    fmt = '   {0:s} = {1:.1f} raw or {2:.1f} reduced for {3:d} DOF'
+    print(fmt.format('Targ Tot', t[tdx[0]], chi2red_t[tdx[0]], 2*(fnd[tdx[0]] - 2)))
+
+    return hn, hb, chi2red_t[tdx]
+
+
