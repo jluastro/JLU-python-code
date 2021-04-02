@@ -37,31 +37,307 @@ from astropy import units as u
 from flystar import analysis
 import yaml
 
-
-mb09260_data = munge.getdata2('mb09260', phot_data=['MOA', 'HST'], ast_data = [])  
-mb10364_data = munge.getdata2('mb10364', phot_data=['MOA', 'HST'], ast_data = [])  
-ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
-ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
-ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
-
-# Some of these may still require rerunning... 
 mb09260_dir = '/u/jlu/work/microlens/MB09260/a_2020_03_26/model_fits/202_fit_multiphot_parallax/b0_'
 mb10364_dir = '/u/jlu/work/microlens/MB10364/a_2020_02_18/model_fits/202_fit_multiphot_parallax/b0_'
 ob110037_dir = '/u/jlu/work/microlens/OB110037/a_2020_01_22/model_fits/302_fit_3phot_parallax/b0_'
 ob110310_dir = '/u/jlu/work/microlens/OB110310/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
 ob110462_dir = '/u/jlu/work/microlens/OB110462/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
 
-# run directory                                                                                             
-ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
-ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
-ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
-ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+mb09260_data = munge.getdata2('mb09260', phot_data=['MOA', 'HST_f814w'], ast_data = [])  
+mb10364_data = munge.getdata2('mb10364', phot_data=['MOA', 'HST_f814w'], ast_data = [])  
+ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST_f814w'], ast_data = [])  
+ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST_f814w'], ast_data = [])  
 
-# run id                                                                                          
-ob120169_id = 'c2'
-ob140613_id = 'b1'
-ob150029_id = 'b3'
-ob150211_id = 'b2'
+
+# mb09260_data = munge.getdata2('mb09260', phot_data=['MOA', 'HST'], ast_data = [])  
+# mb10364_data = munge.getdata2('mb10364', phot_data=['MOA', 'HST'], ast_data = [])  
+# ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+# ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+# ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+# 
+# # Some of these may still require rerunning... 
+# mb09260_dir = '/u/jlu/work/microlens/MB09260/a_2020_03_26/model_fits/202_fit_multiphot_parallax/b0_'
+# mb10364_dir = '/u/jlu/work/microlens/MB10364/a_2020_02_18/model_fits/202_fit_multiphot_parallax/b0_'
+# ob110037_dir = '/u/jlu/work/microlens/OB110037/a_2020_01_22/model_fits/302_fit_3phot_parallax/b0_'
+# ob110310_dir = '/u/jlu/work/microlens/OB110310/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
+# ob110462_dir = '/u/jlu/work/microlens/OB110462/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
+# 
+# # run directory                                                                                             
+# ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
+# ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
+# ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+# ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+# 
+# # run id                                                                                          
+# ob120169_id = 'c2'
+# ob140613_id = 'b1'
+# ob150029_id = 'b3'
+# ob150211_id = 'b2'
+
+def piE_tE_phot_only_fits():
+    """
+    !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    ON THE WAY THIS PLOT LOOKS !!!
+    Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    Also plot PopSyCLE simulations simultaneously.
+    """
+
+    mb09260_yaml = open(mb09260_dir + 'params.yaml').read() 
+    params_09260 = yaml.safe_load(mb09260_yaml)
+    mb10364_yaml = open(mb10364_dir + 'params.yaml').read() 
+    params_10364 = yaml.safe_load(mb10364_yaml)
+    ob110037_yaml = open(ob110037_dir + 'params.yaml').read() 
+    params_110037 = yaml.safe_load(ob110037_yaml)
+    ob110310_yaml = open(ob110310_dir + 'params.yaml').read() 
+    params_110310 = yaml.safe_load(ob110310_yaml)
+    ob110462_yaml = open(ob110462_dir + 'params.yaml').read() 
+    params_110462 = yaml.safe_load(ob110462_yaml)
+
+    # Cycle 17-24 Sahu results tE-piE.
+    fitter_09260 = model_fitter.PSPL_Solver(mb09260_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb09260_dir)
+
+    smy_09260 = fitter_09260.load_mnest_summary()
+
+    fitter_10364 = model_fitter.PSPL_Solver(mb10364_data,
+                                            model.PSPL_Phot_Par_Param1,
+                                            outputfiles_basename=mb10364_dir)
+
+    smy_10364 = fitter_10364.load_mnest_summary()
+
+    fitter_110037 = model_fitter.PSPL_Solver(ob110037_data,
+                                              model.PSPL_Phot_Par_Param1,
+                                              outputfiles_basename=ob110037_dir)
+
+    smy_110037 = fitter_110037.load_mnest_summary()
+
+    fitter_110310 = model_fitter.PSPL_Solver(ob110310_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110310_dir)
+
+    smy_110310 = fitter_110310.load_mnest_summary()
+
+    fitter_110462 = model_fitter.PSPL_Solver(ob110462_data,
+                                             model.PSPL_Phot_Par_Param1,
+                                             outputfiles_basename=ob110462_dir)
+    smy_110462 = fitter_110462.load_mnest_summary()
+
+
+    # Maximum likelihood vals                                                                                         
+    smy_list = [smy_09260, smy_10364, smy_110037, smy_110310, smy_110462]
+
+    smy_name = ['MB09260','MB10364', 'OB110037', 'OB110310', 'OB110462']
+    maxl = {}
+
+    for ss, smy in enumerate(smy_list):
+        print(smy_name[ss])
+        print('tE : ', smy['MaxLike_tE'][0])
+        print('piE : ', np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0]))
+        maxl[smy_name[ss]] = {'tE' : smy['MaxLike_tE'][0],
+                              'piE' : np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0])}
+
+    span = 0.999999426697
+    smooth = 0.02
+    quantiles_2d = None
+    hist2d_kwargs = None
+    labels = None
+    label_kwargs = None
+    show_titles = False 
+    title_fmt = ".2f" 
+    title_kwargs = None
+    
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    # MB190284 fit results (from Dave Bennett)
+    data_tab = '/u/jlu/doc/proposals/hst/cycle28_mid2/mcmc_bsopcnC_3.dat'
+
+    # chi^2 1/t_E t0 umin sep theta eps1=q/(1+q) 1/Tbin dsxdt dsydt t_fix Tstar(=0) pi_E,N piE,E 0 0 0 0 0 0 0 0 0 A0ogleI A2ogleI A0ogleV A2ogleV A0moa2r A2moa2r A0moa2V
+    data = Table.read(data_tab, format='ascii.fixed_width_no_header', delimiter=' ')
+    data.rename_column('col1', 'chi2')
+    data.rename_column('col2', 'tE_inv')
+    data.rename_column('col3', 't0')
+    data.rename_column('col4', 'u0')
+    data.rename_column('col5', 'sep')
+    data.rename_column('col6', 'theta')
+    data.rename_column('col7', 'eps1')
+    data.rename_column('col8', 'Tbin_inv')
+    data.rename_column('col9', 'dsxdt')
+    data.rename_column('col10', 'dsydt')
+    data.rename_column('col11', 't_fix')
+    data.rename_column('col12', 'Tstar')
+    data.rename_column('col13', 'piEE')
+    data.rename_column('col14', 'piEN')
+    data['tE'] = 1.0 / data['tE_inv']
+    data['piEE'] = data['piEE'].astype('float')
+    data['weight'] = np.ones(len(data))
+    data['piE'] = np.hypot(data['piEE'], data['piEN'])
+
+    # Plot the piE-tE 2D posteriors.
+    fig = plt.figure(1)
+    plt.clf()
+    fig.set_size_inches(6.0, 6.0, forward=True)
+    axes = fig.gca()
+    plt.subplots_adjust(bottom=0.15, left=0.2)
+
+    sx = smooth
+    sy = smooth
+
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
+    
+#    model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 ax=axes, smooth=[sy, sx], color='red',
+#                                 **hist2d_kwargs, plot_density=False)
+#    axes.text(430, 0.025, 'MB19284', color='red')    
+
+    axes.plot(maxl['MB09260']['tE'], maxl['MB09260']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['MB10364']['tE'], maxl['MB10364']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110037']['tE'], maxl['OB110037']['piE'], 
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110310']['tE'], maxl['OB110310']['piE'], 
+               color='brown', marker = 'X', ms = 8, alpha=0.8)
+    axes.plot(maxl['OB110462']['tE'], maxl['OB110462']['piE'], 
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(100.171, 0.35319,
+              color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(127.957, 0.32037,
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(178.804, 0.10864,
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.text(23, 0.35, 'Sahu HST \n  targets', color='brown')
+
+    # Add the PopSyCLE simulation points.
+    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
+
+    bh_idx = np.where(t['rem_id_L'] == 103)[0]
+    ns_idx = np.where(t['rem_id_L'] == 102)[0]
+    wd_idx = np.where(t['rem_id_L'] == 101)[0]
+    st_idx = np.where(t['rem_id_L'] == 0)[0]
+
+    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'paleturquoise')
+    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'aqua')
+    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'blue')
+    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
+                 alpha = 1.0, marker = '.', s = 25, 
+                 color = 'dimgray')
+    
+    # Trickery to make the legend darker
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'blue')
+    axes.scatter(0.01, 100,
+                 alpha = 1.0, marker = '.', s = 25, 
+                 label = 'BH', color = 'dimgray')
+
+    axes.set_xlim(10, 600)
+    axes.set_ylim(0.005, 0.8)
+    axes.set_xlabel('$t_E$ (days)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.legend(loc=1, markerscale=2)
+    plt.savefig('piE_tE_cycle29.png')
+
+    return
+
+
+def EWS_select_BH():
+    """
+    Plot the fraction of long duration EWS events
+    that will be due to black holes.
+    """
+
+    def binom(n,k,p):
+        """
+        n = total
+        k = success
+        p = prob of success
+        """
+        prob = scipy.special.comb(n,k) * p**k * (1-p)**(n-k)
+        err = np.sqrt(n*p*(1-p))
+        
+        return prob, err
+
+    def calc_fraction(t, mintE):
+        """
+        Calculate the fraction of long duration events
+        that have black hole lenses
+        """
+
+        not_bh_idx = np.where((t['t_E'] > mintE) & 
+                              (t['rem_id_L'] != 103))[0]
+        
+        bh_idx = np.where((t['t_E'] > mintE) & 
+                          (t['rem_id_L'] == 103))[0]
+        
+        frac = len(bh_idx)/(len(not_bh_idx) + len(bh_idx))
+        
+        bh_err = np.sqrt(len(bh_idx))
+        not_bh_err = np.sqrt(len(not_bh_idx))
+        n_bh = np.array(len(bh_idx))
+        n_not_bh = np.array(len(not_bh_idx))
+        term1 = bh_err * n_not_bh
+        term2 = not_bh_err * n_bh
+        term3 = (n_bh + n_not_bh)**2
+        frac_err = np.sqrt(term1**2 + term2**2)/term3
+
+        return frac, frac_err
+
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
+
+    times = np.linspace(60, 150, 20)
+
+    frac_arr = np.zeros(len(times))
+    frac_err_arr = np.zeros(len(times))
+
+    for i in np.arange(len(times)):
+        frac_arr[i], frac_err_arr[i] = calc_fraction(t, mintE = times[i])
+
+    prob1, err1 = binom(10, 1, 0.4)
+    print(prob1, err1)
+
+    fig = plt.figure(11, figsize=(4,4))
+    plt.subplots_adjust(bottom=0.2, top=0.97, left=0.25, right=0.95)
+    plt.clf()
+    plt.fill_between(times, frac_arr-frac_err_arr, frac_arr+frac_err_arr, alpha=0.5, color='tab:blue', label='Expectation')
+    plt.errorbar(120, 1/10, yerr=0.09486832980505139, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='k')
+#    plt.errorbar(122, 1/10, yerr=err1/10, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='r')
+    plt.ylabel('Fraction of BH events')
+    plt.xlabel('Minimum $t_E$ (days)')
+    plt.ylim(0, 0.6)
+    plt.xlim(60, 150)
+    plt.legend(loc=2)
+    plt.show()
+    plt.savefig('expect_vs_detect.png')
+
+    return
 
 
 def piE_tE():
@@ -154,8 +430,8 @@ def piE_tE():
 
     # Values are PSBL fit from email from Dave Bennett
     # Subject line is "Mid-Cycle HST proposal?", reply is Jan 25, 2021
-    axes.scatter(499.482, 0.038397, marker='*', s=100, color='red')
-    axes.text(300, 0.028, 'MB19284', color='red')
+#    axes.scatter(499.482, 0.038397, marker='*', s=100, color='red')
+#    axes.text(300, 0.028, 'MB19284', color='red')
 
     axes.set_xlim(10, 1000)
     axes.set_ylim(0.005, 0.5)
@@ -487,198 +763,6 @@ def plot_psbl_model():
     plt.ylabel(r'Shift Dec ($\theta_E$)')
     plt.savefig('astrom_shift.png')
 
-
-    return
-
-def piE_tE_phot_only_fits():
-    """
-    !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
-    ON THE WAY THIS PLOT LOOKS !!!
-    Plot piE-tE 2D posteriors from OGLE photometry only fits.
-    Also plot PopSyCLE simulations simultaneously.
-    """
-
-    mb09260_yaml = open(mb09260_dir + 'params.yaml').read() 
-    params_09260 = yaml.safe_load(mb09260_yaml)
-    mb10364_yaml = open(mb10364_dir + 'params.yaml').read() 
-    params_10364 = yaml.safe_load(mb10364_yaml)
-    ob110037_yaml = open(ob110037_dir + 'params.yaml').read() 
-    params_110037 = yaml.safe_load(ob110037_yaml)
-    ob110310_yaml = open(ob110310_dir + 'params.yaml').read() 
-    params_110310 = yaml.safe_load(ob110310_yaml)
-    ob110462_yaml = open(ob110462_dir + 'params.yaml').read() 
-    params_110462 = yaml.safe_load(ob110462_yaml)
-
-    # Cycle 17-24 Sahu results tE-piE.
-    fitter_09260 = model_fitter.PSPL_Solver(mb09260_data,
-                                            model.PSPL_Phot_Par_Param1,
-                                            outputfiles_basename=mb09260_dir)
-
-    smy_09260 = fitter_09260.load_mnest_summary()
-
-    fitter_10364 = model_fitter.PSPL_Solver(mb10364_data,
-                                            model.PSPL_Phot_Par_Param1,
-                                            outputfiles_basename=mb10364_dir)
-
-    smy_10364 = fitter_10364.load_mnest_summary()
-
-    fitter_110037 = model_fitter.PSPL_Solver(ob110037_data,
-                                              model.PSPL_Phot_Par_Param1,
-                                              outputfiles_basename=ob110037_dir)
-
-    smy_110037 = fitter_110037.load_mnest_summary()
-
-    fitter_110310 = model_fitter.PSPL_Solver(ob110310_data,
-                                             model.PSPL_Phot_Par_Param1,
-                                             outputfiles_basename=ob110310_dir)
-
-    smy_110310 = fitter_110310.load_mnest_summary()
-
-    fitter_110462 = model_fitter.PSPL_Solver(ob110462_data,
-                                             model.PSPL_Phot_Par_Param1,
-                                             outputfiles_basename=ob110462_dir)
-    smy_110462 = fitter_110462.load_mnest_summary()
-
-
-    # Maximum likelihood vals                                                                                         
-    smy_list = [smy_09260, smy_10364, smy_110037, smy_110310, smy_110462]
-
-    smy_name = ['MB09260','MB10364', 'OB110037', 'OB110310', 'OB110462']
-    maxl = {}
-
-    for ss, smy in enumerate(smy_list):
-        print(smy_name[ss])
-        print('tE : ', smy['MaxLike_tE'][0])
-        print('piE : ', np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0]))
-        maxl[smy_name[ss]] = {'tE' : smy['MaxLike_tE'][0],
-                              'piE' : np.hypot(smy['MaxLike_piE_E'][0], smy['MaxLike_piE_N'][0])}
-
-    span = 0.999999426697
-    smooth = 0.02
-    quantiles_2d = None
-    hist2d_kwargs = None
-    labels = None
-    label_kwargs = None
-    show_titles = False 
-    title_fmt = ".2f" 
-    title_kwargs = None
-    
-    # Initialize values.
-    if label_kwargs is None:
-        label_kwargs = dict()
-    if title_kwargs is None:
-        title_kwargs = dict()
-    if hist2d_kwargs is None:
-        hist2d_kwargs = dict()
-
-    # Set defaults.
-    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
-    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
-
-    # MB190284 fit results (from Dave Bennett)
-    data_tab = '/u/jlu/doc/proposals/hst/cycle28_mid2/mcmc_bsopcnC_3.dat'
-
-    # chi^2 1/t_E t0 umin sep theta eps1=q/(1+q) 1/Tbin dsxdt dsydt t_fix Tstar(=0) pi_E,N piE,E 0 0 0 0 0 0 0 0 0 A0ogleI A2ogleI A0ogleV A2ogleV A0moa2r A2moa2r A0moa2V
-    data = Table.read(data_tab, format='ascii.fixed_width_no_header', delimiter=' ')
-    data.rename_column('col1', 'chi2')
-    data.rename_column('col2', 'tE_inv')
-    data.rename_column('col3', 't0')
-    data.rename_column('col4', 'u0')
-    data.rename_column('col5', 'sep')
-    data.rename_column('col6', 'theta')
-    data.rename_column('col7', 'eps1')
-    data.rename_column('col8', 'Tbin_inv')
-    data.rename_column('col9', 'dsxdt')
-    data.rename_column('col10', 'dsydt')
-    data.rename_column('col11', 't_fix')
-    data.rename_column('col12', 'Tstar')
-    data.rename_column('col13', 'piEE')
-    data.rename_column('col14', 'piEN')
-    data['tE'] = 1.0 / data['tE_inv']
-    data['piEE'] = data['piEE'].astype('float')
-    data['weight'] = np.ones(len(data))
-    data['piE'] = np.hypot(data['piEE'], data['piEN'])
-
-    # Plot the piE-tE 2D posteriors.
-    fig = plt.figure(1)
-    plt.clf()
-    fig.set_size_inches(6.0, 6.0, forward=True)
-    axes = fig.gca()
-    plt.subplots_adjust(bottom=0.15, left=0.2)
-
-    sx = smooth
-    sy = smooth
-
-    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
-    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
-    
-    model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 ax=axes, smooth=[sy, sx], color='red',
-                                 **hist2d_kwargs, plot_density=False)
-    axes.text(430, 0.025, 'MB19284', color='red')    
-
-    axes.plot(maxl['MB09260']['tE'], maxl['MB09260']['piE'], 
-               color='brown', marker = 'X', ms = 8, alpha=0.8)
-    axes.plot(maxl['MB10364']['tE'], maxl['MB10364']['piE'], 
-               color='brown', marker = 'X', ms = 8, alpha=0.8)
-    axes.plot(maxl['OB110037']['tE'], maxl['OB110037']['piE'], 
-               color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.plot(maxl['OB110310']['tE'], maxl['OB110310']['piE'], 
-               color='brown', marker = 'X', ms = 8, alpha=0.8)
-    axes.plot(maxl['OB110462']['tE'], maxl['OB110462']['piE'], 
-               color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.plot(100.171, 0.35319,
-              color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.plot(127.957, 0.32037,
-               color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.plot(178.804, 0.10864,
-               color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.text(20, 0.35, 'Sahu HST \n  targets', color='brown')
-
-    # Add the PopSyCLE simulation points.
-    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
-
-    bh_idx = np.where(t['rem_id_L'] == 103)[0]
-    ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where(t['rem_id_L'] == 101)[0]
-    st_idx = np.where(t['rem_id_L'] == 0)[0]
-
-    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'paleturquoise')
-    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'aqua')
-    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'blue')
-    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 1.0, marker = '.', s = 25, 
-                 color = 'dimgray')
-    
-    # Trickery to make the legend darker
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'Star', color = 'paleturquoise')
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25,
-                 label = 'WD', color = 'aqua')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
-    axes.scatter(0.01, 100,
-                 alpha = 1.0, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
-
-    axes.set_xlim(10, 2000)
-    axes.set_ylim(0.005, 0.8)
-    axes.set_xlabel('$t_E$ (days)')
-    axes.set_ylabel('$\pi_E$')
-    axes.set_xscale('log')
-    axes.set_yscale('log')
-    axes.legend(loc=1, markerscale=2)
-    plt.savefig('piE_tE_phot_only_MB190284.png')
 
     return
 
