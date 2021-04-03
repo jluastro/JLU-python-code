@@ -36,6 +36,7 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from flystar import analysis
 import yaml
+import lu_2019_lens
 
 mb09260_dir = '/u/jlu/work/microlens/MB09260/a_2020_03_26/model_fits/202_fit_multiphot_parallax/b0_'
 mb10364_dir = '/u/jlu/work/microlens/MB10364/a_2020_02_18/model_fits/202_fit_multiphot_parallax/b0_'
@@ -49,31 +50,434 @@ ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], a
 ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST_f814w'], ast_data = [])  
 ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST_f814w'], ast_data = [])  
 
+# Default matplotlib color cycles.
+mpl_b = '#1f77b4'
+mpl_o = '#ff7f0e'
+mpl_g = '#2ca02c'
+mpl_r = '#d62728'
 
-# mb09260_data = munge.getdata2('mb09260', phot_data=['MOA', 'HST'], ast_data = [])  
-# mb10364_data = munge.getdata2('mb10364', phot_data=['MOA', 'HST'], ast_data = [])  
-# ob110037_data = munge.getdata2('ob110037', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
-# ob110310_data = munge.getdata2('ob110310', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
-# ob110462_data = munge.getdata2('ob110462', phot_data=['I_OGLE', 'MOA', 'HST'], ast_data = [])  
+ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
+ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/'
+ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/'
+ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
+
+ob120169_id = 'a5'
+ob140613_id = 'a2'
+ob150029_id = 'a1'
+ob150211_id = 'a5'
+
+mod_roots = {'ob120169': ob120169_dir + ob120169_id + '_',
+             'ob140613': ob140613_dir + ob140613_id + '_',
+             'ob150029': ob150029_dir + ob150029_id + '_',
+             'ob150211': ob150211_dir + ob150211_id + '_'}
+
+
+# prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+prop_dir = '/u/jlu/doc/proposals/keck/uc/21A/'
+
+# Target coordinates
+ra_ob190017 = '17:59:03.5200'
+dec_ob190017 = '-27:32:49.2000'
+
+ra_ob170095 = '17:51:27.9400'
+dec_ob170095 = '-33:08:06.600'
+
+ra_kb200101 = '17:45:11.0300'
+dec_kb200101 = '-25:24:28.9800'
+
+ra_mb19284 = '18:05:55.0600'
+dec_mb19284 = '-30:20:12.9400'
+
+ra_ob170019 = '17:52:18.7400'
+dec_ob170019 = '-33:00:04.000'
+
+mdir = '/u/jlu/work/microlens/'
+
+phot_2020_dir = {'kb200101' : mdir + 'KB200101/a_2020_09_10/model_fits/kmtnet_phot_par/a0_',
+                 'mb19284' : mdir + '',
+                 'ob190017' : mdir + 'OB190017/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                 'ob170019' : mdir + 'OB170019/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                 'ob170095' : mdir + 'OB170095/a_2020_09_10/model_fits/ogle_phot_par/a0_'}
+# Gaia stuff
+# NOTE: OB190017 is NOT in Gaia.
+# Still trying to figure out for OB170095
+# gaia_ob190017 = analysis.query_gaia(ra_ob190017, dec_ob190017, search_radius=30.0, table_name='gaiaedr3')
+# gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
+# gaia_kb200101 = analysis.query_gaia(ra_kb200101, dec_kb200101, search_radius=30.0, table_name='gaiaedr3')
+# gaia_mb19284 = analysis.query_gaia(ra_mb19284, dec_mb19284, search_radius=30.0, table_name='gaiaedr3')
+# gaia_ob170019 = analysis.query_gaia(ra_ob170019, dec_ob170019, search_radius=30.0, table_name='gaiaedr3')
 # 
-# # Some of these may still require rerunning... 
-# mb09260_dir = '/u/jlu/work/microlens/MB09260/a_2020_03_26/model_fits/202_fit_multiphot_parallax/b0_'
-# mb10364_dir = '/u/jlu/work/microlens/MB10364/a_2020_02_18/model_fits/202_fit_multiphot_parallax/b0_'
-# ob110037_dir = '/u/jlu/work/microlens/OB110037/a_2020_01_22/model_fits/302_fit_3phot_parallax/b0_'
-# ob110310_dir = '/u/jlu/work/microlens/OB110310/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
-# ob110462_dir = '/u/jlu/work/microlens/OB110462/a_2020_01_22/model_fits/302_fit_3phot_parallax/a0_'
+# gaia_ob190017.write('gaia_ob190017.gz', overwrite=True, format='ascii')
+# gaia_ob170095.write('gaia_ob170095.gz', overwrite=True, format='ascii')
+# gaia_kb200101.write('gaia_kb200101.gz', overwrite=True, format='ascii')
+# gaia_mb19284.write('gaia_mb19284.gz', overwrite=True, format='ascii')
+# gaia_ob170019.write('gaia_ob170019.gz', overwrite=True, format='ascii')
+
+gaia_ob190017 = Table.read('gaia_ob190017.gz', format='ascii')
+gaia_ob170095 = Table.read('gaia_ob170095.gz', format='ascii')
+gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
+gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
+gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
+
+def piE_tE():
+    data_dict = {'ob120169' : '/u/jlu/work/microlens/OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
+                 'ob140613' : '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
+                 'ob150029' : '/u/jlu/work/microlens/OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_',
+                 'ob150211' : '/u/jlu/work/microlens/OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
+                 'mb09260' : '/u/jlu/work/microlens/MB09260/a_2020_08_07/model_fits/all_phot_ast_merr/base_b/b0_',
+                 'mb10364' : '/u/jlu/work/microlens/MB10364/a_2020_08_08/model_fits/all_phot_ast_merr/base_b/b0_',
+                 'ob110037' : '/u/jlu/work/microlens/OB110037/a_2020_08_26/model_fits/all_phot_ast_merr/base_c/c0_',
+                 'ob110310' : '/u/jlu/work/microlens/OB110310/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_',
+                 'ob110462' : '/u/jlu/work/microlens/OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'}
+
+    ##########
+    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    # ON THE WAY THIS PLOT LOOKS !!!
+    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    # Also plot PopSyCLE simulations simultaneously.
+    ##########
+    span = 0.999999426697
+    smooth = 0.04
+    quantiles_2d = None
+    hist2d_kwargs = None
+    labels = None
+    label_kwargs = None
+    show_titles = False 
+    title_fmt = ".2f" 
+    title_kwargs = None
+    
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+
+    # Dictionary of dictionaries containing the tE and piE
+    # label position for each of the text labels.
+    # WARNING: THE 'PHOT' AND 'AST' ARE THE SAME FOR THE NEW
+    # TARGETS... THEY ARE JUST PHOT THOUGH.
+    label_pos = {'phot': {'ob120169': [150, 0.01],
+                          'ob140613': [170, 0.1],
+                          'ob150029': [150, 0.2],
+                          'ob150211': [35, 0.04],
+#                          'ob170019': [0, 0.04],
+#                          'ob170095': [0, 0.04],
+#                          'ob190017': [0, 0.04],
+#                          'kb200101': [0, 0],
+                          'mb09260' : [1, 1],
+                          'mb10364' : [1, 1],
+                          'ob110037' : [1, 1],
+                          'ob110310' : [1, 1],
+                          'ob110462' : [1, 1],
+                          'sahu1' : [1, 1],
+                          'sahu2' : [1, 1],
+                          'sahu3' : [1, 1]},
+                 'ast':  {'ob120169': [45, 0.12],
+                          'ob140613': [250, 0.15],
+                          'ob150029': [40, 0.22],
+                          'ob150211': [140, 0.01],
+#                          'ob170019': [120, 0.042],
+#                          'ob170095': [30, 0.04],
+#                          'ob190017': [180, 0.28],
+#                          'kb200101': [180, 0.016],
+                          'mb09260' : [1, 1],
+                          'mb10364' : [1, 1],
+                          'ob110037' : [1, 1],
+                          'ob110310' : [1, 1],
+                          'ob110462' : [1, 1],
+                          'sahu1' : [1, 1],
+                          'sahu2' : [1, 1],
+                          'sahu3' : [1, 1]}}
+
+    label_pos_ast = {'ob120169': [0.006, 0.06],
+                     'ob140613': [0.04, 0.145],
+                     'ob150029': [0.02, 0.25],
+                     'ob150211': [0.03, 0.012],
+                     'mb09260' : [1, 1],
+                     'mb10364' : [1, 1],
+                     'ob110037' : [1, 1],
+                     'ob110310' : [1, 1],
+                     'ob110462' : [1, 1]}
+                 
+#    colors = {'ob120169': 'purple',
+#              'ob140613': 'red',
+#              'ob150029': 'green',
+#              'ob150211': 'magenta',
+#              'ob170019': 'navy',
+#              'ob170095': 'brown',
+#              'ob190017': 'green',
+#              'kb200101': 'green'}
+
+    colors = {'ob120169': 'gray',
+              'ob140613': 'gray',
+              'ob150029': 'gray',
+              'ob150211': 'gray',
+#              'ob170019': 'red',
+#              'ob170095': 'red',
+#              'ob190017': 'red',
+#              'kb200101': 'red',
+              'mb09260' : 'red',
+              'mb10364' : 'red',
+              'ob110037' : 'red',
+              'ob110310' : 'red',
+              'ob110462' : 'red',
+              'sahu1' : 'brown',
+              'sahu2' : 'brown',
+              'sahu3' : 'brown'}
+
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211',
+               'mb09260', 'mb10364', 'ob110037', 'ob110310', 'ob110462'] 
+#    new_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101']
+#    new_targets = ['mb09260', 'mb10364', 'ob110037', 'ob110310', 'ob110462']
+    tE = {}
+    piE = {}
+    theta_E = {}
+    weights = {}
+
+    for targ in targets:
+        fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(data_dict[targ])
+        
+        res_targ = fit_targ.load_mnest_modes()
+        smy_targ = fit_targ.load_mnest_summary()
+
+        # Get rid of the global mode in the summary table.
+        smy_targ = smy_targ[1:]
+
+        # Find which solution has the max likelihood.
+        mdx = smy_targ['maxlogL'].argmax()
+        res_targ = res_targ[mdx]
+        smy_targ = smy_targ[mdx]
+
+        tE[targ] = res_targ['tE']
+        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+        theta_E[targ] = res_targ['thetaE']
+        weights[targ] = res_targ['weights']
+
+#     for targ in new_targets:
+#         fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(phot_2020_dir[targ])
+#         
+#         res_targ = fit_targ.load_mnest_modes()
+#         smy_targ = fit_targ.load_mnest_summary()
 # 
-# # run directory                                                                                             
-# ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
-# ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
-# ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
-# ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
+#         # Get rid of the global mode in the summary table.
+#         smy_targ = smy_targ[1:]
 # 
-# # run id                                                                                          
-# ob120169_id = 'c2'
-# ob140613_id = 'b1'
-# ob150029_id = 'b3'
-# ob150211_id = 'b2'
+#         # Find which solution has the max likelihood.
+#         mdx = smy_targ['maxlogL'].argmax()
+#         res_targ = res_targ[0]
+#         smy_targ = smy_targ
+#         tE[targ] = res_targ['tE']
+#         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+#         weights[targ] = res_targ['weights']
+
+    # Plot the piE-tE 2D posteriors.
+#    plt.close(1)
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    sx = smooth
+    sy = smooth
+
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
+
+    for targ in targets:
+        model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2, 3])
+
+    axes.plot(100.171, 0.35319,
+              color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(127.957, 0.32037,
+               color='brown', marker='X', ms = 8, alpha=0.8)
+    axes.plot(178.804, 0.10864,
+               color='brown', marker='X', ms = 8, alpha=0.8, label='New Sahu')
+    axes.plot(200, 0.15, color='red', label='Old Sahu')
+    axes.plot(20, 0.2, color='gray', label='Keck')
+
+    # OB110022 from Lu+16.
+    piEE_110022 = -0.393
+    piEN_110022 = -0.071
+    piE_110022 = np.hypot(piEE_110022, piEN_110022)
+    tE_110022 = 61.4
+
+    dcmax_110022 = 2.19/np.sqrt(8)
+    dcmax_110022_pe = 1.06/np.sqrt(8)
+    dcmax_110022_me = 1.17/np.sqrt(8)
+
+    # MB19284 from Dave Bennett.
+    piEE_19284 = -0.06339
+    piEN_19284 = 0.05600
+    piE_19284 = np.hypot(piEE_19284, piEN_19284)
+    tE_19284 = 648.454
+
+    # Plotting OB110022.
+    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='gray')
+#    axes.text(17, 0.38, 'OB110022', color='gray')
+
+    # Add the PopSyCLE simulation points.
+    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
+
+    bh_idx = np.where(t['rem_id_L'] == 103)[0]
+    ns_idx = np.where(t['rem_id_L'] == 102)[0]
+    wd_idx = np.where(t['rem_id_L'] == 101)[0]
+    st_idx = np.where(t['rem_id_L'] == 0)[0]
+
+    u0_arr = t['u0']
+    thetaE_arr = t['theta_E']
+    
+    # Stores the maximum astrometric shift
+    final_delta_arr = np.zeros(len(u0_arr))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    final_u_arr = np.zeros(len(u0_arr))
+
+    # Sort by whether the maximum astrometric shift happens
+    # before or after the maximum photometric amplification
+    big_idx = np.where(u0_arr > np.sqrt(2))[0]
+    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+    g_arr = np.nan_to_num(g_arr)
+
+    for i in np.arange(len(u0_arr)):
+        g = g_arr[i] 
+        thetaE = thetaE_arr[i]    
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        if u0_arr[i] < np.sqrt(2):
+            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+            delta_arr = np.zeros(len(u_arr))
+            for j in np.arange(len(u_arr)):
+                u = u_arr[j] 
+                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+                delta = (u * thetaE/(1 + g)) * (numer/denom)
+                delta_arr[j] = delta
+            max_idx = np.argmax(delta_arr)
+            final_delta_arr[i] = delta_arr[max_idx]
+            final_u_arr[i] = u_arr[max_idx]
+        # Maximum astrometric shift will occur at sqrt(2)
+        if u0_arr[i] > np.sqrt(2):
+            u = u0_arr[i]
+            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+            delta = (u * thetaE/(1 + g)) * (numer/denom)
+            final_delta_arr[i] = delta
+            final_u_arr[i] = u
+
+    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'paleturquoise')
+    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'aqua')
+    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'blue')
+    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
+                 alpha = 0.8, marker = '.', s = 25, 
+                 color = 'black')
+
+    # Trickery to make the legend darker
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'blue')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'black')
+
+    axes.set_xlim(10, 1000)
+    axes.set_ylim(0.005, 0.5)
+    axes.set_xlabel('$t_E$ (days)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.legend(loc=3)
+#    plt.savefig('piE_tE_' + fit_type + '.png')
+    plt.show()
+
+    # Plot the deltac-piE 2D posteriors.
+#    plt.close(2)
+    fig = plt.figure(2, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    # OB110022
+    axes.errorbar(dcmax_110022, piE_110022, 
+                   xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(0.619, 0.379, xerr=np.array([[0.2], [0.2]]),
+                   fmt = 'o', color = 'red', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(1.204, 0.120, xerr=np.array([[0.2], [0.2]]),
+                   fmt = 'o', color = 'red', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(1.586, 0.239, xerr=np.array([[0.2], [0.2]]),
+                   fmt = 'o', color = 'red', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(0.265, 0.237, xerr=np.array([[0.2], [0.2]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(0.316, 0.135, xerr=np.array([[0.2], [0.2]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                   xuplims = True)
+
+    for targ in ['mb10364', 'ob110462', 'ob120169', 'ob150211']:
+        model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2, 3])
+
+
+#        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
+#                  targ.upper(), color=colors[targ])    
+
+    axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'paleturquoise')
+    axes.scatter(final_delta_arr[wd_idx], t['pi_E'][wd_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'aqua')
+    axes.scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'blue')
+    axes.scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
+                  alpha = 0.8, marker = '.', s = 25,
+                  c = 'black')
+
+    axes.set_xlabel('$\delta_{c,max}$ (mas)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.set_xlim(0.005, 4)
+    axes.set_ylim(0.009, 0.5)
+#    plt.savefig('piE_deltac.png')
+    plt.show()
+
 
 def piE_tE_phot_only_fits():
     """
@@ -340,107 +744,107 @@ def EWS_select_BH():
     return
 
 
-def piE_tE():
-    # Plot the piE-tE 2D posteriors.
-    plt.close(1)
-    fig = plt.figure(1, figsize=(6,6))
-    plt.clf()
-    axes = plt.gca()
-    plt.subplots_adjust(bottom=0.15)
-
-    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
-
-    bh_idx = np.where(t['rem_id_L'] == 103)[0]
-    ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where(t['rem_id_L'] == 101)[0]
-    st_idx = np.where(t['rem_id_L'] == 0)[0]
-
-    u0_arr = t['u0']
-    thetaE_arr = t['theta_E']
-    
-    # Stores the maximum astrometric shift
-    final_delta_arr = np.zeros(len(u0_arr))
-    
-    # Stores the lens-source separation corresponding
-    # to the maximum astrometric shift
-    final_u_arr = np.zeros(len(u0_arr))
-
-    # Sort by whether the maximum astrometric shift happens
-    # before or after the maximum photometric amplification
-    big_idx = np.where(u0_arr > np.sqrt(2))[0]
-    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
-
-    # Flux ratio of lens to source (and make it 0 if dark lens)
-    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
-    g_arr = np.nan_to_num(g_arr)
-
-    for i in np.arange(len(u0_arr)):
-        g = g_arr[i] 
-        thetaE = thetaE_arr[i]    
-        # Try all values between u0 and sqrt(2) to find max 
-        # astrometric shift
-        if u0_arr[i] < np.sqrt(2):
-            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
-            delta_arr = np.zeros(len(u_arr))
-            for j in np.arange(len(u_arr)):
-                u = u_arr[j] 
-                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
-                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
-                delta = (u * thetaE/(1 + g)) * (numer/denom)
-                delta_arr[j] = delta
-            max_idx = np.argmax(delta_arr)
-            final_delta_arr[i] = delta_arr[max_idx]
-            final_u_arr[i] = u_arr[max_idx]
-        # Maximum astrometric shift will occur at sqrt(2)
-        if u0_arr[i] > np.sqrt(2):
-            u = u0_arr[i]
-            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
-            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
-            delta = (u * thetaE/(1 + g)) * (numer/denom)
-            final_delta_arr[i] = delta
-            final_u_arr[i] = u
-
-    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'paleturquoise')
-    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'aqua')
-    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'blue')
-    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'dimgray')
-
-    # Trickery to make the legend darker
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'Star', color = 'paleturquoise')
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25,
-                 label = 'WD', color = 'aqua')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
-
-    # Values are PSBL fit from email from Dave Bennett
-    # Subject line is "Mid-Cycle HST proposal?", reply is Jan 25, 2021
-#    axes.scatter(499.482, 0.038397, marker='*', s=100, color='red')
-#    axes.text(300, 0.028, 'MB19284', color='red')
-
-    axes.set_xlim(10, 1000)
-    axes.set_ylim(0.005, 0.5)
-    axes.set_xlabel('$t_E$ (days)')
-    axes.set_ylabel('$\pi_E$')
-    axes.set_xscale('log')
-    axes.set_yscale('log')
-    axes.legend(loc=1)
-    plt.show()
+# def piE_tE():
+#     # Plot the piE-tE 2D posteriors.
+#     plt.close(1)
+#     fig = plt.figure(1, figsize=(6,6))
+#     plt.clf()
+#     axes = plt.gca()
+#     plt.subplots_adjust(bottom=0.15)
+# 
+#     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
+#     t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
+# 
+#     bh_idx = np.where(t['rem_id_L'] == 103)[0]
+#     ns_idx = np.where(t['rem_id_L'] == 102)[0]
+#     wd_idx = np.where(t['rem_id_L'] == 101)[0]
+#     st_idx = np.where(t['rem_id_L'] == 0)[0]
+# 
+#     u0_arr = t['u0']
+#     thetaE_arr = t['theta_E']
+#     
+#     # Stores the maximum astrometric shift
+#     final_delta_arr = np.zeros(len(u0_arr))
+#     
+#     # Stores the lens-source separation corresponding
+#     # to the maximum astrometric shift
+#     final_u_arr = np.zeros(len(u0_arr))
+# 
+#     # Sort by whether the maximum astrometric shift happens
+#     # before or after the maximum photometric amplification
+#     big_idx = np.where(u0_arr > np.sqrt(2))[0]
+#     small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+# 
+#     # Flux ratio of lens to source (and make it 0 if dark lens)
+#     g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+#     g_arr = np.nan_to_num(g_arr)
+# 
+#     for i in np.arange(len(u0_arr)):
+#         g = g_arr[i] 
+#         thetaE = thetaE_arr[i]    
+#         # Try all values between u0 and sqrt(2) to find max 
+#         # astrometric shift
+#         if u0_arr[i] < np.sqrt(2):
+#             u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+#             delta_arr = np.zeros(len(u_arr))
+#             for j in np.arange(len(u_arr)):
+#                 u = u_arr[j] 
+#                 numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+#                 denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+#                 delta = (u * thetaE/(1 + g)) * (numer/denom)
+#                 delta_arr[j] = delta
+#             max_idx = np.argmax(delta_arr)
+#             final_delta_arr[i] = delta_arr[max_idx]
+#             final_u_arr[i] = u_arr[max_idx]
+#         # Maximum astrometric shift will occur at sqrt(2)
+#         if u0_arr[i] > np.sqrt(2):
+#             u = u0_arr[i]
+#             numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+#             denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+#             delta = (u * thetaE/(1 + g)) * (numer/denom)
+#             final_delta_arr[i] = delta
+#             final_u_arr[i] = u
+# 
+#     axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
+#                  alpha = 0.4, marker = '.', s = 25, 
+#                  color = 'paleturquoise')
+#     axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
+#                  alpha = 0.4, marker = '.', s = 25, 
+#                  color = 'aqua')
+#     axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+#                  alpha = 0.4, marker = '.', s = 25, 
+#                  color = 'blue')
+#     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
+#                  alpha = 0.4, marker = '.', s = 25, 
+#                  color = 'dimgray')
+# 
+#     # Trickery to make the legend darker
+#     axes.scatter(0.01, 100, 
+#                  alpha = 0.8, marker = '.', s = 25, 
+#                  label = 'Star', color = 'paleturquoise')
+#     axes.scatter(0.01, 100, 
+#                  alpha = 0.8, marker = '.', s = 25,
+#                  label = 'WD', color = 'aqua')
+#     axes.scatter(0.01, 100,
+#                  alpha = 0.8, marker = '.', s = 25, 
+#                  label = 'NS', color = 'blue')
+#     axes.scatter(0.01, 100,
+#                  alpha = 0.8, marker = '.', s = 25, 
+#                  label = 'BH', color = 'dimgray')
+# 
+#     # Values are PSBL fit from email from Dave Bennett
+#     # Subject line is "Mid-Cycle HST proposal?", reply is Jan 25, 2021
+# #    axes.scatter(499.482, 0.038397, marker='*', s=100, color='red')
+# #    axes.text(300, 0.028, 'MB19284', color='red')
+# 
+#     axes.set_xlim(10, 1000)
+#     axes.set_ylim(0.005, 0.5)
+#     axes.set_xlabel('$t_E$ (days)')
+#     axes.set_ylabel('$\pi_E$')
+#     axes.set_xscale('log')
+#     axes.set_yscale('log')
+#     axes.legend(loc=1)
+#     plt.show()
 
 
 def plot_psbl_model():
