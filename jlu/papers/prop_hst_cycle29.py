@@ -39,15 +39,16 @@ import yaml
 import lu_2019_lens
 
 def piE_tE():
-    data_dict = {'ob120169' : '/u/jlu/work/microlens/OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
-                 'ob140613' : '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
-                 'ob150029' : '/u/jlu/work/microlens/OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_',
-                 'ob150211' : '/u/jlu/work/microlens/OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
-                 'mb09260' : '/u/jlu/work/microlens/MB09260/a_2020_08_07/model_fits/all_phot_ast_merr/base_b/b0_',
-                 'mb10364' : '/u/jlu/work/microlens/MB10364/a_2020_12_12/model_fits/moa_hst_gp_f814w/a0_',
-                 'ob110037' : '/u/jlu/work/microlens/OB110037/a_2020_08_26/model_fits/all_phot_ast_merr/base_c/c0_',
-                 'ob110310' : '/u/jlu/work/microlens/OB110310/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_',
-                 'ob110462' : '/u/jlu/work/microlens/OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'}
+    mdir = '/u/jlu/work/microlens/'
+    data_dict = {'ob120169' : mdir + 'OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
+                 'ob140613' : mdir + 'OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
+                 'ob150029' : mdir + 'OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_',
+                 'ob150211' : mdir + 'OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
+                 'mb09260' : mdir + 'MB09260/a_2020_08_07/model_fits/all_phot_ast_merr/base_b/b0_',
+                 'mb10364' : mdir + 'MB10364/a_2020_12_12/model_fits/moa_hst_gp_f814w/a0_',
+                 'ob110037' : mdir + 'OB110037/a_2020_08_26/model_fits/all_phot_ast_merr/base_c/c0_',
+                 'ob110310' : mdir + 'OB110310/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_',
+                 'ob110462' : mdir + 'OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'}
 
     ##########
     # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
@@ -73,18 +74,15 @@ def piE_tE():
     if hist2d_kwargs is None:
         hist2d_kwargs = dict()
 
-    colors = {'ob120169': 'gray',
-              'ob140613': 'gray',
-              'ob150029': 'gray',
-              'ob150211': 'gray',
-              'mb09260' : 'red',
-              'mb10364' : 'red',
-              'ob110037' : 'red',
-              'ob110310' : 'red',
-              'ob110462' : 'red',
-              'sahu1' : 'brown',
-              'sahu2' : 'brown',
-              'sahu3' : 'brown'}
+    colors = {'ob120169': 'red',
+              'ob140613': 'red',
+              'ob150029': 'red',
+              'ob150211': 'red',
+              'mb09260' : 'gray',
+              'mb10364' : 'gray',
+              'ob110037' : 'gray',
+              'ob110310' : 'gray',
+              'ob110462' : 'gray'}
 
     # Set defaults.
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
@@ -134,14 +132,27 @@ def piE_tE():
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2, 3])
 
     axes.scatter(100.171, 0.35319,
-              color='sienna', marker='X', s = 80, alpha=0.8, zorder=1000)
+                 color='gray', marker='*', s = 150, 
+                 zorder=1000, edgecolors='none')
     axes.scatter(127.957, 0.32037,
-               color='sienna', marker='X', s = 80, alpha=0.8, zorder=1000)
+                 color='gray', marker='*', s = 150, 
+                 zorder=1000, edgecolors='none')
+    axes.scatter(275.53, 0.31,
+                 color='gray', marker='*', s = 150, 
+                 zorder=1000, edgecolors='none')
     axes.scatter(178.804, 0.10864,
-               color='sienna', marker='X', s = 80, alpha=0.8, zorder=1000,
-                 label='HST (In progress)')
-    axes.plot(200, 0.15, color='red', label='HST (Completed)')
-    axes.plot(20, 0.2, color='gray', label='Keck')
+                 color='gray', marker='*', s = 150, 
+                 zorder=1000, edgecolors='none',
+                 label='HST (PI: Sahu, \nCycle 25)')
+
+    # MB19284
+    axes.scatter(499.482, 0.038397, 
+                 color='red', marker='*', s = 150, 
+                 zorder=1000, edgecolors='none', 
+                 label = 'HST \n(priv. comm.)')
+
+    axes.plot(200, 0.15, color='gray', label='HST (PI: Sahu, \nCycle 17)')
+    axes.plot(20, 0.2, color='red', label='Keck \n(priv. comm.)')
 
     # OB110022 from Lu+16.
     piEE_110022 = -0.393
@@ -154,13 +165,13 @@ def piE_tE():
     dcmax_110022_me = 1.17/np.sqrt(8)
 
     # Plotting OB110022.
-    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='gray')
+    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 50, color='red')
 
     # Darken some small points
-    plt.scatter(142.436, 0.236727, marker = 'o', s = 30, color='gray')
-    plt.scatter(320, 0.135921, marker = 'o', s = 30, color='gray')
-    plt.scatter(151.636, 0.220, marker = 'o', s = 30, color='red')
-    plt.scatter(74.7, 0.378, marker = 'o', s = 30, color='red')
+    plt.scatter(142.436, 0.236727, marker = 'o', s = 50, color='red')
+    plt.scatter(320, 0.135921, marker = 'o', s = 50, color='red')
+    plt.scatter(151.636, 0.220, marker = 'o', s = 50, color='gray')
+    plt.scatter(74.7, 0.378, marker = 'o', s = 50, color='gray')
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
@@ -217,16 +228,16 @@ def piE_tE():
             final_u_arr[i] = u
 
     axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.4, marker = '.', s = 15, 
                  color = 'paleturquoise')
     axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.4, marker = '.', s = 15, 
                  color = 'aqua')
     axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.4, marker = '.', s = 15, 
                  color = 'blue')
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.8, marker = '.', s = 25, 
+                 alpha = 0.8, marker = '.', s = 15, 
                  color = 'black')
 
     # Trickery to make the legend darker
@@ -243,14 +254,14 @@ def piE_tE():
                  alpha = 0.8, marker = '.', s = 25, 
                  label = 'Black hole', color = 'black')
 
-    axes.set_xlim(10, 500)
+    axes.set_xlim(10, 800)
     axes.set_ylim(0.005, 0.5)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
     axes.set_yscale('log')
 #    axes.legend(loc=3)
-    axes.legend(bbox_to_anchor=(-0.87, 0.8), loc='upper left', ncol=1)
+    axes.legend(bbox_to_anchor=(-0.87, 0.9), loc='upper left', ncol=1)
     plt.savefig('piE_tE_cycle29.png')
     plt.show()
 
@@ -265,31 +276,31 @@ def piE_tE():
     axes.errorbar(dcmax_110022, piE_110022, 
                    xerr = np.array([[0.3], [0.3]]), 
 #                   xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-                   fmt = 'o', color = 'gray', markersize = 5,
+                   fmt = 'o', color = 'red', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(0.619, 0.379, xerr=np.array([[0.2], [0.2]]),
-                   fmt = 'o', color = 'red', markersize = 5,
+                   fmt = 'o', color = 'gray', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(0.853, 0.263, xerr=np.array([[0.28], [0.28]]),
-                   fmt = 'o', color = 'red', markersize = 5,
+                   fmt = 'o', color = 'gray', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(1.204, 0.120, xerr=np.array([[0.3], [0.3]]),
-                   fmt = 'o', color = 'red', markersize = 5,
+                   fmt = 'o', color = 'gray', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(1.586, 0.239, xerr=np.array([[0.4], [0.4]]),
-                   fmt = 'o', color = 'red', markersize = 5,
+                   fmt = 'o', color = 'gray', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(0.265, 0.237, xerr=np.array([[0.1], [0.1]]), 
-                   fmt = 'o', color = 'gray', markersize = 5,
+                   fmt = 'o', color = 'red', markersize = 8,
                    xuplims = True)
 
     axes.errorbar(0.316, 0.135, xerr=np.array([[0.1], [0.1]]), 
-                   fmt = 'o', color = 'gray', markersize = 5,
+                   fmt = 'o', color = 'red', markersize = 8,
                    xuplims = True)
 
     for targ in ['ob110462', 'ob120169', 'ob150211']:
@@ -302,16 +313,16 @@ def piE_tE():
 #                  targ.upper(), color=colors[targ])    
 
     axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
-                  alpha = 0.4, marker = '.', s = 25,
+                  alpha = 0.4, marker = '.', s = 15,
                   c = 'paleturquoise')
     axes.scatter(final_delta_arr[wd_idx], t['pi_E'][wd_idx], 
-                  alpha = 0.4, marker = '.', s = 25,
+                  alpha = 0.4, marker = '.', s = 15,
                   c = 'aqua')
     axes.scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
-                  alpha = 0.4, marker = '.', s = 25,
+                  alpha = 0.4, marker = '.', s = 15,
                   c = 'blue')
     axes.scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
-                  alpha = 0.8, marker = '.', s = 25,
+                  alpha = 0.8, marker = '.', s = 15,
                   c = 'black')
 
     axes.set_xlabel('$\delta_{c,max}$ (mas)')
@@ -368,7 +379,8 @@ def EWS_select_BH():
 
     t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
 
-    times = np.linspace(60, 150, 20)
+#    times = np.linspace(60, 150, 20)
+    times = np.linspace(60, 200, 20)
 
     frac_arr = np.zeros(len(times))
     frac_err_arr = np.zeros(len(times))
@@ -387,8 +399,10 @@ def EWS_select_BH():
 #    plt.errorbar(122, 1/10, yerr=err1/10, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='r')
     plt.ylabel('Fraction of BH events')
     plt.xlabel('Minimum $t_E$ (days)')
-    plt.ylim(0, 0.6)
-    plt.xlim(60, 150)
+#    plt.xlim(60, 150)
+#    plt.ylim(0, 0.6)
+    plt.xlim(60, 200)
+    plt.ylim(0, 0.7)
     plt.legend(loc=2)
     plt.show()
     plt.savefig('expect_vs_detect.png')
