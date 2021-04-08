@@ -48,7 +48,7 @@ def piE_tE():
                  'mb10364' : mdir + 'MB10364/a_2020_12_12/model_fits/moa_hst_gp_f814w/a0_',
                  'ob110037' : mdir + 'OB110037/a_2020_08_26/model_fits/all_phot_ast_merr/base_c/c0_',
                  'ob110310' : mdir + 'OB110310/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_',
-                 'ob110462' : mdir + 'OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'}
+                 'ob110462' : mdir + 'OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'}
 
     ##########
     # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
@@ -352,6 +352,25 @@ def EWS_select_BH():
         
         return prob, err
 
+    def calc_frac(n_bh, n_not_bh):
+        """
+        Calculate the fraction of long duration events
+        that have black hole lenses
+        """        
+        frac = n_bh/(n_not_bh + n_bh)
+        
+        bh_err = np.sqrt(n_bh)
+        not_bh_err = np.sqrt(n_not_bh)
+        n_bh = np.array(n_bh)
+        n_not_bh = np.array(n_not_bh)
+        term1 = bh_err * n_not_bh
+        term2 = not_bh_err * n_bh
+        term3 = (n_bh + n_not_bh)**2
+        frac_err = np.sqrt(term1**2 + term2**2)/term3
+
+        return frac, frac_err
+
+    # For popsycle
     def calc_fraction(t, mintE):
         """
         Calculate the fraction of long duration events
@@ -377,6 +396,9 @@ def EWS_select_BH():
 
         return frac, frac_err
 
+    print(calc_frac(1, 9))
+    print(calc_frac(2, 8))
+
     t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
 
 #    times = np.linspace(60, 150, 20)
@@ -395,12 +417,10 @@ def EWS_select_BH():
     plt.subplots_adjust(bottom=0.2, top=0.97, left=0.25, right=0.95)
     plt.clf()
     plt.fill_between(times, frac_arr-frac_err_arr, frac_arr+frac_err_arr, alpha=0.5, color='tab:blue', label='Expectation')
-    plt.errorbar(120, 1/10, yerr=0.09486832980505139, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='k')
-#    plt.errorbar(122, 1/10, yerr=err1/10, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='r')
+#    plt.errorbar(120, 1/10, yerr=0.09486832980505139, marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='k')
+    plt.errorbar(120, calc_frac(2, 8)[0], yerr=calc_frac(2, 8)[1], marker= 's', capsize=5, elinewidth = 2, ms = 10, ls = 'None', label='Sample', color='k')
     plt.ylabel('Fraction of BH events')
     plt.xlabel('Minimum $t_E$ (days)')
-#    plt.xlim(60, 150)
-#    plt.ylim(0, 0.6)
     plt.xlim(60, 200)
     plt.ylim(0, 0.7)
     plt.legend(loc=2)
