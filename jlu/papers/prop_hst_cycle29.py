@@ -143,7 +143,7 @@ def piE_tE():
     axes.scatter(178.804, 0.10864,
                  color='gray', marker='*', s = 150, 
                  zorder=1000, edgecolors='none',
-                 label='HST (PI: Sahu, \nCycle 25)')
+                 label='HST (Cycle 25)')
 
     # MB19284
     axes.scatter(499.482, 0.038397, 
@@ -151,7 +151,7 @@ def piE_tE():
                  zorder=1000, edgecolors='none', 
                  label = 'HST \n(priv. comm.)')
 
-    axes.plot(200, 0.15, color='gray', label='HST (PI: Sahu, \nCycle 17)')
+    axes.plot(200, 0.15, color='gray', label='HST (Cycle 17)')
     axes.plot(20, 0.2, color='red', label='Keck \n(priv. comm.)')
 
     # OB110022 from Lu+16.
