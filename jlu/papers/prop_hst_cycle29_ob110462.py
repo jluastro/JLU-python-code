@@ -20,34 +20,78 @@ import copy
 from astropy.time import Time
 from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
+import yaml
 
-mdir = '/u/jlu/work/microlens/'
-tdir = lu_2019_lens.pspl_ast_multiphot
 
-data_dict = lu_2019_lens.pspl_ast_multiphot
-data_dict['mb09260'] = mdir + 'MB09260/a_2020_08_07/model_fits/all_phot_ast_merr/base_b/b0_'
-data_dict['mb10364'] = mdir + 'MB10364/a_2020_08_08/model_fits/all_phot_ast_merr/base_b/b0_'
-data_dict['ob110037'] = mdir + 'OB110037/a_2020_08_26/model_fits/all_phot_ast_merr/base_c/c0_'
-data_dict['ob110310'] = mdir + 'OB110310/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'
-data_dict['ob110462'] = mdir + 'OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'
+def lightcurve():
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
 
-tdir['mb10364'] = '/u/jlu/work/microlens/MB10364/a_2020_08_08/model_fits/all_phot_ast_merr/base_b/b0_'
+    ob110462_moa = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/moa_phot/c0_'
 
-def table_phot_astrom():
-    """
-    I was in a rush and didn't have time to make a proper table, so this just 
-    prints out the values, and you manually type it into LaTeX itself. 
-    """
-    #####
-    # Comment out the target you aren't working on
-    #####
-    target='MB10364'
-    target_name='mb10364'
+    ob110462_ogle = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/ogle_phot/a0_'
 
-#    target='OB110462'
-#    target_name='ob110462'
+    data = munge.getdata2('ob110462',
+                          phot_data=['HST_f814w'],
+                          ast_data = ['HST_f814w'])
 
-    mod_fit, data = lu_2019_lens.get_data_and_fitter(tdir[target_name])
+    data_ogle = munge.getdata2('ob110462',
+                               phot_data=['I_OGLE'],
+                               ast_data = [])
+
+    data_moa = munge.getdata2('ob110462',
+                               phot_data=['MOA'],
+                               ast_data = [])
+
+    fitter = model_fitter.PSPL_Solver(data,
+                                      model.PSPL_PhotAstrom_Par_Param2,
+                                      outputfiles_basename=ob110462_data)
+
+    fitter_ogle = model_fitter.PSPL_Solver(data,
+                                      model.PSPL_Phot_Par_Param1,
+                                      outputfiles_basename=ob110462_ogle)
+
+    fitter_moa = model_fitter.PSPL_Solver(data,
+                                      model.PSPL_Phot_Par_Param1,
+                                      outputfiles_basename=ob110462_moa)
+
+    mod = fitter.get_best_fit_model(def_best='maxl')
+    mod_ogle = fitter_ogle.get_best_fit_model(def_best='maxl')
+    mod_moa = fitter_moa.get_best_fit_model(def_best='maxl')
+
+    times_mod = np.arange(55200, 58200, 1)
+
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+
+    hst = mod.get_photometry(times_mod)
+    ogle = mod_ogle.get_photometry(times_mod)
+    moa = mod_moa.get_photometry(times_mod)
+    
+    offset = 19.892 - 16.407
+
+    plt.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'], ls='none', marker='o', color='tab:blue', label='HST (F814W)')
+    plt.errorbar(data_ogle['t_phot1'], data_ogle['mag1'], yerr=data_ogle['mag_err1'], ls='none', marker='.', color='tab:orange', label='OGLE (I)')
+#    plt.errorbar(data_moa['t_phot1'], data_moa['mag1'], yerr=data_moa['mag_err1'], ls='none', marker='.', color='tab:orange', label='MOA')
+    plt.plot(times_mod, hst, ls=':', color='tab:blue')
+    plt.plot(times_mod, ogle, ls=':', color='tab:orange')
+#    plt.plot(times_mod, moa, ls=':', color='tab:orange')
+
+#    plt.errorbar(data_ogle['t_phot1'], data_ogle['mag1'], yerr=data_ogle['mag_err1'], 
+#                 alpha=0.8, ls='none', marker='.', color='k', label='OGLE data')
+#    plt.plot(times_mod, ogle, color='red', label='Model')
+
+#    plt.xlim(55200, 56300)
+#    plt.ylabel('I (mag)')
+    plt.xlim(55200, 57100)
+    plt.ylabel('Mag')
+    plt.legend()
+    plt.xlabel('Time (HJD)')
+    plt.gca().invert_yaxis()
+
+def param_table():
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
+    mod_fit, data = lu_2019_lens.get_data_and_fitter(ob110462_data)
+
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     mod = mod_all[0]
 
@@ -71,13 +115,14 @@ def table_phot_astrom():
     sig2_hi = 1. - sig2_lo
     sig3_hi = 1. - sig3_lo
 
-    #####
-    # Comment out the target you aren't working on
-    #####
-    # For MB10364
-    params = ['tE', 'thetaE', 'piE', 'muRel', 'mL', 'mag_src2', 'piL']
-    # For OB110462
-#    params = ['tE', 'thetaE', 'piE', 'muRel', 'mL', 'mag_src3', 'piL']
+    params = ['tE', 'thetaE', 'piE', 'muRel', 'mL', 'mag_src1'] # 'piL'
+
+    names = {'tE' : '$t_E$ (days)', 
+             'thetaE' : r'$\theta_E$ (mas)', 
+             'piE' : '$\pi_E$', 
+             'muRel' : '$\mu_{rel}$ (mas/yr)', 
+             'mL' : '$M_L$ ($M_\odot$)', 
+             'mag_src1' : '$m_{F814W}$ (mag)'}
 
     maxl_idx = tab['logLike'].argmax()
 
@@ -97,140 +142,35 @@ def table_phot_astrom():
         err_hi = tmp[2] - tab_maxl[n]
         med_errors[n] = np.array([err_lo, err_hi])
 
-    print(tab_maxl)
-    print(med_errors)
-    
+    # Delete old file if exists                                                                                                               
+    table_file = 'ob110462_tab.txt'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:
+        for param in params:
+            tb.write('{0} & ${1:.2f}_{{-{2:.2f}}}^{{+{3:.2f}}}$ \\\ \n'.format(names[param], 
+                                                                               tab_maxl[param], 
+                                                                               med_errors[param][0], 
+                                                                               med_errors[param][1]))
+
     return
 
 
-def mb10364_ast_v_time():
-    target='MB10364'
-    target_name='mb10364'
-    t_obs_prop=['2021-04-01']
-
-    # Get the model
-    mod_fit, data = lu_2019_lens.get_data_and_fitter(tdir[target_name])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
-    mod = mod_all[0]
-
-    # Sample N random draws from the posterior
-    ndraw = 100
-    res = mod_fit.load_mnest_results()
-
-    # Indices of the posterior we want
-    pdx = np.random.choice(len(res), ndraw, replace=True, p=res['weights'])
-
-    # Sample time
-    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
-    tmax += 2500
-    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 0.1)
-    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 5)
-
-    days_per_year = 365.25
-    dt_mod_ast = (t_mod_ast - mod.t0)/days_per_year
-    dt_data_ast = (data['t_ast'] - mod.t0)/days_per_year 
-
-    # Get the linear motion curves for the source (NO parallax)
-    p_unlens_mod = mod.xS0 + np.outer(dt_mod_ast, mod.muS) * 1e-3
-    p_unlens_mod_at_ast = mod.xS0 + np.outer(dt_data_ast, mod.muS) * 1e-3
-
-    # Get the lensed motion curves for the source
-    p_lens_mod = mod.get_astrometry(t_mod_ast)
-    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
-
-    x = (data['xpos'] - p_unlens_mod_at_ast[:,0]) * -1e3
-    xe = data['xpos_err'] * 1e3
-    y = (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3
-    ye = data['ypos_err'] * 1e3
-
-    xmod = (p_lens_mod[:,0] - p_unlens_mod[:,0]) * -1e3 
-    ymod = (p_lens_mod[:,1] - p_unlens_mod[:,1]) * 1e3
-
-    # Convert to decimal dates
-    t_ast_dec = Time(data['t_ast'], format='mjd', scale='utc')
-    t_mod_ast_dec = Time(t_mod_ast, format='mjd', scale='utc')
-
-    t_ast_dec.format='decimalyear'
-    t_mod_ast_dec.format='decimalyear'
-
-    t_ast_dec = t_ast_dec.value
-    t_mod_ast_dec = t_mod_ast_dec.value
-    
-    if t_obs_prop is not None:
-        # Turn the epoch YYYY-MM-DD into a decimal.
-        t_obs_prop_dec = np.zeros(len(t_obs_prop))
-        for idx, tt in enumerate(t_obs_prop):
-            t_strp = dt.strptime(tt, '%Y-%m-%d')
-            t_dec = dtUtil.toYearFraction(t_strp)
-            t_obs_prop_dec[idx] = t_dec
-
-    ###
-    # X VS TIME
-    ###
-    plt.figure(1)
-    plt.clf()
-    plt.errorbar(t_ast_dec, x, yerr=xe, fmt='r.', alpha=1, zorder = 1000, label='Data')
-    plt.scatter(t_mod_ast_dec, xmod, s = 0.1, color='black')
-    plt.title(target)
-    plt.xlabel('Time (Year)')
-    plt.ylabel(r'$\Delta \alpha^*$ (mas)')
-    for ii in range(len(pdx)):
-        # Plot the posterior draws
-        pdraw = mod_fit.get_model(res[ii])
-
-        # Get the lensed motion curves for the source
-        p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
-        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast'])
-
-        xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
-        ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
-
-        plt.scatter(t_mod_ast_dec, xpdraw, s = 0.01, alpha=0.02, color='lightgray')
-
-    plt.xticks([2010, 2013, 2016, 2019, 2022])
-    plt.axvline(x=t_obs_prop_dec, color='red', ls=':')
-    plt.legend(loc=1)
-    plt.title(target)
-    plt.savefig(target + '_deltac_RA_vs_time.png')
-    plt.show()
-
-    ###
-    # Y VS TIME
-    ###
-    plt.figure(2)
-    plt.clf()
-    plt.errorbar(t_ast_dec, y, yerr=ye, fmt='r.', alpha=1, zorder = 1000, label='Data')
-    plt.scatter(t_mod_ast_dec, ymod, s = 0.1, color='black')
-    plt.title(target)
-    plt.xlabel('Time (Year)')
-    plt.ylabel('$\Delta \delta$ (mas)')
-    for ii in range(len(pdx)):
-        # Plot the posterior draws
-        pdraw = mod_fit.get_model(res[ii])
-
-        # Get the lensed motion curves for the source
-        p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
-        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast'])
-
-        xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
-        ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
-
-        plt.scatter(t_mod_ast_dec, ypdraw, s = 0.01, alpha=0.02, color='lightgray')
-        
-    plt.xticks([2010, 2013, 2016, 2019, 2022])
-    plt.axvline(x=t_obs_prop_dec, color='red', ls=':')
-    plt.legend(loc=1)
-    plt.title(target)
-    plt.savefig(target + '_deltac_Dec_vs_time.png')
-    plt.show()
-
 def ob110462_ast_v_time():
     target='OB110462'
-    target_name='ob110462'
-    t_obs_prop=['2021-04-01']
+    t_obs_prop=['2022-03-01', '2022-08-01']
 
     # Get the model
-    mod_fit, data = lu_2019_lens.get_data_and_fitter(tdir[target_name])
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
+    mod_fit, data = lu_2019_lens.get_data_and_fitter(ob110462_data)
+
+    keys = ['t_phot1', 'mag1', 'mag_err1',
+            't_ast1', 'xpos1', 'ypos1', 'xpos_err1', 'ypos_err1']
+    
+    for key in keys:
+        data[key] = np.delete(data[key], 4)
+
     mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
     mod = mod_all[0]
 
@@ -242,14 +182,14 @@ def ob110462_ast_v_time():
     pdx = np.random.choice(len(res), ndraw, replace=True, p=res['weights'])
 
     # Sample time
-    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    tmax = np.max(data['t_phot1']) + 90.0
     tmax += 2500
-    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 0.1)
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 0.1)
     t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 5)
 
     days_per_year = 365.25
     dt_mod_ast = (t_mod_ast - mod.t0)/days_per_year
-    dt_data_ast = (data['t_ast'] - mod.t0)/days_per_year 
+    dt_data_ast = (data['t_ast1'] - mod.t0)/days_per_year 
 
     # Get the linear motion curves for the source (NO parallax)
     p_unlens_mod = mod.xS0 + np.outer(dt_mod_ast, mod.muS) * 1e-3
@@ -257,18 +197,18 @@ def ob110462_ast_v_time():
 
     # Get the lensed motion curves for the source
     p_lens_mod = mod.get_astrometry(t_mod_ast)
-    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'])
 
-    x = (data['xpos'] - p_unlens_mod_at_ast[:,0]) * -1e3
-    xe = data['xpos_err'] * 1e3
-    y = (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3
-    ye = data['ypos_err'] * 1e3
+    x = (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * -1e3
+    xe = data['xpos_err1'] * 1e3
+    y = (data['ypos1'] - p_unlens_mod_at_ast[:,1]) * 1e3
+    ye = data['ypos_err1'] * 1e3
 
     xmod = (p_lens_mod[:,0] - p_unlens_mod[:,0]) * -1e3 
     ymod = (p_lens_mod[:,1] - p_unlens_mod[:,1]) * 1e3
 
     # Convert to decimal dates
-    t_ast_dec = Time(data['t_ast'], format='mjd', scale='utc')
+    t_ast_dec = Time(data['t_ast1'], format='mjd', scale='utc')
     t_mod_ast_dec = Time(t_mod_ast, format='mjd', scale='utc')
 
     t_ast_dec.format='decimalyear'
@@ -288,9 +228,9 @@ def ob110462_ast_v_time():
     ###
     # X VS TIME
     ###
-    plt.figure(1)
+    plt.figure(1, figsize=(6,6))
     plt.clf()
-    plt.errorbar(t_ast_dec, x, yerr=xe, fmt='r.', alpha=1, zorder = 1000, label='Data')
+    plt.errorbar(t_ast_dec, x, yerr=xe, fmt='r.', alpha=1, zorder = 1000, label='Proposed')
     plt.scatter(t_mod_ast_dec, xmod, s = 0.1, color='black')
     plt.title(target)
     plt.xlabel('Time (Year)')
@@ -301,24 +241,26 @@ def ob110462_ast_v_time():
 
         # Get the lensed motion curves for the source
         p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
-        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast'])
+        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast1'])
 
         xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
         ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
 
         plt.scatter(t_mod_ast_dec, xpdraw, s = 0.01, alpha=0.02, color='lightgray')
 
-    plt.xticks([2010, 2013, 2016, 2019, 2022])
-    plt.axvline(x=t_obs_prop_dec, color='red', ls=':')
+    plt.xticks([2011, 2014, 2017, 2020, 2023])
+    for t_obs in t_obs_prop_dec:
+        plt.axvline(x=t_obs, color='red', ls=':')
     plt.legend(loc=1)
     plt.title(target)
+    plt.xlim(2010.75, 2023.25)
     plt.savefig(target + '_deltac_RA_vs_time.png')
     plt.show()
 
     ###
     # Y VS TIME
     ###
-    plt.figure(2)
+    plt.figure(2, figsize=(6,6))
     plt.clf()
     plt.errorbar(t_ast_dec, y, yerr=ye, fmt='r.', alpha=1, zorder = 1000, label='Data')
     plt.scatter(t_mod_ast_dec, ymod, s = 0.1, color='black')
@@ -331,18 +273,69 @@ def ob110462_ast_v_time():
 
         # Get the lensed motion curves for the source
         p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
-        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast'])
+        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast1'])
 
         xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
         ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
 
         plt.scatter(t_mod_ast_dec, ypdraw, s = 0.01, alpha=0.02, color='lightgray')
         
-    plt.xticks([2010, 2013, 2016, 2019, 2022])
-    plt.axvline(x=t_obs_prop_dec, color='red', ls=':')
+    plt.xticks([2011, 2014, 2017, 2020, 2023])
+    for t_obs in t_obs_prop_dec:
+        plt.axvline(x=t_obs, color='red', ls=':')
     plt.legend(loc=1)
+    plt.xlim(2010.75, 2023.25)
     plt.title(target)
     plt.savefig(target + '_deltac_Dec_vs_time.png')
+    plt.show()
+
+    # Single plot
+    plt.close(3)
+    fig, ax= plt.subplots(nrows=2, ncols=1, num=3, figsize=(6,6), sharex=True)
+    plt.subplots_adjust(hspace=0.05, top=0.98)
+    ax[0].errorbar(t_ast_dec, x, yerr=xe, fmt='r.', alpha=1, zorder = 1000, label='Data')
+    ax[0].scatter(t_mod_ast_dec, xmod, s = 0.1, color='black')
+    ax[0].set_ylabel(r'$\Delta \alpha^*$ (mas)')
+    for ii in range(len(pdx)):
+        # Plot the posterior draws
+        pdraw = mod_fit.get_model(res[ii])
+
+        # Get the lensed motion curves for the source
+        p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
+        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast1'])
+
+        xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
+        ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
+
+        ax[0].scatter(t_mod_ast_dec, xpdraw, s = 0.01, alpha=0.02, color='lightgray')
+
+    for t_obs in t_obs_prop_dec:
+        ax[0].axvline(x=t_obs, color='red', ls=':')
+    ax[0].axvline(x=2000, color='red', ls=':', label='Proposed')
+    ax[0].legend(loc=2)
+
+    ax[1].errorbar(t_ast_dec, y, yerr=ye, fmt='r.', alpha=1, zorder = 1000, label='Data')
+    ax[1].scatter(t_mod_ast_dec, ymod, s = 0.1, color='black')
+    ax[1].set_xlabel('Time (Year)')
+    ax[1].set_ylabel('$\Delta \delta$ (mas)')
+    for ii in range(len(pdx)):
+        # Plot the posterior draws
+        pdraw = mod_fit.get_model(res[ii])
+
+        # Get the lensed motion curves for the source
+        p_lens_pdraw = pdraw.get_astrometry(t_mod_ast)
+        p_lens_pdraw_at_ast = pdraw.get_astrometry(data['t_ast1'])
+
+        xpdraw = (p_lens_pdraw[:,0] - p_unlens_mod[:,0]) * -1e3
+        ypdraw = (p_lens_pdraw[:,1] - p_unlens_mod[:,1]) * 1e3
+
+        ax[1].scatter(t_mod_ast_dec, ypdraw, s = 0.01, alpha=0.02, color='lightgray')
+        
+    ax[1].set_xticks([2011, 2014, 2017, 2020, 2023])
+    for t_obs in t_obs_prop_dec:
+        ax[1].axvline(x=t_obs, color='red', ls=':')
+    ax[1].set_xlim(2010.75, 2023.25)
+    plt.savefig(target + '_deltac_RA_Dec_vs_time.png')
     plt.show()
 
 
@@ -592,42 +585,48 @@ def plot_astrom(starName, tdir, xlim=[0,40], ylim=[-2,2]):
 
 
 def posteriors():
-    hst_targets = ['mb10364', 'ob110462'] 
     mL = {}
     muRel = {}
     weights = {}
 
-    # Get data for plotting.
-    for targ in hst_targets:
-        fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(data_dict[targ])
-        
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
+    fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(ob110462_data)
+    
+    res_targ = fit_targ.load_mnest_modes()
+    smy_targ = fit_targ.load_mnest_summary()
+    
+    # Get rid of the global mode in the summary table.
+    smy_targ = smy_targ[1:]
 
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
-
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
-        mL[targ] = res_targ['mL']
-        muRel[targ] = np.hypot(res_targ['muRel_N'], res_targ['muRel_E'])
-        weights[targ] = res_targ['weights']
+    # Find which solution has the max likelihood.
+    mdx = smy_targ['maxlogL'].argmax()
+    res_targ = res_targ[mdx]
+    smy_targ = smy_targ[mdx]
+    
+    mL = res_targ['mL']
+    muRel = np.hypot(res_targ['muRel_N'], res_targ['muRel_E'])
+    weights = res_targ['weights']
+    
+    plt.figure(4, figsize=(6,4))
+    plt.subplots_adjust(bottom=0.2)
+    plt.clf()
+    plt.hist(mL, weights=weights, bins=50, histtype='step', lw=2)
+    plt.axvspan(2, 5, color='gray', alpha=0.3)
+    plt.xlabel('Lens mass ($M_\odot$)')
+    plt.ylabel('PDF')
+    plt.xlim(xmin=0)
+#    plt.savefig('mL_posteriors.png')
+    plt.show()
 
     plt.figure(4, figsize=(6,4))
     plt.subplots_adjust(bottom=0.2)
     plt.clf()
-    plt.hist(mL['ob110462'], weights=weights['ob110462'], bins=50, histtype='step',
-             label='OB110462', lw=2)
-    plt.hist(mL['mb10364'], weights=weights['mb10364'], bins=50, histtype='step',
-             label='MB10364', lw=2)
+    plt.hist(mL, weights=weights, bins=np.logspace(0, 2.5))
     plt.xlabel('Lens mass ($M_\odot$)')
     plt.ylabel('PDF')
-    plt.xlim(xmin=0)
-    plt.legend()
-    plt.savefig('mL_posteriors.png')
+    plt.xscale('log')
+#    plt.xlim(xmin=0)
+#    plt.savefig('mL_posteriors.png')
     plt.show()
 
 
@@ -648,7 +647,7 @@ def piE_tE():
     show_titles = False 
     title_fmt = ".2f" 
     title_kwargs = None
-    
+
     # Initialize values.
     if label_kwargs is None:
         label_kwargs = dict()
@@ -658,27 +657,6 @@ def piE_tE():
         hist2d_kwargs = dict()
     if contour_kwargs is None:
         contour_kwargs = dict()
-
-    # Dictionary of dictionaries containing the
-    # label position for each of the text labels.
-    label_pos = {'mb09260': [50, 0.1],
-                 'mb10364': [70, 0.4],
-                 'ob110037': [80, 0.3],
-                 'ob110310': [22, 0.25],
-                 'ob110462': [170, 0.2]}
-
-    label_pos_ast = {'mb09260': [0.03, 0.08],
-                     'mb10364': [0.9, 0.42],
-                     'ob110037': [0.03, 0.42],
-                     'ob110310': [0.03, 0.15],
-                     'ob110462': [0.9, 0.25]}
-
-    # purple coral red darkorange
-    colors = {'mb09260': 'brown',
-              'mb10364': 'red',
-              'ob110037': 'hotpink',
-              'ob110310': 'goldenrod',
-              'ob110462': 'green'}
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
@@ -738,70 +716,64 @@ def piE_tE():
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
 
-    hst_targets = ['mb09260', 'mb10364', 'ob110037', 'ob110310', 'ob110462'] 
+    # No need for it to be a loop but too lazy to change old code.
+    hst_targets = ['ob110462'] 
     tE = {}
     piE = {}
     theta_E = {}
     weights = {}
 
     # Get data for plotting.
-    for targ in hst_targets:
-        fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(data_dict[targ])
-        
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
+#    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2020_08_26/model_fits/all_phot_ast_merr/base_a/a0_'
+#    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/ogle_hstf814w_gp/a0_'
+#    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2020_08_26/model_fits/ogle_phot_gp/c0_'
+    fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(ob110462_data)
+    
+    res_targ = fit_targ.load_mnest_modes()
+    smy_targ = fit_targ.load_mnest_summary()
+    
+    # Get rid of the global mode in the summary table.
+    smy_targ = smy_targ[1:]
 
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
-
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
-        tE[targ] = res_targ['tE']
-        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
-        weights[targ] = res_targ['weights']
-        theta_E[targ] = res_targ['thetaE']
-
+    # Find which solution has the max likelihood.
+    mdx = smy_targ['maxlogL'].argmax()
+    res_targ = res_targ[mdx]
+    smy_targ = smy_targ[mdx]
+    
+    tE = res_targ['tE']
+    piE = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+    weights = res_targ['weights']
+    theta_E = res_targ['thetaE']
+    
     plt.close(1)
-    fig = plt.figure(1, figsize=(6,6))
+    fig = plt.figure(1, figsize=(6,5.5))
     plt.clf()
     axes = plt.gca()
-    plt.subplots_adjust(bottom=0.15)
+    plt.subplots_adjust(bottom=0.15, right=0.99)
     
     sx = smooth
     sy = smooth
     
     hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
-    #    contour_kwargs['linestyles'] = contour_kwargs.get('linestyles', 'dashed')
 
-    for targ in hst_targets:
-        model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
-                                     weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                     **hist2d_kwargs, contour_kwargs=contour_kwargs, plot_density=False)
+    model_fitter.contour2d_alpha(tE, piE, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights, ax=axes, smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1,2,3])
         
-        axes.text(label_pos[targ][0], label_pos[targ][1],
-                  targ.upper(), color=colors[targ])    
-
-
-    axes.scatter(74.66, 0.379586, color=colors['mb10364'], marker='o')
-    axes.scatter(77.9, 0.3569, color=colors['ob110037'], marker='o')
-    axes.scatter(151.6, 0.220397, color=colors['ob110462'], marker='o')
-    
     axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.8, marker = '.', s = 25, 
                  color = 'paleturquoise')
     axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.8, marker = '.', s = 25, 
                  color = 'aqua')
     axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
+                 alpha = 0.8, marker = '.', s = 25, 
                  color = 'blue')
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'dimgray')
+                 alpha = 0.8, marker = '.', s = 25, 
+                 color = 'black')
     
     # Trickery to make the legend darker
     axes.scatter(0.01, 100, 
@@ -815,32 +787,37 @@ def piE_tE():
                  label = 'NS', color = 'blue')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
+                 label = 'BH', color = 'black')
     
     axes.set_xlim(10, 700)
-    axes.set_ylim(0.005, 0.5)
+    axes.set_ylim(0.005, 0.7)
     axes.set_xlabel('$t_E$ (days)')
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
     axes.set_yscale('log')
-    axes.legend(loc=3)
+    axes.legend(loc=1)
     plt.savefig('piE_tE.png')
     plt.show()
     
     # Plot the deltac-piE 2D posteriors.
-    plt.close(1)
-    fig = plt.figure(2, figsize=(6,6))
+    plt.close(2)
+    fig = plt.figure(2, figsize=(6,5.5))
     plt.clf()
     axes = plt.gca()
-    plt.subplots_adjust(bottom=0.15)
+    plt.subplots_adjust(bottom=0.15, right=0.99)
     
-    for targ in hst_targets:
-        model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
-                                     weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                     **hist2d_kwargs, contour_kwargs=contour_kwargs, plot_density=False)
-        
-        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
-                  targ.upper(), color=colors[targ])    
+    model_fitter.contour2d_alpha(theta_E/np.sqrt(8), piE, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights, ax=axes, smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1,2,3])
+
+#    axes.arrow(5e-1, 5e-2, -5e-1 + 5e-2, -5e-2 + 5e-1)
+#    axes.arrow(5e-2, 5e-1, 5e-1 - 5e-2, 5e-2 - 5e-1)
+    axes.annotate('', xy=(5e-1, 5e-2), xytext=(5e-2, 5e-1),
+                 arrowprops=dict(facecolor='black', shrink=0.),)
+    axes.text(0.08, 0.08, 'Mass', rotation=-45, fontsize=24)
+
+#    axes.text(100, 0.1,
+#              'OB110462', color='red')
             
     axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
                  alpha = 0.4, marker = '.', s = 25,
@@ -853,11 +830,11 @@ def piE_tE():
                  c = 'blue')
     axes.scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
                  alpha = 0.8, marker = '.', s = 25,
-                 c = 'dimgray')
+                 c = 'black')
 
-    xarr = np.linspace(0.001, 4, 1000)
-    axes.fill_between(xarr, xarr*0.18, xarr*0.07, alpha=0.15, color='orange')
-    axes.text(0.17, 0.02, 'Mass Gap', rotation=45)
+#    xarr = np.linspace(0.001, 4, 1000)
+#    axes.fill_between(xarr, xarr*0.18, xarr*0.07, alpha=0.15, color='orange')
+#    axes.text(0.17, 0.02, 'Mass Gap', rotation=45)
 
     # Trickery to make the legend darker
     axes.scatter(0.01, 100, 
@@ -871,7 +848,7 @@ def piE_tE():
                  label = 'NS', color = 'blue')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
+                 label = 'BH', color = 'black')
 #    axes.scatter(0.5045, 0.0876, marker='.', color='black') # 2 solar mass object
     
     axes.set_xlabel('$\delta_{c,max}$ (mas)')
@@ -879,9 +856,283 @@ def piE_tE():
     axes.set_xscale('log')
     axes.set_yscale('log')
     axes.set_xlim(0.02, 4)
-    axes.set_ylim(0.005, 1)
+    axes.set_ylim(0.005, 0.7)
     axes.set_aspect('equal')
-    plt.legend(loc=4)
+#    plt.legend(loc=1)
     plt.savefig('piE_deltac.png')
     plt.show()
 
+
+def piE_tE_deltac():        
+    ##########
+    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    # ON THE WAY THIS PLOT LOOKS !!!
+    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    # Also plot PopSyCLE simulations simultaneously.
+    ##########
+    span = 0.999999426697
+    smooth = 0.04
+    quantiles_2d = None
+    hist2d_kwargs = None
+    contour_kwargs = None
+    labels = None
+    label_kwargs = None
+    show_titles = False 
+    title_fmt = ".2f" 
+    title_kwargs = None
+
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+    if contour_kwargs is None:
+        contour_kwargs = dict()
+
+    # Add the PopSyCLE simulation points.
+    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
+
+    bh_idx = np.where(t['rem_id_L'] == 103)[0]
+    ns_idx = np.where(t['rem_id_L'] == 102)[0]
+    wd_idx = np.where(t['rem_id_L'] == 101)[0]
+    st_idx = np.where(t['rem_id_L'] == 0)[0]
+
+    u0_arr = t['u0']
+    thetaE_arr = t['theta_E']
+    
+    # Stores the maximum astrometric shift
+    final_delta_arr = np.zeros(len(u0_arr))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    final_u_arr = np.zeros(len(u0_arr))
+
+    # Sort by whether the maximum astrometric shift happens
+    # before or after the maximum photometric amplification
+    big_idx = np.where(u0_arr > np.sqrt(2))[0]
+    small_idx = np.where(u0_arr <= np.sqrt(2))[0]
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+    g_arr = np.nan_to_num(g_arr)
+
+    for i in np.arange(len(u0_arr)):
+        g = g_arr[i] 
+        thetaE = thetaE_arr[i]    
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        if u0_arr[i] < np.sqrt(2):
+            u_arr = np.linspace(u0_arr[i], np.sqrt(2), 100)
+            delta_arr = np.zeros(len(u_arr))
+            for j in np.arange(len(u_arr)):
+                u = u_arr[j] 
+                numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+                denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+                delta = (u * thetaE/(1 + g)) * (numer/denom)
+                delta_arr[j] = delta
+            max_idx = np.argmax(delta_arr)
+            final_delta_arr[i] = delta_arr[max_idx]
+            final_u_arr[i] = u_arr[max_idx]
+        # Maximum astrometric shift will occur at sqrt(2)
+        if u0_arr[i] > np.sqrt(2):
+            u = u0_arr[i]
+            numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+            denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+            delta = (u * thetaE/(1 + g)) * (numer/denom)
+            final_delta_arr[i] = delta
+            final_u_arr[i] = u
+
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    # No need for it to be a loop but too lazy to change old code.
+    hst_targets = ['ob110462'] 
+    tE = {}
+    piE = {}
+    theta_E = {}
+    weights = {}
+
+    # Get data for plotting.
+    ob110462_data = '/u/jlu/work/microlens/OB110462/a_2021_03_29/model_fits/hstf814w_phot_ast/base_p/p0_'
+    fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(ob110462_data)
+    
+    res_targ = fit_targ.load_mnest_modes()
+    smy_targ = fit_targ.load_mnest_summary()
+    
+    # Get rid of the global mode in the summary table.
+    smy_targ = smy_targ[1:]
+
+    # Find which solution has the max likelihood.
+    mdx = smy_targ['maxlogL'].argmax()
+    res_targ = res_targ[mdx]
+    smy_targ = smy_targ[mdx]
+    
+    tE = res_targ['tE']
+    piE = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+    weights = res_targ['weights']
+    theta_E = res_targ['thetaE']
+
+    fig, ax= plt.subplots(nrows=1, ncols=2, figsize=(10,6))
+    plt.subplots_adjust(bottom=0.15,wspace=0.1, left=0.1, right=0.99)
+    
+    sx = smooth
+    sy = smooth
+    
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
+
+    model_fitter.contour2d_alpha(tE, piE, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights, ax=ax[0], smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1,2,3])
+        
+    ax[0].scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'paleturquoise')
+    ax[0].scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'aqua')
+    ax[0].scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'blue')
+    ax[0].scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'black')
+    
+    # Trickery to make the legend darker
+    ax[0].scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    ax[0].scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    ax[0].scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'blue')
+    ax[0].scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'black')
+    
+    ax[0].set_xlim(10, 700)
+    ax[0].set_ylim(0.005, 0.7)
+    ax[0].set_xlabel('$t_E$ (days)')
+    ax[0].set_ylabel('$\pi_E$')
+    ax[0].set_xscale('log')
+    ax[0].set_yscale('log')
+    ax[0].legend(loc=1)
+#    ax[0].set_aspect('equal')
+    plt.savefig('piE_tE.png')
+    plt.show()
+    
+    # Plot the deltac-piE 2D posteriors.
+    
+    model_fitter.contour2d_alpha(theta_E/np.sqrt(8), piE, span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights, ax=ax[1], smooth=[sy, sx], color='red',
+                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1,2,3])
+
+    ax[1].annotate('', xy=(5e-1, 3e-2), xytext=(5e-2, 3e-1),
+                 arrowprops=dict(facecolor='black', shrink=0.),)
+    ax[1].text(0.08, 0.08, 'Mass', rotation=-45, fontsize=24)
+
+    ax[1].scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25,
+                 c = 'paleturquoise')
+    ax[1].scatter(final_delta_arr[wd_idx], t['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25,
+                 c = 'aqua')
+    ax[1].scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25,
+                 c = 'blue')
+    ax[1].scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
+                 alpha = 0.8, marker = '.', s = 25,
+                 c = 'black')
+
+    # Trickery to make the legend darker
+    ax[1].scatter(0.01, 100, 
+                 alpha = 0.95, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    ax[1].scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    ax[1].scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'blue')
+    ax[1].scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'black')
+    
+    ax[1].set_xlabel('$\delta_{c,max}$ (mas)')
+    ax[1].set_xscale('log')
+    ax[1].set_ylabel('$\pi_E$')
+    ax[1].set_xscale('log')
+    ax[1].set_yscale('log')
+    ax[1].set_xlim(0.02, 4)
+    ax[1].set_ylim(0.005, 0.7)
+    ax[1].set_aspect('equal')
+    plt.savefig('piE_tE_deltac.png')
+    plt.show()
+
+
+
+def color():
+    data = munge.getdata2('ob110462',
+                          phot_data=['HST_f814w', 'HST_f606w'],
+                          ast_data = ['HST_f814w', 'HST_f606w'])
+    plt.close(3)
+    fig, ax = plt.subplots(nrows = 2, ncols = 1, num=3, figsize=(6,6), sharex=True)
+    plt.subplots_adjust(left=0.3, top=0.99)
+    ax[0].errorbar(data['t_ast1'], data['xpos1'],
+                yerr=data['xpos_err1'],
+                ls='none', label='F814W', marker='o', alpha=0.8)
+    ax[0].errorbar(data['t_ast1'], data['xpos2'],
+                yerr=data['xpos_err2'],
+                ls='none', label='F606W', marker='s', alpha=0.8)
+    
+    ax[1].errorbar(data['t_ast1'], data['ypos1'],
+                yerr=data['ypos_err1'],
+                ls='none', label='F814W', marker='o', alpha=0.8)
+    ax[1].errorbar(data['t_ast1'], data['ypos2'],
+                yerr=data['ypos_err2'],
+                ls='none', label='F606W', marker='s', alpha=0.8)
+    ax[0].grid()
+    ax[1].grid()
+    ax[1].legend(loc=4)
+#    ax[0].set_title(data['target'].upper())
+    ax[1].set_xlabel('Time (HJD)')
+    ax[0].set_ylabel('RA (arcsec)')
+    ax[1].set_ylabel('Dec (arcsec)')
+    plt.savefig(data['target'] + '_time_astrometry.png')
+
+    t = Table.read('/u/jlu/work/microlens/OB110462/a_2021_03_29/ob110462_astrom_p5_2021_03_29.fits')
+    # 7 also an option.
+    data = t[0]
+    print(data['m0'])
+    print(data['x0'], data['y0'])
+    plt.close(4)
+    fig, ax = plt.subplots(nrows = 2, ncols = 1, num=4, figsize=(6,6), sharex=True)
+    plt.subplots_adjust(left=0.3, top=0.99)
+    ax[0].errorbar(data['t'][::2], data['x'][::2],
+                   yerr=data['xe'][::2],
+                   ls='none', label='F814W', marker='o', alpha=0.8)
+    ax[0].errorbar(data['t'][1::2], data['x'][1::2],
+                yerr=data['xe'][1::2],
+                ls='none', label='F606W', marker='s', alpha=0.8)
+
+    ax[1].errorbar(data['t'][::2], data['y'][::2],
+                   yerr=data['ye'][::2],
+                   ls='none', label='F814W', marker='o', alpha=0.8)
+    ax[1].errorbar(data['t'][1::2], data['y'][1::2],
+                yerr=data['ye'][1::2],
+                ls='none', label='F606W', marker='s', alpha=0.8)
+    ax[0].grid()
+    ax[1].grid()
+    ax[1].legend(loc=4)
+#    ax[0].set_title(data['target'].upper())
+    ax[1].set_xlabel('Time (HJD)')
+    ax[0].set_ylabel('RA (arcsec)')
+    ax[1].set_ylabel('Dec (arcsec)')
+#    plt.savefig(data['target'] + '_time_astrometry.png')
+    
