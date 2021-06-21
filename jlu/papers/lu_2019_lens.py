@@ -124,8 +124,6 @@ def all_paper():
     calc_base_mag()
     plot_pos_err()
 
-    # plot_linear_fits()
-
     separate_modes_all()
 
     plot_ob120169_phot_ast()
@@ -159,19 +157,13 @@ def all_paper():
     # CMDs
     plot_cmds()
 
-    # Appendix
-    make_BIC_comparison_table()
+    #####
+    # OLD BROKEN STUFF
+    #####
+    # plot_linear_fits()
 
-    return
-
-def calibrate_nirc2_phot(recalc=True):
-    """
-    Some of our early photometric calibrations were incorrect. 
-    Since then, new VVV data has been released and the photometric
-    calibrations are much better. 
-    """
-
-    # First we need to calculate the zeropoints.
+    # Appendix -- DROP THIS TABLE
+    # make_BIC_comparison_table()
 
     return
 
@@ -432,9 +424,9 @@ def epoch_figure():
     pho_per_target = np.zeros(len(targets), dtype=int)
     for t in range(len(targets)):
         data = munge.getdata(targets[t], time_format='jyear')
-        ast_dates = np.append(ast_dates, data['t_ast'].data)
+        ast_dates = np.append(ast_dates, data['t_ast1'].data)
         pho_dates = np.append(pho_dates, data['t_phot'].data)
-        ast_per_target[t] = len(data['t_ast'])
+        ast_per_target[t] = len(data['t_ast1'])
         pho_per_target[t] = len(data['t_phot'])
 
     # Convert to astropy Time objects
@@ -802,16 +794,16 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Sample time
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
-    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
     t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
 
     # Get the linear motion curves for the source (includes parallax)
     p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
-    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'])
 
     # Get the lensed motion curves for the source
     p_lens_mod = mod.get_astrometry(t_mod_ast)
-    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'])
 
     # Get the photometry
     m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
@@ -827,7 +819,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Find the closest model date to the ref_epoch and
     # center inset positions on it
-    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast'][ref_epoch]).argmin()
+    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast1'][ref_epoch]).argmin()
     xpos_ins = (p_lens_mod[:, 0] - p_lens_mod[mod_ref_epoch, 0])*-1e3
     ypos_ins = (p_lens_mod[:, 1] - p_lens_mod[mod_ref_epoch, 1])*1e3
 
@@ -894,8 +886,8 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     axins = inset_axes(ax1, 1.05, 1)
 
     axins.scatter(xpos_ins, ypos_ins, c=t_mod_ast, cmap=cmap, norm=norm, s=1)
-    axins.errorbar((data['xpos'] - data['xpos'][ref_epoch])*-1e3, (data['ypos'] - data['ypos'][ref_epoch])*1e3,
-                   xerr = data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='.k')
+    axins.errorbar((data['xpos1'] - data['xpos1'][ref_epoch])*-1e3, (data['ypos1'] - data['ypos1'][ref_epoch])*1e3,
+                   xerr = data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3, fmt='.k')
 
     axins.set_xticks([],[])
     axins.set_yticks([],[])
@@ -937,24 +929,24 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11.set_ylabel('Res.')
 
     # Center the position data and model off the reference epoch
-    p_lens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    p_unlens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    p_unlens_mod_at_ast -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    data['xpos'] -= data['xpos'][ref_epoch]
-    data['ypos'] -= data['ypos'][ref_epoch]
+    p_lens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod_at_ast -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    data['xpos1'] -= data['xpos1'][ref_epoch]
+    data['ypos1'] -= data['ypos1'][ref_epoch]
 
     # RA VS TIME
     ax20 = fig.add_axes([wpad, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
     ax21 = fig.add_axes([wpad, hpad, ax_width, 0.25*ax_height])
-    ax20.errorbar(data['t_ast'], data['xpos']*-1e3,
-                  yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
+    ax20.errorbar(data['t_ast1'], data['xpos1']*-1e3,
+                  yerr=data['xpos_err1']*1e3, fmt='k.', zorder = 1000)
     ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*-1e3, 'r--')
     ax20.get_xaxis().set_visible(False)
     ax20.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     ax20.get_shared_x_axes().join(ax20, ax21)
-    ax21.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * -1e3,
-                  yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax21.errorbar(data['t_ast1'], (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * -1e3,
+                  yerr=data['xpos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax21.axhline(0, linestyle='--', color='r')
     ax21.set_xlabel('Time (MJD)')
@@ -963,15 +955,15 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     # DEC VS TIME
     ax30 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
     ax31 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad, ax_width, 0.25*ax_height])
-    ax30.errorbar(data['t_ast'], data['ypos']*1e3,
-                  yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
+    ax30.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                  yerr=data['ypos_err1']*1e3, fmt='k.', zorder = 1000)
     ax30.scatter(t_mod_ast, p_lens_mod[:, 1]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax30.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
     ax30.get_xaxis().set_visible(False)
     ax30.set_ylabel(r'$\Delta \delta$ (mas)')
     ax30.get_shared_x_axes().join(ax30, ax31)
-    ax31.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
-                  yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax31.errorbar(data['t_ast1'], (data['ypos1'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
+                  yerr=data['ypos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax31.axhline(0, linestyle='--', color='r')
     ax31.set_xlabel('Time (MJD)')
@@ -2672,6 +2664,27 @@ def plot_mass_posterior(target):
 
     return
 
+def get_CIs(samples, weights):
+    sumweights = np.sum(weights)
+    tmp_weights = weights / sumweights
+    
+    sig1 = 0.682689
+    sig2 = 0.9545
+    sig3 = 0.9973
+    sig1_lo = (1. - sig1) / 2.
+    sig2_lo = (1. - sig2) / 2.
+    sig3_lo = (1. - sig3) / 2.
+    sig1_hi = 1. - sig1_lo
+    sig2_hi = 1. - sig2_lo
+    sig3_hi = 1. - sig3_lo
+
+    tmp = model_fitter.weighted_quantile(samples, [sig1_lo, sig1_hi, sig2_lo, sig2_hi, sig3_lo, sig3_hi],
+                                         sample_weight = tmp_weights)
+
+    return tmp
+
+
+
 def plot_all_mass_posteriors():
     fontsize1 = 18
     fontsize2 = 14
@@ -2685,26 +2698,6 @@ def plot_all_mass_posteriors():
     plt.figure(1)
     plt.clf()
     plt.subplots_adjust(bottom = 0.15)
-
-    def get_CIs(samples, weights):
-        sumweights = np.sum(weights)
-        tmp_weights = weights / sumweights
-        
-        sig1 = 0.682689
-        sig2 = 0.9545
-        sig3 = 0.9973
-        sig1_lo = (1. - sig1) / 2.
-        sig2_lo = (1. - sig2) / 2.
-        sig3_lo = (1. - sig3) / 2.
-        sig1_hi = 1. - sig1_lo
-        sig2_hi = 1. - sig2_lo
-        sig3_hi = 1. - sig3_lo
-
-        tmp = model_fitter.weighted_quantile(samples, [sig1_lo, sig1_hi, sig2_lo, sig2_hi, sig3_lo, sig3_hi],
-                                             sample_weight = tmp_weights)
-
-        return tmp
-
 
     for target in targets:
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
@@ -3098,8 +3091,8 @@ def calc_chi2(target):
 
         # Calculate constants needed to subtract from lnL to calculate chi2.
         if pspl.astrometryFlag:
-            lnL_const_ast =  -0.5 * np.log(2.0 * math.pi * fitter.data['xpos_err'] ** 2)
-            lnL_const_ast += -0.5 * np.log(2.0 * math.pi * fitter.data['ypos_err'] ** 2)
+            lnL_const_ast =  -0.5 * np.log(2.0 * math.pi * fitter.data['xpos_err1'] ** 2)
+            lnL_const_ast += -0.5 * np.log(2.0 * math.pi * fitter.data['ypos_err1'] ** 2)
             lnL_const_ast = lnL_const_ast.sum()
         else:
             lnL_const_ast = 0
@@ -3159,11 +3152,11 @@ def calc_chi2(target):
         chi2 = chi2_ast + chi2_phot
 
         if pspl.astrometryFlag:
-            N_dof_ast = len(fitter.data['t_ast']) - len(params)
+            N_dof_ast = len(fitter.data['t_ast1']) - len(params)
             rchi2_ast = chi2_ast / N_dof_ast
             
         N_dof_phot = np.sum(ndata_phot) - len(params)
-        N_dof = len(fitter.data['t_ast']) + np.sum(ndata_phot) - len(params)
+        N_dof = len(fitter.data['t_ast1']) + np.sum(ndata_phot) - len(params)
         rchi2_phot = chi2_phot / N_dof_phot
         rchi2 = chi2 / N_dof
         
@@ -3200,7 +3193,7 @@ def calc_chi2(target):
         
 
         if pspl.astrometryFlag:
-            print('Ndata_ast = {0:d}'.format(len(fitter.data['t_ast'])))
+            print('Ndata_ast = {0:d}'.format(len(fitter.data['t_ast1'])))
         for ff in range(fitter.n_phot_sets):
             print('Ndata_phot{0:d} = {1:d}'.format(ff+1, ndata_phot[ff]))
         print('Ndata_phot all = {0:d}'.format(np.sum(ndata_phot)))
@@ -3751,11 +3744,11 @@ def plot_astrometry(target):
     plt.clf()
 
     # Data
-    plt.errorbar(data['xpos']*1e3, data['ypos']*1e3,
-                     xerr=data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
+    plt.errorbar(data['xpos1']*1e3, data['ypos1']*1e3,
+                     xerr=data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3, fmt='k.')
 
     # 1 day sampling over whole range
-    t_mod = np.arange(data['t_ast'].min(), data['t_ast'].max(), 1)
+    t_mod = np.arange(data['t_ast1'].min(), data['t_ast1'].max(), 1)
 
     # Model - usually from fitter
     pos_out = mymodel.get_astrometry(t_mod)
@@ -3771,8 +3764,8 @@ def plot_astrometry(target):
     #####
     plt.figure(3)
     plt.clf()
-    plt.errorbar(data['t_ast'], data['xpos']*1e3,
-                     yerr=data['xpos_err']*1e3, fmt='k.')
+    plt.errorbar(data['t_ast1'], data['xpos1']*1e3,
+                     yerr=data['xpos_err1']*1e3, fmt='k.')
     plt.plot(t_mod, pos_out[:, 0]*1e3, 'r-')
     plt.xlabel('t - t0 (days)')
     plt.ylabel(r'$\Delta \alpha^*$ (mas)')
@@ -3780,8 +3773,8 @@ def plot_astrometry(target):
 
     plt.figure(4)
     plt.clf()
-    plt.errorbar(data['t_ast'], data['ypos']*1e3,
-                     yerr=data['ypos_err']*1e3, fmt='k.')
+    plt.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                     yerr=data['ypos_err1']*1e3, fmt='k.')
     plt.plot(t_mod, pos_out[:, 1]*1e3, 'r-')
     plt.xlabel('t - t0 (days)')
     plt.ylabel(r'$\Delta \delta$ (mas)')
@@ -3792,11 +3785,11 @@ def plot_astrometry(target):
     # astrometry vs. time
     #####
     # Make the model unlensed points.
-    p_mod_unlens_tdat = mymodel.get_astrometry_unlensed(data['t_ast'])
+    p_mod_unlens_tdat = mymodel.get_astrometry_unlensed(data['t_ast1'])
     x_mod_tdat = p_mod_unlens_tdat[:, 0]
     y_mod_tdat = p_mod_unlens_tdat[:, 1]
-    x_no_pm = data['xpos'] - x_mod_tdat
-    y_no_pm = data['ypos'] - y_mod_tdat
+    x_no_pm = data['xpos1'] - x_mod_tdat
+    y_no_pm = data['ypos1'] - y_mod_tdat
 
     # Make the dense sampled model for the same plot
     dp_tmod_unlens = mymodel.get_astrometry(t_mod) - mymodel.get_astrometry_unlensed(t_mod)
@@ -3805,7 +3798,7 @@ def plot_astrometry(target):
 
     # Prep some colorbar stuff
     cmap = plt.cm.viridis
-    norm = plt.Normalize(vmin=data['t_ast'].min(), vmax=data['t_ast'].max())
+    norm = plt.Normalize(vmin=data['t_ast1'].min(), vmax=data['t_ast1'].max())
     smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     smap.set_array([])
 
@@ -3816,7 +3809,7 @@ def plot_astrometry(target):
     xe_year = []
     ye_year = []
 
-    t_dat_yr = multinest_plot.mmjd_to_year(data['t_ast'])
+    t_dat_yr = multinest_plot.mmjd_to_year(data['t_ast1'])
 
     min_year = np.floor(t_dat_yr.min())
     max_year = np.ceil(t_dat_yr.max())
@@ -3826,20 +3819,20 @@ def plot_astrometry(target):
         ii = np.where((years[tt] < t_dat_yr) & (t_dat_yr <= years[tt+1]))[0]
 
         if tt == 100:
-            t_year = data['t_ast'][ii].data
+            t_year = data['t_ast1'][ii].data
             x_year = x_no_pm[ii]
             y_year = y_no_pm[ii]
-            xe_year = data['xpos_err'][ii]
-            ye_year = data['ypos_err'][ii]
+            xe_year = data['xpos_err1'][ii]
+            ye_year = data['ypos_err1'][ii]
         else:
-            #wgts = np.hypot(data['xpos_err'][ii], data['ypos_err'][ii])
-            wgts = (data['xpos_err'][ii] + data['ypos_err'][ii]) / 2.0
-            t_avg, t_std = weighted_avg_and_std(data['t_ast'][ii], wgts )
+            #wgts = np.hypot(data['xpos_err1'][ii], data['ypos_err1'][ii])
+            wgts = (data['xpos_err1'][ii] + data['ypos_err1'][ii]) / 2.0
+            t_avg, t_std = weighted_avg_and_std(data['t_ast1'][ii], wgts )
             x_avg, x_std = weighted_avg_and_std(x_no_pm[ii], wgts )
             y_avg, y_std = weighted_avg_and_std(y_no_pm[ii], wgts )
 
-            t_avg = data['t_ast'][ii].mean()
-            t_std = data['t_ast'][ii].std()
+            t_avg = data['t_ast1'][ii].mean()
+            t_std = data['t_ast1'][ii].std()
             x_avg = x_no_pm[ii].mean()
             x_std = x_no_pm[ii].std()
             y_avg = y_no_pm[ii].mean()
@@ -3878,11 +3871,11 @@ def plot_astrometry(target):
 
     plt.figure(6)
     plt.clf()
-    plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast'],
+    plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast1'],
                 cmap=cmap, norm=norm, s=10)
     plt.errorbar(x_no_pm*1e3, y_no_pm*1e3,
-                 xerr=data['xpos_err']*1e3, yerr=data['ypos_err']*1e3,
-                 fmt='none', ecolor=smap.to_rgba(data['t_ast']))
+                 xerr=data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3,
+                 fmt='none', ecolor=smap.to_rgba(data['t_ast1']))
     plt.scatter(x_mod_no_pm*1e3, y_mod_no_pm*1e3, c=t_mod, cmap=cmap, norm=norm, s=4)
     plt.gca().invert_xaxis()
     plt.axis('equal')
@@ -4759,7 +4752,7 @@ def get_num_data_points(data_dict, astrometryFlag=True, verbose=False):
             if len(data_dict['ast_files']) > 1:
                 N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(pp+1)])
             else:
-                N_ast_aa = 2 * len(data_dict['t_ast'])
+                N_ast_aa = 2 * len(data_dict['t_ast1'])
                 
             if verbose: print('N_ast_aa = ', N_ast_aa)
             N_data += N_ast_aa
