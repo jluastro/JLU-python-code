@@ -10,7 +10,6 @@ import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 import os
 from scipy.ndimage import gaussian_filter as norm_kde
@@ -59,7 +58,7 @@ a_date = {'ob120169': '2020_08_18',
 comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
               'ob140613': ['S002_15_0.7', 'S001_15_0.9'],
               'ob150029': ['S002_16_0.3', 'S003_16_0.9'],
-              'ob150211': ['S001_11_1.3', 'S003_14_1.4']}
+              'ob150211': ['S001_13_1.3', 'S003_15_1.4']}
 
 astrom_pass = {'ob120169': 'p5',
                'ob140613': 'p5',
@@ -78,51 +77,65 @@ for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + astrom_suffix[targ] + '.fits'
 
-# added 12/20/19: might supersede pspl_phot.
 ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
                  'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/c3_',
                  'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
+                 'ob120169_gp'   : a_dir['ob120169'] + 'model_fits/201_phot_ogle_gp/base_a/a2_',
                  'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
                  'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
                  'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/c8_',
+                 'ob140613_gp'   : a_dir['ob140613'] + 'model_fits/201_phot_ogle_gp/base_pos/pos3_',
                  'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
                  'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/d8_', 
                  'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
+                 'ob150029_gp'   : a_dir['ob150029'] + 'model_fits/201_phot_ogle_gp/base_a/a3_',
                  'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
                  'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/a4_',
-                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
+                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
+                 'ob150211_gp'   : a_dir['ob150211'] + 'model_fits/201_phot_ogle_gp/base_b/b4_'}
+    
     
 photom_spitzer = {'ob120169': None,
                   'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-pspl_phot = {'ob120169' : ogle_phot_all['ob120169_add'],
-             'ob140613' : ogle_phot_all['ob140613_mult'],
-             'ob150029' : ogle_phot_all['ob150029_add'],
-             'ob150211' : ogle_phot_all['ob150211_add']}
+# With GP.
+pspl_phot = {'ob120169' : ogle_phot_all['ob120169_gp'],
+             'ob140613' : ogle_phot_all['ob140613_gp'],
+             'ob150029' : ogle_phot_all['ob150029_gp'],
+             'ob150211' : ogle_phot_all['ob150211_gp']}
 
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_', # need PSBL
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_'}
+# With GP: Not done running -- need to update.
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/220_phot_astrom_gp/base_b/b1_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/220_phot_astro_gp/base_a/a1_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/220_phot_astrom_gp/base_b/b4_',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/220_phot_astrom_gp/base_a/a1_'}
 
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a2_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/113_phot_parallax_merr_ogle_keck/base_a/a3_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a3_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a5_'}
+# With GP: Not done running
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/211_phot_ogle_keck_gp/base_a/a5_',
+                  'ob140613' : a_dir['ob140613'] + 'model_fits/213_phot_ogle_keck_gp/base_a/a5_',
+                  'ob150029' : a_dir['ob150029'] + 'model_fits/211_phot_ogle_keck_gp/base_a/a4_',
+                  'ob150211' : a_dir['ob150211'] + 'model_fits/213_phot_ogle_keck_gp/base_a/a3_'}
 
 ogle_phot = {}
-ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
-ogle_phot['ob140613'] = ogle_phot_all['ob140613_mult']
-ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
-ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
+# ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
+# ogle_phot['ob140613'] = ogle_phot_all['ob140613_mult']
+# ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
+# ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
+
+ogle_phot['ob120169'] = ogle_phot_all['ob120169_gp']
+ogle_phot['ob140613'] = ogle_phot_all['ob140613_gp']
+ogle_phot['ob150029'] = ogle_phot_all['ob150029_gp']
+ogle_phot['ob150211'] = ogle_phot_all['ob150211_gp']
 
 def all_paper():
     plot_images()
     make_obs_table()
     calc_base_mag()
     plot_pos_err()
+
+    compare_all_linear_motions()
 
     separate_modes_all()
 
@@ -143,6 +156,7 @@ def all_paper():
     # Lens Geometry, velocity plots
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
     for targ in targets:
+        plot_linear_motion(targ)
         plot_lens_geometry(targ, axis_lim_scale=1, vel_scale=0.25)
         calc_velocity(targ)
         plot_trace_corner(targ)
@@ -788,7 +802,6 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
      '''
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
-    from mpl_toolkits.axes_grid1.colorbar import colorbar
 
     plt.close('all')
 
@@ -889,8 +902,8 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     axins.errorbar((data['xpos1'] - data['xpos1'][ref_epoch])*-1e3, (data['ypos1'] - data['ypos1'][ref_epoch])*1e3,
                    xerr = data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3, fmt='.k')
 
-    axins.set_xticks([],[])
-    axins.set_yticks([],[])
+    axins.set_xticks([])
+    axins.set_yticks([])
     axins.invert_xaxis()
 
     # Enlarge the lims to create space for the points
@@ -1041,9 +1054,9 @@ def plot_comparison_stars(target, res_rng=0.8):
         ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
 
         # Plot Positions on Sky
-        ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
-        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
-        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
         sc = ax_sky.scatter(star['x'], star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
         ax_sky.errorbar(star['x'], star['y'], xerr=star['xe'], yerr=star['ye'],
                             ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
@@ -1932,19 +1945,138 @@ def compare_all_linear_motions(save_all=False):
 
     os.chdir(ret_dir)
 
-def plot_linear_motion(target):
-    # Plot the linear motion of the target
-    # with a proper motion fit that excludes the peak year.
+def plot_linear_motion(target, fig_num = 1):
+    """
+    Plot the linear motion of the target
+    with a proper motion fit that excludes the peak year.
+    """
+    from jlu.microlens import fit_velocities
 
-    output_dir = paper_dir
-    ret_dir = os.getcwd()
-    os.chdir(output_dir)
+    out_dir = paper_dir + 'compare_linear_motion/'
+
+    def plot_target(fitob, fig_num):
+        '''
+        Plots the linear fit for the target only. The figure is saved.
+        
+        Parameters
+        ----------
+        figob : StarTable from fit_velocities
+        '''
+        res_rng = fit_velocities.res_dict[fitob.target]
+
+        stars = np.append([fitob.target], comp_stars[fitob.target])
+
+        # Figure out the min/max of the times for these sources.
+        tdx = np.where(fitob['name'] == fitob.target)[0][0]
+        tmin = fitob['t'][tdx].min() - 0.5   # in days
+        tmax = fitob['t'][tdx].max() + 0.5   # in days
+
+        # Setup figure and color scales
+        figsize = (6, 9.5)
+        # plt.close(fig_num)
+        fig = plt.figure(fig_num, figsize=figsize)
+        plt.clf()
+
+        # st = fig.suptitle(fitob.target + " astrometry", fontsize = 20)
+
+        grid_t = plt.GridSpec(1, 1, bottom=0.60, top=0.95, left=0.25, right=0.79)
+        grid_b = plt.GridSpec(2, 1, hspace=0.1, wspace=0.5, bottom=0.10, top=0.5, left=0.25, right=0.79)
+
+        cmap = plt.cm.plasma
+        norm = plt.Normalize(vmin=tmin, vmax=tmax)
+        smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        smap.set_array([])
+
+        ax_sky = fig.add_subplot(grid_t[0, 0])
+        ax_resX = fig.add_subplot(grid_b[1, 0])
+        ax_resY = fig.add_subplot(grid_b[0, 0])
+
+        # Fetch the data
+        tdx = np.where(fitob['name'] == fitob.target)[0][0]
+        star = fitob[tdx]
+
+        # Change signs of the East
+        x = star['x']*-1.0
+        y = star['y']
+        x0 = star['x0']*-1.0
+        y0 = star['y0']
+        vx = star['vx']*-1.0
+        vy = star['vy']
+        
+        # Make the model curves
+        tmod = np.arange(tmin, tmax, 0.1)
+        xmod = x0 + vx * (tmod - star['t0'])
+        ymod = y0 + vy * (tmod - star['t0'])
+        xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0']))
+        ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0']))
+
+        xmod_at_t = x0 + vx * (star['t'] - star['t0'])
+        ymod_at_t = y0 + vy * (star['t'] - star['t0'])
+
+        # Plot Positions on Sky
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
+        sc = ax_sky.scatter(x, y, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_sky.errorbar(x, y, xerr=star['xe'], yerr=star['ye'],
+                            ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
+        ax_sky.set_aspect('equal', adjustable='datalim')
+
+        # Figure out which axis has the bigger data range.
+        xy_rng = 0.020  # this is the same range for all the stars.
+        xmin = x0 - (xy_rng / 2.0)
+        xmax = x0 + (xy_rng / 2.0)
+        ymin = y0 - (xy_rng / 2.0)
+        ymax = y0 + (xy_rng / 2.0)
+        ax_sky.set_xlim(xmin, xmax)
+        ax_sky.set_ylim(ymin, ymax)
+
+        # Set labels
+        ax_sky.invert_xaxis()
+        ax_sky.set_title(fitob.target.upper())
+        ax_sky.set_xlabel(r'$\Delta\alpha*$ (")')
+        ax_sky.set_ylabel(r'$\Delta\delta$ (")')
+
+        # Plot Residuals vs. Time
+        xres = (x - xmod_at_t) * 1e3
+        yres = (y - ymod_at_t) * 1e3
+        xrese = star['xe'] * 1e3
+        yrese = star['ye'] * 1e3
+        ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
+        ax_resY.errorbar(star['t'], yres, yerr=yrese, fmt='b.', label=r'$\delta$', elinewidth=2)
+        ax_resX.plot(tmod, xmod - xmod, 'r-')
+        ax_resX.plot(tmod, xmode*1e3, 'r--')
+        ax_resX.plot(tmod, -xmode*1e3, 'r--')
+        ax_resY.plot(tmod, ymod - ymod, 'b-')
+        ax_resY.plot(tmod, ymode*1e3, 'b--')
+        ax_resY.plot(tmod, -ymode*1e3, 'b--')
+        ax_resX.set_xlabel('Date (yr)')
+
+        xresrng = xres + np.sign(xres)*(xrese + 0.1)
+        yresrng = yres + np.sign(yres)*(yrese + 0.1)
+        # ax_resX.set_ylim(xresrng.min(), xresrng.max())
+        # ax_resY.set_ylim(yresrng.min(), yresrng.max())
+        ax_resX.set_ylim(-0.95, 0.95)
+        ax_resY.set_ylim(-0.95, 0.95)
+        ax_resY.get_xaxis().set_visible(False)
+        ax_resX.set_ylabel(r'$\alpha^*$')
+        ax_resY.set_ylabel(r'$\delta$')
+        plt.gcf().text(0.04, 0.3, 'Residuals (mas)', rotation=90, fontsize=18,
+                           ha='center', va='center')
+
+        cb_ax = fig.add_axes([0.8, 0.60, 0.02, 0.35])
+        plt.colorbar(sc, cax=cb_ax, label='Year')
+
+        plt.savefig(f"{out_dir}/{fitob.target}_linear_fit.png")
+
+        return
 
     fitob = fit_velocities.StarTable(target)
-    fitob.fit(time_cut=fitob.time_cut)
-    fitob.plot_target()
+    fitob.fit(time_cut=fitob.time_cut) # Fit without the peak year
+    
+    plot_target(fitob, fig_num)
 
-    os.chdir(ret_dir)
+    return
 
 def table_ob120169_phot_astrom():
     # Load up the params file so we know what kind of 
@@ -1956,30 +2088,40 @@ def table_ob120169_phot_astrom():
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
+    # No longer using
+              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
-              'mag_src1': '$I_{src}$ (mag)',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'mag_base1': '$I_{base}$ (mag)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'thetaE':   '$\\theta_E$ (mas)',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
               'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'break1':   '',
               'mL':       '$M_L$ ($\msun$)',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'break2':   '',
+              'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
+              'gp_rho1':            '$\\rho_{GP, I}$ (days)',
+              'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
+              'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)'
              }
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
@@ -1988,24 +2130,31 @@ def table_ob120169_phot_astrom():
              'piE_N':   1.0,
              'b_sff1':  1.0,
              'mag_src1':1.0,
+             'mag_base1':1.0,
              'add_err1':1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'mag_base2':1.0,
+             'add_err2':1e3,
              'thetaE':  1.0,
              'piS':     1.0,
              'muS_E':   1.0,
              'muS_N':   1.0,
              'xS0_E':   1e3,
              'xS0_N':   1e3,
-             'b_sff2':  1.0,
-             'mag_src2':1.0,
-             'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
              'piRel':   1.0,
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
             }
+        
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
                   'tE':       '0.1f',
@@ -2013,6 +2162,7 @@ def table_ob120169_phot_astrom():
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
                   'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
                   'add_err1': '0.1f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
@@ -2022,6 +2172,7 @@ def table_ob120169_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
                   'add_err2': '0.1f',
                   'mL':       '0.1f',
                   'piL':      '0.3f',
@@ -2029,42 +2180,53 @@ def table_ob120169_phot_astrom():
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0m = 1
     pho_u0p = 0
-    ast_u0m = 0
-    ast_u0p = 1
-    
+    pho_u0m = 1
+    ast_u0p = 0
+    ast_u0m = 1
+
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
                    + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0m]) + ' \\\ \n ')
+                   # + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' \\\ \n ')
     tab_file.write('$\chi^2_{dof}$ ' 
                    + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0m]) + ' \\\ \n')
+                   # + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
                    + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' \\\ \n'
+                   # + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
+                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' \\\ \n'
                    + r'\hline ' + '\n')
 
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
     start_extra_params = False
+    start_gp_params = False
     
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
-        val_dict = [stats_pho, stats_pho, stats_ast]
-        val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+        # val_dict = [stats_pho, stats_pho, stats_ast]
+        # val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+        val_dict = [stats_pho, stats_ast]
+        val_mode = [  pho_u0p,   ast_u0p]
 
         if (key in mod_ast.additional_param_names) and not start_extra_params:
             tab_file.write('\\tableline\n')
             start_extra_params = True
 
+        if ('gp' in key) and not start_gp_params:
+            tab_file.write('\\tableline\n')
+            start_gp_params = True
+            
         tab_file.write(label)
                            
         for ss in range(len(val_dict)):
@@ -2099,6 +2261,8 @@ def table_ob140613_phot_astrom():
     
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+
+    pdb.set_trace()
 
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
@@ -2382,31 +2546,45 @@ def table_ob150211_phot_astrom():
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
+    # No longer using
+              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+
+    # This dictionary sets the order of the parameters in the table.
+    # If I want a horizontal line in between the two, I just add 'break#' where
+    # the "#" symbol is just any arbitrary number. 
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
-              'mag_src1': '$I_{src}$ (mag)',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'mag_base1': '$I_{base}$ (mag)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'thetaE':   '$\\theta_E$ (mas)',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
               'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'break1':   '',
               'mL':       '$M_L$ ($\msun$)',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)',
+              'break2':   '',
+              'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
+              'gp_rho1':            '$\\rho_{GP, I}$ (days)',
+              'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
+              'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)'
              }
+        
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
              'tE':      1.0,
@@ -2414,6 +2592,7 @@ def table_ob150211_phot_astrom():
              'piE_N':   1.0,
              'b_sff1':  1.0,
              'mag_src1':1.0,
+             'mag_base1':1.0,
              'add_err1':1e3,
              'thetaE':  1.0,
              'piS':     1.0,
@@ -2423,6 +2602,7 @@ def table_ob150211_phot_astrom():
              'xS0_N':   1e3,
              'b_sff2':  1.0,
              'mag_src2':1.0,
+             'mag_base2':1.0,
              'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
@@ -2430,7 +2610,11 @@ def table_ob150211_phot_astrom():
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -2439,6 +2623,7 @@ def table_ob150211_phot_astrom():
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
                   'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
                   'add_err1': '0.1f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
@@ -2448,6 +2633,7 @@ def table_ob150211_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
                   'add_err2': '0.1f',
                   'mL':       '0.1f',
                   'piL':      '0.3f',
@@ -2455,14 +2641,18 @@ def table_ob150211_phot_astrom():
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
     pho_u0m = 1
     pho_u0p = 0
-    ast_u0m = 0
-    ast_u0p = 1
-    
+    ast_u0m = 1
+    ast_u0p = 0
+
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
                    + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
@@ -2490,9 +2680,8 @@ def table_ob150211_phot_astrom():
         val_dict = [stats_pho, stats_ast, stats_pho, stats_ast]
         val_mode = [pho_u0m, ast_u0m, pho_u0p, ast_u0p]
 
-        if (key in mod_ast.additional_param_names) and not start_extra_params:
+        if 'break' in key:
             tab_file.write('\\tableline\n')
-            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -2847,14 +3036,21 @@ def get_data_and_fitter(mnest_base):
         ast_dsets = info['astrom_data']
     else:
         ast_dsets = []
-    
+
     my_model = getattr(model, info['model'])
     my_data = munge.getdata2(info['target'].lower(), 
                              phot_data=pho_dsets,
                              ast_data=ast_dsets)
 
+    # Need this for backwards compatability.
+    if 'use_phot_optional_params' in info:
+        use_phot_opt = info['use_phot_optional_params']
+    else:
+        use_phot_opt = False
+
     # Load up the first fitter object to get the parameter names.
     fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      use_phot_optional_params = use_phot_opt,
                                       add_error_on_photometry = info['add_error_on_photometry'],
                                       multiply_error_on_photometry = info['multiply_error_on_photometry'],
                                       outputfiles_basename = mnest_base)
@@ -2871,8 +3067,15 @@ def load_summary_statistics(mnest_base, verbose=False):
                              phot_data=info['phot_data'], 
                              ast_data=info['astrom_data'])
 
+    if 'use_phot_optional_params' in info:
+        use_phot_opt = info['use_phot_optional_params']
+    else:
+        use_phot_opt = False
+    
+
     # Load up the first fitter object to get the parameter names.
     fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      use_phot_optional_params = use_phot_opt,
                                       add_error_on_photometry = info['add_error_on_photometry'],
                                       multiply_error_on_photometry = info['multiply_error_on_photometry'],
                                       outputfiles_basename = mnest_base)
@@ -2909,6 +3112,43 @@ def calc_summary_statistics(fitter, verbose=False):
     
     tab_list = fitter.load_mnest_modes()
     smy = fitter.load_mnest_summary()
+
+    # Add in custom variables derived from other quantites.
+    current_params = tab_list[0].colnames
+
+    # Add thetaE (from log thetaE)
+    if ('log10_thetaE' in current_params) and ('thetaE' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['thetaE'] = 10**tab_list[ii]['log10_thetaE']
+
+        smy['Mean_thetaE'] = 10**smy['Mean_log10_thetaE']
+        smy['MAP_thetaE'] = 10**smy['MAP_log10_thetaE']
+        smy['MaxLike_thetaE'] = 10**smy['MaxLike_log10_thetaE']
+
+        fitter.all_param_names.append('thetaE')
+
+    # Add mag_src 
+    if ('mag_base1' in current_params) and ('mag_src1' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['mag_src1'] = tab_list[ii]['mag_base1'] - 2.5 * np.log10(tab_list[ii]['b_sff1'])
+
+        smy['Mean_mag_src1'] = smy['Mean_mag_base1'] - 2.5 * np.log10(smy['Mean_b_sff1'])
+        smy['MAP_mag_src1'] = smy['MAP_mag_base1'] - 2.5 * np.log10(smy['MAP_b_sff1'])
+        smy['MaxLike_mag_src1'] = smy['MaxLike_mag_base1'] - 2.5 * np.log10(smy['MaxLike_b_sff1'])
+
+        fitter.all_param_names.append('mag_src1')
+        
+
+    if ('mag_base2' in current_params) and ('mag_src2' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['mag_src2'] = tab_list[ii]['mag_base2'] - 2.5 * np.log10(tab_list[ii]['b_sff2'])
+
+        smy['Mean_mag_src2'] = smy['Mean_mag_base2'] - 2.5 * np.log10(smy['Mean_b_sff2'])
+        smy['MAP_mag_src2'] = smy['MAP_mag_base2'] - 2.5 * np.log10(smy['MAP_b_sff2'])
+        smy['MaxLike_mag_src2'] = smy['MaxLike_mag_base2'] - 2.5 * np.log10(smy['MaxLike_b_sff2'])
+
+        fitter.all_param_names.append('mag_src2')
+        
 
     # Make a deepcopy of this table and set everything to zeros.
     # This will contain our final results.
@@ -4573,7 +4813,7 @@ def plot_photometry_single(target):
     f2 = fig_a.add_axes([0.2, 0.13, 0.75, 0.2])
 
     # Amplification Curve
-    f1.plot(t_mod, amp_mod, 'k-', label='model')
+    f1.plot(t_mod, amp_mod, '-', label='model')
     f1.errorbar(data['t_phot1'], amp1, yerr=amp_err1, color='red',
                    label='OGLE I', fmt='r.', alpha=0.4, zorder=3000)
     f1.errorbar(data['t_phot2'], amp2, yerr=amp_err2, color='blue',
