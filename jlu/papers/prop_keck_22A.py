@@ -73,6 +73,11 @@ mod_roots = {'ob120169': ob120169_dir + ob120169_id + '_',
              'ob150029': ob150029_dir + ob150029_id + '_',
              'ob150211': ob150211_dir + ob150211_id + '_'}
 
+phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+                 'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+                 'OB110037' : '/u/jlu/work/microlens/OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+                 'OB110310' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+                 'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
 
 # prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 prop_dir = '/u/jlu/doc/proposals/keck/uc/21A/'
@@ -199,25 +204,41 @@ def piE_tE(fit_type = 'ast'):
 #              'ob190017': 'green',
 #              'kb200101': 'green'}
 
-    colors = {'ob120169': 'gray',
-              'ob140613': 'gray',
-              'ob150029': 'gray',
-              'ob150211': 'gray',
+    colors = {'ob120169': 'hotpink',
+              'ob140613': 'hotpink',
+              'ob150029': 'hotpink',
+              'ob150211': 'hotpink',
               'ob170019': 'red',
               'ob170095': 'red',
               'ob190017': 'red',
-              'kb200101': 'red'}
+              'kb200101': 'red',
+              'MB09260' : 'gray',
+              'MB10364' : 'gray',
+              'OB110037' : 'gray',
+              'OB110310' : 'gray',
+              'OB110462' : 'gray'}
 
     # Set defaults.
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
 
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211'] 
+    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462']
     new_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101']
     tE = {}
     piE = {}
     theta_E = {}
     weights = {}
+
+    for targ in hst_targets:
+        fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits[targ]) 
+
+        res_targ = fit_targ.load_mnest_results(remake_fits=True)
+
+        tE[targ] = res_targ['tE']
+        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
+        theta_E[targ] = 10**res_targ['log10_thetaE']
+        weights[targ] = res_targ['weights']
 
     for targ in targets:
         fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(data_dict[targ])
@@ -235,7 +256,7 @@ def piE_tE(fit_type = 'ast'):
 
         tE[targ] = res_targ['tE']
         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
-        theta_E[targ] = res_targ['thetaE']
+        theta_E[targ] = res_targ['thetaE_amp']
         weights[targ] = res_targ['weights']
 
     for targ in new_targets:
@@ -292,11 +313,12 @@ def piE_tE(fit_type = 'ast'):
     hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
 
-    for targ in targets + new_targets:
+    for targ in targets + new_targets + hst_targets:
         model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
+    for targ in new_targets:
         axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
                       targ.upper(), color=colors[targ])    
 
@@ -325,7 +347,7 @@ def piE_tE(fit_type = 'ast'):
 #    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='indigo')
 #    axes.text(18, 0.38, 'OB110022', color='indigo')
     plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='gray')
-    axes.text(17, 0.38, 'OB110022', color='gray')
+#    axes.text(17, 0.38, 'OB110022', color='gray')
 
 #    plt.scatter(tE_19284, piE_19284, marker = 'o', s = 30, color='lime')
 #    axes.text(300, 0.1, 'MB19284', color='lime')
@@ -434,16 +456,16 @@ def piE_tE(fit_type = 'ast'):
                    fmt = 'o', color = 'gray', markersize = 5,
                    xuplims = True)
 #    axes.text(0.5, 0.3, 'OB110022', color='indigo')
-    axes.text(0.5, 0.3, 'OB110022', color='gray')
+#    axes.text(0.5, 0.3, 'OB110022', color='gray')
 
-    for targ in targets:
+    for targ in targets + hst_targets:
         model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
 
-        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
-                  targ.upper(), color=colors[targ])    
+#        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
+#                  targ.upper(), color=colors[targ])    
 
     axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
                   alpha = 0.4, marker = '.', s = 25,

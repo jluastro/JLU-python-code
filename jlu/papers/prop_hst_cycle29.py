@@ -29,14 +29,13 @@ import pickle
 from scipy.stats import norm
 from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
-# import lu_2019_lens
+import lu_2019_lens
 import copy
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from flystar import analysis
 import yaml
-#import lu_2019_lens
 
 def piE_tE():
     mdir = '/u/jlu/work/microlens/'
