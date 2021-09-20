@@ -3349,11 +3349,11 @@ def plot_all_mass_posteriors():
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
         stats = calc_summary_statistics(fitter)
         tab = fitter.load_mnest_modes()
-
-        # Select out the maximum likelihood solutoin.
-        mdx = stats['maxlogL'].argmax()
-        tab = tab[mdx]
-        stats = stats[mdx]
+        
+        # Select out the best mode.
+        mode = pspl_ast_multiphot_mode[target]
+        tab = tab[mode]
+        stats = stats[mode]
 
         # KDE
         kde = scipy.stats.gaussian_kde(np.log10(tab['mL']), weights=tab['weights'], bw_method=kde_bw[target])
@@ -3386,26 +3386,45 @@ def plot_all_mass_posteriors():
         # plt.xscale('log')
 
         # plt.axvline(stats['MaxLike_mL'], color=colors[target], linestyle='--', lw = 2)
-        plt.axvline(np.log10(stats['MAP_mL']), color=colors[target], linestyle='--', lw = 2)
-        plt.axvline(np.log10(stats['MaxLike_mL']), color=colors[target], linestyle='-.', lw = 2)
+        plt.axvline(np.log10(stats['Med_mL']), color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(np.log10(stats['MAP_mL']), color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(np.log10(stats['MaxLike_mL']), color=colors[target], linestyle='-.', lw = 2)
         # plt.axvline(stats['lo68_mL'], color=colors[target], linestyle='--', lw = 2)
         # plt.axvline(stats['hi68_mL'], color=colors[target], linestyle='--', lw = 2)
 
         conf_int = get_CIs(tab['mL'], tab['weights'])
-        print('Best-Fit Lens Mass = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], target))
+        print('Best-Fit Lens Mass MaxLike = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], target))
+        print('Best-Fit Lens Mass MAP     = {0:.2f} for {1:s}'.format(stats['MAP_mL'], target))
+        print('Best-Fit Lens Mass Median  = {0:.2f} for {1:s}'.format(stats['Med_mL'], target))
+        print('Best-Fit Lens Mass Mean    = {0:.2f} for {1:s}'.format(stats['Mean_mL'], target))
         print('          68.3% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[0], conf_int[1]))
         print('          95.5% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[2], conf_int[3]))
         print('          99.7% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[4], conf_int[5]))
         
-    plt.xlabel('log Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
+    plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
     plt.ylabel('Posterior Probability', fontsize=fontsize1, labelpad=10)
     plt.xticks(fontsize=fontsize2)
     plt.yticks(fontsize=fontsize2)
     plt.xlim(-1.1, 2.0)
+    plt.tick_params(axis='x', which='minor')
     # plt.ylim(0, 2)
     # plt.xlim(0, 5)
-    plt.ylim(0, 8)
+    plt.ylim(0, 5)
     plt.legend()
+
+    def pow_10(x, pos):
+        """The two args are the value and tick position.
+        Label ticks with the product of the exponentiation"""
+        return '%0.1f' % (10**x)
+
+    formatter = plt.FuncFormatter(pow_10)
+    plt.gca().xaxis.set_major_formatter(formatter)
+
+    x_minor = matplotlib.ticker.FixedLocator([np.log10(mm) for mm in np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                                                                               1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+                                                                               10, 20, 30, 40, 50, 60, 70, 80, 90, 100])])
+    plt.gca().xaxis.set_minor_locator(x_minor)
+    plt.gca().xaxis.set_minor_formatter(plt.NullFormatter())
 
     plt.savefig(paper_dir + 'all_mass_posteriors.png')
 
@@ -3716,7 +3735,7 @@ def calc_summary_statistics(fitter, verbose=False):
         smy['Mean_thetaE'] = 10**smy['Mean_log10_thetaE']
         smy['MAP_thetaE'] = 10**smy['MAP_log10_thetaE']
         smy['MaxLike_thetaE'] = 10**smy['MaxLike_log10_thetaE']
-        smy['Med_thetaE'] = 10**smy['Med_log10_thetaE']
+        #smy['Med_thetaE'] = 10**smy['Med_log10_thetaE']
 
         fitter.all_param_names.append('thetaE')
 
@@ -3728,7 +3747,7 @@ def calc_summary_statistics(fitter, verbose=False):
         smy['Mean_mag_src1'] = smy['Mean_mag_base1'] - 2.5 * np.log10(smy['Mean_b_sff1'])
         smy['MAP_mag_src1'] = smy['MAP_mag_base1'] - 2.5 * np.log10(smy['MAP_b_sff1'])
         smy['MaxLike_mag_src1'] = smy['MaxLike_mag_base1'] - 2.5 * np.log10(smy['MaxLike_b_sff1'])
-        smy['Med_mag_src1'] = smy['Med_mag_base1'] - 2.5 * np.log10(smy['Med_b_sff1'])
+        #smy['Med_mag_src1'] = smy['Med_mag_base1'] - 2.5 * np.log10(smy['Med_b_sff1'])
 
         fitter.all_param_names.append('mag_src1')
         
@@ -3740,7 +3759,7 @@ def calc_summary_statistics(fitter, verbose=False):
         smy['Mean_mag_src2'] = smy['Mean_mag_base2'] - 2.5 * np.log10(smy['Mean_b_sff2'])
         smy['MAP_mag_src2'] = smy['MAP_mag_base2'] - 2.5 * np.log10(smy['MAP_b_sff2'])
         smy['MaxLike_mag_src2'] = smy['MaxLike_mag_base2'] - 2.5 * np.log10(smy['MaxLike_b_sff2'])
-        smy['Med_mag_src2'] = smy['Med_mag_base2'] - 2.5 * np.log10(smy['Med_b_sff2'])
+        #smy['Med_mag_src2'] = smy['Med_mag_base2'] - 2.5 * np.log10(smy['Med_b_sff2'])
 
         fitter.all_param_names.append('mag_src2')
         
