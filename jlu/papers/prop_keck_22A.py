@@ -13,7 +13,7 @@ import scipy.stats
 from scipy.stats import chi2
 # from gcwork import starset
 # from gcwork import starTables
-import lu_2019_lens
+from jlu.papers import lu_2019_lens
 from astropy.table import Table
 from jlu.util import fileUtil
 from astropy.table import Table, Column, vstack
@@ -22,8 +22,8 @@ import matplotlib.ticker
 import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
+import mpl_toolkits
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
@@ -80,7 +80,7 @@ phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_07_08/model_f
                  'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
 
 # prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
-prop_dir = '/u/jlu/doc/proposals/keck/uc/21A/'
+prop_dir = '/u/jlu/doc/proposals/keck/uc/22A/'
 
 # Target coordinates
 ra_ob190017 = '17:59:03.5200'
@@ -104,7 +104,10 @@ phot_2020_dir = {'kb200101' : mdir + 'KB200101/a_2020_09_10/model_fits/kmtnet_ph
                  'mb19284' : mdir + '',
                  'ob190017' : mdir + 'OB190017/a_2020_09_10/model_fits/ogle_phot_par/a0_',
                  'ob170019' : mdir + 'OB170019/a_2020_09_10/model_fits/ogle_phot_par/a0_',
-                 'ob170095' : mdir + 'OB170095/a_2020_09_10/model_fits/ogle_phot_par/a0_'}
+                 'ob170095' : mdir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'}
+
+ob170095_dir = mdir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'
+
 # Gaia stuff
 # NOTE: OB190017 is NOT in Gaia.
 # Still trying to figure out for OB170095
@@ -120,11 +123,11 @@ phot_2020_dir = {'kb200101' : mdir + 'KB200101/a_2020_09_10/model_fits/kmtnet_ph
 # gaia_mb19284.write('gaia_mb19284.gz', overwrite=True, format='ascii')
 # gaia_ob170019.write('gaia_ob170019.gz', overwrite=True, format='ascii')
 
-gaia_ob190017 = Table.read('gaia_ob190017.gz', format='ascii')
-gaia_ob170095 = Table.read('gaia_ob170095.gz', format='ascii')
-gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
-gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
-gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
+# gaia_ob190017 = Table.read('gaia_ob190017.gz', format='ascii')
+# gaia_ob170095 = Table.read('gaia_ob170095.gz', format='ascii')
+# gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
+# gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
+# gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
 
 def get_new_Raithel_files():
     #Raithel18
@@ -655,23 +658,198 @@ def gaia_VPDs():
 
 def plot_ob170095():
     # THIS IS NO USE
-    gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
+    # gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
 
-    hdu = fits.open('/g/lu/data/microlens/20sep04os/raw/i200904_a012003_flip.fits')[0]
-    wcs = WCS(hdu.header)
+    # hdu = fits.open('/g/lu/data/microlens/20sep04os/raw/i200904_a012003_flip.fits')[0]
+    # wcs = WCS(hdu.header)
 
-    image_data = hdu.data
+    # image_data = hdu.data
 
-    fig = plt.figure()
-    ax = fig.add_axes([0.15, 0.1, 0.8, 0.8], projection=wcs)
-    ax.imshow(hdu.data, cmap='gray', norm=LogNorm(), origin='lower')
-    overlay = ax.get_coords_overlay('icrs')
+    # fig = plt.figure()
+    # ax = fig.add_axes([0.15, 0.1, 0.8, 0.8], projection=wcs)
+    # ax.imshow(hdu.data, cmap='gray', norm=LogNorm(), origin='lower')
+    # overlay = ax.get_coords_overlay('icrs')
 #    ax.scatter(gaia_ob170095['ra'][0], gaia_ob170095['dec'][0], transform=ax.get_transform(), s=300,
 #               edgecolor='white', facecolor='none')
-    print('Min:', np.min(image_data))
-    print('Max:', np.max(image_data))
-    print('Mean:', np.mean(image_data))
-    print('Stdev:', np.std(image_data))
+    # print('Min:', np.min(image_data))
+    # print('Max:', np.max(image_data))
+    # print('Mean:', np.mean(image_data))
+    # print('Stdev:', np.std(image_data))
+
+    target = 'ob170095'
+    mod_root = ob170095_dir
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
+
+    # OB170095 fit results.
+    data = munge.getdata2(target,
+                          phot_data=params['phot_data'],
+                          ast_data=['Kp_Keck'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                       getattr(model, params['model']),
+                                       add_error_on_photometry=params['add_error_on_photometry'],
+                                       multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                       outputfiles_basename=mod_root)
+    
+
+    best = mod_fit.get_best_fit(def_best='maxL')
+    print(best)
+    # best['u0_amp'] *= 1.0
+    # best['piE_E'] *= 1.0
+    # best['piE_N'] *= -1.0
+    # best['tE'] = 106.
+    # best['piE_E'] = -0.15
+    # best['piE_N'] = 0.14
+    thetaE = 0.25  # mas
+    mod = mod_fit.get_model(best)
+
+    # Calculate the model on a similar timescale to the data.
+    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
+
+    def get_astrometry_and_shift(mod, t):
+        u0 = mod.u0.reshape(1, len(mod.u0))
+        thetaE_hat = mod.thetaE_hat.reshape(1, len(mod.thetaE_hat))
+        tau = (t - mod.t0) / mod.tE
+        tau = tau.reshape(len(tau), 1)
+    
+        # Get the parallax vector for each date.
+        parallax_vec = model.parallax_in_direction(mod.raL, mod.decL, t)
+
+        # Shape of u: [N_times, 2]
+        u = u0 + tau * thetaE_hat
+        u -= mod.piE_amp * parallax_vec
+        u_amp = np.linalg.norm(u, axis=1)
+
+        # Calculate centroid offset in units of delta_c / thetaE
+        denom = u_amp ** 2 + 2.0
+        shift = u / denom.reshape((len(u_amp), 1))  # thetaE units
+
+        return u, shift
+
+    # Get the linear motion curves for the source (includes parallax)
+    p_unlens_mod, p_shift_mod = get_astrometry_and_shift(mod, t_mod_ast)
+    p_unlens_mod_at_ast, p_shift_mod_at_ast = get_astrometry_and_shift(mod, data['t_ast1'])
+
+    # Get the lensed motion curves for the source
+    p_lens_mod = p_unlens_mod + p_shift_mod
+    p_lens_mod_at_ast = p_unlens_mod_at_ast + p_shift_mod_at_ast
+
+    # Geth the photometry
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
+    m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+
+    # Calculate the delta-mag between R-band and K-band from the
+    # flat part at the end.
+    tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast1'][-1]))
+    r_min_k = data['mag1'][tidx] - data['mag2'][-1]
+    r_min_k = best['mag_base1'] - best['mag_base2']
+    print('r_min_k = ', r_min_k)
+
+    # Fix up the model astrometry data to fall on the data (just pos offset and thetaE scaling).
+    p_unlens_mod *= thetaE
+    p_unlens_mod_at_ast *= thetaE
+    p_lens_mod *= thetaE
+    p_lens_mod_at_ast *= thetaE
+
+    dra = np.mean(p_lens_mod_at_ast[:, 0] - data['xpos1']*1e3)
+    ddec = np.mean(p_lens_mod_at_ast[:, 1] - data['ypos1']*1e3)
+
+    data['xpos1'] += dra/1e3
+    data['ypos1'] += ddec/1e3
+
+    # p_unlens_mod[:, 0] -= dra
+    # p_unlens_mod[:, 1] -= ddec
+    # p_lens_mod[:, 0] -= dra
+    # p_lens_mod[:, 1] -= ddec
+
+    
+    # Plotting        
+    # plt.close(3)
+    plt.figure(3, figsize=(14, 4))
+    plt.clf()
+
+    pan_wid = 0.22
+    pan_pad = 0.09
+    fig_pos = np.arange(0, 3) * (pan_wid + pan_pad) + 1.5*pan_pad
+
+    plt.figtext(0.25*pan_pad, 0.55, target.upper(), rotation='vertical',
+                    fontweight='bold', fontsize=20,
+                    va='center', ha='center')
+
+    # Brightness vs. time
+    fm1 = plt.gcf().add_axes([fig_pos[0], 0.36, pan_wid, 0.6])
+    fm2 = plt.gcf().add_axes([fig_pos[0], 0.18, pan_wid, 0.2], sharex=fm1)
+    fm1.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    fm1.errorbar(data['t_phot2'], data['mag2'] + r_min_k, yerr=data['mag_err2'],
+                 fmt='k.', alpha=0.9)
+    fm1.plot(t_mod_pho, m_lens_mod, 'r-')
+    fm2.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
+                 color = mpl_b, fmt='.', alpha=0.05)
+    fm2.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
+                 fmt='k.', alpha=0.9)
+    fm2.set_yticks(np.array([0.0, 0.2]))
+    fm1.yaxis.set_major_locator(plt.MaxNLocator(4))
+    fm2.xaxis.set_major_locator(plt.MaxNLocator(2))
+    fm2.axhline(0, linestyle='--', color='r')
+    fm2.set_xlabel('Time (HJD)')
+    fm1.set_ylabel('Magnitude')
+    fm1.invert_yaxis()
+    fm2.set_ylabel('Res.')
+
+    
+    # RA vs. time
+    f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
+    f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
+    f1.errorbar(data['t_ast1'], data['xpos1']*1e3,
+                    yerr=data['xpos_err1']*1e3, fmt='k.', zorder = 1000)
+    f1.plot(t_mod_ast, p_lens_mod[:, 0], 'r-')
+    f1.plot(t_mod_ast, p_unlens_mod[:, 0], 'r--')
+    f1.get_xaxis().set_visible(False)
+    f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
+    f1.get_shared_x_axes().join(f1, f2)
+    
+    f2.errorbar(data['t_ast1'], (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+                yerr=data['xpos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0]), 'r-')
+    f2.axhline(0, linestyle='--', color='r')
+    f2.xaxis.set_major_locator(plt.MaxNLocator(3))
+    f2.set_ylim(-0.8, 0.8)
+    f2.set_xlabel('Time (HJD)')
+    f2.set_ylabel('Res.')
+
+    
+    # Dec vs. time
+    f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
+    f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
+    f3.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                    yerr=data['ypos_err1']*1e3, fmt='k.', zorder = 1000)
+    f3.plot(t_mod_ast, p_lens_mod[:, 1], 'r-')
+    f3.plot(t_mod_ast, p_unlens_mod[:, 1], 'r--')
+    f3.set_ylabel(r'$\Delta \delta$ (mas)')
+    f3.yaxis.set_major_locator(plt.MaxNLocator(4))
+    f3.get_xaxis().set_visible(False)
+    f3.get_shared_x_axes().join(f3, f4)
+    
+    f4.errorbar(data['t_ast1'], (data['ypos1'] - p_unlens_mod_at_ast[:,1]) * 1e3,
+                yerr=data['ypos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1]), 'r-')
+    f4.axhline(0, linestyle='--', color='r')
+    f4.xaxis.set_major_locator(plt.MaxNLocator(3))
+#    f4.set_yticks(np.array([0.0, -0.2])) # For OB140613
+    f4.set_ylim(-0.8, 0.8)
+    f4.set_xlabel('Time (HJD)')
+    f4.set_ylabel('Res.')
+
+    plt.savefig(target + '_3panel_test.png')
+    
+    
+    
+    return
 
 def get_gaia_centered():
     ob190017 = SkyCoord(ra_ob190017, dec_ob190017, frame='icrs', unit=(u.hourangle, u.deg))
@@ -1852,16 +2030,16 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
 def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, log=False):
     # Calculate the model on a similar timescale to the data.
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
-    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
     t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
 
     # Get the linear motion curves for the source (includes parallax)
     p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
-    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'])
 
     # Get the lensed motion curves for the source
     p_lens_mod = mod.get_astrometry(t_mod_ast)
-    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'])
 
     # Geth the photometry
     m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
@@ -1870,7 +2048,7 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
 
     # Calculate the delta-mag between R-band and K-band from the
     # flat part at the end.
-    tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast'][-1]))
+    tidx = np.argmin(np.abs(data['t_phot1'] - data['t_ast1'][-1]))
     if r_min_k == None:
         r_min_k = data['mag1'][tidx] - data['mag2'][-1]
     print('r_min_k = ', r_min_k)
@@ -1913,7 +2091,7 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     # RA vs. time
     f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
     f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
-    f1.errorbar(data['t_ast'], data['xpos']*1e3,
+    f1.errorbar(data['t_ast1'], data['xpos']*1e3,
                     yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
     f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
     f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
@@ -1921,7 +2099,7 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     f1.get_shared_x_axes().join(f1, f2)
     
-    f2.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+    f2.errorbar(data['t_ast1'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
                 yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
     f2.axhline(0, linestyle='--', color='r')
@@ -1934,7 +2112,7 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     # Dec vs. time
     f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
     f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
-    f3.errorbar(data['t_ast'], data['ypos']*1e3,
+    f3.errorbar(data['t_ast1'], data['ypos']*1e3,
                     yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
     f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
     f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
@@ -1943,7 +2121,7 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     f3.get_xaxis().set_visible(False)
     f3.get_shared_x_axes().join(f3, f4)
     
-    f4.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
+    f4.errorbar(data['t_ast1'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
                 yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
     f4.axhline(0, linestyle='--', color='r')
@@ -1957,112 +2135,6 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
 
     return
 
-
-def explore_ob150211():
-    data = munge.getdata('ob150211', use_astrom_phot=True)
-    mod_base = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/'
-    mod_base += '8_fit_multiphot_astrom_parallax2/tmp/aa_'
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
-    #mod_fit.summarize_results_modes()
-    tab_all = mod_fit.load_mnest_modes()
-    tab = tab_all[0]
-
-    tab['mL'] = 10**tab['log_mL']
-    tab['piE'] = 10**tab['log_piE']
-    tab['thetaE'] = 10**tab['log_thetaE']
-
-    plt.figure(1)
-    plt.clf()
-    plt.hist(tab['log_thetaE'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(thetaE)')
-
-    plt.figure(3)
-    plt.clf()
-    plt.hist(tab['log_mL'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(mL)')
-
-    plt.figure(4)
-    plt.clf()
-    plt.hist(tab['log_piE'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(piE)')
-
-    plt.figure(5)
-    plt.clf()
-    plt.hist(tab['thetaE'], weights=tab['weights'], bins=50)
-    plt.xlabel('thetaE')
-
-    plt.figure(6)
-    plt.clf()
-    plt.hist(tab['mL'], weights=tab['weights'], bins=50)
-    plt.xlabel('mL')
-
-    plt.figure(7)
-    plt.clf()
-    plt.hist(tab['piE'], weights=tab['weights'], bins=50)
-    plt.xlabel('piE')
-
-    plt.figure(8)
-    plt.clf()
-    plt.plot(tab['logLike'], tab['log_mL'], 'k.')
-    
-    summarize_results(tab)
-    pdb.set_trace()
-    
-    return
-
-
-def explore_ob140613():
-    data = munge.getdata('ob140613', use_astrom_phot=True)
-    mod_base = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/'
-    mod_base += '8_fit_multiphot_astrom_parallax2/aa_'
-
-    mod_fit = model_fitter.PSPL_multiphot_astrom_parallax2_Solver(data, outputfiles_basename=mod_base)
-    mod_fit.summarize_results_modes()
-    tab_all = mod_fit.load_mnest_modes()
-    tab = tab_all[0]
-
-    tab['mL'] = 10**tab['log_mL']
-    tab['piE'] = 10**tab['log_piE']
-    tab['thetaE'] = 10**tab['log_thetaE']
-
-    plt.figure(1)
-    plt.clf()
-    plt.hist(tab['log_thetaE'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(thetaE)')
-
-    plt.figure(3)
-    plt.clf()
-    plt.hist(tab['log_mL'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(mL)')
-
-    plt.figure(4)
-    plt.clf()
-    plt.hist(tab['log_piE'], weights=tab['weights'], bins=50)
-    plt.xlabel('log(piE)')
-
-    plt.figure(5)
-    plt.clf()
-    plt.hist(tab['thetaE'], weights=tab['weights'], bins=50)
-    plt.xlabel('thetaE')
-
-    plt.figure(6)
-    plt.clf()
-    plt.hist(tab['mL'], weights=tab['weights'], bins=50)
-    plt.xlabel('mL')
-
-    plt.figure(7)
-    plt.clf()
-    plt.hist(tab['piE'], weights=tab['weights'], bins=50)
-    plt.xlabel('piE')
-
-    plt.figure(8)
-    plt.clf()
-    plt.plot(tab['logLike'], tab['log_mL'], 'k.')
-
-    summarize_results(tab)
-    
-    return
 
 
 def summarize_results(tab):
@@ -2293,3 +2365,19 @@ def plot_chi2_dist(tab, Ndetect, target, xlim=5, n_bins=15):
     return hn, hb, chi2red_t[tdx]
 
 
+def plot_mb19284():
+    astrom_both = '/g2/scratch/jlu/microlens/MB19284/mb19284_astrom_p4_2021_08_11_hst_keck.fits'
+
+    foo = Table.read(astrom_both)
+
+    # data = munge.getdata2('mb19284',
+    #                       phot_data=['MOA'],
+    #                       use_astrom_file=astrom_both,
+    #                       use_astrom_phot=False)
+    plt.figure(1)
+    plt.clf()
+    plt.errorbar(foo[0]['x'], foo[0]['y'], xerr=foo[0]['xe'], yerr=foo[0]['ye'])
+
+    #pdb.set_trace()
+
+    return
