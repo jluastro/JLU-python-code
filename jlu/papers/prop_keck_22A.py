@@ -126,6 +126,42 @@ gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
 gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
 gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
 
+def get_new_Raithel_files():
+    #Raithel18
+    R_527 = '/u/samrose/scratch/metal_ifmr_runs/OGLE527ub_v3/OGLE527ub_v3_my_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_611 = '/u/samrose/scratch/metal_ifmr_runs/OGLE611ub_v3/my_Raithel611/OGLE611ub_v3_my_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_629 = '/u/samrose/scratch/metal_ifmr_runs/OGLE629ub_v3/OGLE629ub_v3_my_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_500 = '/u/samrose/scratch/metal_ifmr_runs/OGLE500ub_v3/OGLE500ub_v3_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_506 = '/u/samrose/scratch/metal_ifmr_runs/OGLE506ub_v3/OGLE506ub_v3_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_675 = '/u/samrose/scratch/metal_ifmr_runs/OGLE675ub_v3/OGLE675ub_v3_Raithel_refined_events_ubv_I_Damineli16.fits'
+    R_504 = '/u/samrose/scratch/NERSC_runs/l2.150_b-1.770/seed42_raithel18_refined_events_ubv_I_Damineli16.fits'
+    R_511 = '/u/samrose/scratch/NERSC_runs/l3.280_b-2.520/seed42_raithel18_refined_events_ubv_I_Damineli16.fits'
+    R_648 = '/u/samrose/scratch/NERSC_runs/l1.960_b0.940/seed42_raithel18_refined_events_ubv_I_Damineli16.fits'
+
+    all_events = None
+    
+    for rfield in [R_527, R_611, R_629, R_500, R_506, R_675, R_504, R_511, R_648]:
+        cuts_table = Table.read(rfield)
+        
+        #perform magnitude cuts
+        if 'ubv_I_app_LSN' in cuts_table.colnames:
+            bad_m_idx = np.where(cuts_table['ubv_I_app_LSN'] > 21)[0]
+            cuts_table.remove_rows([bad_m_idx])
+            bad_del_idx = np.where(cuts_table['delta_m_I'] < 0.1)[0]
+            cuts_table.remove_rows([bad_del_idx])
+        elif 'ubv_i_app_LSN' in cuts_table.colnames:
+            bad_m_idx = np.where(cuts_table['ubv_i_app_LSN'] > 21)[0]
+            cuts_table.remove_rows([bad_m_idx])
+            bad_del_idx = np.where(cuts_table['delta_m_i'] < 0.1)[0]
+            cuts_table.remove_rows([bad_del_idx])        
+
+        if all_events is not None:
+            all_events = vstack([all_events, cuts_table])
+        else:
+            all_events = cuts_table
+
+    all_events.write('from_sam_ews_raithel.fits')
+
 def piE_tE(fit_type = 'ast'):
     """
     Supports plotting for several different fit solutions:
@@ -185,7 +221,7 @@ def piE_tE(fit_type = 'ast'):
                           'ob140613': [250, 0.15],
                           'ob150029': [40, 0.22],
                           'ob150211': [140, 0.01],
-                          'ob170019': [120, 0.042],
+                          'ob170019': [120, 0.045],
                           'ob170095': [30, 0.04],
                           'ob190017': [180, 0.28],
                           'kb200101': [180, 0.016]}}
@@ -194,29 +230,20 @@ def piE_tE(fit_type = 'ast'):
                      'ob140613': [0.04, 0.145],
                      'ob150029': [0.02, 0.25],
                      'ob150211': [0.03, 0.012]}
-                 
-#    colors = {'ob120169': 'purple',
-#              'ob140613': 'red',
-#              'ob150029': 'green',
-#              'ob150211': 'magenta',
-#              'ob170019': 'navy',
-#              'ob170095': 'brown',
-#              'ob190017': 'green',
-#              'kb200101': 'green'}
 
-    colors = {'ob120169': 'hotpink',
-              'ob140613': 'hotpink',
-              'ob150029': 'hotpink',
-              'ob150211': 'hotpink',
-              'ob170019': 'red',
-              'ob170095': 'red',
-              'ob190017': 'red',
-              'kb200101': 'red',
+    colors = {'ob120169': 'gray',
+              'ob140613': 'gray',
+              'ob150029': 'gray',
+              'ob150211': 'red',
+              'ob170019': 'blue',
+              'ob170095': 'blue',
+              'ob190017': 'blue',
+              'kb200101': 'blue',
               'MB09260' : 'gray',
               'MB10364' : 'gray',
               'OB110037' : 'gray',
               'OB110310' : 'gray',
-              'OB110462' : 'gray'}
+              'OB110462' : 'red'}
 
     # Set defaults.
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
@@ -241,19 +268,18 @@ def piE_tE(fit_type = 'ast'):
         weights[targ] = res_targ['weights']
 
     for targ in targets:
-        fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(data_dict[targ])
+        fitter, data = lu_2019_lens.get_data_and_fitter(lu_2019_lens.pspl_ast_multiphot[targ])
+#        stats_ast, data_ast, mod_ast = lu_2019_lens.load_summary_statistics(lu_2019_lens.pspl_ast_multiphot[targ])
+        tab_list = fitter.load_mnest_modes()
+        mode = lu_2019_lens.pspl_ast_multiphot_mode[targ]
+        fit_targ, dat_targ = multinest_utils.get_data_and_fitter(lu_2019_lens.pspl_ast_multiphot[targ])
+
+        res_targ = tab_list[mode]
         
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
-
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
-
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
+#        res_targ = fit_targ.load_mnest_results(remake_fits=True)
+#        res_targ = fit_targ.load_mnest_modes()
+#        res_targ = res_targ[0]
+#
         tE[targ] = res_targ['tE']
         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
         theta_E[targ] = res_targ['thetaE_amp']
@@ -323,9 +349,9 @@ def piE_tE(fit_type = 'ast'):
                       targ.upper(), color=colors[targ])    
 
     model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 ax=axes, smooth=[sy, sx], color='red',
+                                 ax=axes, smooth=[sy, sx], color='blue',
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
-    axes.text(300, 0.025, 'MB19284', color='red')
+    axes.text(300, 0.025, 'MB19284', color='blue')
 
     # OB110022 from Lu+16.
     piEE_110022 = -0.393
@@ -346,16 +372,16 @@ def piE_tE(fit_type = 'ast'):
     # Plotting OB110022 and MB19284.
 #    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='indigo')
 #    axes.text(18, 0.38, 'OB110022', color='indigo')
-    plt.scatter(tE_110022, piE_110022, marker = 'o', s = 30, color='gray')
+    plt.scatter(tE_110022, piE_110022, marker = 's', s = 40, color='gray')
+    plt.scatter(129.4, 0.04, marker = 's', s = 40, color='blue')
 #    axes.text(17, 0.38, 'OB110022', color='gray')
 
 #    plt.scatter(tE_19284, piE_19284, marker = 'o', s = 30, color='lime')
 #    axes.text(300, 0.1, 'MB19284', color='lime')
 
     # Add the PopSyCLE simulation points.
-    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
-
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits') 
+#    t = Table.read('from_sam_ews_raithel.fits')
     bh_idx = np.where(t['rem_id_L'] == 103)[0]
     ns_idx = np.where(t['rem_id_L'] == 102)[0]
     wd_idx = np.where(t['rem_id_L'] == 101)[0]
@@ -378,6 +404,7 @@ def piE_tE(fit_type = 'ast'):
 
     # Flux ratio of lens to source (and make it 0 if dark lens)
     g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
+#    g_arr = 10**(-0.4 * (t['ubv_I_app_L'] - t['ubv_I_app_S']))
     g_arr = np.nan_to_num(g_arr)
 
     for i in np.arange(len(u0_arr)):
@@ -414,7 +441,7 @@ def piE_tE(fit_type = 'ast'):
                  color = 'aqua')
     axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
                  alpha = 0.4, marker = '.', s = 25, 
-                 color = 'blue')
+                 color = 'tab:cyan')
     axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
                  alpha = 0.8, marker = '.', s = 25, 
                  color = 'black')
@@ -428,7 +455,7 @@ def piE_tE(fit_type = 'ast'):
                  label = 'WD', color = 'aqua')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
+                 label = 'NS', color = 'tab:cyan')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
                  label = 'BH', color = 'black')
@@ -440,7 +467,7 @@ def piE_tE(fit_type = 'ast'):
     axes.set_xscale('log')
     axes.set_yscale('log')
     axes.legend(loc=3)
-#    plt.savefig('piE_tE_' + fit_type + '.png')
+    plt.savefig('piE_tE_22A.png')
     plt.show()
 
     # Plot the deltac-piE 2D posteriors.
@@ -452,20 +479,43 @@ def piE_tE(fit_type = 'ast'):
 
     axes.errorbar(dcmax_110022, piE_110022, 
                    xerr = np.array([[dcmax_110022_me], [dcmax_110022_pe]]), 
-#                   fmt = 'o', color = 'indigo', markersize = 5,
                    fmt = 'o', color = 'gray', markersize = 5,
                    xuplims = True)
-#    axes.text(0.5, 0.3, 'OB110022', color='indigo')
 #    axes.text(0.5, 0.3, 'OB110022', color='gray')
 
-    for targ in targets + hst_targets:
+    # MB10364, OB110037, OB11030
+    axes.errorbar(0.56, 0.25, xerr = np.array([[0.3], [0.3]]), 
+                  fmt = 'o', color = 'gray', markersize = 5,
+                  xuplims = True)
+
+    axes.errorbar(0.92, 0.11, xerr = np.array([[0.3], [0.3]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                   xuplims = True)
+
+    axes.errorbar(0.89, 0.08, xerr = np.array([[0.3], [0.3]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                   xuplims = True)
+
+    # ob120169 and ob155029
+    axes.errorbar(1.06, 0.17, xerr = np.array([[0.3], [0.3]]), 
+                  fmt = 'o', color = 'gray', markersize = 5,
+                  xuplims = True)
+
+    axes.errorbar(0.45, 0.17, xerr = np.array([[0.3], [0.3]]), 
+                   fmt = 'o', color = 'gray', markersize = 5,
+                  xuplims = True)
+
+    for targ in ['ob140613', 'ob150211', 'OB110037', 'OB110462']:
         model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
-
 #        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
 #                  targ.upper(), color=colors[targ])    
+
+    xarr = np.linspace(0.001, 4, 1000)
+    axes.fill_between(xarr, xarr*0.18, xarr*0.07, alpha=0.15, color='orange')
+    axes.text(0.05, 0.006, 'Mass Gap', rotation=45)
 
     axes.scatter(final_delta_arr[st_idx], t['pi_E'][st_idx], 
                   alpha = 0.4, marker = '.', s = 25,
@@ -475,7 +525,7 @@ def piE_tE(fit_type = 'ast'):
                   c = 'aqua')
     axes.scatter(final_delta_arr[ns_idx], t['pi_E'][ns_idx], 
                   alpha = 0.4, marker = '.', s = 25,
-                  c = 'blue')
+                  c = 'tab:cyan')
     axes.scatter(final_delta_arr[bh_idx], t['pi_E'][bh_idx], 
                   alpha = 0.8, marker = '.', s = 25,
                   c = 'black')
@@ -484,9 +534,11 @@ def piE_tE(fit_type = 'ast'):
     axes.set_ylabel('$\pi_E$')
     axes.set_xscale('log')
     axes.set_yscale('log')
-    axes.set_xlim(0.005, 4)
-    axes.set_ylim(0.009, 0.5)
-#    plt.savefig('piE_deltac.png')
+#    axes.set_xlim(0.005, 4)
+#    axes.set_ylim(0.009, 0.5)
+    axes.set_xlim(0.02, 2)
+    axes.set_ylim(0.005, 0.5)
+    plt.savefig('piE_deltac_22A.png')
     plt.show()
 
 
