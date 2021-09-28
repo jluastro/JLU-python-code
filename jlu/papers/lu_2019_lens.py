@@ -2,6 +2,7 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
+from dynesty import plotting as dyplot
 from flystar import starlists
 from scipy.interpolate import UnivariateSpline
 import scipy.stats
@@ -139,6 +140,20 @@ ogle_phot['ob140613'] = ogle_phot_all['ob140613_gp']
 ogle_phot['ob150029'] = ogle_phot_all['ob150029_gp']
 ogle_phot['ob150211'] = ogle_phot_all['ob150211_gp']
 
+popsycle_events = '/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits'
+
+keck_phot_2020 = {'kb200101' : mlens_dir + 'KB200101/a_2020_09_10/model_fits/kmtnet_phot_par/a0_',
+                  'mb19284' : mlens_dir + '',
+                  'ob190017' : mlens_dir + 'OB190017/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                  'ob170019' : mlens_dir + 'OB170019/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                  'ob170095' : mlens_dir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'}
+hst_phot = {'MB09260' : mlens_dir + 'MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+            'MB10364' :  mlens_dir +'MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+            'OB110037' : mlens_dir +'OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+            'OB110310' : mlens_dir +'OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+            'OB110462' : mlens_dir +'OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
+
+
 def all_paper():
     # plot_images()
     # make_obs_table()
@@ -180,8 +195,7 @@ def all_paper():
     plot_all_mass_posteriors()
 
     # tE vs. piE vs. deltaC plots
-    piE_tE(fit_type='ast')
-    shift_vs_piE()
+    piE_tE_deltac(fit_type='ast')
 
     # CMDs
     plot_cmds()
@@ -1365,10 +1379,10 @@ def weighted_avg_and_std(values, weights):
 # PREFER the piE_tE() version with contours.
 # This one only has stars.... good for public talk. 
 ##########
-def tE_piE():
+def OLD_tE_piE():
     plt.close('all')
     
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popscyle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -1447,11 +1461,486 @@ def tE_piE():
 
     return
 
+def piE_tE_deltac(fit_type = 'ast'):
+    """
+    Supports plotting for several different fit solutions:
+
+    fit_type = 'ast'
+        Keck + OGLE photometry, Keck astrometry
+    fit_type = 'phot'
+        OGLE photometry
+    fit_type = 'multiphot'
+        Keck + OGLE photometry
+    """
+    if fit_type is 'ast':
+        data_dict = pspl_ast_multiphot
+    if fit_type is 'phot':
+        data_dict = pspl_phot
+    if fit_type is 'multiphot':
+        data_dict = pspl_multiphot
+        
+
+    ##########
+    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    # ON THE WAY THIS PLOT LOOKS !!!
+    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    # Also plot PopSyCLE simulations simultaneously.
+    ##########
+    span = 0.999999426697
+    smooth = 0.04
+    quantiles_2d = None
+    hist2d_kwargs = None
+    labels = None
+    label_kwargs = None
+    show_titles = False 
+    title_fmt = ".2f" 
+    title_kwargs = None
+    
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+
+    # Dictionary of dictionaries containing the tE and piE
+    # label position for each of the text labels.
+    # WARNING: THE 'PHOT' AND 'AST' ARE THE SAME FOR THE NEW
+    # TARGETS... THEY ARE JUST PHOT THOUGH.
+    label_pos = {'phot': {'ob120169': [150, 0.01],
+                          'ob140613': [170, 0.1],
+                          'ob150029': [150, 0.2],
+                          'ob150211': [35, 0.04],
+                          'ob170019': [0, 0.04],
+                          'ob170095': [0, 0.04],
+                          'ob190017': [0, 0.04],
+                          'kb200101': [0, 0]},
+                 'ast':  {'ob110022': [17, 0.38],
+                          'ob120169': [130, 0.25],
+                          'ob140613': [190, 0.09],
+                          'ob150029': [30, 0.15],
+                          'ob150211': [150, 0.02],
+                          'ob170019': [120, 0.045],
+                          'ob170095': [30, 0.04],
+                          'ob190017': [180, 0.28],
+                          'kb200101': [180, 0.016],
+                          'mb190284': [300, 0.025]}
+                }
+
+    label_pos_ast = {'ob120169': [0.006, 0.06],
+                     'ob140613': [0.04, 0.145],
+                     'ob150029': [0.02, 0.25],
+                     'ob150211': [0.03, 0.012]}
+
+    # These are hard-coded points from previous papers (no full posteriors).
+    tE_points = {'ob110022': 61.4}
+    tE_err_points = {'ob110022': 5}  # CHECK
+    piE_points = {'ob110022': np.hypot(-0.393, -0.071)}
+    piE_err_points = {'ob110022': 0.05} # CHECK
+    deltac_points = {'ob110022': 2.19 / np.sqrt(8)}
+    deltac_err_points = {'ob110022': 1.06 / np.sqrt(8)}  # CHECK
+    
+    colors = {'ob110022': 'gray',
+              'ob120169': 'purple',
+              'ob140613': 'red',
+              'ob150029': 'darkorange',
+              'ob150211': 'black',
+              'ob170019': 'blue',
+              'ob170095': 'blue',
+              'ob190017': 'blue',
+              'kb200101': 'blue',
+              'MB09260' : 'gray',
+              'MB10364' : 'gray',
+              'mb190284' : 'gray',
+              'OB110037' : 'gray',
+              'OB110310' : 'gray',
+              'OB110462' : 'red'}
+
+    include = {'ob110022': True,
+              'ob120169': True,
+              'ob140613': True,
+              'ob150029': True,
+              'ob150211': True,
+              'ob170019': False,
+              'ob170095': False,
+              'ob190017': False,
+              'kb200101': False,
+              'MB09260' : False,
+              'mb190284' : False,
+              'MB10364' : False,
+              'OB110037' : False,
+              'OB110310' : False,
+              'OB110462' : False}
+
+    include_ast = {'ob110022': True,
+                   'ob120169': True,
+                   'ob140613': True,
+                   'ob150029': True,
+                   'ob150211': True,
+                   'ob170019': False,
+                   'ob170095': False,
+                   'ob190017': False,
+                   'kb200101': False,
+                   'MB09260' : False,
+                   'mb190284' : False,
+                   'MB10364' : False,
+                   'OB110037' : False,
+                   'OB110310' : False,
+                   'OB110462' : False}
+        
+    use_label = {'ob110022': False,
+                 'ob120169': True,
+                 'ob140613': True,
+                 'ob150029': True,
+                 'ob150211': True,
+                 'ob170019': False,
+                 'ob170095': False,
+                 'ob190017': False,
+                 'kb200101': False,
+                 'MB09260' : False,
+                 'mb190284': False,
+                 'MB10364' : False,
+                 'OB110037': False,
+                 'OB110310': False,
+                 'OB110462': False}
+        
+
+    ast_ulim = {'ob110022': True,
+                'ob120169': False,
+                'ob140613': False,
+                'ob150029': False,
+                'ob150211': False,
+                'ob170019': False,
+                'ob170095': False,
+                'ob190017': False,
+                'kb200101': False,
+                'MB09260' : False,
+                'mb190284': False,
+                'MB10364' : False,
+                'OB110037': True,
+                'OB110310': False,
+                'OB110462': False}
+        
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    ##########
+    # Load up the data
+    ##########
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211'] 
+    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462']
+    phot_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101', 'ob110022']
+    tE = {}
+    piE = {}
+    theta_E = {}
+    deltaC = {}
+    weights = {}
+
+    for targ in hst_targets:
+        if not include[targ] or targ in tE_points:
+            continue
+        
+        fit_targ, dat_targ = get_data_and_fitter(hst_phot[targ])
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+
+        mode = stats_targ['logZ'].argmax()
+        # mode = pspl_ast_multiphot_mode[targ]
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            theta_E[targ] = 10**samps_targ['log10_thetaE']
+        else:
+            theta_E[targ] = samps_targ['thetaE']
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        deltaC[targ] = theta_E[targ] * 2**0.5 / 4.0
+        weights[targ] = samps_targ['weights']
+        
+
+    for targ in targets:
+        if not include[targ] or targ in tE_points:
+            continue
+
+        fit_targ, dat_targ = get_data_and_fitter(pspl_ast_multiphot[targ])
+        mode = pspl_ast_multiphot_mode[targ]
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            theta_E[targ] = 10**samps_targ['log10_thetaE']
+        else:
+            theta_E[targ] = samps_targ['thetaE']
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        deltaC[targ] = theta_E[targ] * 2**0.5 / 4.0
+        weights[targ] = samps_targ['weights']
+        
+    for targ in phot_targets:
+        if not include[targ] or targ in tE_points:
+            continue
+
+        fit_targ, dat_targ = get_data_and_fitter(keck_phot_2020[targ])
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+
+        mode = stats_targ['logZ'].argmax()
+        # mode = pspl_ast_multiphot_mode[targ]
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        weights[targ] = samps_targ['weights']
+
+
+    # MB190284 fit results (from Dave Bennett)
+    data_tab = '/u/jlu/doc/proposals/hst/cycle28_mid2/mcmc_bsopcnC_3.dat'
+
+    # chi^2 1/t_E t0 umin sep theta eps1=q/(1+q) 1/Tbin dsxdt dsydt t_fix Tstar(=0) pi_E,N piE,E 0 0 0 0 0 0 0 0 0 A0ogleI A2ogleI A0ogleV A2ogleV A0moa2r A2moa2r A0moa2V
+    data = Table.read(data_tab, format='ascii.fixed_width_no_header', delimiter=' ')
+    data.rename_column('col1', 'chi2')
+    data.rename_column('col2', 'tE_inv')
+    data.rename_column('col3', 't0')
+    data.rename_column('col4', 'u0')
+    data.rename_column('col5', 'sep')
+    data.rename_column('col6', 'theta')
+    data.rename_column('col7', 'eps1')
+    data.rename_column('col8', 'Tbin_inv')
+    data.rename_column('col9', 'dsxdt')
+    data.rename_column('col10', 'dsydt')
+    data.rename_column('col11', 't_fix')
+    data.rename_column('col12', 'Tstar')
+    data.rename_column('col13', 'piEE')
+    data.rename_column('col14', 'piEN')
+    data['tE'] = 1.0 / data['tE_inv']
+    data['piEE'] = data['piEE'].astype('float')
+    data['weight'] = np.ones(len(data))
+    data['piE'] = np.hypot(data['piEE'], data['piEN'])
+
+    targ = 'mb190284'
+    tE[targ] = data['tE']
+    piE[targ] = data['piE']
+    weights[targ] = data['weight']
+    phot_targets.append(targ)
+    
+
+    ##########
+    # Load up the PopSyCLE simulation points.
+    ##########
+    popsyc = Table.read(popsycle_events) 
+    bh_idx = np.where(popsyc['rem_id_L'] == 103)[0]
+    ns_idx = np.where(popsyc['rem_id_L'] == 102)[0]
+    wd_idx = np.where(popsyc['rem_id_L'] == 101)[0]
+    st_idx = np.where(popsyc['rem_id_L'] == 0)[0]
+
+    # Stores the maximum astrometric shift
+    popsyc_delta_arr = np.zeros(len(popsyc))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    popsyc_u_ast_max_arr = np.zeros(len(popsyc))
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    popsyc_g_arr = 10**(-0.4 * (popsyc['ubv_i_app_L'] - popsyc['ubv_i_app_S']))
+    popsyc_g_arr = np.nan_to_num(popsyc_g_arr)
+
+    # First calculate max astrometric shift using
+    # approximation that only works for u0 > 2**0.5
+    g = popsyc_g_arr
+    u = popsyc['u0']
+    numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+    denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+    popsyc['deltaC'] = (u * popsyc['theta_E']/(1 + g)) * (numer/denom)
+
+    # Now fix those that have u0 < 2**0.5.
+    idx_fix = np.where(popsyc['u0'] < 2**0.5)[0]
+    for i in idx_fix:
+        g = popsyc_g_arr[i] 
+        thetaE = popsyc['theta_E'][i]
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        u = np.linspace(popsyc['u0'][i], np.sqrt(2), 100)
+        numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+        denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+        delta = (u * thetaE/(1 + g)) * (numer/denom)
+        max_idx = np.argmax(delta)
+        popsyc['deltaC'][i] = delta[max_idx]
+
+
+    ##########
+    # Plot the piE-tE 2D posteriors from observed targets.
+    ##########
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    sx = smooth
+    sy = smooth
+
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
+
+    for targ in targets + phot_targets + hst_targets:
+        if not include[targ]:
+            continue
+
+        if targ in tE_points:
+            plt.errorbar(tE_points[targ], piE_points[targ],
+                             xerr=tE_err_points[targ], yerr=piE_err_points[targ],
+                             marker = 's', ms = 4, color=colors[targ])
+        else:
+            model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                         weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                         **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+        if include[targ] and use_label[targ]:
+            axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
+                          targ.upper(), color=colors[targ])    
+
+
+
+    axes.scatter(popsyc['t_E'][st_idx], popsyc['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'paleturquoise')
+    axes.scatter(popsyc['t_E'][wd_idx], popsyc['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'aqua')
+    axes.scatter(popsyc['t_E'][ns_idx], popsyc['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'tab:cyan')
+    axes.scatter(popsyc['t_E'][bh_idx], popsyc['pi_E'][bh_idx],
+                 alpha = 0.8, marker = '.', s = 25, 
+                 color = 'black')
+
+    # Trickery to make the legend darker
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'tab:cyan')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'black')
+
+    axes.set_xlim(10, 1000)
+    axes.set_ylim(0.005, 0.5)
+    axes.set_xlabel('$t_E$ (days)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.legend(loc=3)
+    plt.savefig(paper_dir + 'piE_tE_' + fit_type + '.png')
+    plt.show()
+
+    
+    ##########
+    # delta_c vs. piE
+    ##########
+    fig = plt.figure(2, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    # Observed
+    for targ in targets + phot_targets + hst_targets:
+        if not include_ast[targ]:
+            continue
+
+        # Targets with only upper limits to deltaC.
+        if ast_ulim[targ]:
+            # Check to see if we have posteriors and
+            # calculate the 3 sigma upper limits.
+            if targ not in tE_points:
+                deltac_conf_ints = get_CIs(deltaC[targ], weights[targ])
+                piE_conf_ints = get_CIs(piE[targ], weights[targ])
+                
+                deltac_3sig_hi = deltac_conf_ints[-1]
+                piE_median = model_fitter.weighted_quantile(piE[targ], [0.5], sample_weight=weights[targ])[0]
+                piE_err = np.array([piE_conf_ints[0:2]]).T
+            else:
+                deltac_3sig_hi = deltac_points[targ] + 3*deltac_err_points[targ]
+                piE_median = piE_points[targ]
+                piE_err = piE_err_points[targ]
+
+            axes.errorbar(deltac_3sig_hi, piE_median,
+                          xerr = deltac_3sig_hi * 0.25,
+                          yerr = piE_err,
+                          fmt = 'o', color = colors[targ], markersize = 5,
+                          xuplims = True)
+        else:
+            # Targets with posteriors and contours.
+            model_fitter.contour2d_alpha(deltaC[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                             weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                             **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+    
+    # Mass Gap Band
+    xarr = np.linspace(0.001, 4, 1000)
+    axes.fill_between(xarr, xarr*0.18, xarr*0.07, alpha=0.15, color='orange')
+    axes.text(0.05, 0.006, 'Mass Gap', rotation=45)
+
+    # PopSyCLE
+    axes.scatter(popsyc['deltaC'][st_idx], popsyc['pi_E'][st_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'paleturquoise')
+    axes.scatter(popsyc['deltaC'][wd_idx], popsyc['pi_E'][wd_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'aqua')
+    axes.scatter(popsyc['deltaC'][ns_idx], popsyc['pi_E'][ns_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'tab:cyan')
+    axes.scatter(popsyc['deltaC'][bh_idx], popsyc['pi_E'][bh_idx], 
+                  alpha = 0.8, marker = '.', s = 25,
+                  c = 'black')
+
+    axes.set_xlabel('$\delta_{c,max}$ (mas)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+#    axes.set_xlim(0.005, 4)
+#    axes.set_ylim(0.009, 0.5)
+    axes.set_xlim(0.02, 2)
+    axes.set_ylim(0.005, 0.5)
+    plt.savefig('piE_deltac_ast.png')
+    plt.show()
+
+    return
+
 def shift_vs_piE():
     plt.close('all')
     
     # This assumes blending from source and lens.
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     u0_arr = t['u0']
     thetaE_arr = t['theta_E']
@@ -1530,22 +2019,27 @@ def shift_vs_piE():
 
     for targ in targets:
         fit_targ, dat_targ = get_data_and_fitter(pspl_ast_multiphot[targ])
+        mode = pspl_ast_multiphot_mode[targ]
         
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
 
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            thetaE_samp = 10**samps_targ['log10_thetaE']
+        else:
+            thetaE_samp = samps_targ['thetaE']
 
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
-        tE[targ] = res_targ['tE']
-        deltaC[targ] = res_targ['thetaE'] / np.sqrt(8.0)
-        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
-        weights[targ] = res_targ['weights']
+        tE[targ] = samps_targ['tE']
+        deltaC[targ] = thetaE_samp * 2**0.5 / 4.0
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        weights[targ] = samps_targ['weights']
 
     # Get ready for some plotting
     span = 0.999999426697
@@ -1727,7 +2221,7 @@ def calc_velocity(target):
     base_mags = calc_base_mag(plot=False)
     
     # Load up PopSyCLE
-    sim = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
+    sim = Table.read(popsycle_events)
 
     # Filter out really faint stuff. CHOOSE NOT TO TRIM becuase we are
     # looking at the whole field of stars, not just the target. 
@@ -3750,6 +4244,78 @@ def plot_trace_corner(target):
     
     return
 
+def plot_ob150211_mass_piE_muRel_all_modes():
+    target = 'ob150211'
+    
+    foo = get_data_fitter_params_models_samples(target, return_mode = 'all')
+    fitter = foo[0]
+    data = foo[1]
+    stats_all = foo[2]
+    params_all = foo[3]
+    models_all = foo[4]
+    sampls_all = foo[5]
+
+    plt.figure(3, figsize=(12, 6))
+    plt.clf()
+    plt.subplots_adjust(left=0.08, right=0.95)
+    ax1 = plt.subplot(1, 2, 1)
+    ax2 = plt.subplot(1, 2, 2)
+
+    colors = ['red', 'purple', 'green']
+
+    for ii in range(len(sampls_all)):
+        sampls_all[ii]['muRel'] = np.hypot(sampls_all[ii]['muRel_E'], sampls_all[ii]['muRel_N'])
+        sampls_all[ii]['piE'] = np.hypot(sampls_all[ii]['piE_E'], sampls_all[ii]['piE_N'])
+        
+        plot_2d_contour(sampls_all[ii]['mL'], sampls_all[ii]['muRel'], sampls_all[ii]['weights'],
+                        ax1, colors[ii])
+        plot_2d_contour(sampls_all[ii]['piE'], sampls_all[ii]['muRel'], sampls_all[ii]['weights'],
+                        ax2, colors[ii])        
+    ax1.set_xscale('log')
+    ax1.set_xlabel('$M_L$ (M$_\odot$)')
+    ax1.set_ylabel('$\mu_{rel}$ (mas/yr)')
+
+    ax2.set_xlabel('$\pi_E$')
+    ax2.set_ylabel('$\mu_{rel}$ (mas/yr)')
+    
+    return
+
+
+def plot_2d_contour(samples1, samples2, weights, axes, color, smooth1=0.02, smooth2=0.02, truths=None):
+    # Plot the 2-D marginalized posteriors.
+    
+    # Generate distribution.
+    sx = smooth1
+    sy = smooth2
+    fill_contours = True
+    plot_contours = True
+
+    # quantiles_2d = [0.1, 0.4, 0.65, 0.85]  # 0.5, 1, 1.5, 2 sigma
+    quantiles_2d = [0.4, 0.85]  # 1, 2 sigma
+    
+    hist2d_kwargs = dict()
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours',
+                                                       fill_contours)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
+                                                       plot_contours)
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.3)
+
+    dyplot._hist2d(samples1, samples2, ax=axes, 
+                   weights=weights, color=color, smooth=[sx, sy],
+                   **hist2d_kwargs)
+    #span=[span[j], span[i]],
+    
+    # Add truth values
+    if truths is not None:
+        if truths[0] is not None:
+            ax.axvline(truths[0], color=color) #, **truth_kwargs)
+        if truths[1] is not None:
+            ax.axhline(truths[1], color=color) # , **truth_kwargs)
+
+    return
+    
+
 def get_data_and_fitter(mnest_base):
     info_file = open(mnest_base + 'params.yaml', 'r')
     info = yaml.full_load(info_file)
@@ -3779,7 +4345,33 @@ def get_data_and_fitter(mnest_base):
                                       outputfiles_basename = mnest_base)
 
     return fitter, my_data
+
+def get_data_fitter_params_models_samples(target, return_mode = 'best', def_best='median'):
+    """
+    Return the fitter, data, stats table, parameters array, model, and posterior samples for
+    the desired target from the PSPL astrometry + multi-photometry fits. 
+
+    If return_mode == 'best', then return the mode designated in the 
+    pspl_ast_multiphot_mode array.
+
+    If return_mode == 'all' (or anything else), then return all the modes.
+    """
+    fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+    models_all = fitter.get_best_fit_modes_model(def_best = def_best)
+    stats_all, sampls_all = calc_summary_statistics(fitter, return_samples=True)
+    params_all = get_best_fit_from_stats(fitter, stats_all, def_best=def_best)
     
+    mode = pspl_ast_multiphot_mode[target]
+
+    # Return just th designated mode.
+    if mode == 'best':
+        stats_all = stats_all[mode]
+        params_all = params_all[mode]
+        models_all = models_all[mode]
+        sampls_all = sampls_all[mode]
+
+    return (fitter, data, stats_all, params_all, models_all, sampls_all)
+
 
 def load_summary_statistics(mnest_base, verbose=False):
     info_file = open(mnest_base + 'params.yaml', 'r')
@@ -3808,7 +4400,7 @@ def load_summary_statistics(mnest_base, verbose=False):
     return stats, my_data, my_model
     
 
-def calc_summary_statistics(fitter, verbose=False):
+def calc_summary_statistics(fitter, verbose=False, return_samples=False):
     # Get the number of modes.
     summ_tab = Table.read(fitter.outputfiles_basename + 'summary.fits')
     N_modes = len(summ_tab) - 1
@@ -3981,7 +4573,10 @@ def calc_summary_statistics(fitter, verbose=False):
 
     # stats = stats[zdx]
 
-    return stats
+    if return_samples:
+        return stats, tab_list
+    else:
+        return stats
 
 def get_best_fit_from_stats(fitter, stats, def_best='median'):
     """
@@ -4218,165 +4813,11 @@ def calc_BIC(n, k, maxlogL):
     return bic
 
 
-
-def piE_tE(fit_type = 'ast'):
-    """
-    Supports plotting for several different fit solutions:
-
-    fit_type = 'ast'
-        Keck + OGLE photometry, Keck astrometry
-    fit_type = 'phot'
-        OGLE photometry
-    fit_type = 'multiphot'
-        Keck + OGLE photometry
-    """
-    if fit_type is 'ast':
-        data_dict = pspl_ast_multiphot
-    if fit_type is 'phot':
-        data_dict = pspl_phot
-    if fit_type is 'multiphot':
-        data_dict = pspl_multiphot
-        
-
-    ##########
-    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
-    # ON THE WAY THIS PLOT LOOKS !!!
-    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
-    # Also plot PopSyCLE simulations simultaneously.
-    ##########
-    span = 0.999999426697
-    smooth = 0.04
-    quantiles_2d = None
-    hist2d_kwargs = None
-    labels = None
-    label_kwargs = None
-    show_titles = False 
-    title_fmt = ".2f" 
-    title_kwargs = None
-    
-    # Initialize values.
-    if label_kwargs is None:
-        label_kwargs = dict()
-    if title_kwargs is None:
-        title_kwargs = dict()
-    if hist2d_kwargs is None:
-        hist2d_kwargs = dict()
-
-    # Dictionary of dictionaries containing the tE and piE
-    # label position for each of the text labels.
-    label_pos = {'phot': {'ob120169': [150, 0.01],
-                          'ob140613': [170, 0.1],
-                          'ob150029': [150, 0.2],
-                          'ob150211': [35, 0.04]},
-                 'ast':  {'ob120169': [130, 0.28],
-                          'ob140613': [190, 0.09],
-                          'ob150029': [40, 0.15],
-                          'ob150211': [150, 0.02]}
-                 }
-    colors = {'ob120169': 'purple',
-              'ob140613': 'red',
-              'ob150029': 'darkorange',
-              'ob150211': 'black'}
-
-    # Set defaults.
-    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
-    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
-
-    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
-    tE = {}
-    piE = {}
-    weights = {}
-
-    for targ in targets:
-        fit_targ, dat_targ = get_data_and_fitter(data_dict[targ])
-        mode = pspl_ast_multiphot_mode[targ]
-        
-        stats_targ = calc_summary_statistics(fit_targ)
-        samps_targ = fit_targ.load_mnest_modes()
-        
-        # Find the best-fit solution
-        samps_targ = samps_targ[mode]
-        stats_targ = stats_targ[mode]
-        
-        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
-
-        tE[targ] = samps_targ['tE']
-        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
-        weights[targ] = samps_targ['weights']
-
-
-    # Plot the piE-tE 2D posteriors.
-    plt.close(1)
-    fig = plt.figure(1, figsize=(6,6))
-    plt.clf()
-    axes = plt.gca()
-    plt.subplots_adjust(bottom=0.15)
-
-    sx = smooth
-    sy = smooth
-
-    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
-    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
-
-    for targ in targets:
-        model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
-                                 weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                 **hist2d_kwargs, plot_density=False)
-
-        axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
-                      targ.upper(), color=colors[targ])    
-
-
-    # Add the PopSyCLE simulation points.
-    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
-
-    bh_idx = np.where(t['rem_id_L'] == 103)[0]
-    ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where(t['rem_id_L'] == 101)[0]
-    st_idx = np.where(t['rem_id_L'] == 0)[0]
-
-    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'paleturquoise')
-    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'aqua')
-    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'blue')
-    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'dimgray')
-    # Trickery to make the legend darker
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'Star', color = 'paleturquoise')
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25,
-                 label = 'WD', color = 'aqua')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
-
-    axes.set_xlim(10, 600)
-    axes.set_ylim(0.005, 0.5)
-    axes.set_xlabel('$t_E$ (days)')
-    axes.set_ylabel('$\pi_E$')
-    axes.set_xscale('log')
-    axes.set_yscale('log')
-    axes.legend(loc=3)
-    plt.savefig(paper_dir + 'piE_tE_' + fit_type + '.png')
-
-
 ####################################
 ### PopSyCLE Visualization Stuff ###
 ####################################
 def murel_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -4431,7 +4872,7 @@ def murel_popsycle():
     plt.legend()
 
 def dLdS_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -4467,7 +4908,7 @@ def dLdS_popsycle():
     plt.show()
 
 def dS_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -4524,7 +4965,7 @@ def dS_popsycle():
     plt.show()
 
 def pi_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -5441,7 +5882,7 @@ def plot_ob150211_phot():
     return
 
 def marginalize_tE_piE():
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popscyle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -5746,7 +6187,7 @@ def get_num_data_points(data_dict, astrometryFlag=True, verbose=False):
         for aa in range(len(data_dict['ast_files'])):
             # Multiply astrometry by 2 to account for X and Y independent positions.
             if len(data_dict['ast_files']) > 1:
-                N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(pp+1)])
+                N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(aa+1)])
             else:
                 N_ast_aa = 2 * len(data_dict['t_ast1'])
                 
