@@ -14,10 +14,11 @@ from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.ticker import NullFormatter
-import os
+import os, shutil
 from scipy.ndimage import gaussian_filter as norm_kde
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model, munge
 import dynesty.utils as dyutil
+from astropy.stats import sigma_clipped_stats
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
 import pdb
 import pickle
@@ -29,6 +30,7 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+from scipy import interpolate
 
 mpl_o = '#ff7f0e'
 mpl_b = '#1f77b4'
@@ -173,7 +175,7 @@ def all_paper():
     plot_ob150029_phot_ast()
     plot_ob150211_phot_ast()
 
-    # PSPL Fit Tables
+    # PSPL Fit Tables and Results Values
     # org_solutions_for_table()
     # -- Manually adjust which solutions are positive/negative/best
     # -- and the order to display the solutions in the table functions below.
@@ -195,7 +197,11 @@ def all_paper():
         plot_trace_corner(targ)
         
     # Mass Posteriors
+    plot_ob150211_mass_posterior_modes()
     plot_all_mass_posteriors()
+
+    # Statistics
+    calc_bayes_factor()
 
     # tE vs. piE vs. deltaC plots
     piE_tE_deltac(fit_type='ast')
@@ -419,7 +425,7 @@ def calc_date_resolved():
 
         print('')
         print('*** ' + target + ' ***')
-        print('MaxL muRel = {0:.3f} mas/yr'.format(muRel))
+        print('Best muRel = {0:.3f} mas/yr'.format(muRel))
         print('    68.3% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[1], tmp[4]))
         print('    95.5% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[2], tmp[5]))
         print('    99.7% CI: [{0:.3f} - {1:.3f} mas/yr]'.format(tmp[3], tmp[6]))
@@ -949,7 +955,147 @@ def separate_ob150211_modes():
     plt.legend()
 
     return
-    
+
+def calc_bayes_factor(target):
+    fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+    tab_list = fitter.load_mnest_modes()
+    best_mode = pspl_ast_multiphot_mode[target]
+
+    # Modify the priors to match what is in the run.py
+    if target == 'ob150211':
+        # Adjust the priors to encompass both possible solutions
+        t0_guess = 57225
+        fitter.priors['t0'] = model_fitter.make_gen(t0_guess - 100, t0_guess + 100) 
+        fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
+        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
+
+        # Phot Set 1
+        mean1, med1, std1 = sigma_clipped_stats(data['mag1'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(mean1, 2 * std1)
+
+        # Phot Set 2
+        mean2, med2, std2 = sigma_clipped_stats(data['mag2'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(mean2, 2 * std2)
+    elif target == 'ob120169':
+        # Adjust the priors to encompass both possible solutions 
+        fitter.priors['t0'] = model_fitter.make_gen(56020 - 100, 56020 + 100) 
+        fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
+        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(19.35, 0.1)
+        fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(17.95, 0.1)
+    elif target == 'ob140613':
+        # Adjust the priors to encompass both possible solutions 
+        fitter.priors['t0'] = model_fitter.make_gen(57150 - 100, 57150 + 100) 
+        fitter.priors['u0_amp'] = model_fitter.make_gen(-1.0, 1.0)
+        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
+        fitter.priors['mag_base1'] = model_fitter.make_gen(18, 18.5)
+        fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
+        fitter.priors['mag_base2'] = model_fitter.make_gen(14, 14.5)
+    elif target == 'ob150029':
+        # Adjust the priors
+        fitter.priors['t0'] = model_fitter.make_gen(57230 - 100, 57230 + 10) 
+        fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
+        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
+        fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
+
+        # Phot Set 1
+        mean1, med1, std1 = sigma_clipped_stats(data['mag1'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(mean1, 2 * std1)
+
+        # Phot Set 2
+        mean2, med2, std2 = sigma_clipped_stats(data['mag2'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(mean2, 2 * std2)
+        
+
+    # Draw samples on the priors.
+    N_samps = 10000
+    N_params = len(fitter.fitter_param_names)
+
+    cube = np.random.rand(N_samps, N_params)
+
+    prior_samps = {}
+
+    plt.close('all')
+    for i, param_name in enumerate(fitter.fitter_param_names):
+        prior_samps[param_name] = fitter.priors[param_name].ppf(cube[:, i])
+
+        plt.figure()
+        n, b, p = plt.hist(prior_samps[param_name], bins=50, density=True,
+                               label='Prior', histtype='step')
+        plt.xlabel(param_name)
+
+        for tt in range(len(tab_list)):
+            plt.hist(tab_list[tt][param_name], weights=tab_list[tt]['weights'], bins=b,
+                         label=f'Obs Mode {tt}', density=True, histtype='step')
+
+        plt.legend()
+
+    # print out the Bayes Factors
+    if target == 'ob120160':
+        print('Single mode... no Bayes Factor')
+        prior_vol = 1.0
+        log_BF = None
+        
+    elif target == 'ob140613' or target == 'ob150029':
+        # Same prior volume, so Bayes Factor is just ratio of evidence.
+        log_BF = stats_ast['logZ'][0] - stats_ast['logZ'][1:]
+        print('Bayes Factor mode 1 / mode N: ', np.exp(log_BF))
+        print(stats_ast['logZ', 'MaxLike_logL', 'Mean_logL'])
+
+        prior_vol = np.ones(len(stats_ast), dtype=float) * (1.0 / len(stats_ast))
+
+    elif target == 'ob150211':
+        # Calculate muRel amplitude on the prior samples.
+        prior_samps['muRel'] = 10**prior_samps['log10_thetaE'] / prior_samps['tE']  # mas/day
+        prior_samps['muRel'] *= 365.25  # mas/yr
+
+        # Solution 1:
+        muRel_cut = np.hypot(tab_list[0]['muRel_E'], tab_list[0]['muRel_N']).min()
+        idx1 = np.where((prior_samps['u0_amp'] > 0) & (prior_samps['muRel'] >= muRel_cut))[0]
+
+        # Solution 2:
+        idx2 = np.where((prior_samps['u0_amp'] > 0) & (prior_samps['muRel'] < muRel_cut))[0]
+
+        # Solution 3:
+        idx3 = np.where(prior_samps['u0_amp'] <= 0)[0]
+
+        prior_vol1 = len(idx1) / N_samps
+        prior_vol2 = len(idx2) / N_samps
+        prior_vol3 = len(idx3) / N_samps
+
+        prior_vol = np.array([prior_vol1, prior_vol2, prior_vol3])
+        log_prior_vol = np.log(prior_vol)
+
+        print('Prior volumes:')
+        print(f'  Mode 1 - u0 > 0, hi muRel: {prior_vol1:.2f}')
+        print(f'  Mode 2 - u0 > 0, lo muRel: {prior_vol2:.2f}')
+        print(f'  Mode 3 - u0 <= 0:          {prior_vol3:.2f}')
+
+        print('')
+
+        log_BF = stats_ast['logZ'][0] - stats_ast['logZ'][1:]
+        log_BF -= log_prior_vol[0] - log_prior_vol[1:]
+        BF = np.exp(log_BF)
+        print(f'Bayes Factor mode 1 / mode 2: {BF[0]:.3f}')
+        print(f'Bayes Factor mode 1 / mode 3: {BF[1]:.3f}')
+        print(stats_ast['logZ', 'MaxLike_logL', 'Mean_logL'])
+
+    return prior_vol, log_BF
 
 def plot_ob120169_phot_ast():
     target = 'ob120169'
@@ -1385,7 +1531,7 @@ def weighted_avg_and_std(values, weights):
 def OLD_tE_piE():
     plt.close('all')
     
-    t = Table.read(popscyle_events)
+    t = Table.read(popsycle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -2381,6 +2527,8 @@ def plot_cmd_ob150211():
     # plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Kmag'][tt_t], 'ro', ms=5, label='2MASS @ target')
     plt.plot(magS_J - magS_Kp, magS_Kp, marker='s', color='orange', linestyle='none', ms=5, label='Source')
     plt.plot(magLN_J - magLN_Kp, magLN_Kp, 'bs', ms=5, label='Lens + Neighbors')
+    plt.arrow(magLN_J - magLN_Kp, magLN_Kp, 0, 0.5, color='blue',
+                  width=0.05, head_width=0.15, head_length=0.3)
     plt.plot(magSLN_J - magSLN_Kp, magSLN_Kp, marker='*', linestyle='none', color='magenta',
                  mec='deeppink', ms=10, label='Total')
     plt.xlim(0, 3)
@@ -2500,7 +2648,797 @@ def plot_cmd_other3():
 
     return
 
-def dark_lens_prob(target):
+def run_galaxia_all_targets():
+    """
+    Must run in the paper directory.
+    """
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+
+    gal_param_file = paper_dir + 'galaxy_model_params.txt'
+    if not os.path.exists(gal_param_file):
+        orig_file = '/Users/casey/scratch/papers/hst_sahu_2020/scratch_work/vpd/galaxy_model_params.txt'
+        shutil.copyfile(orig_file, gal_param_file)
+
+    from popsycle import synthetic
+
+    for target in targets:
+        output_root = f'popsycle_{target:s}'
+
+        if os.path.exists(output_root + '.ebf'):
+            continue
+
+        print(f'Running Galaxia for {target} to save in {output_root}.')
+        
+        # Get the galactic lat and lon of the target
+        ra = munge.ra[target]
+        dec = munge.dec[target]
+        sim_radius = 60.0   # arcsec
+
+        sim_area = math.pi * sim_radius**2
+        sim_area_deg2 = sim_area / 3600**2
+
+        print(sim_area, ' arcsec^2')
+        print(sim_area_deg2, ' deg^2')
+
+        target_coords = SkyCoord(ra, dec, unit=(u.hourangle, u.deg), frame='icrs')
+
+        gal_l = target_coords.galactic.l.degree
+        gal_b = target_coords.galactic.b.degree
+
+
+        synthetic.run_galaxia(output_root,
+                      gal_l,
+                      gal_b,
+                      sim_area_deg2,
+                      gal_param_file)
+
+    return
+
+def dark_lens_prob(target, plot=True, mode='global'):
+    ##########
+    # Load up all the data and fit samples.
+    ##########
+    if mode == 'global':
+        fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+        sampls = fitter.load_mnest_results()
+    elif mode == 'best':
+        foo = get_data_fitter_params_models_samples(target, return_mode = 'best')
+        fitter = foo[0]
+        data = foo[1]
+        stats = foo[2]
+        params = foo[3]
+        models = foo[4]
+        sampls = foo[5]
+    else:
+        foo = get_data_fitter_params_models_samples(target, return_mode = 'all')
+        fitter = foo[0]
+        data = foo[1]
+        stats = foo[2]
+        params = foo[3]
+        models = foo[4]
+        sampls = foo[5]
+
+        sampls = sampls[mode]
+
+
+    # We will be using PopSyCLE (Galaxia) runs to sample on the age. 
+    # We need to get indices for ages. This means we need a distance-dependent
+    # age weighting (or sampling) scheme.
+    ebf_list = {'ob120169': paper_dir + 'popsycle_ob120169.ebf',
+                'ob140613': paper_dir + 'popsycle_ob140613.ebf',
+                'ob150029': paper_dir + 'popsycle_ob150029.ebf',
+                'ob150211': paper_dir + 'popsycle_ob150211.ebf'
+               }
+
+    ##########
+    # Make a 3D grid on distance, mass, and age containing
+    # the Kp and OLGE I magnitude of each star. Populate
+    # the grid from model isochrones.
+    # Distance grid
+    ##########
+    dL_arr_list = {'ob120169': np.arange(4.0, 12.01, 0.5),
+                   'ob140613': np.arange(4.0, 12.01, 0.5),
+                   'ob150029': np.arange(4.0, 12.01, 0.5),
+                   'ob150211': np.arange(4.0, 12.01, 0.5)
+                  }
+
+    dL_arr = dL_arr_list[target]
+
+    # Age grid
+    age_arr = np.arange(7, 10.01, 0.5)
+
+    # Mass grid
+    mass_arr = np.append(np.arange(0.08, 3.0, 0.05), 
+                         np.logspace(np.log10(3.0), np.log10(120), num=32))
+
+    spisea_kp_oI_file = 'spisea_kp_oI_3d_' + target + '.pkl'
+
+    if os.path.exists(spisea_kp_oI_file):
+        print('Loading existing SPISEA 3D arrays')
+        _tmp = open(spisea_kp_oI_file, 'rb')
+        kp_3d = pickle.load(_tmp)
+        oI_3d = pickle.load(_tmp)
+        _tmp.close()
+    else:
+        kp_3d = np.empty((len(dL_arr), len(age_arr), len(mass_arr)), dtype=float)
+        oI_3d = np.empty((len(dL_arr), len(age_arr), len(mass_arr)), dtype=float)
+
+        # Calculate the extinction at each distance using a 3D exitnction map.
+        coords_arr = SkyCoord(data['raL'] * u.deg, 
+                              data['decL'] * u.deg, 
+                              distance = dL_arr * u.kpc, frame='icrs')
+
+        import dustmaps.marshall
+        from dustmaps.marshall import MarshallQuery
+        from spisea import synthetic, evolution, atmospheres, reddening #, ifmr
+        from spisea.imf import imf #, multiplicityimport dustmaps
+
+        dustmaps.marshall.fetch()
+        q = MarshallQuery()
+        AKs_arr = q(coords_arr)
+
+        # Define evolution/atmosphere models and extinction law
+        from spisea import synthetic, evolution, atmospheres, reddening
+        evo_model = evolution.MISTv1() 
+        atm_func = atmospheres.get_merged_atmosphere
+        red_law = reddening.RedLawDamineli16()
+
+
+        # Loop through every distance and age and make an isochrone. 
+        for dd in range(len(dL_arr)):
+            dL = dL_arr[dd]
+            AKs = AKs_arr[dd]
+
+            for aa in range(len(age_arr)):
+                logAge = age_arr[aa]
+
+                # Make Isochrone object. Note that is calculation will take a few minutes, unless the 
+                # isochrone has been generated previously.
+                print(f'Making isochrone: dist={dL:.2f} kpc, logAge={logAge:.2f}, AKs={AKs:.2f}')
+                my_iso = synthetic.IsochronePhot(logAge, AKs, dL*1000, 
+                                                 metallicity=0,
+                                                 evo_model=evo_model, atm_func=atm_func,
+                                                 red_law=red_law, filters=['ubv,I', 'nirc2,Kp'],
+                                                 recomp=False,
+                                                 iso_dir=paper_dir + 'iso/')
+
+                iso_interp_kp = interpolate.interp1d(my_iso.points['mass'], 
+                                                     my_iso.points['m_nirc2_Kp'],
+                                                     kind='linear', 
+                                                     bounds_error=False, 
+                                                     fill_value=np.nan)
+                iso_interp_I  = interpolate.interp1d(my_iso.points['mass'], 
+                                                     my_iso.points['m_ubv_I'],
+                                                     kind='linear', 
+                                                     bounds_error=False, 
+                                                     fill_value=np.nan)
+
+                # Loop through each mass bin and find the minimum kp and I magnitudes.
+                for mm in range(len(mass_arr)):
+                    mass = mass_arr[mm]
+                    kp_3d[dd, aa, mm] = iso_interp_kp(mass)
+                    oI_3d[dd, aa, mm] = iso_interp_I(mass)
+
+        _tmp = open(spisea_kp_oI_file, 'wb')
+        pickle.dump(kp_3d, _tmp)
+        pickle.dump(oI_3d, _tmp)
+        _tmp.close()
+        
+    #########
+    # Figure out which bins our posterior samples fall into.
+    # 
+    # Sample age from the distance-dependent age distribution from PopSyCLE.
+    #########
+    # Setup bins for histogramming.
+    dL_delta = np.diff(dL_arr)
+    dL_bins = dL_arr[1:] - (dL_delta / 2.0)
+    dL_bins = np.insert(dL_bins, 0, dL_arr[0] - dL_delta[0] / 2.0)
+    dL_bins = np.append(dL_bins, dL_arr[-1] + dL_delta[-1] / 2.0)
+
+    mL_delta = np.diff(mass_arr)
+    mL_bins = mass_arr[1:] - (mL_delta / 2.0)
+    mL_bins = np.insert(mL_bins, 0, mass_arr[0] - mL_delta[0] / 2.0)
+    mL_bins = np.append(mL_bins, mass_arr[-1] + mL_delta[-1] / 2.0)
+
+    age_delta = np.diff(age_arr)
+    age_bins = age_arr[1:] - (age_delta / 2.0)
+    age_bins = np.insert(age_bins, 0, age_arr[0] - age_delta[0] / 2.0)
+    age_bins = np.append(age_bins, age_arr[-1] + age_delta[-1] / 2.0)
+
+
+    # Re-normalize the posterior weights array to sum to 1.0
+    sampls['weights'] /= sampls['weights'].sum()
+
+    # Take a random sample of the lens fits (weighted) so that we
+    # have a proper posterior sample.
+    samp_idx = np.random.choice(np.arange(len(sampls['weights'])),
+                                size=5000, replace=False, p=sampls['weights'])
+    resamp = sampls[samp_idx]
+
+    # Define our sample for the posteriors in 
+    # all filters for:
+    #    Kp( mag_base_kp, b_sff_kp )
+    #    oI( mag_base_oI, b_sff_oI )
+    bsff2_idx = np.where(resamp['b_sff2'] > 1)[0] 
+    resamp['b_sff2'][bsff2_idx] = 0.999999
+    kpL_fit = resamp['mag_base2'] + 2.5*np.log10(1/(1 - resamp['b_sff2']))
+    
+    bsff1_idx = np.where(resamp['b_sff1'] > 1)[0] 
+    resamp['b_sff1'][bsff1_idx] = 0.999999
+    oIL_fit = resamp['mag_base1'] + 2.5*np.log10(1/(1 - resamp['b_sff1']))
+
+    # For the same sample, loop through and figure out which bins each
+    # falls in (in our 3D model array).
+    #    Kp( dL, mL, age(dL | popsycle) ) -- random sampling on age from PopSyCLE.
+    #    oI( dL, mL, age(dL | popsycle) ) -- random sampling on age from PopSyCLE.
+    mL_fit = resamp['mL']
+    dL_fit = 1.0 / resamp['piL']
+
+    mL_idx = np.digitize(mL_fit, bins=mL_bins) - 1
+    dL_idx = np.digitize(dL_fit, bins=dL_bins) - 1
+
+    sim = ebf.read(ebf_list[target], '/')
+
+    # Loop through our distance bins and make an age array.
+    wgt_dL_age = np.empty((len(dL_arr), len(age_arr)), dtype=float)
+
+    age_idx = np.ones(len(mL_idx), dtype=int) * -1
+
+    import pdb
+    for dd in range(len(dL_arr)):
+        # Select PopSyCLE stars in this radius bin. 
+        sdx = np.where((sim['rad'] >= dL_bins[dd]) & (sim['rad'] < dL_bins[dd+1]))[0]
+
+        age_hist, age_be = np.histogram(sim['age'], bins=age_bins)
+        age_hist = age_hist / age_hist.sum()   # normalize
+
+        wgt_dL_age[dd, :] = age_hist
+
+        idx = np.where(dL_idx == dd)[0]
+        age_idx[idx] = np.random.choice(np.arange(len(age_arr)),
+                                    size=1, replace=False, p=age_hist)
+
+    print("Total points in sample: ", len(dL_fit))
+    print('Too small distances: ', (dL_fit < dL_bins[0]).sum())
+    print('Too large distances: ', (dL_fit > dL_bins[-1]).sum())
+    print('Too small masses: ', (mL_fit < mL_bins[0]).sum())
+    print('Too large masses: ', (mL_fit > mL_bins[-1]).sum())
+
+    good = np.where((age_idx >= 0))[0]
+    print('Bad entries: ', len(age_idx) - len(good))
+    dL_fit = dL_fit[good]
+    mL_fit = mL_fit[good]
+    kpL_fit = kpL_fit[good]
+    oIL_fit = oIL_fit[good]
+    age_idx = age_idx[good]
+    dL_idx = dL_idx[good]
+    mL_idx = mL_idx[good]
+
+    kpL_mod = np.full(len(dL_fit), np.nan, dtype=float)
+    oIL_mod = np.full(len(dL_fit), np.nan, dtype=float)
+
+    # Only query the 3D arrays where we have good masses. 
+    gm = np.where((mL_fit >= mL_bins[0]) & (mL_fit <= mL_bins[-1]))[0]
+
+    age_mod = age_arr[age_idx]
+    kpL_mod[gm] = kp_3d[dL_idx[gm], age_idx[gm], mL_idx[gm]]
+    oIL_mod[gm] = oI_3d[dL_idx[gm], age_idx[gm], mL_idx[gm]]
+
+
+    # Kp probabilities
+    no_mass_match_idx_kp = np.argwhere(np.isnan(kpL_mod))
+    dark_idx_kp = np.where(kpL_fit > kpL_mod)[0]
+    lum_idx_kp = np.where(kpL_fit <= kpL_mod)[0]
+
+    p_no_mass_match_kp = len(no_mass_match_idx_kp)/len(mL_fit)
+    p_dark_kp = len(dark_idx_kp)/len(mL_fit)
+    p_lum_kp = len(lum_idx_kp)/len(mL_fit)
+
+    # OGLE I probabilities
+    no_mass_match_idx_oI = np.argwhere(np.isnan(oIL_mod))
+    dark_idx_oI = np.where(oIL_fit > oIL_mod)[0]
+    lum_idx_oI = np.where(oIL_fit <= oIL_mod)[0]
+
+    p_no_mass_match_oI = len(no_mass_match_idx_oI)/len(mL_fit)
+    p_dark_oI = len(dark_idx_oI)/len(mL_fit)
+    p_lum_oI = len(lum_idx_oI)/len(mL_fit)
+
+    # Joint probabilities
+    no_mass_match_idx = np.argwhere(np.isnan(kpL_mod) | np.isnan(oIL_mod))
+    dark_idx = np.where((kpL_fit > kpL_mod) | (oIL_fit > oIL_mod))[0]
+    lum_idx = np.where((kpL_fit <= kpL_mod) & (oIL_fit <= oIL_mod))[0]
+
+    p_no_mass_match = len(no_mass_match_idx)/len(mL_fit)
+    p_dark = len(dark_idx)/len(mL_fit)
+    p_lum = len(lum_idx)/len(mL_fit)
+    
+    print('')
+    print('Total points in sample after final cuts: ', len(dL_fit))
+    print(f'Dark stars (kp):     N = {len(dark_idx_kp):4d}  p = {p_dark_kp:.4f}') 
+    print(f'Dead stars (kp):     N = {len(no_mass_match_idx_kp):4d}  p = {p_no_mass_match_kp:.4f}') 
+    print(f'Luminous stars (kp): N = {len(lum_idx_kp):4d}  p = {p_lum_kp:.4f}')
+    print('Total Prob (kp):     p = {0:.2f}'.format(p_dark_kp + p_no_mass_match_kp + p_lum_kp))
+    print('')
+    print(f'Dark stars (oI):     N = {len(dark_idx_oI):4d}  p = {p_dark_oI:.4f}') 
+    print(f'Dead stars (oI):     N = {len(no_mass_match_idx_oI):4d}  p = {p_no_mass_match_oI:.4f}') 
+    print(f'Luminous stars (oI): N = {len(lum_idx_oI):4d}  p = {p_lum_oI:.4f}') 
+    print('Total Prob (oI):     p = {0:.2f}'.format(p_dark_oI + p_no_mass_match_oI + p_lum_oI))
+    print('')
+    print(f'Dark stars (joint):     N = {len(dark_idx):4d}  p = {p_dark:.4f}') 
+    print(f'Dead stars (joint):     N = {len(no_mass_match_idx):4d}  p = {p_no_mass_match:.4f}') 
+    print(f'Luminous stars (joint): N = {len(lum_idx):4d}  p = {p_lum:.4f}') 
+    print('Total Prob (joint):     p = {0:.2f}'.format(p_dark + p_no_mass_match + p_lum))
+    print('')
+
+    
+    ##########
+    # Plotting
+    ##########
+    mass_bins_plot = {'ob120169': np.logspace(-2, 0.5, 10),
+                      'ob140613': np.logspace(-1, 0.5, 15),
+                      'ob150029': np.logspace(-2.5, 0.5, 15),
+                      'ob150211': np.logspace(np.log10(mL_fit.min()), np.log10(mL_fit.max()+0.01), 11)
+                      }
+
+    mass_bins = mass_bins_plot[target]
+    n_no_mass_kp = np.zeros(len(mass_bins) - 1)
+    n_dark_kp = np.zeros(len(mass_bins) - 1)
+    n_lum_kp = np.zeros(len(mass_bins) - 1)
+
+    n_no_mass_oI = np.zeros(len(mass_bins) - 1)
+    n_dark_oI = np.zeros(len(mass_bins) - 1)
+    n_lum_oI = np.zeros(len(mass_bins) - 1)
+
+    n_no_mass = np.zeros(len(mass_bins) - 1)
+    n_dark = np.zeros(len(mass_bins) - 1)
+    n_lum = np.zeros(len(mass_bins) - 1)
+    
+    mass_bin_centers = (mass_bins[:-1] + mass_bins[1:])/2
+    bin_width = np.diff(mass_bins)
+    
+    # mass_bins = mass_bins_plot[target]
+    # mass_bin_centers = mass_bins[0:-1] + np.diff(mass_bins) / 2.0
+    # bin_width = mass_bins[1] - mass_bins[0]
+
+    for ii in np.arange(len(mass_bins) - 1):
+        # Classify based on Kp only
+        no_mass_idx_kp = np.where((mL_fit < mass_bins[ii+1]) & 
+                            (mL_fit > mass_bins[ii]) & 
+                            (np.isnan(kpL_mod)))[0]
+        
+        dark_idx_kp = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               (kpL_fit > kpL_mod))[0]
+
+        lum_idx_kp = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               (kpL_fit < kpL_mod))[0]
+
+        # Classify based on ogle I only
+        no_mass_idx_oI = np.where((mL_fit < mass_bins[ii+1]) & 
+                            (mL_fit > mass_bins[ii]) & 
+                            (np.isnan(oIL_mod)))[0]
+        
+        dark_idx_oI = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               (oIL_fit > oIL_mod))[0]
+
+        lum_idx_oI = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               (oIL_fit < oIL_mod))[0]
+
+        # Classify based on joint Kp and ogleI
+        no_mass_idx = np.where((mL_fit < mass_bins[ii+1]) & 
+                            (mL_fit > mass_bins[ii]) & 
+                            (np.isnan(kpL_mod) | 
+                             np.isnan(oIL_mod)))[0]
+        
+        dark_idx = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               ((kpL_fit > kpL_mod) |
+                                (oIL_fit > oIL_mod)))[0]
+
+        lum_idx = np.where((mL_fit < mass_bins[ii+1]) & 
+                               (mL_fit > mass_bins[ii]) & 
+                               ((kpL_fit < kpL_mod) & 
+                                (oIL_fit < oIL_mod)))[0]
+        
+        n_no_mass_kp[ii] = len(no_mass_idx_kp)/len(mL_fit)
+        n_dark_kp[ii] = len(dark_idx_kp)/len(mL_fit)
+        n_lum_kp[ii] = len(lum_idx_kp)/len(mL_fit)
+
+        n_no_mass_oI[ii] = len(no_mass_idx_oI)/len(mL_fit)
+        n_dark_oI[ii] = len(dark_idx_oI)/len(mL_fit)
+        n_lum_oI[ii] = len(lum_idx_oI)/len(mL_fit)
+        
+        n_no_mass[ii] = len(no_mass_idx)/len(mL_fit)
+        n_dark[ii] = len(dark_idx)/len(mL_fit)
+        n_lum[ii] = len(lum_idx)/len(mL_fit)
+
+    if plot:
+        # Individual filters
+        fig, ax = plt.subplots(2, 1, num=1, figsize=(6, 6), sharex='col')
+        plt.clf()
+        fig, ax = plt.subplots(2, 1, num=1, figsize=(6, 6), sharex='col')
+        plt.subplots_adjust(hspace=0.05)
+        ax[0].bar(mass_bin_centers, n_no_mass_kp, bin_width, 
+                label='Dark$_A$ ({0:.0f}%)'.format(100*p_no_mass_match_kp), color='gray',
+                      hatch='++', edgecolor='k')
+        ax[0].bar(mass_bin_centers, n_dark_kp, bin_width, bottom=n_no_mass_kp,
+                label='Dark$_B$ ({0:.0f}%)'.format(100*p_dark_kp), color='gray',
+                      hatch='xx', edgecolor='k')
+        ax[0].bar(mass_bin_centers, n_lum_kp, bin_width, bottom=n_no_mass_kp+n_dark_kp,
+                label='Lum. ({0:.0f}%)'.format(100*p_lum_kp), color='red', edgecolor='k')
+        #ax[0].legend(loc='upper right')
+        ax[0].legend()
+        ax[0].set_ylabel('Prob. (Kp)')
+        ax[0].set_title(target.upper())
+        plt.show()
+    
+        ax[1].bar(mass_bin_centers, n_no_mass_oI, bin_width, 
+                label='Dark$_A$ ({0:.0f}%)'.format(100*p_no_mass_match_oI), color='gray',
+                      hatch='++', edgecolor='k')
+        ax[1].bar(mass_bin_centers, n_dark_oI, bin_width, bottom=n_no_mass_oI,
+                label='Dark$_B$ ({0:.0f}%)'.format(100*p_dark_oI), color='gray',
+                      hatch='xx', edgecolor='k')
+        ax[1].bar(mass_bin_centers, n_lum_oI, bin_width, bottom=n_no_mass_oI+n_dark_oI,
+                label='Lum. ({0:.0f}%)'.format(100*p_lum_oI), color='red', edgecolor='k')
+        #ax[1].legend(loc='upper right')
+        ax[1].legend()
+        ax[1].set_ylabel('Prob. (I)')
+        ax[1].set_xlabel('Lens mass ($M_\odot$)')
+
+        ax[0].set_xscale('log')
+        ax[1].set_xscale('log')
+            
+        plt.savefig(paper_dir + target + '_dark_lens_prob_' + str(mode) + '.png')
+        plt.show()
+
+        # Joint (2 filters)
+        plt.figure(3)
+        plt.clf()
+        plt.bar(mass_bin_centers, n_no_mass, bin_width, 
+                label='Dark$_A$ ({0:.0f}%)'.format(100*p_no_mass_match), color='gray',
+                      hatch='++', edgecolor='k')
+        plt.bar(mass_bin_centers, n_dark, bin_width, bottom=n_no_mass,
+                label='Dark$_B$ ({0:.0f}%)'.format(100*p_dark), color='gray',
+                      hatch='xx', edgecolor='k')
+        plt.bar(mass_bin_centers, n_lum, bin_width, bottom=n_no_mass+n_dark,
+                label='Lum. ({0:.0f}%)'.format(100*p_lum), color='red', edgecolor='k')
+        plt.legend()
+        plt.ylabel('Prob.')
+        plt.xlabel('Lens mass ($M_\odot$)')
+        plt.title(target.upper())
+        
+        # if target == 'ob150211':
+        plt.gca().set_xscale('log')
+            
+        plt.savefig(paper_dir + target + '_dark_lens_prob_joint_' + str(mode) + '.png')
+        plt.show()
+
+        
+        # Age histogram    
+        plt.figure(2)
+        plt.clf()
+        plt.hist(age_mod, bins=np.arange(6, 10.51, 0.5))
+        plt.yscale('log')
+        plt.xlabel('logage')
+        plt.ylabel('number')
+        plt.title(target + ' star age distribution')
+        plt.savefig(paper_dir + target + '_star_age_distribution_' + str(mode) + '.png')
+
+    ##########
+    # Calculate probabilites
+    ##########
+    print(f'*** MODE = {mode} ***')
+    
+    # Kp
+    star_idx_kp = np.where(kpL_fit <= kpL_mod)[0]
+
+    bd_mass1_idx_kp = np.where((mL_fit <= 0.2) & 
+                             (mL_fit > 0) & 
+                             (np.isnan(kpL_mod)))[0]
+        
+    bd_mass2_idx_kp = np.where((mL_fit <= 0.2) & 
+                             (mL_fit > 0) &
+                             (kpL_fit > kpL_mod))[0]
+
+    wd_mass1_idx_kp = np.where((mL_fit <= 1.2) & 
+                             (mL_fit > 0.2) &
+                             (np.isnan(kpL_mod)))[0]
+        
+    wd_mass2_idx_kp = np.where((mL_fit <= 1.2) & 
+                             (mL_fit > 0.2) &
+                             (kpL_fit > kpL_mod))[0]
+
+    ns_mass1_idx_kp = np.where((mL_fit <= 2.2) & 
+                             (mL_fit > 1.2) & 
+                             (np.isnan(kpL_mod)))[0]
+        
+    ns_mass2_idx_kp = np.where((mL_fit <= 2.2) &
+                             (mL_fit > 1.2) &
+                             (kpL_fit > kpL_mod))[0]
+
+    bh_mass1_idx_kp = np.where((mL_fit > 2.2) & 
+                             (np.isnan(kpL_mod)))[0]
+        
+    bh_mass2_idx_kp = np.where((mL_fit > 2.2) &
+                             (kpL_fit > kpL_mod))[0]
+
+    p_st_kp = 100*len(star_idx_kp)/len(mL_fit)
+    p_bd_kp = 100*(len(bd_mass1_idx_kp) + len(bd_mass2_idx_kp))/len(mL_fit)
+    p_wd_kp = 100*(len(wd_mass1_idx_kp) + len(wd_mass2_idx_kp))/len(mL_fit)
+    p_ns_kp = 100*(len(ns_mass1_idx_kp) + len(ns_mass2_idx_kp))/len(mL_fit)
+    p_bh_kp = 100*(len(bh_mass1_idx_kp) + len(bh_mass2_idx_kp))/len(mL_fit)
+
+    print('')
+    print('** Kp Probabilities **')
+    print('Kp P_total = {0:.0f}'.format(p_st_kp + p_bd_kp + p_wd_kp + p_ns_kp + p_bh_kp))
+    print('Kp P(Star) = {0:.0f}'.format(p_st_kp))
+    print('Kp P(BD) = {0:.0f}'.format(p_bd_kp))
+    print('Kp P(WD) = {0:.0f}'.format(p_wd_kp))
+    print('Kp P(NS) = {0:.0f}'.format(p_ns_kp))
+    print('Kp P(BH) = {0:.0f}'.format(p_bh_kp))
+
+    # OGLE I
+    star_idx_oI = np.where(oIL_fit <= oIL_mod)[0]
+
+    bd_mass1_idx_oI = np.where((mL_fit > 0) &
+                               (mL_fit <= 0.2) & 
+                               (np.isnan(oIL_mod)))[0]
+        
+    bd_mass2_idx_oI = np.where((mL_fit > 0) &
+                               (mL_fit <= 0.2) & 
+                               (oIL_fit > oIL_mod))[0]
+
+    wd_mass1_idx_oI = np.where((mL_fit > 0.2) &
+                               (mL_fit <= 1.2) & 
+                               (np.isnan(oIL_mod)))[0]
+        
+    wd_mass2_idx_oI = np.where((mL_fit > 0.2) &
+                               (mL_fit <= 1.2) & 
+                               (oIL_fit > oIL_mod))[0]
+
+    ns_mass1_idx_oI = np.where((mL_fit <= 2.2) & 
+                             (mL_fit > 1.2) & 
+                             (np.isnan(oIL_mod)))[0]
+        
+    ns_mass2_idx_oI = np.where((mL_fit <= 2.2) &
+                             (mL_fit >= 1.2) &
+                             (oIL_fit > oIL_mod))[0]
+
+    bh_mass1_idx_oI = np.where((mL_fit > 2.2) & 
+                             (np.isnan(oIL_mod)))[0]
+        
+    bh_mass2_idx_oI = np.where((mL_fit > 2.2) &
+                             (oIL_fit > oIL_mod))[0]
+
+    p_st_oI = 100*len(star_idx_oI)/len(mL_fit)
+    p_bd_oI = 100*(len(bd_mass1_idx_oI) + len(bd_mass2_idx_oI))/len(mL_fit)
+    p_wd_oI = 100*(len(wd_mass1_idx_oI) + len(wd_mass2_idx_oI))/len(mL_fit)
+    p_ns_oI = 100*(len(ns_mass1_idx_oI) + len(ns_mass2_idx_oI))/len(mL_fit)
+    p_bh_oI = 100*(len(bh_mass1_idx_oI) + len(bh_mass2_idx_oI))/len(mL_fit)
+
+    print('')
+    print('** I Probabilities **')
+    print('I P_total = {0:.0f}'.format(p_st_oI + p_bd_oI + p_wd_oI + p_ns_oI + p_bh_oI))
+    print('I P(Star) = {0:.0f}'.format(p_st_oI))
+    print('I P(BD) = {0:.0f}'.format(p_bd_oI))
+    print('I P(WD) = {0:.0f}'.format(p_wd_oI))
+    print('I P(NS) = {0:.0f}'.format(p_ns_oI))
+    print('I P(BH) = {0:.0f}'.format(p_bh_oI))
+
+    # Joint filter analysis.
+    star_idx = np.where((kpL_fit <= kpL_mod) & (oIL_fit <= oIL_mod))[0]
+
+    bd_mass1_idx = np.where((mL_fit <= 0.2) & 
+                             (mL_fit > 0) & 
+                             (np.isnan(kpL_mod) | 
+                              np.isnan(oIL_mod)))[0]
+        
+    bd_mass2_idx = np.where((mL_fit <= 0.2) & 
+                            (mL_fit > 0) &
+                            ((kpL_fit > kpL_mod) |
+                             (oIL_fit > oIL_mod)))[0]
+
+    wd_mass1_idx = np.where((mL_fit <= 1.2) & 
+                             (mL_fit > 0.2) &
+                             (np.isnan(kpL_mod) | 
+                              np.isnan(oIL_mod)))[0]
+        
+    wd_mass2_idx = np.where((mL_fit <= 1.2) & 
+                             (mL_fit > 0.2) &
+                            ((kpL_fit > kpL_mod) |
+                             (oIL_fit > oIL_mod)))[0]
+
+    ns_mass1_idx = np.where((mL_fit <= 2.2) & 
+                             (mL_fit > 1.2) & 
+                             (np.isnan(kpL_mod) | 
+                              np.isnan(oIL_mod)))[0]
+        
+    ns_mass2_idx = np.where((mL_fit <= 2.2) &
+                             (mL_fit > 1.2) &
+                            ((kpL_fit > kpL_mod) |
+                             (oIL_fit > oIL_mod)))[0]
+
+    bh_mass1_idx = np.where((mL_fit > 2.2) & 
+                             (np.isnan(kpL_mod) | 
+                              np.isnan(oIL_mod)))[0]
+        
+    bh_mass2_idx = np.where((mL_fit > 2.2) &
+                            ((kpL_fit > kpL_mod) |
+                             (oIL_fit > oIL_mod)))[0]
+
+    p_st = 100*len(star_idx)/len(mL_fit)
+    p_bd = 100*(len(bd_mass1_idx) + len(bd_mass2_idx))/len(mL_fit)
+    p_wd = 100*(len(wd_mass1_idx) + len(wd_mass2_idx))/len(mL_fit)
+    p_ns = 100*(len(ns_mass1_idx) + len(ns_mass2_idx))/len(mL_fit)
+    p_bh = 100*(len(bh_mass1_idx) + len(bh_mass2_idx))/len(mL_fit)
+
+    print('')
+    print('** Kp and I Probabilities **')
+    print('Kp and oI P_total = {0:.0f}'.format(p_st + p_bd + p_wd + p_ns + p_bh))
+    print('Kp and oI P(Star) = {0:.0f}'.format(p_st))
+    print('Kp and oI P(BD) = {0:.0f}'.format(p_bd))
+    print('Kp and oI P(WD) = {0:.0f}'.format(p_wd))
+    print('Kp and oI P(NS) = {0:.0f}'.format(p_ns))
+    print('Kp and oI P(BH) = {0:.0f}'.format(p_bh))
+    
+
+    n_age10 = len(np.where(age_mod == 10)[0])
+    p_age10 = 100 * n_age10/len(age_mod)
+
+    n_age95 = len(np.where(age_mod == 9.5)[0])
+    p_age95 = 100 * n_age95/len(age_mod)
+
+    n_age9 = len(np.where(age_mod == 9)[0])
+    p_age9 = 100 * n_age9/len(age_mod)
+
+    n_age85 = len(np.where(age_mod == 8.5)[0])
+    p_age85 = 100 * n_age85/len(age_mod)
+
+    n_age8 = len(np.where(age_mod == 8)[0])
+    p_age8 = 100 * n_age8/len(age_mod)
+
+    print('Percent with logage 10 : ', p_age10)
+    print('Percent with logage 9.5 : ', p_age95)
+    print('Percent with logage 9 : ', p_age9)
+    print('Percent with logage 8.5 : ', p_age85)
+    print('Percent with logage 8 : ', p_age8)
+    
+    return (p_st_kp, p_st_oI, p_st,
+            p_bd_kp, p_bd_kp, p_bd,
+            p_wd_kp, p_wd_kp, p_wd,
+            p_ns_oI, p_ns_oI, p_ns,
+            p_bh_oI, p_bh_oI, p_bh)
+
+
+def make_lens_probability_table():
+    # Delete old file if exists                                                     
+    table_file = paper_dir + 'lens_type_prob.txt'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:
+        # for targ in targets:
+        for targ in ['ob120169', 'ob140613', 'ob150029', 'ob150211']:
+            foo = dark_lens_prob(targ, plot=False)
+            p_st_kp = foo[0]
+            p_st_oI = foo[1]
+            p_st    = foo[2]
+            p_bd_kp = foo[3]
+            p_bd_oI = foo[4]
+            p_bd    = foo[5]
+            p_wd_kp = foo[6]
+            p_wd_oI = foo[7]
+            p_wd    = foo[8]
+            p_ns_kp = foo[9]
+            p_ns_oI = foo[10]
+            p_ns    = foo[11]
+            p_bh_kp = foo[12]
+            p_bh_oI = foo[13]
+            p_bh    = foo[14]
+            
+            tb.write('{0} & {1:.0f} & {2:.0f} & {3:.0f} & {4:.0f} & {5:.0f} & {6:.0f} & {7:.0f} & ' \
+                         '{8:.0f} & {9:.0f} & {10:.0f} \\\ \n'.format(targ, p_st_kp, p_st_oI,
+                                                                      p_bd_kp, p_bd_oI, 
+                                                                      p_wd_kp, p_wd_oI,
+                                                                      p_ns_kp, p_ns_oI, 
+                                                                      p_bh_kp, p_bh_oI))
+
+    # Delete old file if exists                                                     
+    table_file = paper_dir + 'lens_type_prob_avg.txt'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:
+        # for targ in targets:
+        for targ in ['ob120169', 'ob140613', 'ob150029', 'ob150211']:
+            foo = dark_lens_prob(targ, plot=False)
+            p_st_kp = foo[0]
+            p_st_oI = foo[1]
+            p_bd_kp = foo[2]
+            p_wd_kp = foo[3]
+            p_ns_kp = foo[4]
+            p_bh_kp = foo[5]
+            p_bd_oI = foo[6]
+            p_wd_oI = foo[7]
+            p_ns_oI = foo[8]
+            p_bh_oI = foo[9]
+
+            tb.write('{0} & {1:.0f} & {2:.0f} & {3:.0f} & ' \
+                         '{4:.0f} & {5:.0f} \\\ \n'.format(targ, (p_st_kp + p_st_oI)/2.0, 
+                                                           (p_bd_kp + p_bd_oI)/2.0, 
+                                                           (p_wd_kp + p_wd_oI)/2.0, 
+                                                           (p_ns_kp + p_ns_oI)/2.0, 
+                                                           (p_bh_kp + p_bh_oI)/2.0))
+
+    return
+
+# def elppd(target):
+#     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    
+#     for targ in targets:
+#         import warnings
+#         warnings.simplefilter(action='ignore', category=FutureWarning)
+
+#         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+#         stats = calc_summary_statistics(fitter)
+#         tab = fitter.load_mnest_modes()
+
+#         # Loop through each of the modes for this target
+#         # and calculate the ELPPD.
+#         for mode in range(len(stats)):
+#             # Make an EQUAL WEIGHT POSTERIOR sample
+#             sampls = tab[mode]
+#             samp_idx = np.random.choice(np.arange(len(sampls['weights'])),
+#                                 size=5000, replace=False, p=sampls['weights'])
+#             resamp = sampls[samp_idx]
+
+#             # Number of samples.
+#             nsamp = len(resamp)
+
+#             # Get RA and Dec of target.
+#             raL, decL = data['raL'], data['decL']
+
+#             # Initialize an array to store the pointwise LOG likelihood samples.
+#             # Each row corresponds to a posterior sample, and so
+#             #     pw_logL_arr[s].sum() gives the total logL for the s-th posterior sample.
+#             # The number of rows equals the number of posterior samples.
+#             # Each column corresponds to a data point (i.e. time), and so the length
+#             #     of each row equals the number of data points.
+#             pw_logL_arr = np.zeros((len(ramp), len(data['t_phot1'])))
+
+#         # Fill out the table by looping over posterior samples.
+#         for sdx, samp in enumerate(t):
+#             print('Sample number ', sdx)
+#             params = t[t.colnames[:21]][sdx]
+#             params_dict = model_fitter.generate_params_dict(params, fit.fitter_param_names)
+#             mod = fit.model_class(*params_dict.values(),
+#                                    raL=raL,
+#                                    decL=decL)
+#             pw_logL = model_fitter.pointwise_likelihood(fit.data, mod, filt_index=0)
+#             pw_logL_arr[sdx] = pw_logL
+
+#         np.savetxt(targ + '.txt', pw_logL_arr)
+#         pdb.set_trace()
+#         # Calculate the LIKELIHOOD (not log) by exponentiating. 
+#         pw_L_arr = np.exp(pw_logL_arr)
+
+#         # Sum over the pointwise likelihood estimates.
+#         # pw_logL_arr.sum(axis=0).shape = number of data points (since summed over samples)
+#         pw_L_arr_sampsum = pw_L_arr.sum(axis=0)
+#         pw_logL_arr_sampsum = pw_logL_arr.sum(axis=0)
+
+#         elppd = 2 * pw_logL_arr_sampsum.sum()/nsamp - np.log(pw_L_arr_sampsum/nsamp).sum()
+
+#         print(targ)
+#         print('elppd = ', elppd)
+
+#     return
+
+
+def dark_lens_prob_bad_age(target):
     """
     Use a Galaxia EBF file to estimate an age distribution. Then
     sample from that age distribution, make synthetic stellar populations
@@ -2615,14 +3553,30 @@ def dark_lens_prob(target):
     ogleL_mod = np.zeros(len(keep_idx))
     log_age_mod = np.zeros(len(keep_idx))
 
+    # We will simulate a population over a grid of fit points and age.
+    # For each fit point, we will try all the age bins. 
+    # Here are the age bins.
+    age_bin_delta = 0.5
+    age_bin_cents = np.arange(7, 10.01, age_bin_delta)
+    age_bin_edges = age_bin_cents + (age_bin_delta / 2.0)
+    age_bin_edges = np.insert(age_bin_edges, 0, age_bin_cents[0] - (age_bin_delta / 2.0))
+    print(f'age_bin_edges = {age_bin_edges}')
+
+    # Now expand the arrays to have 2D = [N_fit_points, N_age_bins]
+
     # Sort the dL into the defined distance bins
     bin_idx = np.digitize(dL_fit, dL_arr_edge)
 
     # Loop through each distance bin.
     for ii in np.arange(len(dL_arr)):
-        
+
         # Select PopSyCLE stars in this radius bin. 
         sdx = np.where((sim['rad'] >= dL_arr_edge[ii]) & (sim['rad'] < dL_arr_edge[ii+1]))[0]
+
+        age_hist, age_be = np.histogram(sim['age'], bins=age_bin_edges)
+        age_hist /= age_hist.sum()   # normalize
+        age_idx = np.random.choice(np.arange(len(age_bin_cents)),
+                                size=100, replace=False, p=age_hist)
 
         # Draw the logAge from PopSyCLE, round to the nearest delta-logAge=0.5 so we don't
         # make too many isochrones (expensive).
@@ -2632,6 +3586,7 @@ def dark_lens_prob(target):
         bin_ii_idx = np.where(bin_idx == ii+1)[0]
         dL = dL_arr[ii]
         AKs = AKs_arr[ii]
+        
         # Make Isochrone object. Note that is calculation will take a few minutes, unless the 
         # isochrone has been generated previously.
         print(f'Making isochrone: dist={dL:.2f} kpc, logAge={logAge:.2f}, AKs={AKs:.2f}')
@@ -2690,13 +3645,13 @@ def dark_lens_prob(target):
                                  plot_density=False, sigma_levels=[1, 2, 3])
     ax[0].set_xlabel('$d_L$ [kpc]')
     ax[0].set_ylabel('$M_L [M_\odot]$')
-    ax[0].set_title(target)
-    if right is not None:
-        ax[0].set_xlim(right=right)
-    if top is not None:
-        ax[0].set_ylim(top=top)
-    if bottom is not None:
-        ax[0].set_ylim(bottom=bottom)
+    ax[0].set_title(target.upper())
+    if right_list[target] is not None:
+        ax[0].set_xlim(right=right_list[target])
+    if top_list[target] is not None:
+        ax[0].set_ylim(top=top_list[target])
+    if bottom_list[target] is not None:
+        ax[0].set_ylim(bottom=bottom_list[target])
 
     max1 = np.nanmax(kpL_mod)
     max2 = np.nanmax(kpL_fit)
@@ -3199,15 +4154,15 @@ def org_solutions_for_table():
         print('******************')
         print('')
         print('Photometry Solutions')
-        print(stats_pho['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'MAP_logL', 'MAP_u0_amp', 'MAP_piE_E', 'MAP_piE_N'])
+        print(stats_pho['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'Med_logL', 'Med_u0_amp', 'Med_piE_E', 'Med_piE_N'])
 
         print('')
         print('Astrometry Solutions')
-        print(stats_ast['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'MAP_logL', 'MAP_u0_amp', 'MAP_piE_E', 'MAP_piE_N'])
+        print(stats_ast['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'Med_logL', 'Med_u0_amp', 'Med_piE_E', 'Med_piE_N'])
 
         print('')
         print('Astrometry Solutions Mass Info')
-        print(stats_ast['logZ', 'MaxLike_mL', 'MAP_mL', 'Mean_mL', 'MaxLike_logL', 'MAP_logL', 'Mean_logL'])
+        print(stats_ast['logZ', 'Mean_mL', 'MaxLike_mL', 'MAP_mL', 'Mean_thetaE', 'MaxLike_thetaE', 'MAP_thetaE', 'Mean_logL', 'MaxLike_logL', 'MAP_logL'])
 
     return
             
@@ -3529,7 +4484,7 @@ def table_ob140613_phot_astrom():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast]
-        val_mode = [pho_u0m, ast_u0m]
+        val_mode = [pho_u0p, ast_u0p]
 
         if (key in mod_ast.additional_param_names) and not start_extra_params:
             tab_file.write('\\tableline\n')
@@ -4037,6 +4992,12 @@ def table_ob150211_phot_astrom():
                    + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p_hi])
                    + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p_lo])
                    + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0m_al])
+                   + ' \\\ \n')
+    prior_vol, logBF = calc_bayes_factor('ob150211')
+    tab_file.write('$\pi-$volume ' 
+                   + '& & & {0:.2f} & '.format(prior_vol[ast_u0p_hi])
+                   + '& & & {0:.2f} & '.format(prior_vol[ast_u0p_lo])
+                   + '& & & {0:.2f} & '.format(prior_vol[ast_u0m_al])
                    + ' \\\ \n'
                    + r'\hline ' + '\n')
     
@@ -4275,7 +5236,7 @@ def get_CIs(samples, weights):
 
 
 
-def plot_all_mass_posteriors():
+def plot_all_mass_posteriors(sol_mode='best'):
     fontsize1 = 18
     fontsize2 = 14
     
@@ -4301,11 +5262,17 @@ def plot_all_mass_posteriors():
         
         # Select out the best mode.
         mode = pspl_ast_multiphot_mode[target]
-        tab = tab[mode]
         stats = stats[mode]
 
+        if sol_mode == 'best':
+            tab = tab[mode]
+        elif sol_mode == 'global':
+            tab = fitter.load_mnest_results()
+
         # KDE
-        kde = scipy.stats.gaussian_kde(np.log10(tab['mL']), weights=tab['weights'], bw_method=kde_bw[target])
+        kde = scipy.stats.gaussian_kde(np.log10(tab['mL']),
+                                           weights=tab['weights'],
+                                           bw_method=kde_bw[target])
         kde_mass = np.linspace(-2, 2, 500)
         # kde_mass = np.arange(0.0, 10, 0.01)
         kde_prob = kde(kde_mass)
@@ -4375,9 +5342,106 @@ def plot_all_mass_posteriors():
     plt.gca().xaxis.set_minor_locator(x_minor)
     plt.gca().xaxis.set_minor_formatter(plt.NullFormatter())
 
-    plt.savefig(paper_dir + 'all_mass_posteriors.png')
+    if sol_mode == 'global':
+        plt.savefig(paper_dir + 'all_mass_posteriors_' + mode + '.png')
+    else:
+        plt.savefig(paper_dir + 'all_mass_posteriors.png')
 
     return
+
+def plot_ob150211_mass_posterior_modes():
+    fontsize1 = 18
+    fontsize2 = 14
+    
+    target = 'ob150211'
+    colors = ['black', 'purple', 'blue']
+    kde_bw = {'ob150211': 0.1}
+
+    plt.close(1)
+    plt.figure(1)
+    plt.clf()
+    plt.subplots_adjust(bottom = 0.15)
+    
+    fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+    stats_list = calc_summary_statistics(fitter)
+    tab_list = fitter.load_mnest_modes()
+
+    for ii in range(len(stats_list)):
+        stats = stats_list[ii]
+        tab = tab_list[ii]
+
+        # KDE
+        kde = scipy.stats.gaussian_kde(np.log10(tab['mL']),
+                                           weights=tab['weights'],
+                                           bw_method=kde_bw[target])
+        kde_mass = np.linspace(-2, 2, 500)
+        # kde_mass = np.arange(0.0, 10, 0.01)
+        kde_prob = kde(kde_mass)
+        kde_bin_size = np.zeros(len(kde_prob), dtype=float)
+        kde_bin_size[:-1] = np.diff(kde_mass)
+        kde_bin_size[-1] = kde_bin_size[-2]
+        kde_norm = (kde_prob * kde_bin_size).sum()
+        kde_prob /= kde_norm
+
+        # Normalize kde_prob
+        # kde_prob /= kde_prob.max()
+        leg_label = f'{target.upper()}, '
+        if ii == 0:
+            leg_label += '$u_0 > 0$, high $\mu_{{rel}}$'
+        elif ii == 1:
+            leg_label += '$u_0 > 0$, low $\mu_{{rel}}$'
+        elif ii == 2:
+            leg_label += '$u_0 <= 0$'
+        plt.plot(kde_mass, kde_prob, color=colors[ii], linestyle='-', label=leg_label)
+
+        # Bins for the histogram
+        bins = np.linspace(-2, 2, 80)
+
+        n, b = np.histogram(np.log10(tab['mL']), bins = bins, 
+                            weights = tab['weights'], density = True)
+        b0 = 0.5 * (b[1:] + b[:-1])
+
+
+        plt.axvline(np.log10(stats['Med_mL']), color=colors[ii], linestyle='--', lw = 2)
+
+        conf_int = get_CIs(tab['mL'], tab['weights'])
+        print('Best-Fit Lens Mass MaxLike = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], target))
+        print('Best-Fit Lens Mass MAP     = {0:.2f} for {1:s}'.format(stats['MAP_mL'], target))
+        print('Best-Fit Lens Mass Median  = {0:.2f} for {1:s}'.format(stats['Med_mL'], target))
+        print('Best-Fit Lens Mass Mean    = {0:.2f} for {1:s}'.format(stats['Mean_mL'], target))
+        print('          68.3% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[0], conf_int[1]))
+        print('          95.5% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[2], conf_int[3]))
+        print('          99.7% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[4], conf_int[5]))
+        
+    plt.xlabel('Lens Mass $(M_\odot)$', fontsize=fontsize1, labelpad=10)
+    plt.ylabel('Posterior Probability', fontsize=fontsize1, labelpad=10)
+    plt.xticks(fontsize=fontsize2)
+    plt.yticks(fontsize=fontsize2)
+    plt.xlim(-1.1, 2.0)
+    plt.tick_params(axis='x', which='minor')
+    # plt.ylim(0, 2)
+    # plt.xlim(0, 5)
+    plt.ylim(0, 5)
+    plt.legend()
+
+    def pow_10(x, pos):
+        """The two args are the value and tick position.
+        Label ticks with the product of the exponentiation"""
+        return '%0.1f' % (10**x)
+
+    formatter = plt.FuncFormatter(pow_10)
+    plt.gca().xaxis.set_major_formatter(formatter)
+
+    x_minor = matplotlib.ticker.FixedLocator([np.log10(mm) for mm in np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                                                                               1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+                                                                               10, 20, 30, 40, 50, 60, 70, 80, 90, 100])])
+    plt.gca().xaxis.set_minor_locator(x_minor)
+    plt.gca().xaxis.set_minor_formatter(plt.NullFormatter())
+
+    plt.savefig(paper_dir + 'ob150211_mass_posterior_modes.png')
+
+    return
+
 
 def plot_trace_corner(target):
     labels = {'t0':       '$t_0$ (MJD)',
@@ -4520,8 +5584,8 @@ def plot_trace_corner(target):
     ##########
 
     # First subset
-    fig1 = ['mL', 'piE', 'muRel']
-    # fig1 = ['mL', 'u0_amp', 'tE', 'piE', 'log10_thetaE', 'muRel', 'piRel', ]
+    # fig1 = ['mL', 'piE', 'muRel']
+    fig1 = ['mL', 'u0_amp', 'tE', 'piE', 'log10_thetaE', 'muRel', 'piRel', ]
     fig2 = ['mL', 'piS', 'piL', 'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 't0']
     # if target == 'ob140613':
     #     fig3 = ['mL', 'b_sff1', 'mag_base1', 'mult_err1', 'b_sff2', 'mag_base2', 'mult_err2']
@@ -6358,7 +7422,7 @@ def plot_ob150211_phot():
     return
 
 def marginalize_tE_piE():
-    t = Table.read(popscyle_events)
+    t = Table.read(popsycle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
