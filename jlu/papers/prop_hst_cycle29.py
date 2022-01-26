@@ -20,7 +20,7 @@ import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
+# from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
@@ -29,14 +29,13 @@ import pickle
 from scipy.stats import norm
 from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
-# import lu_2019_lens
+import lu_2019_lens
 import copy
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from flystar import analysis
 import yaml
-import lu_2019_lens
 
 def piE_tE():
     mdir = '/u/jlu/work/microlens/'
@@ -576,3 +575,75 @@ def plot_mb10364():
     # ax3.set_xlim(0, 2.0)
     
     # plt.savefig('moa_hst_photometry.png')
+
+
+
+def spiral_dither_pattern(numSteps, stepSize, angle, x0=0, y0=0):
+    """
+    Plot up the positions in coordinates and pixel phase space of a spiral
+    dither pattern. This is useful for checking for adequate pixel phase coverage.
+
+    numSteps -
+
+    stepSize - step size in arcsec as given in the APT
+
+    angle - angle in degrees.
+
+    """
+    spiral_dx = np.array([ 0,  1,  1,  0, -1,
+                          -1, -1,  0,  1,  2,
+                           2,  2,  2,  1,  0,
+                          -1, -2, -2, -2, -2,
+                          -2, -1,  0,  1,  2], dtype=float)
+
+    spiral_dy = np.array([ 0,  0,  1,  1,  1,
+                           0, -1, -1, -1, -1,
+                           0,  1,  2,  2,  2,
+                           2,  2,  1,  0, -1,
+                          -2, -2, -2, -2, -2], dtype=float)
+
+    # WFC3-UVIS
+    xscale = 0.04
+    yscale = 0.04
+
+    spiral_dx = spiral_dx[:numSteps]
+    spiral_dy = spiral_dy[:numSteps]
+
+    cosa = math.cos(math.radians(angle))
+    sina = math.sin(math.radians(angle))
+
+    x = spiral_dx * cosa + spiral_dy * sina
+    y = -spiral_dx * sina + spiral_dy * cosa
+
+    x *= stepSize
+    y *= stepSize
+
+    xPixPhase = (x/xscale) % 1.0
+    yPixPhase = (y/yscale) % 1.0
+
+    for i in range(numSteps):
+        fmt = 'Position {0:2d}:  X = {1:7.3f}  Y = {2:7.3f}'
+        print( fmt.format(i+1, x0 + x[i], y0 + y[i]) )
+
+    plt.figure(1)
+    plt.clf()
+    plt.plot(x, y, 'ko-')
+    plt.xlabel('X Offset (arcsec)')
+    plt.ylabel('Y Offset (arcsec)')
+    plt.axis('equal')
+
+    plt.figure(2)
+    plt.clf()
+    plt.plot(x/xscale, y/yscale, 'ks-')
+    plt.xlabel('X Offset (pixels)')
+    plt.ylabel('Y Offset (pixels)')
+    plt.axis('equal')
+
+    plt.figure(3)
+    plt.clf()
+    plt.plot(xPixPhase, yPixPhase, 'ko')
+    plt.xlabel('X Pixel Phase')
+    plt.ylabel('Y Pixel Phase')
+    plt.plot([0, 0, 1, 1, 0], [0, 1, 1, 0, 0], 'k--')
+    plt.xlim(-0.05, 1.05)
+    plt.ylim(-0.05, 1.05)
