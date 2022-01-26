@@ -633,7 +633,7 @@ def piE_tE_phot_only_fits():
                color='brown', marker='X', ms = 8, alpha=0.8)
     axes.plot(178.804, 0.10864,
                color='brown', marker='X', ms = 8, alpha=0.8)
-    axes.text(20, 0.35, 'Sahu HST \n  targets', color='brown')
+    axes.text(20, 0.35, 'Prior HST \n  targets', color='brown')
 
     # Add the PopSyCLE simulation points.
     # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
