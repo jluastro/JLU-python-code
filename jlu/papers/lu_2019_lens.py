@@ -166,6 +166,7 @@ def all_paper():
     # plot_pos_err()
 
     # compare_all_linear_motions()
+    # plot_linear_motion_all()
 
     # separate_modes_all()
     separate_ob150211_modes()
@@ -360,7 +361,7 @@ def calc_base_mag(plot=True):
 
 def calc_poisson_prob_detection():
     """
-    Calculate the probability of finding 0 black holes from 
+    Calculate the probability of finding 0 (or 1) black holes from 
     a sample of 5 events with $t_E > $ 120 days.
     """
     samp_size = 5
@@ -375,7 +376,8 @@ def calc_poisson_prob_detection():
     mu_all = samp_size * sim_prob_bh
 
     n_bh = np.arange(0, 11)
-    
+
+    plt.close(1)
     plt.figure(1)
     for ss in range(len(sigma)):
         prob_dist = poisson(mu_all[ss])
@@ -659,7 +661,7 @@ def plot_pos_err():
         plt.ylabel('$\sigma_{ast}$ (mas)')
         plt.title(target.upper())
         plt.ylim(3e-2, 10)
-        plt.savefig(paper_dir + 'pos_err_' + target + '.pdf')
+        plt.savefig(paper_dir + 'pos_err_' + target + '.png')
 
     return
 
@@ -703,8 +705,8 @@ def plot_images():
         norm = LogNorm(vmin, vmax)
 
         plt.imshow(img, cmap='gist_heat_r', norm=norm, extent=[x_axis[0], x_axis[-1], y_axis[0], y_axis[-1]])
-        plt.plot([0], [0], 'c*', ms=15, mec='black', mfc='none', mew=2)
-        plt.plot(psf_tab['Xarc'], psf_tab['Yarc'], 'go', ms=15, mec='green', mfc='none', mew=2)
+        plt.plot([0], [0], 'c*', ms=35, mec='black', mfc='none', mew=2)
+        plt.plot(psf_tab['Xarc'], psf_tab['Yarc'], 'go', ms=15, mec='teal', mfc='none', mew=2)
 
         plt.axis('equal')
         plt.xlabel(r'$\Delta \alpha^*$ (")')
@@ -712,7 +714,7 @@ def plot_images():
         plt.title(target.upper())
 
         date_label = '20{0:2s} {1:3s} {2:2s}'.format(img_base[3:5], img_base[5:8].upper(), img_base[8:10])
-        plt.gcf().text(0.2, 0.8, date_label, color='black')
+        plt.text(0.5, 0.94, date_label, color='black', ha='center', transform=plt.gca().transAxes)
 
         # plt.xlim(0.5, -0.5)
         # plt.ylim(-0.5, 0.5)
@@ -724,22 +726,22 @@ def plot_images():
     plt.figure(4)
     plt.clf()
     plot_image_for_source('ob120169', 10, 5e5)
-    plt.savefig(paper_dir + 'img_ob120169.pdf')
+    plt.savefig(paper_dir + 'img_ob120169.png')
 
     plt.figure(1)
     plt.clf()
     plot_image_for_source('ob140613', 10, 5e5)
-    plt.savefig(paper_dir + 'img_ob140613.pdf')
+    plt.savefig(paper_dir + 'img_ob140613.png')
 
     plt.figure(2)
     plt.clf()
     plot_image_for_source('ob150029', 10, 1e5)
-    plt.savefig(paper_dir + 'img_ob150029.pdf')
+    plt.savefig(paper_dir + 'img_ob150029.png')
 
     plt.figure(3)
     plt.clf()
     plot_image_for_source('ob150211', 12, 1e6)
-    plt.savefig(paper_dir + 'img_ob150211.pdf')
+    plt.savefig(paper_dir + 'img_ob150211.png')
 
     return
 
@@ -1035,9 +1037,16 @@ def calc_bayes_factor(target):
         prior_samps[param_name] = fitter.priors[param_name].ppf(cube[:, i])
 
         plt.figure()
-        n, b, p = plt.hist(prior_samps[param_name], bins=50, density=True,
+        if param_name == 'gp_rho1':
+            bins = 5000
+        else:
+            bins = 50
+        n, b, p = plt.hist(prior_samps[param_name], bins=bins, density=True,
                                label='Prior', histtype='step')
         plt.xlabel(param_name)
+        if param_name == 'gp_rho1':
+            plt.xlim(0, 2000)
+
 
         for tt in range(len(tab_list)):
             plt.hist(tab_list[tt][param_name], weights=tab_list[tt]['weights'], bins=b,
@@ -2246,6 +2255,55 @@ def shift_vs_piE():
 
     return
 
+def calc_peak_astrometry():
+    """
+    Calculate the time of peak astrometric shift (t_{max,ast})
+    and the maximum amplitude of the astrometric shift (\delta_{c,max})
+    for all targets.
+    """
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+
+    # Create two figures for PDF(t_max,ast) and PDF(delta_c,max).
+    # plt.close('all')
+    
+    f1 = plt.figure(1)
+    f2 = plt.figure(2)
+    f1.clf()
+    f2.clf()
+
+    a1 = f1.subplots(1, 1)
+    a2 = f2.subplots(1, 1)
+
+    bins1 = np.arange(0, 1.5, 0.05)
+    bins2 = np.arange(0, 1000, 20)
+    
+    for targ in targets:
+        fitter, data = get_data_and_fitter(pspl_ast_multiphot[targ])
+        sampls = fitter.load_mnest_results()
+        
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in sampls.colnames) and ('thetaE' not in sampls.colnames):
+            sampls['thetaE'] = 10**sampls['log10_thetaE']
+        
+        sampls['piE'] = np.hypot(sampls['piE_E'], sampls['piE_N'])
+        sampls['delta_c_max'] = sampls['thetaE'] * 2**0.5 / 4.0
+        sampls['delta_t_c_max'] = sampls['tE'] * (2 - sampls['u0_amp']**2)**0.5
+
+        a1.hist(sampls['delta_c_max'], weights=sampls['weights'], label=targ,
+                    histtype='step', bins=bins1)
+        a2.hist(sampls['delta_t_c_max'], weights=sampls['weights'], label=targ,
+                    histtype='step', bins=bins2)
+
+    a1.set_xlabel(r'$\delta_{c,max}$ (mas)')
+    a2.set_xlabel(r'$t_{c,max} - t_0$ (days)')
+    a1.set_ylabel('Probability')
+    a2.set_ylabel('Probability')
+    a1.legend()
+    a2.legend()
+
+    return
+
+
 def calc_pythag_err(A, sigA, B, sigB):
     """
     For a function of the form f = sqrt(A^2 + B^2) where
@@ -2647,6 +2705,60 @@ def plot_cmd_other3():
     plt.savefig(paper_dir + 'cmds.png')
 
     return
+
+def print_lens_brightness(mode='global'):
+    """
+    Print out the lens brightness (mean and std) for all targets
+    based on the baseline magnitude and the source flux fraction.
+    """
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+
+    for target in targets:
+        if mode == 'global':
+            fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+            sampls = fitter.load_mnest_results()
+        elif mode == 'best':
+            foo = get_data_fitter_params_models_samples(target, return_mode = 'best')
+            fitter = foo[0]
+            data = foo[1]
+            stats = foo[2]
+            params = foo[3]
+            models = foo[4]
+            sampls = foo[5]
+        else:
+            foo = get_data_fitter_params_models_samples(target, return_mode = 'all')
+            fitter = foo[0]
+            data = foo[1]
+            stats = foo[2]
+            params = foo[3]
+            models = foo[4]
+            sampls = foo[5]
+
+            sampls = sampls[mode]
+
+        
+        bsff2_idx = np.where(sampls['b_sff2'] > 1)[0] 
+        sampls['b_sff2'][bsff2_idx] = 0.999999
+        kpL_fit = sampls['mag_base2'] + 2.5*np.log10(1/(1 - sampls['b_sff2']))
+        # Properly weighted mean and STD.
+        kpL_mean = np.average(kpL_fit, weights=sampls['weights'])
+        kpL_std = np.sqrt(np.average((kpL_fit-kpL_mean)**2, weights=sampls['weights']))
+    
+        bsff1_idx = np.where(sampls['b_sff1'] > 1)[0] 
+        sampls['b_sff1'][bsff1_idx] = 0.999999
+        oIL_fit = sampls['mag_base1'] + 2.5*np.log10(1/(1 - sampls['b_sff1']))
+        # Properly weighted mean and STD.
+        oIL_mean = np.average(oIL_fit, weights=sampls['weights'])
+        oIL_std = np.sqrt(np.average((oIL_fit-oIL_mean)**2, weights=sampls['weights']))
+
+        # Kp-band
+        print(f'\n*** {target} ***')
+        print(f'    Kp_L = {kpL_mean:.2f} +/- {kpL_std:.2f}')
+        print(f'     I_L = {oIL_mean:.2f} +/- {oIL_std:.2f}')
+
+    return
+        
+    
 
 def run_galaxia_all_targets():
     """
@@ -3072,7 +3184,7 @@ def dark_lens_prob(target, plot=True, mode='global'):
         #ax[0].legend(loc='upper right')
         ax[0].legend()
         ax[0].set_ylabel('Prob. (Kp)')
-        ax[0].set_title(target.upper())
+        ax[0].set_title(target.upper() + ' - ' + mode)
         plt.show()
     
         ax[1].bar(mass_bin_centers, n_no_mass_oI, bin_width, 
@@ -3108,7 +3220,7 @@ def dark_lens_prob(target, plot=True, mode='global'):
         plt.legend()
         plt.ylabel('Prob.')
         plt.xlabel('Lens mass ($M_\odot$)')
-        plt.title(target.upper())
+        plt.title(target.upper() + ' - ' + mode)
         
         # if target == 'ob150211':
         plt.gca().set_xscale('log')
@@ -4128,6 +4240,171 @@ def plot_linear_motion(target, fig_num = 1):
     fitob.fit(time_cut=fitob.time_cut) # Fit without the peak year
     
     plot_target(fitob, fig_num)
+
+    return
+
+
+def plot_linear_motion_all():
+    """
+    Plot the linear motion of the target
+    with a proper motion fit that excludes the peak year.
+    """
+    from jlu.microlens import fit_velocities
+
+    out_dir = paper_dir + 'compare_linear_motion/'
+
+    # Setup figure and color scales
+    plt.close(1)
+    fig = plt.figure(1, figsize=(12, 6))
+
+    grid_t = plt.GridSpec(1, 4, bottom=0.60, top=0.95, left=0.13, right=0.87, wspace=0.05)
+    grid_b = plt.GridSpec(2, 4, bottom=0.15, top=0.45, left=0.13, right=0.87, hspace=0.15, wspace=0.05)
+    cb_ax = fig.add_axes([0.88, 0.15, 0.02, 0.8])
+
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+
+    # Set up a time scale across all of the targets. 
+    tmin = 2012.0
+    tmax = 2020.0
+
+    cmap = plt.cm.plasma_r
+    norm = plt.Normalize(vmin=tmin, vmax=tmax)
+    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    smap.set_array([])
+
+    plt.gcf().text(0.02, 0.3, 'Residuals (mas)', rotation=90, fontsize=18,
+                       ha='center', va='center')
+    
+    
+    for tt in range(len(targets)):
+        target = targets[tt]
+        
+        fitob = fit_velocities.StarTable(target)
+        fitob.fit(time_cut=fitob.time_cut) # Fit without the peak year
+
+        res_rng = fit_velocities.res_dict[fitob.target]
+
+        stars = np.append([fitob.target], comp_stars[fitob.target])
+
+        if tt == 0:
+            ax_sky_0 = fig.add_subplot(grid_t[0, tt])
+            ax_resX_0 = fig.add_subplot(grid_b[1, tt])
+            ax_resY_0 = fig.add_subplot(grid_b[0, tt])
+            ax_sky = ax_sky_0
+            ax_resX = ax_resX_0
+            ax_resY = ax_resY_0
+        else:
+            ax_sky = fig.add_subplot(grid_t[0, tt], sharex=ax_sky_0, sharey=ax_sky_0)
+            ax_resX = fig.add_subplot(grid_b[1, tt], sharey=ax_resX_0)
+            ax_resY = fig.add_subplot(grid_b[0, tt], sharey=ax_resY_0)
+
+        # Fetch the data
+        tdx = np.where(fitob['name'] == fitob.target)[0][0]
+        star = fitob[tdx]
+
+        # Define local min/max times for this target.
+        tmin_tt = star['t'].min() - 0.5   # in year
+        tmax_tt = star['t'].max() + 0.5   # in year
+
+        # Change signs of the East
+        x = star['x']*-1.0
+        y = star['y']
+        x0 = star['x0']*-1.0
+        y0 = star['y0']
+        vx = star['vx']*-1.0
+        vy = star['vy']
+
+        # Put everything into relative coordinates w.r.t. x0/y0
+        x -= x0
+        y -= y0
+
+        # Convert to milli-arcsec
+        x *= 1000.0
+        y *= 1000.0
+        vx *= 1000.0
+        vy *= 1000.0
+        
+        # Make the model curves
+        tmod = np.arange(tmin_tt, tmax_tt, 0.1)
+        # xmod = x0 + vx * (tmod - star['t0'])
+        # ymod = y0 + vy * (tmod - star['t0'])
+        xmod = vx * (tmod - star['t0'])
+        ymod = vy * (tmod - star['t0'])
+        xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0'])) * 1e3
+        ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0'])) * 1e3
+
+        # xmod_at_t = x0 + vx * (star['t'] - star['t0'])
+        # ymod_at_t = y0 + vy * (star['t'] - star['t0'])
+        xmod_at_t = vx * (star['t'] - star['t0'])
+        ymod_at_t = vy * (star['t'] - star['t0'])
+
+        # Plot Positions on Sky
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
+        sc = ax_sky.scatter(x, y, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_sky.errorbar(x, y, xerr=star['xe'], yerr=star['ye'],
+                            ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
+        ax_sky.set_aspect('equal')#, adjustable='datalim')
+
+        # Figure out which axis has the bigger data range.
+        xy_rng = 18.0  # mas, this is the same range for all the stars.
+        xmin = -(xy_rng / 2.0)
+        xmax = +(xy_rng / 2.0)
+        ymin = -(xy_rng / 2.0)
+        ymax = +(xy_rng / 2.0)
+        if tt == 0:
+            ax_sky_0.set_xlim(xmax, xmin)
+            ax_sky_0.set_ylim(ymin, ymax)
+
+        # Set labels
+        # ax_sky.invert_xaxis()
+        ax_sky.set_title(fitob.target.upper())
+
+        ax_sky.set_xlabel(r'$\Delta\alpha*$ (mas)')
+        if tt == 0:
+            ax_sky.set_ylabel(r'$\Delta\delta$ (mas)')
+        else:
+            ax_sky.yaxis.set_visible(False)
+
+        # Plot Residuals vs. Time
+        xres = (x - xmod_at_t)
+        yres = (y - ymod_at_t)
+        xrese = star['xe'] * 1e3
+        yrese = star['ye'] * 1e3
+        ax_resX.scatter(star['t'], xres, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_resY.scatter(star['t'], yres, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_resX.errorbar(star['t'], xres, yerr=xrese,
+                             ecolor=smap.to_rgba(star['t']),
+                             fmt='none', elinewidth=2, zorder=2)
+        ax_resY.errorbar(star['t'], yres, yerr=yrese,
+                             ecolor=smap.to_rgba(star['t']),
+                             fmt='none', elinewidth=2, zorder=2)
+        ax_resX.plot(tmod, xmod - xmod, 'k-', color='grey', zorder=1)
+        ax_resX.plot(tmod,  xmode, 'k--', color='grey', zorder=1)
+        ax_resX.plot(tmod, -xmode, 'k--', color='grey', zorder=1)
+        ax_resY.plot(tmod, ymod - ymod, 'k-', color='grey', zorder=1)
+        ax_resY.plot(tmod,  ymode, 'k--', color='grey', zorder=1)
+        ax_resY.plot(tmod, -ymode, 'k--', color='grey', zorder=1)
+        ax_resX.set_xlabel('Date (yr)')
+
+        xresrng = xres + np.sign(xres)*(xrese + 0.1)
+        yresrng = yres + np.sign(yres)*(yrese + 0.1)
+
+        if tt == 0:
+            ax_resX.set_ylim(-0.90, 0.90)
+            ax_resY.set_ylim(-0.90, 0.90)
+        else:
+            ax_resX.yaxis.set_visible(False)
+            ax_resY.yaxis.set_visible(False)
+            
+        ax_resY.get_xaxis().set_visible(False)
+        ax_resX.set_ylabel(r'$\alpha^*$')
+        ax_resY.set_ylabel(r'$\delta$')
+
+    plt.colorbar(sc, cax=cb_ax, label='Year')
+    
+    plt.savefig(f"{paper_dir}/linear_fit_all.png")
 
     return
 
@@ -5441,6 +5718,180 @@ def plot_ob150211_mass_posterior_modes():
     plt.savefig(paper_dir + 'ob150211_mass_posterior_modes.png')
 
     return
+
+
+def make_pBH_detect_table():
+    """
+    Calculate the probability of getting N BH detections in PopSyCLE,
+    based on the tE of the event.
+    """
+    # Get array of tE for each target.
+    tE = {}
+    targets = ['ob110022', 'ob120169', 'ob140613', 'ob150029', 'ob150211']
+    for ii, target in enumerate(targets):
+        # Load up phot and ast results.
+        if target == 'ob110022':
+            tE[target] = [61.4, 58.7, 64.1]
+            continue
+
+        # Also fetch our best fit and figure out the source and lens/neighbor
+        # brightness.
+        foo = get_data_fitter_params_models_samples(target, return_mode = 'global')
+        fitter = foo[0]
+        data = foo[1]
+        stats = foo[2]
+        params = foo[3]
+        models = foo[4]
+        mnest_results = foo[5][0]
+
+        weights = mnest_results['weights']
+
+        # 3 sigma.
+        sig3 = 0.9973
+        sig3_lo = (1.0 - sig3) / 2.0
+        sig3_hi = 1.0 - sig3_lo    
+
+        # 1 sigma.
+        sig1 = 0.682689
+        sig1_lo = (1.0 - sig1) / 2.0
+        sig1_hi = 1.0 - sig1_lo    
+
+        # Calculate the median and quantiles.
+        tE[target] = model_fitter.weighted_quantile(mnest_results['tE'],
+                                                          [0.5, sig3_lo, sig3_hi],
+                                                          sample_weight=weights)
+    
+    def calc_fraction(t, mintE, maxtE):
+        """
+        Calculate the fraction of long duration events
+        that have black hole lenses, assuming Poisson errors.
+        """
+
+        not_bh_idx = np.where((t['t_E'] > mintE) & 
+                              (t['t_E'] < maxtE) & 
+                              (t['rem_id_L'] != 103))[0]
+        
+        bh_idx = np.where((t['t_E'] > mintE) & 
+                          (t['t_E'] < maxtE) & 
+                          (t['rem_id_L'] == 103))[0]
+        
+        frac = len(bh_idx)/(len(not_bh_idx) + len(bh_idx))
+
+        return frac
+    
+    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits')
+
+    # Array of success probabilities for each target, given it's tE.
+    # Success = probability of a BH with mass 5 < M < 15 Msun.
+    # pi_arr = using the median value
+    pi_arr = np.zeros(len(targets))
+
+    pk_arr = np.zeros(len(targets) + 1)
+        
+    # Delete old file if exists     
+    table_file = paper_dir + 'tE_bh_prob.txt'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:    
+        for ii, target in enumerate(targets):
+            min_tE = tE[target][1]
+            max_tE = tE[target][2]
+            frac = calc_fraction(t, min_tE, max_tE)
+            print('{0} ({1:.1f} days < tE < {2:.2f} days) : {3:.0f}% BHs'.format(target, 
+                                                                                 min_tE, max_tE,
+                                                                                 100*frac))
+            pi_arr[ii] = frac
+
+            # HACK
+            if target == 'ob140613':
+                    pi_arr[ii] = 0.99
+
+            tb.write('{0} & ${1:.0f} < t_E < {2:.0f}$ days & ' \
+                         '{3:.0f} \\\ \n'.format(target, 
+                                                 min_tE, max_tE,
+                                                 100*frac))
+
+            
+    # Delete old file if exists     
+    table_file = paper_dir + 'ndetect_bh_prob.txt'
+    if os.path.exists(table_file):
+        os.remove(table_file)
+
+    with open(table_file, 'a+') as tb:    
+        # Calculate probabilities
+        sum = 0
+        for i in np.arange(6):
+            sum += calc_pk(i, pi_arr)
+            print('P(K={0}) = {1}'. format(i, calc_pk(i, pi_arr)))
+
+            tb.write('{0} & {1:.0f} \\\ \n'.format(i, 100*calc_pk(i, pi_arr)))
+
+            pk_arr[i] = calc_pk(i, pi_arr)
+    
+        print('Total probability (should be 1!): ', sum)
+        if np.isnan(sum):
+            pdb.set_trace()
+
+    # I THINK PLT.STAIRS IS WHAT I WANT IN THIS CASE BUT IT KEEPS THROWING THIS ERROR
+    #     AttributeError: module 'matplotlib.pyplot' has no attribute 'stairs'
+    #     (I get the same thing on my laptop too... I don't get it.)
+    # So this code is basically my hack version of plt.stairs...
+    plt.close('all')
+    plt.figure(1)
+    plt.clf()
+
+    # Use step to get the bars, and fill in the missing bits with vlines and hlines
+    plt.step(np.arange(6), pk_arr, color='k', lw=2.5, where='mid')    
+    plt.vlines(x=-0.5, ymin=0, ymax=pk_arr[0], color='k', lw=2.5)
+    plt.vlines(x=5.5, ymin=0, ymax=pk_arr[5], color='k', lw=2.5)
+    plt.hlines(y=pk_arr[0], xmin=-0.5, xmax=0, color='k', lw=2.5)
+    plt.hlines(y=pk_arr[5], xmin=5, xmax=5.5, color='k', lw=2.5, label='Theory')
+    plt.fill_between([-0.5, 1.5], [0, 0], [0.6, 0.6], color='red', alpha=0.2, label='Observation')
+
+    # Shading
+    plt.bar(np.arange(6), pk_arr, alpha=0.1, color='k', width=1,
+            tick_label=['0', '1', '2', '3', '4', '5'])
+
+    plt.ylim(0, 0.5)
+    plt.xlabel('$N_{BH}$')
+    plt.ylabel('Probability')
+    plt.legend(loc='upper right')
+    plt.savefig(paper_dir + 'ndetect_bh_prob.png')
+
+    return
+
+def calc_pk(k, pi_arr):
+    """
+    Implementing the recursive formula for the Poisson binomial distribution                                                                       
+        described here: https://www.jstor.org/stable/2683639                                                                              
+        https://en.wikipedia.org/wiki/Poisson_binomial_distribution                                                                                     
+
+    k = number of successes
+    pi_arr = array of the success probabilities.
+    len(pi_arr) = number of independent yes/no experiments
+    """
+    def calc_Ti(i):
+        T = 0
+        for pi in pi_arr:
+            term_j = (pi/(1 - pi))**i
+            T += term_j
+
+        return T
+
+    if k == 0:
+        pk = 1
+        for pi in pi_arr:
+            pk *= (1 - pi)
+        return pk
+
+    else:
+        pk = 0
+        for i in (np.arange(k)[::-1] + 1):
+            pi = ((-1)**(i-1) * calc_pk(k-i, pi_arr) * calc_Ti(i))
+            pk += pi
+        return pk/k
+
 
 
 def plot_trace_corner(target):
