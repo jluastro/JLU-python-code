@@ -1645,14 +1645,14 @@ def plot_airmass_moon():
     months = np.array([8, 9])
     days = np.array([1, 1])
     # outdir = '/Users/jlu/doc/proposals/keck/uc/18A/'
-    outdir = '/u/abrams/code/JLU-python-code/jlu/papers/'
+    outdir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 
     # Keck 2
-    skycalc.plot_airmass(ra, dec, 2022, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_22A.png', date_idx=-1)
-    skycalc.plot_moon(ra, dec, 2022, np.array([8, 9]), outfile=outdir + 'microlens_moon_22A.png')
+    skycalc.plot_airmass(ra, dec, 2021, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_21B.png', date_idx=-1)
+    skycalc.plot_moon(ra, dec, 2021, np.array([8, 9]), outfile=outdir + 'microlens_moon_21B.png')
 
     # Keck 1
-    skycalc.plot_airmass(ra, dec, 2022, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_22A.png', date_idx=-1)
+    skycalc.plot_airmass(ra, dec, 2021, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_21B.png', date_idx=-1)
     
     return
 
