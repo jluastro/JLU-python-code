@@ -73,14 +73,31 @@ mod_roots = {'ob120169': ob120169_dir + ob120169_id + '_',
              'ob150029': ob150029_dir + ob150029_id + '_',
              'ob150211': ob150211_dir + ob150211_id + '_'}
 
-phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
-                 'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_09_19/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+                 'MB09260_split' : '/u/jlu/work/microlens/MB09260/a_2021_09_19/model_fits/moa_hst_phot_ast_gp/base_a/a0_split_',
+#                 'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_', # NEED TO CHANGE                   
+                 'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_09_19/model_fits/moa_hst_phot_ast_adderr/base_a/a0_', # NO GP, TEMPORARY              
                  'OB110037' : '/u/jlu/work/microlens/OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
                  'OB110310' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
-                 'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
+                 'OB110310_split' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_split_',
+                 'OB110462_el' : '/u/jlu/work/microlens/OB110462/a_2021_12_28/model_fits/ogle_hst_phot_ast/pspl/fixed_weight/a0_', # EQUAL LIKELIHOOD    
+                 #                 'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',                
+                 'OB110462_p' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0p_En_Nn/a0_',
+                 'OB110462_n' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0n_En_Nn/a0_'}
 
-# prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
-prop_dir = '/u/jlu/doc/proposals/keck/uc/22A/'
+phot_fits = {'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_12_20/model_fits/ogle_hst_phot/base_a/a0_'} # nominal fits                              
+
+ast_fits = {'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_12_28/model_fits/hst_ast/base_b/b0_'}
+
+# FROM 22A
+# phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+#                  'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+#                  'OB110037' : '/u/jlu/work/microlens/OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+#                  'OB110310' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+#                  'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
+
+prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
+# prop_dir = '/u/jlu/doc/proposals/keck/uc/22A/'
 
 # Target coordinates
 ra_ob190017 = '17:59:03.5200'
@@ -226,7 +243,7 @@ def piE_tE(fit_type = 'ast'):
                           'ob150211': [140, 0.01],
                           'ob170019': [120, 0.045],
                           'ob170095': [30, 0.04],
-                          'ob190017': [180, 0.28],
+                          'ob190017': [70, 0.21],
                           'kb200101': [180, 0.016]}}
 
     label_pos_ast = {'ob120169': [0.006, 0.06],
@@ -246,14 +263,15 @@ def piE_tE(fit_type = 'ast'):
               'MB10364' : 'gray',
               'OB110037' : 'gray',
               'OB110310' : 'gray',
-              'OB110462' : 'red'}
+              'OB110462_EW' : 'magenta',
+              'OB110462_DW' : 'magenta'}
 
     # Set defaults.
-    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
 
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211'] 
-    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462']
+    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462_EW', 'OB110462_DW']
     new_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101']
     tE = {}
     piE = {}
@@ -261,7 +279,12 @@ def piE_tE(fit_type = 'ast'):
     weights = {}
 
     for targ in hst_targets:
-        fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits[targ]) 
+        if targ == 'OB110462_EW':
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits['OB110462_el'])
+        elif targ == 'OB110462_DW':
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(ast_fits['OB110462'])
+        else:
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits[targ])
 
         res_targ = fit_targ.load_mnest_results(remake_fits=True)
 
@@ -342,10 +365,30 @@ def piE_tE(fit_type = 'ast'):
     hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
 
-    for targ in targets + new_targets + hst_targets:
+    for targ in targets + new_targets + ['MB09260', 'MB10364', 'OB110037', 'OB110310']:
         model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
+                                                       False)
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
+    model_fitter.contour2d_alpha(tE['OB110462_EW'], piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+                                 plot_density=False, sigma_levels=[1, 2],
+                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.8})
+    model_fitter.contour2d_alpha(tE['OB110462_EW'], piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+    model_fitter.contour2d_alpha(tE['OB110462_DW'], piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+                                 plot_density=False, sigma_levels=[1, 2],
+                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
+    model_fitter.contour2d_alpha(tE['OB110462_DW'], piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+
 
     for targ in new_targets:
         axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
@@ -383,8 +426,15 @@ def piE_tE(fit_type = 'ast'):
 #    axes.text(300, 0.1, 'MB19284', color='lime')
 
     # Add the PopSyCLE simulation points.
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits') 
-#    t = Table.read('from_sam_ews_raithel.fits')
+    t1 = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits')
+
+    t2 = Table.read('/g2/scratch/casey/papers/hst_sahu_2020/sub1_files/OB110462_Mock_EWS_v2.fits')
+
+    t = vstack([t1, t2])
+
+    lmag = np.hstack([t1['ubv_i_app_L'], t2['ubv_I_app_L']])
+    smag = np.hstack([t1['ubv_i_app_S'], t2['ubv_I_app_S']])
+
     bh_idx = np.where(t['rem_id_L'] == 103)[0]
     ns_idx = np.where(t['rem_id_L'] == 102)[0]
     wd_idx = np.where(t['rem_id_L'] == 101)[0]
@@ -406,8 +456,7 @@ def piE_tE(fit_type = 'ast'):
     small_idx = np.where(u0_arr <= np.sqrt(2))[0]
 
     # Flux ratio of lens to source (and make it 0 if dark lens)
-    g_arr = 10**(-0.4 * (t['ubv_i_app_L'] - t['ubv_i_app_S']))
-#    g_arr = 10**(-0.4 * (t['ubv_I_app_L'] - t['ubv_I_app_S']))
+    g_arr = 10**(-0.4 * (lmag - smag))
     g_arr = np.nan_to_num(g_arr)
 
     for i in np.arange(len(u0_arr)):
@@ -486,16 +535,16 @@ def piE_tE(fit_type = 'ast'):
                    xuplims = True)
 #    axes.text(0.5, 0.3, 'OB110022', color='gray')
 
-    # MB10364, OB110037, OB11030
-    axes.errorbar(0.56, 0.25, xerr = np.array([[0.3], [0.3]]), 
+    # MB09260, MB10364, OB11030
+    axes.errorbar(0.6, 0.26, xerr = np.array([[0.3], [0.3]]), 
                   fmt = 'o', color = 'gray', markersize = 5,
                   xuplims = True)
 
-    axes.errorbar(0.92, 0.11, xerr = np.array([[0.3], [0.3]]), 
+    axes.errorbar(0.92, 0.1, xerr = np.array([[0.3], [0.3]]), 
                    fmt = 'o', color = 'gray', markersize = 5,
                    xuplims = True)
 
-    axes.errorbar(0.89, 0.08, xerr = np.array([[0.3], [0.3]]), 
+    axes.errorbar(0.89, 0.085, xerr = np.array([[0.3], [0.3]]), 
                    fmt = 'o', color = 'gray', markersize = 5,
                    xuplims = True)
 
@@ -508,10 +557,36 @@ def piE_tE(fit_type = 'ast'):
                    fmt = 'o', color = 'gray', markersize = 5,
                   xuplims = True)
 
-    for targ in ['ob140613', 'ob150211', 'OB110037', 'OB110462']:
+    for targ in ['ob140613', 'ob150211', 'OB110037']:
         model_fitter.contour2d_alpha(theta_E[targ]/np.sqrt(8), piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
+#    model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+#                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2],
+#                                 contour_kwargs={'linestyles' : 'dashed'})
+#    model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+#                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+    model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+                                 plot_density=False, sigma_levels=[1, 2],
+                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.8})
+    model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
+                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+
+    model_fitter.contour2d_alpha(theta_E['OB110462_DW']/np.sqrt(8), piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+                                 plot_density=False, sigma_levels=[1, 2],
+                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
+    model_fitter.contour2d_alpha(theta_E['OB110462_DW']/np.sqrt(8), piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
 
 #        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
 #                  targ.upper(), color=colors[targ])    
