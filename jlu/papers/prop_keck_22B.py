@@ -5,14 +5,11 @@ import math
 import os
 from jlu.observe import skycalc
 from microlens.jlu import munge
-# from microlens.jlu import residuals
 from microlens.jlu import model_fitter, model
 import shutil, os, sys
 import scipy
 import scipy.stats
 from scipy.stats import chi2
-# from gcwork import starset
-# from gcwork import starTables
 from jlu.papers import lu_2019_lens
 from astropy.table import Table
 from jlu.util import fileUtil
@@ -47,22 +44,12 @@ mpl_g = '#2ca02c'
 mpl_r = '#d62728'
 
 # run directory
-# ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_c/'
-# ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_merr/base_b/'
-# ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
-# ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2019_06_26/model_fits/120_fit_multiphot_astrom_parallax_aerr/base_b/'
-
 ob120169_dir = '/u/jlu/work/microlens/OB120169/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
 ob140613_dir = '/u/jlu/work/microlens/OB140613/a_2020_08_18/model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/'
 ob150029_dir = '/u/jlu/work/microlens/OB150029/a_2020_08_18/model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/'
 ob150211_dir = '/u/jlu/work/microlens/OB150211/a_2020_08_18/model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/'
 
 # run id
-# ob120169_id = 'c2'
-# ob140613_id = 'b1'
-# ob150029_id = 'b3'
-# ob150211_id = 'b2'
-
 ob120169_id = 'a5'
 ob140613_id = 'a2'
 ob150029_id = 'a1'
@@ -75,26 +62,18 @@ mod_roots = {'ob120169': ob120169_dir + ob120169_id + '_',
 
 phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_09_19/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
                  'MB09260_split' : '/u/jlu/work/microlens/MB09260/a_2021_09_19/model_fits/moa_hst_phot_ast_gp/base_a/a0_split_',
-#                 'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_', # NEED TO CHANGE                   
                  'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_09_19/model_fits/moa_hst_phot_ast_adderr/base_a/a0_', # NO GP, TEMPORARY              
                  'OB110037' : '/u/jlu/work/microlens/OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
                  'OB110310' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
                  'OB110310_split' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_split_',
                  'OB110462_el' : '/u/jlu/work/microlens/OB110462/a_2021_12_28/model_fits/ogle_hst_phot_ast/pspl/fixed_weight/a0_', # EQUAL LIKELIHOOD    
-                 #                 'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',                
                  'OB110462_p' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0p_En_Nn/a0_',
-                 'OB110462_n' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0n_En_Nn/a0_'}
+                 'OB110462_n' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0n_En_Nn/a0_',
+                 'MB19284' : '/u/jlu/work/microlens/MB19284/a_2022_02_27/model_fit/base_b_bspl_photastrom/b0_'}
 
 phot_fits = {'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_12_20/model_fits/ogle_hst_phot/base_a/a0_'} # nominal fits                              
 
 ast_fits = {'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_12_28/model_fits/hst_ast/base_b/b0_'}
-
-# FROM 22A
-# phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
-#                  'MB10364' : '/u/jlu/work/microlens/MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
-#                  'OB110037' : '/u/jlu/work/microlens/OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
-#                  'OB110310' : '/u/jlu/work/microlens/OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
-#                  'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
 
 prop_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 # prop_dir = '/u/jlu/doc/proposals/keck/uc/22A/'
@@ -124,27 +103,6 @@ phot_2020_dir = {'kb200101' : mdir + 'KB200101/a_2020_09_10/model_fits/kmtnet_ph
                  'ob170095' : mdir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'}
 
 ob170095_dir = mdir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'
-
-# Gaia stuff
-# NOTE: OB190017 is NOT in Gaia.
-# Still trying to figure out for OB170095
-# gaia_ob190017 = analysis.query_gaia(ra_ob190017, dec_ob190017, search_radius=30.0, table_name='gaiaedr3')
-# gaia_ob170095 = analysis.query_gaia(ra_ob170095, dec_ob170095, search_radius=30.0, table_name='gaiaedr3')
-# gaia_kb200101 = analysis.query_gaia(ra_kb200101, dec_kb200101, search_radius=30.0, table_name='gaiaedr3')
-# gaia_mb19284 = analysis.query_gaia(ra_mb19284, dec_mb19284, search_radius=30.0, table_name='gaiaedr3')
-# gaia_ob170019 = analysis.query_gaia(ra_ob170019, dec_ob170019, search_radius=30.0, table_name='gaiaedr3')
-# 
-# gaia_ob190017.write('gaia_ob190017.gz', overwrite=True, format='ascii')
-# gaia_ob170095.write('gaia_ob170095.gz', overwrite=True, format='ascii')
-# gaia_kb200101.write('gaia_kb200101.gz', overwrite=True, format='ascii')
-# gaia_mb19284.write('gaia_mb19284.gz', overwrite=True, format='ascii')
-# gaia_ob170019.write('gaia_ob170019.gz', overwrite=True, format='ascii')
-
-# gaia_ob190017 = Table.read('gaia_ob190017.gz', format='ascii')
-# gaia_ob170095 = Table.read('gaia_ob170095.gz', format='ascii')
-# gaia_kb200101 = Table.read('gaia_kb200101.gz', format='ascii')
-# gaia_mb19284 = Table.read('gaia_mb19284.gz', format='ascii')
-# gaia_ob170019 = Table.read('gaia_ob170019.gz', format='ascii')
 
 def get_new_Raithel_files():
     #Raithel18
@@ -244,7 +202,8 @@ def piE_tE(fit_type = 'ast'):
                           'ob170019': [120, 0.045],
                           'ob170095': [30, 0.04],
                           'ob190017': [70, 0.21],
-                          'kb200101': [180, 0.016]}}
+                          'kb200101': [180, 0.016],
+                          'MB19284' : [340, 0.08]}}
 
     label_pos_ast = {'ob120169': [0.006, 0.06],
                      'ob140613': [0.04, 0.145],
@@ -264,11 +223,18 @@ def piE_tE(fit_type = 'ast'):
               'OB110037' : 'gray',
               'OB110310' : 'gray',
               'OB110462_EW' : 'magenta',
-              'OB110462_DW' : 'magenta'}
+              'OB110462_DW' : 'magenta',
+              'MB19284': 'blue'}
 
     # Set defaults.
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
     hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+#    model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 ax=axes, smooth=[sy, sx], color='blue',
+#                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+#    axes.text(300, 0.025, 'MB19284', color='blue')
+
 
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211'] 
     hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462_EW', 'OB110462_DW']
@@ -278,7 +244,7 @@ def piE_tE(fit_type = 'ast'):
     theta_E = {}
     weights = {}
 
-    for targ in hst_targets:
+    for targ in hst_targets + ['MB19284']:
         if targ == 'OB110462_EW':
             fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits['OB110462_el'])
         elif targ == 'OB110462_DW':
@@ -286,7 +252,7 @@ def piE_tE(fit_type = 'ast'):
         else:
             fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits[targ])
 
-        res_targ = fit_targ.load_mnest_results(remake_fits=True)
+        res_targ = fit_targ.load_mnest_results()
 
         tE[targ] = res_targ['tE']
         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
@@ -328,30 +294,6 @@ def piE_tE(fit_type = 'ast'):
         piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
         weights[targ] = res_targ['weights']
 
-    # MB190284 fit results (from Dave Bennett)
-    data_tab = '/u/jlu/doc/proposals/hst/cycle28_mid2/mcmc_bsopcnC_3.dat'
-
-    # chi^2 1/t_E t0 umin sep theta eps1=q/(1+q) 1/Tbin dsxdt dsydt t_fix Tstar(=0) pi_E,N piE,E 0 0 0 0 0 0 0 0 0 A0ogleI A2ogleI A0ogleV A2ogleV A0moa2r A2moa2r A0moa2V
-    data = Table.read(data_tab, format='ascii.fixed_width_no_header', delimiter=' ')
-    data.rename_column('col1', 'chi2')
-    data.rename_column('col2', 'tE_inv')
-    data.rename_column('col3', 't0')
-    data.rename_column('col4', 'u0')
-    data.rename_column('col5', 'sep')
-    data.rename_column('col6', 'theta')
-    data.rename_column('col7', 'eps1')
-    data.rename_column('col8', 'Tbin_inv')
-    data.rename_column('col9', 'dsxdt')
-    data.rename_column('col10', 'dsydt')
-    data.rename_column('col11', 't_fix')
-    data.rename_column('col12', 'Tstar')
-    data.rename_column('col13', 'piEE')
-    data.rename_column('col14', 'piEN')
-    data['tE'] = 1.0 / data['tE_inv']
-    data['piEE'] = data['piEE'].astype('float')
-    data['weight'] = np.ones(len(data))
-    data['piE'] = np.hypot(data['piEE'], data['piEN'])
-
     # Plot the piE-tE 2D posteriors.
 #    plt.close(1)
     fig = plt.figure(1, figsize=(6,6))
@@ -365,11 +307,13 @@ def piE_tE(fit_type = 'ast'):
     hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
 
-    for targ in targets + new_targets + ['MB09260', 'MB10364', 'OB110037', 'OB110310']:
+    for targ in targets + new_targets + ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'MB19284']:
         model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                  **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
+    plt.plot(906, 0.102, 'o', color='blue')
+        
     hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
                                                        False)
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
@@ -390,14 +334,9 @@ def piE_tE(fit_type = 'ast'):
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
 
 
-    for targ in new_targets:
+    for targ in new_targets + ['MB19284']:
         axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
                       targ.upper(), color=colors[targ])    
-
-    model_fitter.contour2d_alpha(data['tE'], data['piE'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 ax=axes, smooth=[sy, sx], color='blue',
-                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
-    axes.text(300, 0.025, 'MB19284', color='blue')
 
     # OB110022 from Lu+16.
     piEE_110022 = -0.393
@@ -519,7 +458,7 @@ def piE_tE(fit_type = 'ast'):
     axes.set_xscale('log')
     axes.set_yscale('log')
     axes.legend(loc=3)
-    plt.savefig('piE_tE_22A.png')
+    plt.savefig('piE_tE_22B.png')
     plt.show()
 
     # Plot the deltac-piE 2D posteriors.
@@ -616,7 +555,7 @@ def piE_tE(fit_type = 'ast'):
 #    axes.set_ylim(0.009, 0.5)
     axes.set_xlim(0.02, 2)
     axes.set_ylim(0.005, 0.5)
-    plt.savefig('piE_deltac_22A.png')
+    plt.savefig('piE_deltac_22B.png')
     plt.show()
 
 
