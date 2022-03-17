@@ -310,7 +310,7 @@ def piE_tE(fit_type = 'ast'):
     for targ in targets + new_targets + ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'MB19284']:
         model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                 **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+                                     **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
 
     plt.plot(906, 0.102, 'o', color='blue')
         
@@ -320,17 +320,18 @@ def piE_tE(fit_type = 'ast'):
     model_fitter.contour2d_alpha(tE['OB110462_EW'], piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
                                  plot_density=False, sigma_levels=[1, 2],
-                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.8})
+                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.5})
     model_fitter.contour2d_alpha(tE['OB110462_EW'], piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
                                  contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+#    model_fitter.contour2d_alpha(tE['OB110462_DW'], piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+#                                 plot_density=False, sigma_levels=[1, 2],
+#                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
     model_fitter.contour2d_alpha(tE['OB110462_DW'], piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
-                                 plot_density=False, sigma_levels=[1, 2],
-                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
-    model_fitter.contour2d_alpha(tE['OB110462_DW'], piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
-                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+                                 contour_kwargs={'alpha' : 0.9}, plot_density=False, sigma_levels=[1, 2])
+
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
 
 
@@ -513,18 +514,18 @@ def piE_tE(fit_type = 'ast'):
     model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
                                  plot_density=False, sigma_levels=[1, 2],
-                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.8})
+                                 contour_kwargs={'linestyles' : 'dashed', 'alpha' : 0.5})
     model_fitter.contour2d_alpha(theta_E['OB110462_EW']/np.sqrt(8), piE['OB110462_EW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_EW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_EW'],
                                  contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
 
+#    model_fitter.contour2d_alpha(theta_E['OB110462_DW']/np.sqrt(8), piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
+#                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
+#                                 plot_density=False, sigma_levels=[1, 2],
+#                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
     model_fitter.contour2d_alpha(theta_E['OB110462_DW']/np.sqrt(8), piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
                                  weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
-                                 plot_density=False, sigma_levels=[1, 2],
-                                 contour_kwargs={'linestyles' : 'dotted', 'alpha' : 0.8})
-    model_fitter.contour2d_alpha(theta_E['OB110462_DW']/np.sqrt(8), piE['OB110462_DW'], span=[span, span], quantiles_2d=quantiles_2d,
-                                 weights=weights['OB110462_DW'], ax=axes, smooth=[sy, sx], color=colors['OB110462_DW'],
-                                 contour_kwargs={'alpha' : 0.2}, plot_density=False, sigma_levels=[1, 2])
+                                 contour_kwargs={'alpha' : 0.9}, plot_density=False, sigma_levels=[1, 2])
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
 
 #        axes.text(label_pos_ast[targ][0], label_pos_ast[targ][1],
@@ -553,7 +554,7 @@ def piE_tE(fit_type = 'ast'):
     axes.set_yscale('log')
 #    axes.set_xlim(0.005, 4)
 #    axes.set_ylim(0.009, 0.5)
-    axes.set_xlim(0.02, 2)
+    axes.set_xlim(0.02, 3)
     axes.set_ylim(0.005, 0.5)
     plt.savefig('piE_deltac_22B.png')
     plt.show()
@@ -2395,3 +2396,113 @@ def plot_mb19284():
     #pdb.set_trace()
 
     return
+
+def get_med_1sig(samples, weights):
+    # Calculate median, sigma lo, and sigma hi credible interval.                                                                                        
+    sig1 = 0.682689
+    sig1_lo = (1. - sig1) / 2.
+    sig1_hi = 1. - sig1_lo
+
+    med_vals = model_fitter.weighted_quantile(samples,
+                                              [0.5, sig1_lo, sig1_hi],
+                                              sample_weight=weights)
+    # Switch from values to errors.                                                                                                                       
+    med_vals[1] = med_vals[0] - med_vals[1]
+    med_vals[2] = med_vals[2] - med_vals[0]
+
+    return med_vals
+
+def plot_mass_targets():
+    bins_mL = np.logspace(-2,1.5,30)
+
+    colors = {'ob110022': 'gray',
+              'ob120169': 'gray',
+              'ob140613': 'gray',
+              'ob150029': 'gray',
+              'ob150211': 'red',
+              'ob170019': 'blue',
+              'ob170095': 'blue',
+              'ob190017': 'blue',
+              'kb200101': 'blue',
+              'MB09260' : 'gray',
+              'MB10364' : 'gray',
+              'OB110037' : 'gray',
+              'OB110310' : 'gray',
+              'OB110462_EW' : 'magenta',
+              'OB110462_DW' : 'magenta',
+              'MB19284': 'blue'}
+
+    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462_EW', 'OB110462_DW'] 
+    keck_targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    mL = {}
+    weights = {}
+
+    # Get data for plotting.
+    for targ in hst_targets:
+        if targ == 'OB110462_EW':
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits['OB110462_el'])
+        elif targ == 'OB110462_DW':
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(ast_fits['OB110462'])
+        else:
+            fit_targ, dat_targ = multinest_utils.get_data_and_fitter(phot_ast_fits[targ])
+        
+        res_targ = fit_targ.load_mnest_results()
+
+        mL[targ] = res_targ['mL']
+        weights[targ] = res_targ['weights']
+
+    for targ in keck_targets:
+        fit_targ, dat_targ = lu_2019_lens.get_data_and_fitter(mod_roots[targ])
+        
+        res_targ = fit_targ.load_mnest_results()
+
+        mL[targ] = res_targ['mL']
+        weights[targ] = res_targ['weights']
+
+    # MASSES ONLY.
+    fig, ax1 = plt.subplots(1, 1, figsize=(7, 5))
+    plt.subplots_adjust(left=0.2, bottom=0.18, top=0.98, right=0.98)
+
+    name_list = []
+
+    # OB110022... by hand.
+    ax1.errorbar(0.67, 1, xerr=np.array([0.37, 0.32]).reshape(2,1), marker='o', capsize=5, color=colors['ob110022'])
+    name_list.append('ob110022')
+
+    for ii, targ in enumerate(keck_targets, start=2):
+        mL_med, mL_lo1, mL_hi1 = get_med_1sig(mL[targ], weights[targ])
+
+        name_list.append(targ)
+
+        ax1.errorbar(mL_med, ii, xerr=np.array([mL_lo1, mL_hi1]).reshape(2,1), marker='o', capsize=5, color=colors[targ])
+
+    for ii, targ in enumerate(hst_targets[:4], start=6):
+        mL_med, mL_lo1, mL_hi1 = get_med_1sig(mL[targ], weights[targ])
+
+        name_list.append(targ)
+
+        ax1.errorbar(mL_med, ii, xerr=np.array([mL_lo1, mL_hi1]).reshape(2,1), marker='o', capsize=5, color=colors[targ])
+#        ax1.errorbar(mL_med, ii, xerr=np.array([mL_lo2, mL_hi2]).reshape(2,1), marker='o', capsize=5, color='k')
+
+    mL_med, mL_lo1, mL_hi1 = get_med_1sig(mL['OB110462_EW'], weights['OB110462_EW'])
+    eb1 = ax1.errorbar(mL_med, 10, xerr=np.array([mL_lo1, mL_hi1]).reshape(2,1), marker='o', capsize=5, color=colors['OB110462_EW'])
+    eb1[-1][0].set_linestyle(':')
+
+    mL_med, mL_lo1, mL_hi1 = get_med_1sig(mL['OB110462_DW'], weights['OB110462_DW'])
+    ax1.errorbar(mL_med, 10, xerr=np.array([mL_lo1, mL_hi1]).reshape(2,1), marker='o', capsize=5, color=colors['OB110462_DW'])
+        
+    name_list.append('OB110462')
+
+    ax1.set_yticks([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    ax1.set_yticklabels([x.upper() for x in name_list])
+
+    ax1.set_xlabel('Mass ($M_\odot$)')
+    ax1.set_xlim(bins_mL[0], bins_mL[-2])
+#    plt.legend()
+    ax1.set_xscale('log')
+    ax1.axvspan(2, 5, color='blue', alpha=0.1)
+    ax1.axvspan(5, 100, color='blue', alpha=0.3)
+    ax1.text(2, 7, 'Mass \n Gap', size=18)
+    ax1.text(9, 7.4, 'BH', size=18)
+    plt.show()
+    
