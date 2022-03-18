@@ -2570,3 +2570,129 @@ def plot_mass_targets():
     ax1.text(9, 7.4, 'BH', size=18)
     plt.show()
     
+def plot_prob_v_mass():
+    t1 = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits')
+    t2 = Table.read('/g2/scratch/casey/papers/hst_sahu_2020/sub1_files/OB110462_Mock_EWS_v2.fits')
+    t_orig = vstack([t1, t2])
+
+    # Make 3 bins:
+    # First bin is all objects below 2 Msun 
+    # Second bin is all dark objects above 2 Msun and below 5 Msun
+    # Third bin is all dark objects above 5 Msun.
+    # We will compare PopSyCLE vs. OUR observed probablilities
+
+    # First trim out everything with tE < 60 days. That is our lowest object.
+    tdx = np.where(t_orig['t_E'] > 60)[0]
+    t = t_orig[tdx]
+    
+    # Estimate fractions for complete sample
+    idx1 = np.where(t['mass_L'] < 2)[0]
+    idx2 = np.where((t['mass_L'] >= 2) & (t['mass_L'] < 2) & (t['rem_id_L'] > 100))[0]
+    idx3 = np.where((t['mass_L'] >= 5) & (t['rem_id_L'] > 100))[0]
+
+    m_mean = np.array([np.median(t['mass_L'][idx1]),
+                       np.median(t['mass_L'][idx2]), 
+                       np.median(t['mass_L'][idx3])])
+    if np.isnan(m_mean[1]):
+        m_mean[1] = 0.5 * (5 - 1.3)
+
+    prob = np.array([float(len(idx1)),
+                     float(len(idx2)),
+                     float(len(idx3))])
+    prob /= len(t)
+
+    # Estimate fractions for new sample (tE > 105 days)
+    tdx_120 = np.where(t_orig['t_E'] > 120)[0]
+    t_120 = t_orig[tdx_120]
+    
+    idx1_120 = np.where((t_120['t_E'] > 105) & (t_120['mass_L'] < 2))[0]
+    idx2_120 = np.where((t_120['t_E'] > 105) & (t_120['mass_L'] >= 2) &
+                            (t_120['mass_L'] < 2) & (t_120['rem_id_L'] > 100))[0]
+    idx3_120 = np.where((t_120['t_E'] > 105) & (t_120['mass_L'] >= 5) &
+                            (t_120['rem_id_L'] > 100))[0]
+
+    m_mean_120 = np.array([np.median(t_120['mass_L'][idx1_120]),
+                           np.median(t_120['mass_L'][idx2_120]), 
+                           np.median(t_120['mass_L'][idx3_120])])
+    if np.isnan(m_mean_120[1]):
+        m_mean_120[1] = 0.5 * (5 + 2)
+        
+    prob_120 = np.array([float(len(idx1_120)),
+                         float(len(idx2_120)),
+                         float(len(idx3_120))])
+    prob_120 /= len(t_120)
+
+    zdx = np.where(prob == 0)[0]
+    zdx_120 = np.where(prob_120 == 0)[0]
+    prob[zdx] = 0.005
+    prob_120[zdx_120] = 0.005
+
+    # Make the bar widths and central locations... same for all.
+    # m_mid   = np.array([1, 0.5 * (5 + 2), 0.5 * (16 + 5)])
+    # m_width = np.array([2, (5 - 2), (16 - 5)])
+    m_mid   = np.array([1, 2, 3])
+    m_width = np.array([0.4, 0.4, 0.4])
+
+    # Observed probabilities
+    prob_obs = np.array([8, 2, 0], dtype=float)
+    n_tot = np.sum(prob_obs)
+    prob_obs_err = prob_obs**0.5
+    prob_obs_err[prob_obs_err == 0] = 1
+    prob_obs /= n_tot
+    prob_obs_err /= n_tot
+
+    # Predicted observed probabilities with slightly over twice the sample size
+    # and tE > 105 days.
+    # new sample is 9 new targets + 10 completed targets
+    # probability is existing detections in the 10 + PopSyCLE predicted for the 9 new
+    n_tot_120 = n_tot + 9
+    prob_obs_120 = (prob_obs * n_tot) + (prob_120 * (n_tot_120 - n_tot))
+    prob_obs_err_120 = prob_obs_120**0.5
+    prob_obs_err_120[prob_obs_err_120 == 0] = 1
+    prob_obs_120 /= n_tot_120
+    prob_obs_err_120 /= n_tot_120
+
+    # Multiply all the probabilities by the sample size.
+    # prob *= 10
+    # prob_120 *= 20
+    # prob_obs *= 10
+    # prob_obs_120 *= 20
+    # prob_obs_err *= 10
+    # prob_obs_err_120 *= 20
+    
+    plt.figure(1)
+    plt.clf()
+    plt.subplots_adjust(bottom=0.16, top=0.95)
+    # plt.plot(m_mean, prob, label='PopSyCLE: Completed Sample')
+    # plt.plot(m_mean_120, prob_120, label='PopSyCLE: New Sample')
+    plt.bar(m_mid, prob, width=m_width,
+                label='Sim: Completed',
+                alpha=0.5)
+    plt.bar(m_mid + m_width, prob_120, width=m_width,
+                label='Sim: New',
+                alpha=0.5)
+    plt.errorbar(m_mid, prob_obs, yerr=prob_obs_err,
+                     label=f'Obs: Completed ({n_tot:.0f})',
+                     ls='none', marker='^', ms=10, capsize=8)
+    plt.errorbar(m_mid + m_width, prob_obs_120, yerr=prob_obs_err_120,
+                     label=f'Pred: New ({n_tot_120:.0f})',
+                     ls='none', marker='s', ms=10, capsize=8)
+    # plt.legend(fontsize=13, title='Samples', title_fontsize=14)
+    plt.legend(title='Samples')
+
+    tick_labels = (r'$\bigstar$+WD+NS' + '\nM<2 M$_\odot$', 'Mass-Gap\nNS+BH\n2<M<5 M$_\odot$', 'BH\nM>5 M$_\odot$')
+    plt.xticks(m_mid+(m_width/2), tick_labels)
+
+    # plt.text(m_mid[0]-1, 0.1, tick_labels[0], fontsize=10)
+    # plt.text(m_mid[1]-1, 0.1, tick_labels[1], fontsize=10)
+    # plt.text(m_mid[2]-3, 0.1, tick_labels[2], fontsize=10)
+    
+    plt.ylim(0, 1)
+    # plt.xlim(0, 15)
+
+    # plt.xlabel('Lens Mass (M$_\odot$)')
+    plt.ylabel('Fraction of Lenses')
+
+    plt.savefig('prob_v_mass.png')
+    
+    return
