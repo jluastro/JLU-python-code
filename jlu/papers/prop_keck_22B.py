@@ -1817,6 +1817,69 @@ def plot_3_targs():
 
     return
 
+def plot_ob110462_phot_ast_EW():
+    mod_root = phot_ast_fits['OB110462_el']
+#    mod_root = ast_fits['OB110462']
+    target = 'ob110462'
+
+    mod_yaml = open(mod_root +  'params.yaml').read() 
+    params = yaml.safe_load(mod_yaml)
+
+    # OB140613 fit results.
+    _, data = multinest_utils.get_data_and_fitter(phot_ast_fits['OB110462_el'])
+#    data = munge.getdata2(target,
+#                          phot_data=params['phot_data'],
+#                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                       getattr(model, params['model']),
+                                       add_error_on_photometry=params['add_error_on_photometry'],
+                                       multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                       outputfiles_basename=mod_root)
+    
+
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
+    tab_all = mod_fit.load_mnest_modes()
+
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0)
+
+    return
+
+
+def plot_ob110462_phot_ast_DW():
+    mod_root_p = phot_fits['OB110462']
+    mod_root_a = ast_fits['OB110462']
+    target = 'ob110462'
+
+    mod_yaml_p = open(mod_root_p +  'params.yaml').read() 
+    params_p = yaml.safe_load(mod_yaml_p)
+
+    mod_yaml_a = open(mod_root_a +  'params.yaml').read() 
+    params_a = yaml.safe_load(mod_yaml_a)
+
+    # OB140613 fit results.
+    _, data = multinest_utils.get_data_and_fitter(phot_ast_fits['OB110462_el'])
+#    data = munge.getdata2(target,
+#                          phot_data=params['phot_data'],
+#                          ast_data=params['astrom_data'])  
+
+    mod_fit = model_fitter.PSPL_Solver(data,
+                                       getattr(model, params['model']),
+                                       add_error_on_photometry=params['add_error_on_photometry'],
+                                       multiply_error_on_photometry=params['multiply_error_on_photometry'],
+                                       outputfiles_basename=mod_root)
+    
+
+    mod_all = mod_fit.get_best_fit_modes_model(def_best='maxL')
+    tab_all = mod_fit.load_mnest_modes()
+
+    plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
+                    r_min_k=4.0)
+
+    return
+
+
 def plot_ob140613_phot_ast():
     mod_root = ob140613_dir + ob140613_id + '_'
     target = 'ob140613'
@@ -1867,7 +1930,7 @@ def plot_ob150211_phot_ast():
     tab_all = mod_fit.load_mnest_modes()
 
     plot_3panel(data, mod_all[0], tab_all[0], target + '_phot_astrom.png', target,
-                    r_min_k=4.0, mass_max_lim=4, log=False)
+                    r_min_k=4.0)
 
     return
 
@@ -2042,11 +2105,11 @@ def plot_4panel(data, mod, tab, outfile, r_min_k=None, mass_max_lim=2, log=False
 
     return
 
-def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, log=False):
+def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, ):
     # Calculate the model on a similar timescale to the data.
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
     t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
-    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 0.1)
 
     # Get the linear motion curves for the source (includes parallax)
     p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
@@ -2101,25 +2164,26 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     fm1.set_ylabel('Magnitude')
     fm1.invert_yaxis()
     fm2.set_ylabel('Res.')
+    fm1.get_shared_x_axes().join(fm1, fm2)
     
     
     # RA vs. time
     f1 = plt.gcf().add_axes([fig_pos[1], 0.36, pan_wid, 0.6])
     f2 = plt.gcf().add_axes([fig_pos[1], 0.18, pan_wid, 0.2])
-    f1.errorbar(data['t_ast1'], data['xpos']*1e3,
-                    yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
+    f1.errorbar(data['t_ast1'], data['xpos1']*1e3,
+                    yerr=data['xpos_err1']*1e3, fmt='k.', zorder = 1000)
     f1.plot(t_mod_ast, p_lens_mod[:, 0]*1e3, 'r-')
     f1.plot(t_mod_ast, p_unlens_mod[:, 0]*1e3, 'r--')
     f1.get_xaxis().set_visible(False)
     f1.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     f1.get_shared_x_axes().join(f1, f2)
     
-    f2.errorbar(data['t_ast1'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * 1e3,
-                yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f2.errorbar(data['t_ast1'], (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * 1e3,
+                yerr=data['xpos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     f2.plot(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*1e3, 'r-')
     f2.axhline(0, linestyle='--', color='r')
     f2.xaxis.set_major_locator(plt.MaxNLocator(3))
-    f2.set_ylim(-0.8, 0.8)
+    f2.set_ylim(-1.9, 1.9)
     f2.set_xlabel('Time (HJD)')
     f2.set_ylabel('Res.')
 
@@ -2127,8 +2191,8 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     # Dec vs. time
     f3 = plt.gcf().add_axes([fig_pos[2], 0.36, pan_wid, 0.6])
     f4 = plt.gcf().add_axes([fig_pos[2], 0.18, pan_wid, 0.2])
-    f3.errorbar(data['t_ast1'], data['ypos']*1e3,
-                    yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
+    f3.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                    yerr=data['ypos_err1']*1e3, fmt='k.', zorder = 1000)
     f3.plot(t_mod_ast, p_lens_mod[:, 1]*1e3, 'r-')
     f3.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
     f3.set_ylabel(r'$\Delta \delta$ (mas)')
@@ -2136,13 +2200,13 @@ def plot_3panel(data, mod, tab, outfile, target, r_min_k=None, mass_max_lim=2, l
     f3.get_xaxis().set_visible(False)
     f3.get_shared_x_axes().join(f3, f4)
     
-    f4.errorbar(data['t_ast1'], (data['ypos'] - p_unlens_mod_at_ast[:,1]) * 1e3,
-                yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    f4.errorbar(data['t_ast1'], (data['ypos1'] - p_unlens_mod_at_ast[:,1]) * 1e3,
+                yerr=data['ypos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     f4.plot(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, 'r-')
     f4.axhline(0, linestyle='--', color='r')
     f4.xaxis.set_major_locator(plt.MaxNLocator(3))
 #    f4.set_yticks(np.array([0.0, -0.2])) # For OB140613
-    f4.set_ylim(-0.8, 0.8)
+    f4.set_ylim(-1.9, 1.9)
     f4.set_xlabel('Time (HJD)')
     f4.set_ylabel('Res.')
 
