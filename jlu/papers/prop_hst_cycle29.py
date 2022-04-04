@@ -20,7 +20,7 @@ import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
+# from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 from microlens.jlu import model_fitter, multinest_utils, multinest_plot, munge_ob150211, munge_ob150029, model
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
@@ -29,14 +29,13 @@ import pickle
 from scipy.stats import norm
 from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
-# import lu_2019_lens
+import lu_2019_lens
 import copy
 from astropy.time import Time
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from flystar import analysis
 import yaml
-import lu_2019_lens
 
 def piE_tE():
     mdir = '/u/jlu/work/microlens/'
@@ -429,3 +428,222 @@ def EWS_select_BH():
 
     return
 
+def plot_mb10364():
+    # Load up GP model fits.
+    dat_dir_new = '/u/jlu/work/microlens/MB10364/a_2020_12_12/'
+    mod_dir_new = dat_dir_new + 'model_fits/moa_hst_gp_f814w/a0_'
+    
+    # Load up data
+    munge.data_sets['mb10364']['HST_f814w'] = dat_dir_new + 'mb10364_astrom_p5_2020_12_12_flc_f814w.fits'
+    data = munge.getdata2('mb10364', phot_data=['MOA', 'HST_f814w'], ast_data = ['HST_f814w'])  
+
+    
+    targ_yaml = open(mod_dir_new + 'params.yaml').read() 
+    params = yaml.safe_load(targ_yaml)
+    print(params)
+
+    # Cycle 17-24 Sahu results tE-piE.
+    fitter = model_fitter.PSPL_Solver(data,
+                                      model.PSPL_PhotAstrom_Par_GP_Param2,
+                                      outputfiles_basename=mod_dir_new)
+
+    smy = fitter.load_mnest_summary()
+
+    
+    mod = fitter.get_best_fit_model(def_best='maxl')
+    
+    times_mod = np.arange(54000, 57000, 10)
+
+    fig = plt.figure(1, figsize=(14,4))
+    plt.clf()
+    plt.subplots_adjust(left=0.07, right=0.975, bottom=0.2, wspace=0.45)
+    gs = fig.add_gridspec(2, 3)
+    ax1 = fig.add_subplot(gs[:, 0])
+    ax2y = fig.add_subplot(gs[0, 1])
+    ax2x = fig.add_subplot(gs[1, 1])
+    ax3 = fig.add_subplot(gs[:, 2])
+
+    ##########
+    # Photometry panel
+    ##########
+    mod_mag1 = mod.get_photometry(times_mod, 0)
+    # mod_mag1, mod_mag1_std_gp = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'],
+    #                                                        filt_index=0, t_pred=times_mod)
+    mod_mag2 = mod.get_photometry(times_mod, 1)
+
+    # Rescaled MOA to match what's on Artemis
+    moa_off = 2.7
+    mag1_rs = data['mag1'] + moa_off
+    mag2_rs = data['mag2']# - 1.8983
+
+    mod_mag1 += moa_off
+    # mod_mag2 += -1.8983  + 0.1   # Note fudge factor because data changed somehow
+    # mod_mag2 -= 0.19   # Note fudge factor because data changed somehow
+
+    ax1.errorbar(data['t_phot1'], mag1_rs, 
+                 ls='none', yerr=data['mag_err1'],
+                 color='tab:blue', alpha = 0.3)
+    ax1.errorbar(data['t_phot2'], mag2_rs, 
+                 ls='none', yerr=data['mag_err2'],
+                 color='tab:red', alpha = 0.9)
+    ax1.plot(times_mod, mod_mag1, '-', color = 'tab:blue') 
+    ax1.plot(data['t_phot1'], mag1_rs, '.',
+             color='tab:blue', alpha = 0.3)
+    ax1.plot(1, 1, '.', color='tab:blue', alpha = 0.9, label='MOA I + {0:.1f}'.format(moa_off))
+    ax1.plot(data['t_phot2'], mag2_rs, 'o',
+             color='tab:red', alpha = 0.9,
+             label='HST F814W')
+    ax1.plot(times_mod, mod_mag2, '--', color = 'tab:red')
+    ax1.set_xlabel('Time (MJD)')
+    ax1.invert_yaxis()
+    ax1.set_xlim(54817, 56653)
+    ax1.xaxis.set_major_locator(plt.MultipleLocator(500))
+    ax1.yaxis.set_major_locator(plt.MultipleLocator(1))
+    ax1.set_ylim(16, 12)
+    ax1.set_ylabel('Brightness (mag)')
+    ax1.legend()
+
+    ##########
+    # Astrometry panel
+    ##########
+    times_mod = np.arange(55200, 57000, 10)
+    times_dat = data['t_ast1']
+
+    # Remove the unlensed proper motion first.
+    p_mod_tdat = mod.get_astrometry(times_dat)
+    p_mod_unlens_tdat = mod.get_astrometry_unlensed(times_dat)
+    x_dat_no_pm = data['xpos1'] - p_mod_unlens_tdat[:, 0]
+    y_dat_no_pm = data['ypos1'] - p_mod_unlens_tdat[:, 1]
+    print(data['xpos1'])
+    print(p_mod_tdat[:, 0])
+    print(p_mod_unlens_tdat[:, 0])
+    print(x_dat_no_pm)
+    print(p_mod_tdat[:, 0] - p_mod_unlens_tdat[:, 0])
+    print(x_dat_no_pm - (p_mod_tdat[:, 0] - p_mod_unlens_tdat[:, 0]))
+
+    p_mod_tmod = mod.get_astrometry(times_mod, ast_filt_idx=0)
+    p_mod_unlens_tmod = mod.get_astrometry_unlensed(times_mod)
+    x_mod_no_pm = p_mod_tmod[:, 0] - p_mod_unlens_tmod[:, 0]
+    y_mod_no_pm = p_mod_tmod[:, 1] - p_mod_unlens_tmod[:, 1]
+    
+    ax2x.plot(times_mod, x_mod_no_pm * 1e3, 'k-', label='Model X')
+    ax2y.plot(times_mod, y_mod_no_pm * 1e3, 'k-', label='Model Y')
+    ax2x.errorbar(times_dat, x_dat_no_pm * 1e3, yerr=data['xpos_err1']*1e3, fmt='r.', label='Data')
+    ax2y.errorbar(times_dat, y_dat_no_pm * 1e3, yerr=data['ypos_err1']*1e3, fmt='r.')
+
+    ax2y.set_title('MB10364')
+    ax2x.set_ylabel(r'$\Delta \alpha$ (mas)')
+    ax2y.set_ylabel(r'$\Delta \delta$ (mas)')
+    ax2x.set_xlabel('Time (MJD)')
+    ax2y.get_xaxis().set_visible(False)
+
+    ##########
+    # Mass Posterior Panel
+    ##########
+    from jlu.papers import lu_2019_lens
+    stats = lu_2019_lens.calc_summary_statistics(fitter)
+        
+    tab = fitter.load_mnest_modes()
+
+    # Select out the maximum likelihood solutoin.
+    mdx = stats['maxlogL'].argmax()
+    tab = tab[mdx]
+    stats = stats[mdx]
+    
+    bins = np.logspace(-3, 2, 100)
+
+    n, b = np.histogram(tab['mL'], bins = bins, 
+                            weights = tab['weights'], density = False)
+    b0 = 0.5 * (b[1:] + b[:-1])
+
+    ax3.plot(b[:-1], n, drawstyle='steps-pre', color='black')
+    ax3.set_xscale('log')
+
+    # ax3.axvline(stats['MaxLike_mL'], color='black', linestyle='--', lw = 2)
+
+    conf_int = lu_2019_lens.get_CIs(tab['mL'], tab['weights'])
+    print('Best-Fit Lens Mass = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], 'mb10364'))
+    print('          68.3% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[0], conf_int[1]))
+    print('          95.5% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[2], conf_int[3]))
+    print('          99.7% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[4], conf_int[5]))
+        
+    ax3.set_xlabel('Lens Mass $(M_\odot)$')#, labelpad=10)
+    ax3.set_ylabel('Posterior Probability')#, labelpad=10)
+    # ax3.set_xticks(fontsize=fontsize2)
+    # ax3.set_yticks(fontsize=fontsize2)
+    ax3.set_xlim(0.01, 10)
+    # ax3.set_xlim(0, 2.0)
+    
+    # plt.savefig('moa_hst_photometry.png')
+
+
+
+def spiral_dither_pattern(numSteps, stepSize, angle, x0=0, y0=0):
+    """
+    Plot up the positions in coordinates and pixel phase space of a spiral
+    dither pattern. This is useful for checking for adequate pixel phase coverage.
+
+    numSteps -
+
+    stepSize - step size in arcsec as given in the APT
+
+    angle - angle in degrees.
+
+    """
+    spiral_dx = np.array([ 0,  1,  1,  0, -1,
+                          -1, -1,  0,  1,  2,
+                           2,  2,  2,  1,  0,
+                          -1, -2, -2, -2, -2,
+                          -2, -1,  0,  1,  2], dtype=float)
+
+    spiral_dy = np.array([ 0,  0,  1,  1,  1,
+                           0, -1, -1, -1, -1,
+                           0,  1,  2,  2,  2,
+                           2,  2,  1,  0, -1,
+                          -2, -2, -2, -2, -2], dtype=float)
+
+    # WFC3-UVIS
+    xscale = 0.04
+    yscale = 0.04
+
+    spiral_dx = spiral_dx[:numSteps]
+    spiral_dy = spiral_dy[:numSteps]
+
+    cosa = math.cos(math.radians(angle))
+    sina = math.sin(math.radians(angle))
+
+    x = spiral_dx * cosa + spiral_dy * sina
+    y = -spiral_dx * sina + spiral_dy * cosa
+
+    x *= stepSize
+    y *= stepSize
+
+    xPixPhase = (x/xscale) % 1.0
+    yPixPhase = (y/yscale) % 1.0
+
+    for i in range(numSteps):
+        fmt = 'Position {0:2d}:  X = {1:7.3f}  Y = {2:7.3f}'
+        print( fmt.format(i+1, x0 + x[i], y0 + y[i]) )
+
+    plt.figure(1)
+    plt.clf()
+    plt.plot(x, y, 'ko-')
+    plt.xlabel('X Offset (arcsec)')
+    plt.ylabel('Y Offset (arcsec)')
+    plt.axis('equal')
+
+    plt.figure(2)
+    plt.clf()
+    plt.plot(x/xscale, y/yscale, 'ks-')
+    plt.xlabel('X Offset (pixels)')
+    plt.ylabel('Y Offset (pixels)')
+    plt.axis('equal')
+
+    plt.figure(3)
+    plt.clf()
+    plt.plot(xPixPhase, yPixPhase, 'ko')
+    plt.xlabel('X Pixel Phase')
+    plt.ylabel('Y Pixel Phase')
+    plt.plot([0, 0, 1, 1, 0], [0, 1, 1, 0, 0], 'k--')
+    plt.xlim(-0.05, 1.05)
+    plt.ylim(-0.05, 1.05)

@@ -2,15 +2,17 @@ import numpy as np
 import pylab as plt
 from astropy.table import Table, Column, vstack
 from astropy.io import fits
+from dynesty import plotting as dyplot
 from flystar import starlists
 from scipy.interpolate import UnivariateSpline
+import scipy.stats
 from scipy.optimize import curve_fit, least_squares
+from popsycle import ebf
 import matplotlib.ticker
 import matplotlib.colors
 from matplotlib.pylab import cm
 from matplotlib.colors import Normalize, LogNorm
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-from mpl_toolkits.axes_grid1.colorbar import colorbar
 from matplotlib.ticker import NullFormatter
 import os
 from scipy.ndimage import gaussian_filter as norm_kde
@@ -23,6 +25,10 @@ import math
 import copy
 import yaml
 from scipy.stats import norm, poisson
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 mpl_o = '#ff7f0e'
 mpl_b = '#1f77b4'
@@ -59,7 +65,7 @@ a_date = {'ob120169': '2020_08_18',
 comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
               'ob140613': ['S002_15_0.7', 'S001_15_0.9'],
               'ob150029': ['S002_16_0.3', 'S003_16_0.9'],
-              'ob150211': ['S001_11_1.3', 'S003_14_1.4']}
+              'ob150211': ['S001_13_1.3', 'S003_15_1.4']}
 
 astrom_pass = {'ob120169': 'p5',
                'ob140613': 'p5',
@@ -78,55 +84,89 @@ for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_astrom_' + astrom_pass[targ] + '_' + a_date[targ] + astrom_suffix[targ] + '.fits'
 
-# added 12/20/19: might supersede pspl_phot.
 ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/base_d/',
                  'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/base_c/c3_',
                  'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/base_a/',
+                 'ob120169_gp'   : a_dir['ob120169'] + 'model_fits/201_phot_ogle_gp/base_a/a2_',
                  'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/base_c/',
                  'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/base_b/',
                  'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/base_c/c8_',
+                 'ob140613_gp'   : a_dir['ob140613'] + 'model_fits/201_phot_ogle_gp/base_pos/pos3_',
                  'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/base_b/',
                  'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/base_d/d8_', 
                  'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
+                 'ob150029_gp'   : a_dir['ob150029'] + 'model_fits/201_phot_ogle_gp/base_a/a3_',
                  'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/base_a/',
                  'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/base_a/a4_',
-                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/'}
+                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/base_d/',
+                 'ob150211_gp'   : a_dir['ob150211'] + 'model_fits/201_phot_ogle_gp/base_b/b4_'}
+    
     
 photom_spitzer = {'ob120169': None,
                   'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-pspl_phot = {'ob120169' : ogle_phot_all['ob120169_add'],
-             'ob140613' : ogle_phot_all['ob140613_mult'],
-             'ob150029' : ogle_phot_all['ob150029_add'],
-             'ob150211' : ogle_phot_all['ob150211_add']}
+# With GP.
+pspl_phot = {'ob120169' : ogle_phot_all['ob120169_gp'],
+             'ob140613' : ogle_phot_all['ob140613_gp'],
+             'ob150029' : ogle_phot_all['ob150029_gp'],
+             'ob150211' : ogle_phot_all['ob150211_gp']}
 
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/120_phot_astrom_parallax_merr_ogle_keck/base_a/a2_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/120_fit_phot_astrom_parallax_aerr_ogle_keck/base_a/a1_', # need PSBL
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/120_phot_astrom_parallax_aerr_ogle_keck/base_a/a5_'}
+# With GP: Not done running -- need to update.
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/220_phot_astrom_gp/base_b/b1_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/220_phot_astro_gp/base_a/a1_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/220_phot_astrom_gp/base_b/b4_',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/220_phot_astrom_gp/base_a/a1_split_',
+                      'ob150211_unsplit' : a_dir['ob150211'] + 'model_fits/220_phot_astrom_gp/base_a/a1_'}
 
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a2_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/113_phot_parallax_merr_ogle_keck/base_a/a3_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a3_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/113_phot_parallax_aerr_ogle_keck/base_a/a5_'}
+# 0-based... so 0 = first mode (after the global solution).
+pspl_ast_multiphot_mode = {'ob120169': 0,
+                           'ob140613': 0,
+                           'ob150029': 0,
+                           'ob150211': 0}
+
+# With GP: Not done running
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/211_phot_ogle_keck_gp/base_a/a5_',
+                  'ob140613' : a_dir['ob140613'] + 'model_fits/213_phot_ogle_keck_gp/base_a/a5_',
+                  'ob150029' : a_dir['ob150029'] + 'model_fits/211_phot_ogle_keck_gp/base_a/a4_',
+                  'ob150211' : a_dir['ob150211'] + 'model_fits/213_phot_ogle_keck_gp/base_a/a3_'}
 
 ogle_phot = {}
-ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
-ogle_phot['ob140613'] = ogle_phot_all['ob140613_mult']
-ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
-ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
+# ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
+# ogle_phot['ob140613'] = ogle_phot_all['ob140613_mult']
+# ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
+# ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
+
+ogle_phot['ob120169'] = ogle_phot_all['ob120169_gp']
+ogle_phot['ob140613'] = ogle_phot_all['ob140613_gp']
+ogle_phot['ob150029'] = ogle_phot_all['ob150029_gp']
+ogle_phot['ob150211'] = ogle_phot_all['ob150211_gp']
+
+popsycle_events = '/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits'
+
+keck_phot_2020 = {'kb200101' : mlens_dir + 'KB200101/a_2020_09_10/model_fits/kmtnet_phot_par/a0_',
+                  'mb19284' : mlens_dir + '',
+                  'ob190017' : mlens_dir + 'OB190017/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                  'ob170019' : mlens_dir + 'OB170019/a_2020_09_10/model_fits/ogle_phot_par/a0_',
+                  'ob170095' : mlens_dir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'}
+hst_phot = {'MB09260' : mlens_dir + 'MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+            'MB10364' :  mlens_dir +'MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+            'OB110037' : mlens_dir +'OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+            'OB110310' : mlens_dir +'OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+            'OB110462' : mlens_dir +'OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
+
 
 def all_paper():
-    plot_images()
-    make_obs_table()
-    calc_base_mag()
-    plot_pos_err()
+    # plot_images()
+    # make_obs_table()
+    # calc_base_mag()
+    # plot_pos_err()
 
-    # plot_linear_fits()
+    # compare_all_linear_motions()
 
-    separate_modes_all()
+    # separate_modes_all()
+    separate_ob150211_modes()
 
     plot_ob120169_phot_ast()
     plot_ob140613_phot_ast()
@@ -134,10 +174,14 @@ def all_paper():
     plot_ob150211_phot_ast()
 
     # PSPL Fit Tables
+    # org_solutions_for_table()
+    # -- Manually adjust which solutions are positive/negative/best
+    # -- and the order to display the solutions in the table functions below.
     table_ob120169_phot_astrom()
     table_ob140613_phot_astrom()
     table_ob150029_phot_astrom()
     table_ob150211_phot_astrom()
+    table_ob150211_phot()
 
     # Parameters and confidence intervals for the results text.
     results_best_params_all()
@@ -145,6 +189,7 @@ def all_paper():
     # Lens Geometry, velocity plots
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
     for targ in targets:
+        plot_linear_motion(targ)
         plot_lens_geometry(targ, axis_lim_scale=1, vel_scale=0.25)
         calc_velocity(targ)
         plot_trace_corner(targ)
@@ -153,25 +198,18 @@ def all_paper():
     plot_all_mass_posteriors()
 
     # tE vs. piE vs. deltaC plots
-    piE_tE(fit_type='ast')
-    shift_vs_piE()
+    piE_tE_deltac(fit_type='ast')
 
     # CMDs
     plot_cmds()
 
-    # Appendix
-    make_BIC_comparison_table()
+    #####
+    # OLD BROKEN STUFF
+    #####
+    # plot_linear_fits()
 
-    return
-
-def calibrate_nirc2_phot(recalc=True):
-    """
-    Some of our early photometric calibrations were incorrect. 
-    Since then, new VVV data has been released and the photometric
-    calibrations are much better. 
-    """
-
-    # First we need to calculate the zeropoints.
+    # Appendix -- DROP THIS TABLE
+    # make_BIC_comparison_table()
 
     return
 
@@ -360,9 +398,10 @@ def calc_date_resolved():
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
         stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
         tab_list = fitter.load_mnest_modes()
+        mode = pspl_ast_multiphot_mode[target]
 
         # Get the magnitude of muRel for the maximum-likelihood solution.
-        muRel = np.hypot( stats_ast['MaxLike_muRel_E'][0], stats_ast['MaxLike_muRel_N'][0])
+        muRel = np.hypot( stats_ast['MaxLike_muRel_E'][mode], stats_ast['MaxLike_muRel_N'][mode])
 
         # Calculate the credicble intervals on muRel
         sigma_vals = np.array([0.682689, 0.9545, 0.9973])
@@ -371,11 +410,11 @@ def calc_date_resolved():
         credi_ints_med = np.array([0.5])
         credi_ints = np.concatenate([credi_ints_med, credi_ints_lo, credi_ints_hi])
 
-        sumweights = np.sum(tab_list[0]['weights'])
-        weights = tab_list[0]['weights'] / sumweights
+        sumweights = np.sum(tab_list[mode]['weights'])
+        weights = tab_list[mode]['weights'] / sumweights
                 
         # Calculate median, 1 sigma lo, and 1 sigma hi credible interval.
-        muRel_all = np.hypot( tab_list[0]['muRel_E'], tab_list[0]['muRel_N'] )
+        muRel_all = np.hypot( tab_list[mode]['muRel_E'], tab_list[mode]['muRel_N'] )
         tmp = model_fitter.weighted_quantile(muRel_all, credi_ints, sample_weight=weights)
 
         print('')
@@ -392,7 +431,7 @@ def calc_date_resolved():
         from astropy.time import Time
         import datetime
         
-        t0 = Time(stats_ast['MaxLike_t0'][0], format='mjd', scale='utc')
+        t0 = Time(stats_ast['MaxLike_t0'][mode], format='mjd', scale='utc')
         t0_yr = t0.decimalyear
 
         t0_resolve = (dr_resolve / muRel) + t0_yr
@@ -432,9 +471,9 @@ def epoch_figure():
     pho_per_target = np.zeros(len(targets), dtype=int)
     for t in range(len(targets)):
         data = munge.getdata(targets[t], time_format='jyear')
-        ast_dates = np.append(ast_dates, data['t_ast'].data)
+        ast_dates = np.append(ast_dates, data['t_ast1'].data)
         pho_dates = np.append(pho_dates, data['t_phot'].data)
-        ast_per_target[t] = len(data['t_ast'])
+        ast_per_target[t] = len(data['t_ast1'])
         pho_per_target[t] = len(data['t_phot'])
 
     # Convert to astropy Time objects
@@ -699,7 +738,7 @@ def plot_images():
     return
 
 def separate_modes_all():
-    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211_unsplit']
     
     for targ in targets:
         print(targ.upper() + ':')
@@ -728,54 +767,244 @@ def separate_modes_all():
         # mod_fit_mphot.plot_dynesty_style()
 
     return
+
+def separate_ob150211_modes():
+    """
+    The u0 > 0 mode of OB150211 shows two modes that weren't split properly.
+    In this code, we will split them 
+    """
+    mod_fit_ast, data_ast = get_data_and_fitter(pspl_ast_multiphot['ob150211_unsplit'])
+
+    smy = mod_fit_ast.load_mnest_summary()
+    tab = mod_fit_ast.load_mnest_modes()
+
+    smy_global = smy[0]
+    
+    # Trim out the global mode of smy.
+    smy = smy[1:]
+
+    # Find the u0 > 0 (maxL) solution
+    idx = np.where(smy['Mean_u0_amp'] > 0)[0][0]
+    ndx = np.where(smy['Mean_u0_amp'] <= 0)[0][0]
+
+    smy_g = smy[idx]
+    tab_g = tab[idx]
+    tab_neg = tab[ndx]
+
+    ##########
+    # Split criteria:
+    ##########
+    
+    #
+    # Add amplitude of muRel to table and summary
+    #
+    muRel = np.hypot(tab_g['muRel_E'], tab_g['muRel_N'])
+
+    bins_murel = np.arange(0, 7, 0.04)
+
+    plt.figure(1)
+    plt.clf()
+    n, b, p = plt.hist(muRel, weights=tab_g['weights'], bins=bins_murel)
+
+    # Find the min point between 0-2 mas/yr.
+    min_murel_idx = n[b[:-1]<2].argmin()
+    min_murel = b[:-1][min_murel_idx] 
+    print(f'Minimum muRel = {min_murel:.3f}')
+
+    plt.axvline(min_murel, color='k', linestyle='--', linewidth=2)
+
+    
+    # Split the mode along the minimum muRel.
+    mode1_mask = muRel > min_murel
+    tab_g_hi_murel = tab_g[mode1_mask]
+    tab_g_lo_murel = tab_g[~mode1_mask]
+    
+    plt.figure(2)
+    plt.clf()
+    plt.hist(muRel[~mode1_mask], weights=tab_g_lo_murel['weights'],
+                 bins=bins_murel, color='orange', label='lo')
+    plt.hist(muRel[mode1_mask], weights=tab_g_hi_murel['weights'],
+                 bins=bins_murel, color='green', label='hi')
+    plt.legend()
+
+    # Find the maximum likelihood solution for OB150211... both modes.
+    maxL_idx_lo = np.argmax(tab_g_lo_murel['logLike'])
+    maxL_idx_hi = np.argmax(tab_g_hi_murel['logLike'])
+
+    print('Low muRel Solution (u0>0):')
+    print(tab_g_lo_murel[maxL_idx_lo]['logLike', 'mL'])
+    print('High muRel Solution (u0>0):')
+    print(tab_g_hi_murel[maxL_idx_hi]['logLike', 'mL'])
+
+    print()
+    print('Weights sum:')
+    print('lo = {0:.3f}'.format(tab_g_lo_murel['weights'].sum()))
+    print('hi = {0:.3f}'.format(tab_g_hi_murel['weights'].sum()))
+
+    log_ev_neg_u0 = np.log(np.sum(tab_neg['weights'])) + smy['logZ'][ndx]
+    log_ev_lo_murel = np.log(np.sum(tab_g_lo_murel['weights'])) + smy['logZ'][idx]
+    log_ev_hi_murel = np.log(np.sum(tab_g_hi_murel['weights'])) + smy['logZ'][idx]
+
+    print('\n Old evidence:')
+    print(smy['logZ'])
+    print('\n New evidence:')
+    print('neg_murel', log_ev_neg_u0)
+    print('pos_lo_murel', log_ev_lo_murel)
+    print('pos_hi_murel', log_ev_hi_murel)
+    
+
+    ##########
+    # Make a new "run" with the proper mode split.
+    ##########
+    old_output = pspl_ast_multiphot['ob150211_unsplit']
+    new_output = old_output + 'split_'
+
+    # copy over the global files.
+    import shutil
+    shutil.copyfile(old_output + '.txt', new_output + '.txt')
+    shutil.copyfile(old_output + '.fits', new_output + '.fits')
+    shutil.copyfile(old_output + 'ev.dat', new_output + 'ev.dat')
+    shutil.copyfile(old_output + 'live.points', new_output + 'live.points')
+    shutil.copyfile(old_output + 'params.yaml', new_output + 'params.yaml')
+    shutil.copyfile(old_output + 'phys_live.points', new_output + 'phys_live.points')
+
+    # Add the new modes as separate tables.
+    tab = [tab_g_hi_murel, tab_g_lo_murel, tab_neg]
+
+    N_modes = len(tab)
+    print(f'N_modes = {N_modes}')
+    
+    # Make new mode files.
+    for mm in range(N_modes):
+        tab[mm].write(new_output + f'mode{mm}.fits', overwrite=True)
+
+
+    # Make the summary table
+    smy_add = vstack([smy[idx], smy[idx]])    # two new solutions.
+    
+    # Replace the values.
+    # First, we want the statistics for the following types of solutions.
+    sol_types = ['maxl', 'mean', 'map']
+    sol_prefix = {'maxl': 'MaxLike_',
+                  'mean': 'Mean_',
+                  'map': 'MAP_'}
+
+    for sol in sol_types:
+        par_hi = mod_fit_ast.calc_best_fit(tab_g_hi_murel, smy_add, s_idx=0, def_best=sol)
+        par_lo = mod_fit_ast.calc_best_fit(tab_g_lo_murel, smy_add, s_idx=1, def_best=sol)
+
+        if sol == 'maxl' or sol == 'map':
+            best_par_hi = par_hi
+            best_par_lo = par_lo
+        else:
+            best_par_hi = par_hi[0]
+            best_par_lo = par_lo[0]
+            best_parerr_hi = par_hi[1]
+            best_parerr_lo = par_lo[1]
+
+        for param in mod_fit_ast.all_param_names:
+            if sol_prefix[sol] + param not in smy_add.colnames:
+                smy_add[sol_prefix[sol] + param] = 0.0
+                
+            smy_add[sol_prefix[sol] + param][0] = best_par_hi[param]
+            smy_add[sol_prefix[sol] + param][1] = best_par_lo[param]
+
+            if sol == 'mean':
+                smy_add['StDev_' + param][0] = best_parerr_hi[param]
+                smy_add['StDev_' + param][1] = best_parerr_lo[param]
+                
+
+    smy_add['logZ'][0] = log_ev_hi_murel
+    smy_add['logZ'][1] = log_ev_lo_murel
+
+    smy_add['maxlogL'][0] = tab_g_hi_murel['logLike'].max()
+    smy_add['maxlogL'][1] = tab_g_lo_murel['logLike'].max()
+
+    # order is global, murel hi + u0 pos, murel lo + u0 pos, u0 neg
+    # matches the order of the modes/table.
+    smy_new = vstack([smy_global, smy_add, smy[ndx]])
+
+    print('Final Summary Table (with global)')
+    print(smy_new['Mean_mL', 'MAP_mL', 'MaxLike_mL', 'logZ', 'maxlogL'])
+
+    smy_new.write(new_output + 'summary.fits', overwrite=True)
+
+
+    ##########
+    # Test new format
+    ##########
+    mod_fit, data = get_data_and_fitter(pspl_ast_multiphot['ob150211_unsplit'] + 'split_')
+    tabs_new = mod_fit.load_mnest_modes()
+
+    plt.figure(3)
+    plt.clf()
+    bins_mL = np.logspace(-2, 2, 50)
+
+    plt.hist(tabs_new[0]['mL'], weights=tabs_new[0]['weights'], bins=bins_mL, label='hi murel', alpha=0.4)
+    plt.hist(tabs_new[1]['mL'], weights=tabs_new[1]['weights'], bins=bins_mL, label='lo murel', alpha=0.4)
+    plt.hist(tabs_new[2]['mL'], weights=tabs_new[2]['weights'], bins=bins_mL, label='u0 neg', alpha=0.4)
+    plt.xscale('log')
+    plt.xlabel('$m_L$ (M$_\odot$)')
+    plt.ylabel('Probability')
+    plt.legend()
+
+    return
     
 
 def plot_ob120169_phot_ast():
     target = 'ob120169'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
 
-    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
+    inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],  # 
                 'scalex': [-8, -6], 'scaley': [-2, -2],
-                'textx': -5, 'texty': -1.3}
-    plot_4panel(data, mod_all[0], target, 1, img_f, inset_kw) #ref: 2016-05-24
+                'textx': -7, 'texty': -1.95,
+                'padd': 1}
+    plot_4panel(data, mod_all[mode], target, 1, img_f, inset_kw) #ref: 2016-05-24
     return
 
 def plot_ob140613_phot_ast():
     target = 'ob140613'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
-                'scalex': [-2, 0], 'scaley': [6, 6],
-                'textx': 1.4, 'texty': 6.5}
-    plot_4panel(data, mod_all[0], target, 6, img_f, inset_kw) #ref: 2018-08-16
+                'scalex': [-8, -6], 'scaley': [-1.5, -1.5],
+                'textx': -7, 'texty': -1.45,
+                'padd': 1}
+    plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw) #ref: 2018-08-16
     return
 
 def plot_ob150029_phot_ast():
     target = 'ob150029'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/17jul19/combo/mag17jul19_ob150029_kp.fits'
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
-                'scalex': [-5, -3], 'scaley': [-7, -7],
-                'textx': 1, 'texty': -10}
-    plot_4panel(data, mod_all[0], target, 6, img_f, inset_kw) #ref: 2017-07-19
+                'scalex': [-1, -3], 'scaley': [-1, -1],
+                'textx': -2, 'texty': -0.95,
+                'padd': 0.2}
+    plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw) #ref: 2017-07-19
     return
 
 def plot_ob150211_phot_ast():
     target = 'ob150211'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'maxL')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
-                'scalex': [2.0, 4.0], 'scaley': [-2, -2],
-                'textx': 4.5, 'texty': -1.5}
-    plot_4panel(data, mod_all[0], target, 7, img_f, inset_kw) #ref: 2017-06-05
+                'scalex': [3, 5], 'scaley': [4, 4],
+                'textx': 4, 'texty': 3.95,
+                'padd': 2}
+    plot_4panel(data, mod_all[mode], target, 7, img_f, inset_kw) #ref: 2017-06-05
     return
 
 
@@ -788,35 +1017,41 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     inset_kw is a dictionary for plotting 1) with the following keywords:
     {'labelp1': [x, y] list of first anchor for the label line,
      'labelp2': [x, y] list of the second anchor,
-     'scalex': [x1, x2] list for plotting the pixel scale,
-     'scaley': [y1, y2] list for plotting the pixel scale
+     'scalex': [x1, x2] list for plotting the pixel scale in mas,
+     'scaley': [y1, y2] list for plotting the pixel scale in mas,
                (y1 = y2 plots a flat line),
-     'textx': the x coord of the scale text, and
-     'texty': the y coord of the scale text}.
+     'textx': the x coord of the scale text in mas,
+     'texty': the y coord of the scale text in mas,
+     'padd': the padding to add in mas,
+     }.
      '''
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
-    from mpl_toolkits.axes_grid1.colorbar import colorbar
-
-    plt.close('all')
 
     # Sample time
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
-    t_mod_ast = np.arange(data['t_ast'].min() - 180.0, tmax, 2)
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
     t_mod_pho = np.arange(data['t_phot1'].min(), tmax, 2)
 
     # Get the linear motion curves for the source (includes parallax)
     p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast)
-    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast'])
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'])
 
     # Get the lensed motion curves for the source
     p_lens_mod = mod.get_astrometry(t_mod_ast)
-    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast'])
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'])
 
-    # Get the photometry
-    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    # Get the predicted photometry
+    m_lens_mod_gp = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_index=0, t_pred=t_mod_pho)[0]
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)    
+
     m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
     m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+    m_lens_mod_gp_at_phot1 = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_index=0)[0]
+    m_lens_mod_gp_only_at_phot1 = m_lens_mod_gp_at_phot1 - m_lens_mod_at_phot1
+
+    # Get the observed photometry, de-trended (GP noise removed)
+    m_lens_obs1_detrend = data['mag1'] - m_lens_mod_gp_only_at_phot1
 
     t_mod_all = np.append(t_mod_ast, t_mod_pho)
     # Set the colorbar
@@ -827,7 +1062,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Find the closest model date to the ref_epoch and
     # center inset positions on it
-    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast'][ref_epoch]).argmin()
+    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast1'][ref_epoch]).argmin()
     xpos_ins = (p_lens_mod[:, 0] - p_lens_mod[mod_ref_epoch, 0])*-1e3
     ypos_ins = (p_lens_mod[:, 1] - p_lens_mod[mod_ref_epoch, 1])*1e3
 
@@ -862,10 +1097,12 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     fig = plt.figure(1, figsize = (11,10))
     wpad = 0.14
     hpad = 0.11
-    ax_width = 0.37*10/11
+    ax_width = 0.37 * 10. / 11.
     ax_height = 0.37
 
+    #####
     # TARGET IMAGE
+    #####
     ax1 = fig.add_axes([wpad, 1.0 - hpad/2 - ax_height, ax_width, ax_height])
     ax1.imshow(img, cmap='gist_heat_r', norm=LogNorm(12, 1e6),
                extent=[x_axis[0], x_axis[-1], y_axis[0], y_axis[-1]])
@@ -882,96 +1119,105 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax1.text(inset_kw['labelp1'][0], inset_kw['labelp2'][0], target.upper(),
              fontsize=16, color=line_color)
 
-    # Fake inset axes to control the inset marking,
-    # since the scale of the inset is different from the main plot
-    axf = inset_axes(ax1, 1, 1)
-    axf.plot(xpos_ins/1e3, ypos_ins/1e3)
+    #####
+    # INSET
+    #####
+    # Note: the scale of the inset should be the same as the image plot.
+    axf = inset_axes(ax1, 1.05, 1)
+    #     Model
+    axf.scatter(xpos_ins/1e3, ypos_ins/1e3, c=t_mod_ast, cmap=cmap, norm=norm, s=1)
+    #     Data
+    axf.errorbar((data['xpos1'] - data['xpos1'][ref_epoch])*-1, (data['ypos1'] - data['ypos1'][ref_epoch])*1,
+                   xerr = data['xpos_err1']*1, yerr=data['ypos_err1']*1, fmt='.k')
     axf.set_xticks([])
     axf.set_yticks([])
+    axf.invert_xaxis()
     axf.set_aspect('equal')
 
-    # Plot the motion on the sky
-    axins = inset_axes(ax1, 1.05, 1)
-
-    axins.scatter(xpos_ins, ypos_ins, c=t_mod_ast, cmap=cmap, norm=norm, s=1)
-    axins.errorbar((data['xpos'] - data['xpos'][ref_epoch])*-1e3, (data['ypos'] - data['ypos'][ref_epoch])*1e3,
-                   xerr = data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='.k')
-
-    axins.set_xticks([],[])
-    axins.set_yticks([],[])
-    axins.invert_xaxis()
+    # Plot the scale in the inset
+    axf.plot(np.array(inset_kw['scalex'])/1e3, np.array(inset_kw['scaley'])/1e3, color=line_color)
+    axf.text(inset_kw['textx']/1e3, inset_kw['texty']/1e3, '2 mas', color=line_color, fontsize=12,
+                 ha='center', va='bottom')
 
     # Enlarge the lims to create space for the points
-    axins.set_ylim(axins.get_ylim()[0]-2.0, axins.get_ylim()[1]+1.0)
-    axins.set_aspect('equal')
+    axf.set_ylim(axf.get_ylim()[0] - (inset_kw['padd']/1e3), axf.get_ylim()[1] + (inset_kw['padd']/1e3))
+    axf.set_xlim(axf.get_xlim()[0] + (inset_kw['padd']/1e3), axf.get_xlim()[1] - (inset_kw['padd']/1e3))
+    axf.set_aspect('equal')
 
-    # Plot the scale in the inset
-    axins.plot(inset_kw['scalex'], inset_kw['scaley'], color=line_color)
-    axins.text(inset_kw['textx'], inset_kw['texty'], '2 mas', color=line_color, fontsize=12)
-
-    # Tweak the limits of the fake axes to fit the inset markers
-    axf.set_ylim((axins.get_ylim()[0])/1e3, (axins.get_ylim()[1])/1e3)
+    
     # Manually set the position and relative size of the inset axes within ax1
     ip = InsetPosition(ax1, [0.40, 0.05, 0.55, 0.45])
     axf.set_axes_locator(ip)
-    axins.set_axes_locator(ip)
-    # Mark the region corresponding to the inset axes on the parenta axes
+    # axins.set_axes_locator(ip)
+    
+    # Mark the region corresponding to the inset axes on the parental axes
     # and draw lines in grey linking the two axes.
     mark_inset(parent_axes=ax1, inset_axes=axf, loc1=1, loc2=3, fc="none", ec='0.45')
 
+    #####
     # MAGNITUDE VS TIME
+    #####
     ax10 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - 0.75*ax_height, ax_width, 0.75*ax_height])
     ax11 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - ax_height, ax_width, 0.25*ax_height])
-    ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+    # ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+    #               fmt='k.', alpha=0.05)
+    ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax10.invert_yaxis()
-    ax10.set_ylabel('Magnitude')
+    ax10.set_ylabel('$m_I$ (mag)')
     ax10.set_aspect('auto', adjustable='box')
     ax10.set_xticks([])
+    ax11.axhline(0, color='grey', linestyle='--', zorder=1)
     ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
-                  fmt='k.', alpha=0.05)
-    ax11.scatter(t_mod_pho, m_lens_mod - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
+                  fmt='k.', alpha=0.05, zorder=2)
+    ax11.scatter(t_mod_pho, m_lens_mod_gp - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1, zorder=3)
     ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
+    ax11.xaxis.set_major_locator(plt.MultipleLocator(1000))
     ax11.set_xlabel('Time (MJD)')
-    ax11.set_ylabel('Res.')
+    ax11.set_ylabel('GP')
+    
 
     # Center the position data and model off the reference epoch
-    p_lens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    p_unlens_mod -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    p_unlens_mod_at_ast -= [data['xpos'][ref_epoch], data['ypos'][ref_epoch]]
-    data['xpos'] -= data['xpos'][ref_epoch]
-    data['ypos'] -= data['ypos'][ref_epoch]
+    p_lens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod_at_ast -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    data['xpos1'] -= data['xpos1'][ref_epoch]
+    data['ypos1'] -= data['ypos1'][ref_epoch]
 
+    #####
     # RA VS TIME
+    #####
     ax20 = fig.add_axes([wpad, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
     ax21 = fig.add_axes([wpad, hpad, ax_width, 0.25*ax_height])
-    ax20.errorbar(data['t_ast'], data['xpos']*-1e3,
-                  yerr=data['xpos_err']*1e3, fmt='k.', zorder = 1000)
+    ax20.errorbar(data['t_ast1'], data['xpos1']*-1e3,
+                  yerr=data['xpos_err1']*1e3, fmt='k.', zorder = 1000)
     ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*-1e3, 'r--')
     ax20.get_xaxis().set_visible(False)
     ax20.set_ylabel(r'$\Delta \alpha^*$ (mas)')
     ax20.get_shared_x_axes().join(ax20, ax21)
-    ax21.errorbar(data['t_ast'], (data['xpos'] - p_unlens_mod_at_ast[:,0]) * -1e3,
-                  yerr=data['xpos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax21.errorbar(data['t_ast1'], (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * -1e3,
+                  yerr=data['xpos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax21.axhline(0, linestyle='--', color='r')
     ax21.set_xlabel('Time (MJD)')
     ax21.set_ylabel('Res.')
 
+    #####
     # DEC VS TIME
+    #####
     ax30 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
     ax31 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad, ax_width, 0.25*ax_height])
-    ax30.errorbar(data['t_ast'], data['ypos']*1e3,
-                  yerr=data['ypos_err']*1e3, fmt='k.', zorder = 1000)
+    ax30.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                  yerr=data['ypos_err1']*1e3, fmt='k.', zorder = 1000)
     ax30.scatter(t_mod_ast, p_lens_mod[:, 1]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax30.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
     ax30.get_xaxis().set_visible(False)
     ax30.set_ylabel(r'$\Delta \delta$ (mas)')
     ax30.get_shared_x_axes().join(ax30, ax31)
-    ax31.errorbar(data['t_ast'], (data['ypos'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
-                  yerr=data['ypos_err'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax31.errorbar(data['t_ast1'], (data['ypos1'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
+                  yerr=data['ypos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
     ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
     ax31.axhline(0, linestyle='--', color='r')
     ax31.set_xlabel('Time (MJD)')
@@ -1049,9 +1295,9 @@ def plot_comparison_stars(target, res_rng=0.8):
         ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
 
         # Plot Positions on Sky
-        ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
-        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
-        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
         sc = ax_sky.scatter(star['x'], star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
         ax_sky.errorbar(star['x'], star['y'], xerr=star['xe'], yerr=star['ye'],
                             ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
@@ -1136,10 +1382,10 @@ def weighted_avg_and_std(values, weights):
 # PREFER the piE_tE() version with contours.
 # This one only has stars.... good for public talk. 
 ##########
-def tE_piE():
+def OLD_tE_piE():
     plt.close('all')
     
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popscyle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -1218,11 +1464,486 @@ def tE_piE():
 
     return
 
+def piE_tE_deltac(fit_type = 'ast'):
+    """
+    Supports plotting for several different fit solutions:
+
+    fit_type = 'ast'
+        Keck + OGLE photometry, Keck astrometry
+    fit_type = 'phot'
+        OGLE photometry
+    fit_type = 'multiphot'
+        Keck + OGLE photometry
+    """
+    if fit_type is 'ast':
+        data_dict = pspl_ast_multiphot
+    if fit_type is 'phot':
+        data_dict = pspl_phot
+    if fit_type is 'multiphot':
+        data_dict = pspl_multiphot
+        
+
+    ##########
+    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
+    # ON THE WAY THIS PLOT LOOKS !!!
+    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
+    # Also plot PopSyCLE simulations simultaneously.
+    ##########
+    span = 0.999999426697
+    smooth = 0.04
+    quantiles_2d = None
+    hist2d_kwargs = None
+    labels = None
+    label_kwargs = None
+    show_titles = False 
+    title_fmt = ".2f" 
+    title_kwargs = None
+    
+    # Initialize values.
+    if label_kwargs is None:
+        label_kwargs = dict()
+    if title_kwargs is None:
+        title_kwargs = dict()
+    if hist2d_kwargs is None:
+        hist2d_kwargs = dict()
+
+    # Dictionary of dictionaries containing the tE and piE
+    # label position for each of the text labels.
+    # WARNING: THE 'PHOT' AND 'AST' ARE THE SAME FOR THE NEW
+    # TARGETS... THEY ARE JUST PHOT THOUGH.
+    label_pos = {'phot': {'ob120169': [150, 0.01],
+                          'ob140613': [170, 0.1],
+                          'ob150029': [150, 0.2],
+                          'ob150211': [35, 0.04],
+                          'ob170019': [0, 0.04],
+                          'ob170095': [0, 0.04],
+                          'ob190017': [0, 0.04],
+                          'kb200101': [0, 0]},
+                 'ast':  {'ob110022': [17, 0.38],
+                          'ob120169': [130, 0.25],
+                          'ob140613': [190, 0.09],
+                          'ob150029': [30, 0.15],
+                          'ob150211': [150, 0.02],
+                          'ob170019': [120, 0.045],
+                          'ob170095': [30, 0.04],
+                          'ob190017': [180, 0.28],
+                          'kb200101': [180, 0.016],
+                          'mb190284': [300, 0.025]}
+                }
+
+    label_pos_ast = {'ob120169': [0.006, 0.06],
+                     'ob140613': [0.04, 0.145],
+                     'ob150029': [0.02, 0.25],
+                     'ob150211': [0.03, 0.012]}
+
+    # These are hard-coded points from previous papers (no full posteriors).
+    tE_points = {'ob110022': 61.4}
+    tE_err_points = {'ob110022': 5}  # CHECK
+    piE_points = {'ob110022': np.hypot(-0.393, -0.071)}
+    piE_err_points = {'ob110022': 0.05} # CHECK
+    deltac_points = {'ob110022': 2.19 / np.sqrt(8)}
+    deltac_err_points = {'ob110022': 1.06 / np.sqrt(8)}  # CHECK
+    
+    colors = {'ob110022': 'gray',
+              'ob120169': 'purple',
+              'ob140613': 'red',
+              'ob150029': 'darkorange',
+              'ob150211': 'black',
+              'ob170019': 'blue',
+              'ob170095': 'blue',
+              'ob190017': 'blue',
+              'kb200101': 'blue',
+              'MB09260' : 'gray',
+              'MB10364' : 'gray',
+              'mb190284' : 'gray',
+              'OB110037' : 'gray',
+              'OB110310' : 'gray',
+              'OB110462' : 'red'}
+
+    include = {'ob110022': True,
+              'ob120169': True,
+              'ob140613': True,
+              'ob150029': True,
+              'ob150211': True,
+              'ob170019': False,
+              'ob170095': False,
+              'ob190017': False,
+              'kb200101': False,
+              'MB09260' : False,
+              'mb190284' : False,
+              'MB10364' : False,
+              'OB110037' : False,
+              'OB110310' : False,
+              'OB110462' : False}
+
+    include_ast = {'ob110022': True,
+                   'ob120169': True,
+                   'ob140613': True,
+                   'ob150029': True,
+                   'ob150211': True,
+                   'ob170019': False,
+                   'ob170095': False,
+                   'ob190017': False,
+                   'kb200101': False,
+                   'MB09260' : False,
+                   'mb190284' : False,
+                   'MB10364' : False,
+                   'OB110037' : False,
+                   'OB110310' : False,
+                   'OB110462' : False}
+        
+    use_label = {'ob110022': False,
+                 'ob120169': True,
+                 'ob140613': True,
+                 'ob150029': True,
+                 'ob150211': True,
+                 'ob170019': False,
+                 'ob170095': False,
+                 'ob190017': False,
+                 'kb200101': False,
+                 'MB09260' : False,
+                 'mb190284': False,
+                 'MB10364' : False,
+                 'OB110037': False,
+                 'OB110310': False,
+                 'OB110462': False}
+        
+
+    ast_ulim = {'ob110022': True,
+                'ob120169': False,
+                'ob140613': False,
+                'ob150029': False,
+                'ob150211': False,
+                'ob170019': False,
+                'ob170095': False,
+                'ob190017': False,
+                'kb200101': False,
+                'MB09260' : False,
+                'mb190284': False,
+                'MB10364' : False,
+                'OB110037': True,
+                'OB110310': False,
+                'OB110462': False}
+        
+    # Set defaults.
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+
+    ##########
+    # Load up the data
+    ##########
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211'] 
+    hst_targets = ['MB09260', 'MB10364', 'OB110037', 'OB110310', 'OB110462']
+    phot_targets = ['ob170019', 'ob170095', 'ob190017', 'kb200101', 'ob110022']
+    tE = {}
+    piE = {}
+    theta_E = {}
+    deltaC = {}
+    weights = {}
+
+    for targ in hst_targets:
+        if not include[targ] or targ in tE_points:
+            continue
+        
+        fit_targ, dat_targ = get_data_and_fitter(hst_phot[targ])
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+
+        mode = stats_targ['logZ'].argmax()
+        # mode = pspl_ast_multiphot_mode[targ]
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            theta_E[targ] = 10**samps_targ['log10_thetaE']
+        else:
+            theta_E[targ] = samps_targ['thetaE']
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        deltaC[targ] = theta_E[targ] * 2**0.5 / 4.0
+        weights[targ] = samps_targ['weights']
+        
+
+    for targ in targets:
+        if not include[targ] or targ in tE_points:
+            continue
+
+        fit_targ, dat_targ = get_data_and_fitter(pspl_ast_multiphot[targ])
+        mode = pspl_ast_multiphot_mode[targ]
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            theta_E[targ] = 10**samps_targ['log10_thetaE']
+        else:
+            theta_E[targ] = samps_targ['thetaE']
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        deltaC[targ] = theta_E[targ] * 2**0.5 / 4.0
+        weights[targ] = samps_targ['weights']
+        
+    for targ in phot_targets:
+        if not include[targ] or targ in tE_points:
+            continue
+
+        fit_targ, dat_targ = get_data_and_fitter(keck_phot_2020[targ])
+        
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+
+        mode = stats_targ['logZ'].argmax()
+        # mode = pspl_ast_multiphot_mode[targ]
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
+
+        tE[targ] = samps_targ['tE']
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        weights[targ] = samps_targ['weights']
+
+
+    # MB190284 fit results (from Dave Bennett)
+    data_tab = '/u/jlu/doc/proposals/hst/cycle28_mid2/mcmc_bsopcnC_3.dat'
+
+    # chi^2 1/t_E t0 umin sep theta eps1=q/(1+q) 1/Tbin dsxdt dsydt t_fix Tstar(=0) pi_E,N piE,E 0 0 0 0 0 0 0 0 0 A0ogleI A2ogleI A0ogleV A2ogleV A0moa2r A2moa2r A0moa2V
+    data = Table.read(data_tab, format='ascii.fixed_width_no_header', delimiter=' ')
+    data.rename_column('col1', 'chi2')
+    data.rename_column('col2', 'tE_inv')
+    data.rename_column('col3', 't0')
+    data.rename_column('col4', 'u0')
+    data.rename_column('col5', 'sep')
+    data.rename_column('col6', 'theta')
+    data.rename_column('col7', 'eps1')
+    data.rename_column('col8', 'Tbin_inv')
+    data.rename_column('col9', 'dsxdt')
+    data.rename_column('col10', 'dsydt')
+    data.rename_column('col11', 't_fix')
+    data.rename_column('col12', 'Tstar')
+    data.rename_column('col13', 'piEE')
+    data.rename_column('col14', 'piEN')
+    data['tE'] = 1.0 / data['tE_inv']
+    data['piEE'] = data['piEE'].astype('float')
+    data['weight'] = np.ones(len(data))
+    data['piE'] = np.hypot(data['piEE'], data['piEN'])
+
+    targ = 'mb190284'
+    tE[targ] = data['tE']
+    piE[targ] = data['piE']
+    weights[targ] = data['weight']
+    phot_targets.append(targ)
+    
+
+    ##########
+    # Load up the PopSyCLE simulation points.
+    ##########
+    popsyc = Table.read(popsycle_events) 
+    bh_idx = np.where(popsyc['rem_id_L'] == 103)[0]
+    ns_idx = np.where(popsyc['rem_id_L'] == 102)[0]
+    wd_idx = np.where(popsyc['rem_id_L'] == 101)[0]
+    st_idx = np.where(popsyc['rem_id_L'] == 0)[0]
+
+    # Stores the maximum astrometric shift
+    popsyc_delta_arr = np.zeros(len(popsyc))
+    
+    # Stores the lens-source separation corresponding
+    # to the maximum astrometric shift
+    popsyc_u_ast_max_arr = np.zeros(len(popsyc))
+
+    # Flux ratio of lens to source (and make it 0 if dark lens)
+    popsyc_g_arr = 10**(-0.4 * (popsyc['ubv_i_app_L'] - popsyc['ubv_i_app_S']))
+    popsyc_g_arr = np.nan_to_num(popsyc_g_arr)
+
+    # First calculate max astrometric shift using
+    # approximation that only works for u0 > 2**0.5
+    g = popsyc_g_arr
+    u = popsyc['u0']
+    numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+    denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+    popsyc['deltaC'] = (u * popsyc['theta_E']/(1 + g)) * (numer/denom)
+
+    # Now fix those that have u0 < 2**0.5.
+    idx_fix = np.where(popsyc['u0'] < 2**0.5)[0]
+    for i in idx_fix:
+        g = popsyc_g_arr[i] 
+        thetaE = popsyc['theta_E'][i]
+        # Try all values between u0 and sqrt(2) to find max 
+        # astrometric shift
+        u = np.linspace(popsyc['u0'][i], np.sqrt(2), 100)
+        numer = 1 + g * (u**2 - u * np.sqrt(u**2 + 4) + 3)
+        denom = u**2 + 2 + g * u * np.sqrt(u**2 + 4)
+        delta = (u * thetaE/(1 + g)) * (numer/denom)
+        max_idx = np.argmax(delta)
+        popsyc['deltaC'][i] = delta[max_idx]
+
+
+    ##########
+    # Plot the piE-tE 2D posteriors from observed targets.
+    ##########
+    fig = plt.figure(1, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    sx = smooth
+    sy = smooth
+
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
+
+    for targ in targets + phot_targets + hst_targets:
+        if not include[targ]:
+            continue
+
+        if targ in tE_points:
+            plt.errorbar(tE_points[targ], piE_points[targ],
+                             xerr=tE_err_points[targ], yerr=piE_err_points[targ],
+                             marker = 's', ms = 4, color=colors[targ])
+        else:
+            model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                         weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                         **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+        if include[targ] and use_label[targ]:
+            axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
+                          targ.upper(), color=colors[targ])    
+
+
+
+    axes.scatter(popsyc['t_E'][st_idx], popsyc['pi_E'][st_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'paleturquoise')
+    axes.scatter(popsyc['t_E'][wd_idx], popsyc['pi_E'][wd_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'aqua')
+    axes.scatter(popsyc['t_E'][ns_idx], popsyc['pi_E'][ns_idx], 
+                 alpha = 0.4, marker = '.', s = 25, 
+                 color = 'tab:cyan')
+    axes.scatter(popsyc['t_E'][bh_idx], popsyc['pi_E'][bh_idx],
+                 alpha = 0.8, marker = '.', s = 25, 
+                 color = 'black')
+
+    # Trickery to make the legend darker
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'Star', color = 'paleturquoise')
+    axes.scatter(0.01, 100, 
+                 alpha = 0.8, marker = '.', s = 25,
+                 label = 'WD', color = 'aqua')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'NS', color = 'tab:cyan')
+    axes.scatter(0.01, 100,
+                 alpha = 0.8, marker = '.', s = 25, 
+                 label = 'BH', color = 'black')
+
+    axes.set_xlim(10, 1000)
+    axes.set_ylim(0.005, 0.5)
+    axes.set_xlabel('$t_E$ (days)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+    axes.legend(loc=3)
+    plt.savefig(paper_dir + 'piE_tE_' + fit_type + '.png')
+    plt.show()
+
+    
+    ##########
+    # delta_c vs. piE
+    ##########
+    fig = plt.figure(2, figsize=(6,6))
+    plt.clf()
+    axes = plt.gca()
+    plt.subplots_adjust(bottom=0.15)
+
+    # Observed
+    for targ in targets + phot_targets + hst_targets:
+        if not include_ast[targ]:
+            continue
+
+        # Targets with only upper limits to deltaC.
+        if ast_ulim[targ]:
+            # Check to see if we have posteriors and
+            # calculate the 3 sigma upper limits.
+            if targ not in tE_points:
+                deltac_conf_ints = get_CIs(deltaC[targ], weights[targ])
+                piE_conf_ints = get_CIs(piE[targ], weights[targ])
+                
+                deltac_3sig_hi = deltac_conf_ints[-1]
+                piE_median = model_fitter.weighted_quantile(piE[targ], [0.5], sample_weight=weights[targ])[0]
+                piE_err = np.array([piE_conf_ints[0:2]]).T
+            else:
+                deltac_3sig_hi = deltac_points[targ] + 3*deltac_err_points[targ]
+                piE_median = piE_points[targ]
+                piE_err = piE_err_points[targ]
+
+            axes.errorbar(deltac_3sig_hi, piE_median,
+                          xerr = deltac_3sig_hi * 0.25,
+                          yerr = piE_err,
+                          fmt = 'o', color = colors[targ], markersize = 5,
+                          xuplims = True)
+        else:
+            # Targets with posteriors and contours.
+            model_fitter.contour2d_alpha(deltaC[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
+                                             weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
+                                             **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+
+    
+    # Mass Gap Band
+    xarr = np.linspace(0.001, 4, 1000)
+    axes.fill_between(xarr, xarr*0.18, xarr*0.07, alpha=0.15, color='orange')
+    axes.text(0.05, 0.006, 'Mass Gap', rotation=45)
+
+    # PopSyCLE
+    axes.scatter(popsyc['deltaC'][st_idx], popsyc['pi_E'][st_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'paleturquoise')
+    axes.scatter(popsyc['deltaC'][wd_idx], popsyc['pi_E'][wd_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'aqua')
+    axes.scatter(popsyc['deltaC'][ns_idx], popsyc['pi_E'][ns_idx], 
+                  alpha = 0.4, marker = '.', s = 25,
+                  c = 'tab:cyan')
+    axes.scatter(popsyc['deltaC'][bh_idx], popsyc['pi_E'][bh_idx], 
+                  alpha = 0.8, marker = '.', s = 25,
+                  c = 'black')
+
+    axes.set_xlabel('$\delta_{c,max}$ (mas)')
+    axes.set_ylabel('$\pi_E$')
+    axes.set_xscale('log')
+    axes.set_yscale('log')
+#    axes.set_xlim(0.005, 4)
+#    axes.set_ylim(0.009, 0.5)
+    axes.set_xlim(0.02, 2)
+    axes.set_ylim(0.005, 0.5)
+    plt.savefig('piE_deltac_ast.png')
+    plt.show()
+
+    return
+
 def shift_vs_piE():
     plt.close('all')
     
     # This assumes blending from source and lens.
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     u0_arr = t['u0']
     thetaE_arr = t['theta_E']
@@ -1301,22 +2022,27 @@ def shift_vs_piE():
 
     for targ in targets:
         fit_targ, dat_targ = get_data_and_fitter(pspl_ast_multiphot[targ])
+        mode = pspl_ast_multiphot_mode[targ]
         
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
+        stats_targ = calc_summary_statistics(fit_targ)
+        samps_targ = fit_targ.load_mnest_modes()
+        
+        # Find the best-fit solution
+        samps_targ = samps_targ[mode]
+        stats_targ = stats_targ[mode]
+        
+        param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
 
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps_targ.colnames) and ('thetaE' not in samps_targ.colnames):
+            thetaE_samp = 10**samps_targ['log10_thetaE']
+        else:
+            thetaE_samp = samps_targ['thetaE']
 
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
-        tE[targ] = res_targ['tE']
-        deltaC[targ] = res_targ['thetaE'] / np.sqrt(8.0)
-        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
-        weights[targ] = res_targ['weights']
+        tE[targ] = samps_targ['tE']
+        deltaC[targ] = thetaE_samp * 2**0.5 / 4.0
+        piE[targ] = np.hypot(samps_targ['piE_E'], samps_targ['piE_N'])
+        weights[targ] = samps_targ['weights']
 
     # Get ready for some plotting
     span = 0.999999426697
@@ -1422,12 +2148,17 @@ def calc_velocity(target):
 
     fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
     stats = calc_summary_statistics(fitter, verbose=False)
+    mod_all = fitter.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
+    bf_mod = mod_all[mode]
+
+    # Hack for old models
+    fitter.all_param_names.remove('thetaE')
+    fitter.all_param_names.remove('mag_src1')
+    fitter.all_param_names.remove('mag_src2')
 
     bf_mod = fitter.get_best_fit_model()
     
-    # Find the max likelihood solution in stats
-    sdx = stats['MaxLike_logL'].argmax()
-
     def print_vel_info(ra, dec, muE, muN, muE_e, muN_e, dist):
         c1 = coord.ICRS(ra=ra*u.degree, dec=data['decL']*u.degree,
                     distance=dist*u.pc,
@@ -1467,24 +2198,24 @@ def calc_velocity(target):
         return
         
     
-    # Fetch the lens proper motions. Only for the 1st solution
+    # Fetch the lens proper motions. Only for the "best" solution
     # as this is the one we will adopt for the paper.
     dL = bf_mod.dL
     muL_E = bf_mod.muL[0]
     muL_N = bf_mod.muL[1]
-    muLe_E = np.diff([stats['lo68_muL_E'][sdx], stats['hi68_muL_E'][sdx]])[0] / 2.0
-    muLe_N = np.diff([stats['lo68_muL_N'][sdx], stats['hi68_muL_N'][sdx]])[0] / 2.0
+    muLe_E = np.diff([stats['lo68_muL_E'][mode], stats['hi68_muL_E'][mode]])[0] / 2.0
+    muLe_N = np.diff([stats['lo68_muL_N'][mode], stats['hi68_muL_N'][mode]])[0] / 2.0
 
     print('\n*** Lens ***')
     print_vel_info(data['raL'], data['decL'], muL_E, muL_N, muLe_E, muLe_N, dL)
 
-    # Fetch the source proper motions. Only for the 1st solution
+    # Fetch the source proper motions. Only for the "best" solution
     # as this is the one we will adopt for the paper.
     dS = bf_mod.dS
     muS_E = bf_mod.muS[0]
     muS_N = bf_mod.muS[1]
-    muSe_E = np.diff([stats['lo68_muS_E'][sdx], stats['hi68_muS_E'][sdx]])[0] / 2.0
-    muSe_N = np.diff([stats['lo68_muS_N'][sdx], stats['hi68_muS_N'][sdx]])[0] / 2.0
+    muSe_E = np.diff([stats['lo68_muS_E'][mode], stats['hi68_muS_E'][mode]])[0] / 2.0
+    muSe_N = np.diff([stats['lo68_muS_N'][mode], stats['hi68_muS_N'][mode]])[0] / 2.0
 
     print('\n*** Source ***')
     print_vel_info(data['raL'], data['decL'], muS_E, muS_N, muSe_E, muSe_N, dS)
@@ -1493,7 +2224,7 @@ def calc_velocity(target):
     base_mags = calc_base_mag(plot=False)
     
     # Load up PopSyCLE
-    sim = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits')
+    sim = Table.read(popsycle_events)
 
     # Filter out really faint stuff. CHOOSE NOT TO TRIM becuase we are
     # looking at the whole field of stars, not just the target. 
@@ -1609,8 +2340,102 @@ def plot_cmd_ob150211():
 
     # Also fetch our best fit and figure out the source and lens/neighbor
     # brightness.
-    fitter, data = get_data_and_fitter(pspl_ast_multiphot['ob150211'])
-    params = fitter.get_best_fit(def_best='maxl')
+    foo = get_data_fitter_params_models_samples('ob150211', return_mode = 'best')
+    fitter = foo[0]
+    data = foo[1]
+    stats = foo[2]
+    params = foo[3]
+    models = foo[4]
+    sampls = foo[5]
+    
+    magS_I = params['mag_src1']
+    magS_Kp = params['mag_src2']
+    magLN_I = magS_I - 2.5 * math.log10((1.0 - params['b_sff1']) / params['b_sff1']**2)
+    magLN_Kp = magS_Kp - 2.5 * math.log10((1.0 - params['b_sff2']) / params['b_sff2']**2)
+
+    # Get the baseline magnitude (with all blending)
+    magSLN_I = magS_I + 2.5 * math.log10(params['b_sff1'])
+    magSLN_Kp = magS_Kp + 2.5 * math.log10(params['b_sff2'])
+    
+    # Assume J-K color is the same for the lens, source, and baseline.
+    jk_color = tmass['Jmag'][tt_t[0][0]] - tmass['Kmag'][tt_t[0][0]]
+    magS_J = magS_Kp + jk_color
+    magLN_J = magLN_Kp + jk_color
+    magSLN_J = magSLN_Kp + jk_color
+
+    print('        {0:5s} {1:5s} {2:5s}    {3:7s} {4:7s}'.format('I', 'J', 'Kp', 'J_2MASS', 'K_2MASS'))
+    print('b_SFF:  {0:5.2f} {1:5.2f} {2:5.2f}'.format(params['b_sff1'], -1, params['b_sff2']))
+    print('magS:   {0:5.2f} {1:5.2f} {2:5.2f}'.format(magS_I, magS_J, magS_Kp))
+    print('magLN:  {0:5.2f} {1:5.2f} {2:5.2f}'.format(magLN_I, magLN_J, magLN_Kp))
+    print('magSLN: {0:5.2f} {1:5.2f} {2:5.2f}    {3:7.2f} {4:7.2f}'.format(magSLN_I, magSLN_J, magSLN_Kp,
+                                                                               tmass['Jmag'][tt_t[0][0]],
+                                                                               tmass['Kmag'][tt_t[0][0]]
+                                                                               ))
+
+    plt.close(1)
+    plt.figure(1, figsize=(10, 4))
+    plt.subplots_adjust(bottom=0.2, left=0.1, right=0.8, wspace=0.4)
+
+    plt.subplot(1, 2, 1)
+    plt.plot(tmass['Jmag'] - tmass['Kmag'], tmass['Kmag'], 'k.', alpha=0.5, mec='none')
+    # plt.plot(tmass['Jmag'][tt_t] - tmass['Kmag'][tt_t], tmass['Kmag'][tt_t], 'ro', ms=5, label='2MASS @ target')
+    plt.plot(magS_J - magS_Kp, magS_Kp, marker='s', color='orange', linestyle='none', ms=5, label='Source')
+    plt.plot(magLN_J - magLN_Kp, magLN_Kp, 'bs', ms=5, label='Lens + Neighbors')
+    plt.plot(magSLN_J - magSLN_Kp, magSLN_Kp, marker='*', linestyle='none', color='magenta',
+                 mec='deeppink', ms=10, label='Total')
+    plt.xlim(0, 3)
+    plt.gca().invert_yaxis()
+    plt.xlabel('J-K (mag)')
+    plt.ylabel('K (mag)')
+    plt.title('2MASS')
+    plt.legend(fontsize=10)
+
+    plt.subplot(1, 2, 2)
+
+    # color code only those sources with significant parallax
+    good_par = np.where(np.abs(gaia['parallax']) > (3*gaia['parallax_error']))[0]
+    plt.plot(gaia['bp_rp'], gaia['phot_g_mean_mag'], 'k.', ms=8, alpha=0.5, zorder=1, mec='none')
+    sc = plt.scatter(gaia['bp_rp'][good_par], gaia['phot_g_mean_mag'][good_par],
+                     c=gaia['parallax'][good_par], s=10, zorder=2, edgecolors='none',
+                     vmin=-1, vmax=2, cmap=plt.cm.viridis)
+    plt.plot(gaia['bp_rp'][tt_g], gaia['phot_g_mean_mag'][tt_g], linestyle='none', marker='*', color='magenta',
+                 mec='deeppink', ms=10, zorder=3)
+    plt.xlim(0, 6.5)
+    plt.gca().invert_yaxis()
+    plt.xlabel('G$_{BP}$ - G$_{RP}$ (mag)')
+    plt.ylabel('G (mag)')
+    plt.title('Gaia')
+
+    fig = plt.gcf()
+    cb_ax = fig.add_axes([0.83, 0.13, 0.02, 0.77])
+    cbar = fig.colorbar(sc, cax=cb_ax, label='Parallax (mas)')
+
+    plt.savefig(paper_dir + 'ob150211_cmds.png')
+
+    return
+
+def plot_cmd_other3():
+    """
+    Everything is in
+    /Users/jlu/work/microlens/OB150211/a_2019_05_04/notes/7_other_phot.ipynb
+    """
+    # Read in the Gaia and 2MASS catalogs.
+    tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
+    gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
+
+    tt_t = np.where(tmass['name'] == 'ob150211')
+    tt_g = np.where(gaia['name'] == 'ob150211')
+
+    # Also fetch our best fit and figure out the source and lens/neighbor
+    # brightness.
+    foo = get_data_fitter_params_models_samples('ob150211', return_mode = 'best')
+    fitter = foo[0]
+    data = foo[1]
+    stats = foo[2]
+    params = foo[3]
+    models = foo[4]
+    sampls = foo[5]
+    
     magS_I = params['mag_src1']
     magS_Kp = params['mag_src2']
     magLN_I = magS_I - 2.5 * math.log10((1.0 - params['b_sff1']) / params['b_sff1']**2)
@@ -1674,6 +2499,260 @@ def plot_cmd_ob150211():
     plt.savefig(paper_dir + 'cmds.png')
 
     return
+
+def dark_lens_prob(target):
+    """
+    Use a Galaxia EBF file to estimate an age distribution. Then
+    sample from that age distribution, make synthetic stellar populations
+    using SPISEA, and check which ones hold up against our light-curve
+    fitting results.
+    """
+    # Load up microlensing fits (joint phot + astrom).
+    # Also fetch our best fit and figure out the source and lens/neighbor
+    # brightness.
+    foo = get_data_fitter_params_models_samples('ob150211', return_mode = 'best')
+    fitter = foo[0]
+    data = foo[1]
+    stats = foo[2]
+    params = foo[3]
+    models = foo[4]
+    sampls = foo[5]
+
+    sampls['weights'] /= sampls['weights'].sum()
+    
+    # Get rid of negative blending which leads to nan
+    # for lens magnitude and replace them with 0.9999 (i.e. super close to 1).
+    bsff2_idx = np.where(sampls['b_sff2'] > 1)[0] 
+    sampls['b_sff2'][bsff2_idx] = 0.999999
+
+    # Lens fit values
+    dL_fit = 1 / sampls['piL']
+    mL_fit = sampls['mL']
+    kpL_fit   = sampls['mag_base2'] + 2.5*np.log10(1/(1 - sampls['b_sff2']))
+    ogleL_fit = sampls['mag_base1'] + 2.5*np.log10(1/(1 - sampls['b_sff1']))
+
+    # Setup some target-specific details
+    dL_arr_list = {'ob120169': np.arange(4.0, 12.01, 0.5),
+                   'ob140613': np.arange(4.0, 12.01, 0.5),
+                   'ob150029': np.arange(4.0, 12.01, 0.5),
+                   'ob150211': np.arange(4.0, 12.01, 0.5)
+                  }
+    right_list = {'ob120169': None,
+                  'ob140613': None,
+                  'ob150029': None,
+                  'ob150211': None
+                 }
+    top_list = {'ob120169': None,
+                'ob140613': None,
+                'ob150029': None,
+                'ob150211': None
+                 }
+    bottom_list = {'ob120169': None,
+                   'ob140613': None,
+                   'ob150029': None,
+                   'ob150211': None
+                 }
+    ebf_list = {'ob120169': None,
+                'ob140613': None,
+                'ob150029': None,
+                'ob150211': '/u/jlu/work/microlens/OB150211/current/notes/ob150211.ebf'
+                 }
+
+    ##########
+    # Define isochrone parameters. Use the age distribution from the EBF file.
+    ##########
+    sim = ebf.read(ebf_list[target], '/')
+
+    # We will step through this list of distances.
+    dL_arr_edge = dL_arr_list[target]
+    dL_arr = dL_arr_edge[:-1] + (np.diff(dL_arr_edge) / 2.0)
+        
+    coords_arr = SkyCoord(data['raL'] * u.deg, 
+                          data['decL'] * u.deg, 
+                          distance = dL_arr * u.kpc, frame='icrs')
+
+    import dustmaps.marshall
+    from dustmaps.marshall import MarshallQuery
+    from spisea import synthetic, evolution, atmospheres, reddening #, ifmr
+    from spisea.imf import imf #, multiplicity
+
+    # Fetch the extinction at each distance.
+    dustmaps.marshall.fetch()
+    q = MarshallQuery()
+    AKs_arr = q(coords_arr)
+
+    # Define evolution/atmosphere models and extinction law
+    evo_model = evolution.MISTv1() 
+    atm_func = atmospheres.get_merged_atmosphere
+    red_law = reddening.RedLawDamineli16()
+    # IMF power law boundaries. changed start from 0.08 to 0.1 because of MIST.
+    mass_limits = np.array([0.1, 0.5, 120])
+    # IMF powers
+    powers = np.array([-1.3, -2.3])
+    # Cluster mass
+    cluster_mass = 1E4
+
+    # Take a random sample of the lens fits (weighted)
+    samp_idx = np.random.choice(np.arange(len(sampls['weights'])),
+                                size=1000, replace=False, p=sampls['weights'])
+
+    dL_fit = dL_fit[samp_idx]
+    mL_fit = mL_fit[samp_idx]
+    kpL_fit = kpL_fit[samp_idx]
+    ogleL_fit = ogleL_fit[samp_idx]
+
+    # Only keep things within dL bin
+    # FIXME: Change this ST we won't need this line.
+    keep_idx = np.where((dL_fit > dL_arr[0]) & 
+                        (dL_fit < dL_arr[-1]))[0]
+
+    print('len(keep_idx) = ', len(keep_idx))
+    dL_fit = dL_fit[keep_idx]
+    mL_fit = mL_fit[keep_idx]
+    kpL_fit = kpL_fit[keep_idx]
+    kpL_mod = np.zeros(len(keep_idx))
+    ogleL_fit = ogleL_fit[keep_idx]
+    ogleL_mod = np.zeros(len(keep_idx))
+    log_age_mod = np.zeros(len(keep_idx))
+
+    # Sort the dL into the defined distance bins
+    bin_idx = np.digitize(dL_fit, dL_arr_edge)
+
+    # Loop through each distance bin.
+    for ii in np.arange(len(dL_arr)):
+        
+        # Select PopSyCLE stars in this radius bin. 
+        sdx = np.where((sim['rad'] >= dL_arr_edge[ii]) & (sim['rad'] < dL_arr_edge[ii+1]))[0]
+
+        # Draw the logAge from PopSyCLE, round to the nearest delta-logAge=0.5 so we don't
+        # make too many isochrones (expensive).
+        logAge = np.random.choice(sim['age'][sdx])
+        logAge = round(logAge * 2) / 2   # Rounds to the nearest 0.5 or 1.0
+        
+        bin_ii_idx = np.where(bin_idx == ii+1)[0]
+        dL = dL_arr[ii]
+        AKs = AKs_arr[ii]
+        # Make Isochrone object. Note that is calculation will take a few minutes, unless the 
+        # isochrone has been generated previously.
+        print(f'Making isochrone: dist={dL:.2f} kpc, logAge={logAge:.2f}, AKs={AKs:.2f}')
+        my_iso = synthetic.IsochronePhot(logAge, AKs, dL*1000, metallicity=0,
+                                         evo_model=evo_model, atm_func=atm_func,
+                                         red_law=red_law, filters=['ubv,I', 'nirc2,Kp'],
+                                         recomp=True,
+                                         iso_dir=paper_dir + 'iso/')
+
+        # define IMF
+        trunc_kroupa = imf.IMF_broken_powerlaw(mass_limits, powers)
+        
+        # make cluster
+        cluster = synthetic.ResolvedCluster(my_iso, trunc_kroupa, cluster_mass, seed=1)
+        output = cluster.star_systems
+        print('max mass = ', output['mass'].max())
+        if np.isnan(output['m_nirc2_Kp']).sum() > 0:
+            pdb.set_trace()
+
+        # plt.figure(3)
+        # plt.clf()
+        # plt.plot(output['mass'], output['m_nirc2_Kp'], 'k.', label='model,Kp')
+        # plt.plot(output['mass'], output['m_ubv_I'], 'b.', label='model,I')
+        
+        # For each star in this particular distance bin...
+        # Figure out which mass bins
+        for jj in bin_ii_idx:
+            idx = np.where((output['mass'] < mL_fit[jj] + 0.1) & 
+                           (output['mass'] > mL_fit[jj] - 0.1))[0]
+
+            if len(idx) == 0:
+                kpL_mod[jj] = np.nan
+                ogleL_mod[jj] = np.nan
+                log_age_mod[jj] = np.nan
+            else:
+                kpL_mod[jj] = output['m_nirc2_Kp'][idx].min()
+                ogleL_mod[jj] = output['m_ubv_I'][idx].min()
+                log_age_mod[jj] = logAge
+                
+        # plt.plot(mL_fit[bin_ii_idx], kpL_mod[bin_ii_idx], 'rs', label='fit, Kp')
+        # plt.plot(mL_fit[bin_ii_idx], ogleL_mod[bin_ii_idx], 'cs', label='fit, I')
+        # plt.xscale('log')
+        # plt.legend()
+        # plt.xlabel('mass')
+        # plt.ylabel('Kp or I (mag)')
+        # plt.show()
+        
+
+    plt.close(1)
+    fig, ax = plt.subplots(1, 3, num=1, figsize=(18, 6))
+    # plt.clf()
+    plt.subplots_adjust(wspace=0.27, left=0.08, right=0.98, top=0.93)
+    ax[0].scatter(dL_fit, mL_fit, c=mL_fit, alpha=0.5, cmap='viridis')
+    model_fitter.contour2d_alpha(1/sampls['piL'], sampls['mL'], weights=sampls['weights'],
+                                     ax=ax[0], color='k',
+                                 plot_density=False, sigma_levels=[1, 2, 3])
+    ax[0].set_xlabel('$d_L$ [kpc]')
+    ax[0].set_ylabel('$M_L [M_\odot]$')
+    ax[0].set_title(target)
+    if right is not None:
+        ax[0].set_xlim(right=right)
+    if top is not None:
+        ax[0].set_ylim(top=top)
+    if bottom is not None:
+        ax[0].set_ylim(bottom=bottom)
+
+    max1 = np.nanmax(kpL_mod)
+    max2 = np.nanmax(kpL_fit)
+    min1 = np.nanmin(kpL_mod)
+    min2 = np.nanmin(kpL_fit)
+    max = np.max([max1, max2])
+    min = np.min([min1, min2])
+    ax[1].set_xlabel('$Kp_L$ ($d_L$, $M_L$, $\\bigstar$) [mag]')
+    ax[1].set_ylabel('$Kp_L$ ($b_{SFF}$, $m_{base}$) [mag]')
+    ax[1].set_title('Kp')
+    ax[1].plot([min, max], [min, max], color='gray')
+    ax[1].fill_between(x=[min, max], y1=[max, max], y2=[min, max], color='gray', alpha=0.3)
+    ax[1].scatter(kpL_mod, kpL_fit, c=mL_fit, alpha=0.5, cmap='viridis')
+    ax[1].invert_yaxis()
+    plt.text(0.6, 0.1,
+               'Dark Lens',
+               transform=ax[1].transAxes)
+    plt.text(0.5, 0.9, 'P(dark lens) = {0:.0f}%'.format(100*len(np.where(kpL_fit > kpL_mod)[0])/len(kpL_fit)), 
+             transform=ax[1].transAxes,
+             ha='center')
+    ax[1].axis('equal')
+
+    
+    max1 = np.nanmax(ogleL_mod)
+    max2 = np.nanmax(ogleL_fit)
+    min1 = np.nanmin(ogleL_mod)
+    min2 = np.nanmin(ogleL_fit)
+    max = np.max([max1, max2])
+    min = np.min([min1, min2])
+    ax[2].set_xlabel('$I_L$ ($d_L$, $M_L$, $\\bigstar$) [mag]')
+    ax[2].set_ylabel('$I_L$ ($b_{SFF}$, $m_{base}$) [mag]')
+    ax[2].set_title('OGLE I')
+    ax[2].plot([min, max], [min, max], color='gray')
+    ax[2].fill_between(x=[min, max], y1=[max, max], y2=[min, max], color='gray', alpha=0.3)
+    ax[2].scatter(ogleL_mod, ogleL_fit, c=mL_fit, alpha=0.5, cmap='viridis')
+    ax[2].invert_yaxis()
+    plt.text(0.6, 0.1,
+               'Dark Lens',
+               transform=ax[2].transAxes)
+    plt.text(0.5, 0.9, 'P(dark lens) = {0:.0f}%'.format(100*len(np.where(ogleL_fit > ogleL_mod)[0])/len(ogleL_fit)), 
+             transform=ax[2].transAxes,
+             ha='center')
+    ax[2].axis('equal')
+    
+    plt.savefig(paper_dir + target + '_dark_lens_prob.png')
+    
+    print(len(np.where(kpL_fit > kpL_mod)[0]))
+    print(len(kpL_fit))
+    print('Probability of dark lens (KP): {0:.0f}%'.format(100*len(np.where(kpL_fit > kpL_mod)[0])/len(kpL_fit)))
+
+    print(len(np.where(ogleL_fit > ogleL_mod)[0]))
+    print(len(ogleL_fit))
+    print('Probability of dark lens (I): {0:.0f}%'.format(100*len(np.where(ogleL_fit > ogleL_mod)[0])/len(ogleL_fit)))
+    
+    return
+    
 
 def calc_blending_kp():
     """
@@ -1745,7 +2824,9 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
 
     
     fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod = fitter.get_best_fit_model()
+    mod_all = fitter.get_best_fit_modes_model(def_best = 'median')
+    mode = pspl_ast_multiphot_mode[target]
+    mod = mod_all[mode]
 
     print('tE      = {0:5.2f} days'.format(mod.tE))
     print('piE     = {0:5.2f} = {1:5.2f}'.format(mod.piRel / mod.thetaE_amp, mod.piE_amp))
@@ -1770,7 +2851,7 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
 
     # Time samples for all curves.
     t_obs = np.arange(mod.t0 - 1000, mod.t0 + 1000, 10)
-
+    
     # Parallax vector (normalized to 1).
     parallax_vec = model.parallax_in_direction(mod.raL, mod.decL, t_obs)
     
@@ -1787,6 +2868,20 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     xS_restL0_sun = xS_unlens_sun - mod.xL0
 
     tidx = np.argmin(np.abs(t_obs - mod.t0))
+
+    # Fix up all positions to be relative to the source location (no parallax)
+    # at time t0.
+    xL_ref = xL_unlens_sun[tidx, :]
+
+    xS_unlens_geo -= xL_ref
+    xS_unlens_sun -= xL_ref
+    xL_unlens_geo -= xL_ref
+    xL_unlens_sun -= xL_ref
+
+    # Plot params
+    arr_head_len = 0.1
+    arr_head_wid = 0.1
+    arrow_width = 0.02
     
 
     ##########
@@ -1804,13 +2899,13 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     plt.plot([xS_unlens_geo[tidx, 0]*1e3], [xS_unlens_geo[tidx, 1]*1e3], 'r*')
     plt.arrow(xL_unlens_geo[tidx, 0]*1e3, xL_unlens_geo[tidx, 1]*1e3,
                   mod.muL[0]*vel_scale, mod.muL[1]*vel_scale,
-                  width=0.04, head_width=0.2, head_length=0.2, fc='k', ec='k')
+                  width=arrow_width, head_width=arr_head_wid, head_length=arr_head_len, fc='k', ec='k')
     plt.arrow(xS_unlens_geo[tidx, 0]*1e3, xS_unlens_geo[tidx, 1]*1e3,
                   mod.muS[0]*vel_scale, mod.muS[1]*vel_scale,
-                  width=0.04, head_width=0.2, head_length=0.2, fc='r', ec='r')
+                  width=arrow_width, head_width=arr_head_wid, head_length=arr_head_len, fc='r', ec='r')
     plt.plot(xS_unlens_geo[:,0]*1e3, xS_unlens_geo[:,1]*1e3, 'r--', label='Src, unlensed')
     plt.plot(xL_unlens_geo[:,0]*1e3, xL_unlens_geo[:,1]*1e3, 'k--', label='Lens')
-    plt.xlabel(r'$\Delta\alpha$ (mas)')
+    plt.xlabel(r'$\Delta\alpha^*$ (mas)')
     plt.ylabel(r'$\Delta\delta$ (mas)')
     plt.axis('equal')
     plt.gca().invert_xaxis()
@@ -1825,6 +2920,8 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     ylim_hi = xL_unlens_geo[tidx, 1]*1e3 + half_lim * axis_lim_scale
     plt.xlim(xlim_lo, xlim_hi)
     plt.ylim(ylim_lo, ylim_hi)
+    plt.gca().xaxis.set_major_locator(plt.MultipleLocator(1))
+    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(1))
     plt.legend()
     plt.title(target.upper())
     plt.savefig(paper_dir + 'geometry_geo_' + target + '.png')
@@ -1844,13 +2941,13 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     plt.plot([xS_unlens_sun[tidx, 0]*1e3], [xS_unlens_sun[tidx, 1]*1e3], 'r*')
     plt.arrow(xL_unlens_sun[tidx, 0]*1e3, xL_unlens_sun[tidx, 1]*1e3,
                   mod.muL[0]*vel_scale, mod.muL[1]*vel_scale,
-                  width=0.04, head_width=0.2, head_length=0.2, fc='k', ec='k')
+                  width=arrow_width, head_width=arr_head_wid, head_length=arr_head_len, fc='k', ec='k')
     plt.arrow(xS_unlens_sun[tidx, 0]*1e3, xS_unlens_sun[tidx, 1]*1e3,
                   mod.muS[0]*vel_scale, mod.muS[1]*vel_scale,
-                  width=0.04, head_width=0.2, head_length=0.2, fc='r', ec='r')
+                  width=arrow_width, head_width=arr_head_wid, head_length=arr_head_len, fc='r', ec='r')
     plt.plot(xS_unlens_sun[:,0]*1e3, xS_unlens_sun[:,1]*1e3, 'r--', label='Src, unlensed')
     plt.plot(xL_unlens_sun[:,0]*1e3, xL_unlens_sun[:,1]*1e3, 'k--', label='Lens')
-    plt.xlabel(r'$\Delta\alpha$ (mas)')
+    plt.xlabel(r'$\Delta\alpha^*$ (mas)')
     plt.ylabel(r'$\Delta\delta$ (mas)')
     plt.axis('equal')
     plt.gca().invert_xaxis()
@@ -1864,6 +2961,8 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     ylim_hi = xL_unlens_sun[tidx, 1]*1e3 + half_lim * axis_lim_scale
     plt.xlim(xlim_lo, xlim_hi)
     plt.ylim(ylim_lo, ylim_hi)
+    plt.gca().xaxis.set_major_locator(plt.MultipleLocator(1))
+    plt.gca().yaxis.set_major_locator(plt.MultipleLocator(1))
     plt.legend()
     plt.title(target.upper())
     plt.savefig(paper_dir + 'geometry_sun_' + target + '.png')
@@ -1913,7 +3012,8 @@ def compare_all_linear_motions(save_all=False):
         average_deviation[t] = average
         average_deviation_error[t] = np.sqrt(var)
         sig = np.abs(average_deviation[t] / average_deviation_error[t])
-        signal.append("${:.1f}\sigma$".format(sig))
+        signal.append("${:.1f}\sigma$ \\\\".format(sig))
+        
         all_chi2[t] = all_chi2s[0]
         all_chi2_red[t] = all_chi2s[1]
         cut_chi2[t] = cut_chi2s[0]
@@ -1934,26 +3034,183 @@ def compare_all_linear_motions(save_all=False):
 
     tab = Table((Column(data=objects, name='Object'), all_chi2, all_chi2_red, cut_chi2, cut_chi2_red,\
                      av_dev, av_deve, signal))
-    tab.write('astrom_significance.tex', format='aastex', overwrite=True)
+
+    # Header details are hard-coded in the paper. 
+    # tab.write('astrom_significance.tex', format='aastex', overwrite=True)
+    tab.write('astrom_significance.tex', format='ascii.fixed_width_no_header', delimiter='&', overwrite=True, delimiter_pad=' ', bookend=False)
 
     print(tab)
 
     os.chdir(ret_dir)
 
-def plot_linear_motion(target):
-    # Plot the linear motion of the target
-    # with a proper motion fit that excludes the peak year.
+def plot_linear_motion(target, fig_num = 1):
+    """
+    Plot the linear motion of the target
+    with a proper motion fit that excludes the peak year.
+    """
+    from jlu.microlens import fit_velocities
 
-    output_dir = paper_dir
-    ret_dir = os.getcwd()
-    os.chdir(output_dir)
+    out_dir = paper_dir + 'compare_linear_motion/'
+
+    def plot_target(fitob, fig_num):
+        '''
+        Plots the linear fit for the target only. The figure is saved.
+        
+        Parameters
+        ----------
+        figob : StarTable from fit_velocities
+        '''
+        res_rng = fit_velocities.res_dict[fitob.target]
+
+        stars = np.append([fitob.target], comp_stars[fitob.target])
+
+        # Figure out the min/max of the times for these sources.
+        tdx = np.where(fitob['name'] == fitob.target)[0][0]
+        tmin = fitob['t'][tdx].min() - 0.5   # in days
+        tmax = fitob['t'][tdx].max() + 0.5   # in days
+
+        # Setup figure and color scales
+        figsize = (6, 9.5)
+        plt.close(fig_num)
+        fig = plt.figure(fig_num, figsize=figsize)
+        plt.clf()
+
+        # st = fig.suptitle(fitob.target + " astrometry", fontsize = 20)
+
+        grid_t = plt.GridSpec(1, 1, bottom=0.60, top=0.95, left=0.25, right=0.79)
+        grid_b = plt.GridSpec(2, 1, hspace=0.1, wspace=0.5, bottom=0.10, top=0.5, left=0.25, right=0.79)
+
+        cmap = plt.cm.plasma
+        norm = plt.Normalize(vmin=tmin, vmax=tmax)
+        smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        smap.set_array([])
+
+        ax_sky = fig.add_subplot(grid_t[0, 0])
+        ax_resX = fig.add_subplot(grid_b[1, 0])
+        ax_resY = fig.add_subplot(grid_b[0, 0])
+
+        # Fetch the data
+        tdx = np.where(fitob['name'] == fitob.target)[0][0]
+        star = fitob[tdx]
+
+        # Change signs of the East
+        x = star['x']*-1.0
+        y = star['y']
+        x0 = star['x0']*-1.0
+        y0 = star['y0']
+        vx = star['vx']*-1.0
+        vy = star['vy']
+        
+        # Make the model curves
+        tmod = np.arange(tmin, tmax, 0.1)
+        xmod = x0 + vx * (tmod - star['t0'])
+        ymod = y0 + vy * (tmod - star['t0'])
+        xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0']))
+        ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0']))
+
+        xmod_at_t = x0 + vx * (star['t'] - star['t0'])
+        ymod_at_t = y0 + vy * (star['t'] - star['t0'])
+
+        # Plot Positions on Sky
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
+        sc = ax_sky.scatter(x, y, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_sky.errorbar(x, y, xerr=star['xe'], yerr=star['ye'],
+                            ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
+        ax_sky.set_aspect('equal', adjustable='datalim')
+
+        # Figure out which axis has the bigger data range.
+        xy_rng = 0.020  # this is the same range for all the stars.
+        xmin = x0 - (xy_rng / 2.0)
+        xmax = x0 + (xy_rng / 2.0)
+        ymin = y0 - (xy_rng / 2.0)
+        ymax = y0 + (xy_rng / 2.0)
+        ax_sky.set_xlim(xmin, xmax)
+        ax_sky.set_ylim(ymin, ymax)
+
+        # Set labels
+        ax_sky.invert_xaxis()
+        ax_sky.set_title(fitob.target.upper())
+        ax_sky.set_xlabel(r'$\Delta\alpha*$ (")')
+        ax_sky.set_ylabel(r'$\Delta\delta$ (")')
+
+        # Plot Residuals vs. Time
+        xres = (x - xmod_at_t) * 1e3
+        yres = (y - ymod_at_t) * 1e3
+        xrese = star['xe'] * 1e3
+        yrese = star['ye'] * 1e3
+        ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
+        ax_resY.errorbar(star['t'], yres, yerr=yrese, fmt='b.', label=r'$\delta$', elinewidth=2)
+        ax_resX.plot(tmod, xmod - xmod, 'r-')
+        ax_resX.plot(tmod, xmode*1e3, 'r--')
+        ax_resX.plot(tmod, -xmode*1e3, 'r--')
+        ax_resY.plot(tmod, ymod - ymod, 'b-')
+        ax_resY.plot(tmod, ymode*1e3, 'b--')
+        ax_resY.plot(tmod, -ymode*1e3, 'b--')
+        ax_resX.set_xlabel('Date (yr)')
+
+        xresrng = xres + np.sign(xres)*(xrese + 0.1)
+        yresrng = yres + np.sign(yres)*(yrese + 0.1)
+        # ax_resX.set_ylim(xresrng.min(), xresrng.max())
+        # ax_resY.set_ylim(yresrng.min(), yresrng.max())
+        ax_resX.set_ylim(-0.95, 0.95)
+        ax_resY.set_ylim(-0.95, 0.95)
+        ax_resY.get_xaxis().set_visible(False)
+        ax_resX.set_ylabel(r'$\alpha^*$')
+        ax_resY.set_ylabel(r'$\delta$')
+        plt.gcf().text(0.04, 0.3, 'Residuals (mas)', rotation=90, fontsize=18,
+                           ha='center', va='center')
+
+        cb_ax = fig.add_axes([0.8, 0.60, 0.02, 0.35])
+        plt.colorbar(sc, cax=cb_ax, label='Year')
+
+        plt.savefig(f"{out_dir}/{fitob.target}_linear_fit.png")
+
+        return
 
     fitob = fit_velocities.StarTable(target)
-    fitob.fit(time_cut=fitob.time_cut)
-    fitob.plot_target()
+    fitob.fit(time_cut=fitob.time_cut) # Fit without the peak year
+    
+    plot_target(fitob, fig_num)
 
-    os.chdir(ret_dir)
+    return
 
+def org_solutions_for_table():
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    
+    for targ in targets:
+        import warnings
+        warnings.simplefilter(action='ignore', category=FutureWarning)
+        
+        stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[targ])
+        stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[targ])
+
+        for col in stats_pho.itercols():
+            if col.info.dtype.kind == 'f':        
+                col.info.format = '.3f'        
+        for col in stats_ast.itercols():
+            if col.info.dtype.kind == 'f':        
+                col.info.format = '.3f'        
+                
+        print('')
+        print('******************')
+        print(f'*** {targ:s} ***')
+        print('******************')
+        print('')
+        print('Photometry Solutions')
+        print(stats_pho['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'MAP_logL', 'MAP_u0_amp', 'MAP_piE_E', 'MAP_piE_N'])
+
+        print('')
+        print('Astrometry Solutions')
+        print(stats_ast['MaxLike_logL', 'MaxLike_u0_amp', 'MaxLike_piE_E', 'MaxLike_piE_N', 'MAP_logL', 'MAP_u0_amp', 'MAP_piE_E', 'MAP_piE_N'])
+
+        print('')
+        print('Astrometry Solutions Mass Info')
+        print(stats_ast['logZ', 'MaxLike_mL', 'MAP_mL', 'Mean_mL', 'MaxLike_logL', 'MAP_logL', 'Mean_logL'])
+
+    return
+            
 def table_ob120169_phot_astrom():
     # Load up the params file so we know what kind of 
     # data and model we are working with. Note that we 
@@ -1964,31 +3221,43 @@ def table_ob120169_phot_astrom():
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
+    # No longer using
+              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
-              'mag_src1': '$I_{src}$ (mag)',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'mag_base1': '$I_{base}$ (mag)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'thetaE':   '$\\theta_E$ (mas)',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
               'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'break1':   '',
               'mL':       '$M_L$ ($\msun$)',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)'
              }
+             #  'break2':   '',
+             #  'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
+             #  'gp_rho1':            '$\\rho_{GP, I}$ (days)',
+             #  'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
+             #  'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)'
+             # }
+             
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
              'tE':      1.0,
@@ -1996,24 +3265,31 @@ def table_ob120169_phot_astrom():
              'piE_N':   1.0,
              'b_sff1':  1.0,
              'mag_src1':1.0,
+             'mag_base1':1.0,
              'add_err1':1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'mag_base2':1.0,
+             'add_err2':1e3,
              'thetaE':  1.0,
              'piS':     1.0,
              'muS_E':   1.0,
              'muS_N':   1.0,
              'xS0_E':   1e3,
              'xS0_N':   1e3,
-             'b_sff2':  1.0,
-             'mag_src2':1.0,
-             'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
              'piRel':   1.0,
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
             }
+        
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
                   'tE':       '0.1f',
@@ -2021,6 +3297,7 @@ def table_ob120169_phot_astrom():
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
                   'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
                   'add_err1': '0.1f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
@@ -2030,68 +3307,97 @@ def table_ob120169_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
                   'add_err2': '0.1f',
-                  'mL':       '0.1f',
+                  'mL':       '0.2f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0m = 1
     pho_u0p = 0
-    ast_u0m = 0
-    ast_u0p = 1
-    
+    pho_u0m = 1 # doesn't exist
+    ast_u0p = 0
+    ast_u0m = 1 # doesn't exist
+
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0m]) + ' \\\ \n ')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
+                                                               stats_pho['MAP_logL'][pho_u0p],
+                                                               stats_pho['Med_logL'][pho_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0p],
+                                                               stats_ast['MAP_logL'][ast_u0p],
+                                                               stats_ast['Med_logL'][ast_u0p])
+                   + '\\\ \n')
     tab_file.write('$\chi^2_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0m]) + ' \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
+                                                               stats_pho['MAP_rchi2'][pho_u0p],
+                                                               stats_pho['Med_rchi2'][pho_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0p],
+                                                               stats_ast['MAP_rchi2'][ast_u0p],
+                                                               stats_ast['Med_rchi2'][ast_u0p])
+                   + ' \\\ \n')
+    tab_file.write('log$\mathcal{Z}$ ' 
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0p])
+                   + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' \\\ \n'
+                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p])
+                   + ' \\\ \n'
                    + r'\hline ' + '\n')
 
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
     start_extra_params = False
+    start_gp_params = False
     
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
-        val_dict = [stats_pho, stats_pho, stats_ast]
-        val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+        # val_dict = [stats_pho, stats_pho, stats_ast]
+        # val_mode = [  pho_u0p,   pho_u0m,   ast_u0m]
+        val_dict = [stats_pho, stats_ast]
+        val_mode = [  pho_u0p,   ast_u0p]
 
         if (key in mod_ast.additional_param_names) and not start_extra_params:
             tab_file.write('\\tableline\n')
             start_extra_params = True
 
+        if ('gp' in key) and not start_gp_params:
+            tab_file.write('\\tableline\n')
+            start_gp_params = True
+            
         tab_file.write(label)
                            
         for ss in range(len(val_dict)):
             stats = val_dict[ss]
             
             if ('MaxLike_' + key in stats.colnames) and (val_mode[ss] < len(stats)):
-                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} & '
+                fmt +=   '{2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
                 
-                val = stats['MaxLike_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+                val_map = stats['MAP_' + key][val_mode[ss]]
+                val_med = stats['Med_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
 
-                val *= scale[key]
+                val_mli *= scale[key]
+                val_map *= scale[key]
+                val_med *= scale[key]
                 elo *= scale[key]
                 ehi *= scale[key]
 
-                tab_file.write(fmt.format(val, elo, ehi))
+                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
-                fmt = ' & & '
+                fmt = ' & & & & '
                 tab_file.write(fmt)
 
         tab_file.write(' \\\ \n')
@@ -2175,7 +3481,7 @@ def table_ob140613_phot_astrom():
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
                   'mult_err2': '0.1f',
-                  'mL':       '0.1f',
+                  'mL':       '0.2f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
                   'muL_E':    '0.2f',
@@ -2184,21 +3490,36 @@ def table_ob140613_phot_astrom():
                   'muRel_N':  '0.2f'
                   }
 
-    pho_u0m = 0
-    pho_u0p = 1
-    ast_u0m = 0
-    ast_u0p = 1
+    pho_u0m = 1 # no solution
+    pho_u0p = 0 # Best of 3 positive solutions
+    ast_u0m = 1 # no solution
+    ast_u0p = 0 # best of 3 positive solutions
     
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
+                                                               stats_pho['MAP_logL'][pho_u0p], 
+                                                               stats_pho['Med_logL'][pho_u0p]) 
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0p],
+                                                               stats_ast['MAP_logL'][ast_u0p],
+                                                               stats_ast['Med_logL'][ast_u0p])
+                   + ' \\\ \n')
     tab_file.write('$\chi^2_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
+                                                               stats_pho['MAP_rchi2'][pho_u0p],
+                                                               stats_pho['Med_rchi2'][pho_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0p],
+                                                               stats_ast['MAP_rchi2'][ast_u0p],
+                                                               stats_ast['Med_rchi2'][ast_u0p])
+                   + ' \\\ \n')
+    tab_file.write('log$\mathcal{Z}$ ' 
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0p])
+                   + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p])
+                   + ' \\\ \n'
                    + r'\hline ' + '\n')
     
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
@@ -2220,19 +3541,24 @@ def table_ob140613_phot_astrom():
             stats = val_dict[ss]
             
             if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
+                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
                 
-                val = stats['MaxLike_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+                val_map = stats['MAP_' + key][val_mode[ss]]
+                val_med = stats['Med_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
 
-                val *= scale[key]
+                val_mli *= scale[key]
+                val_map *= scale[key]
+                val_med *= scale[key]
                 elo *= scale[key]
                 ehi *= scale[key]
 
-                tab_file.write(fmt.format(val, elo, ehi))
+                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
-                fmt = ' & & '
+                fmt = ' & & & & '
                 tab_file.write(fmt)
 
         tab_file.write(' \\\ \n')
@@ -2316,7 +3642,7 @@ def table_ob150029_phot_astrom():
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
                   'add_err2': '0.1f',
-                  'mL':       '0.1f',
+                  'mL':       '0.2f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
                   'muL_E':    '0.2f',
@@ -2325,21 +3651,36 @@ def table_ob150029_phot_astrom():
                   'muRel_N':  '0.2f'
                   }
 
-    pho_u0m = 0
-    pho_u0p = 1
-    ast_u0m = 0
-    ast_u0p = 1
+    pho_u0m = 1
+    pho_u0p = 0
+    ast_u0m = 0 
+    ast_u0p = 1  # No solution
     
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0m],
+                                                               stats_pho['MAP_logL'][pho_u0m],
+                                                               stats_pho['Med_logL'][pho_u0m])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0m],
+                                                               stats_ast['MAP_logL'][ast_u0m],
+                                                               stats_ast['Med_logL'][ast_u0m])
+                   + ' \\\ \n')
     tab_file.write('$\chi^2_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
+                                                               stats_pho['MAP_rchi2'][pho_u0m],
+                                                               stats_pho['Med_rchi2'][pho_u0m])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0m],
+                                                               stats_ast['MAP_rchi2'][ast_u0m],
+                                                               stats_ast['Med_rchi2'][ast_u0m])
+                   + ' \\\ \n')
+    tab_file.write('log$\mathcal{Z}$ ' 
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0m])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0m])
+                   + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + '& {0:.0f} & & & '.format(stats_pho['N_dof'][pho_u0m])
+                   + '& {0:.0f} & & & '.format(stats_ast['N_dof'][ast_u0m])
+                   + ' \\\ \n'
                    + r'\hline ' + '\n')
     
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
@@ -2361,60 +3702,56 @@ def table_ob150029_phot_astrom():
             stats = val_dict[ss]
             
             if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
+                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
                 
-                val = stats['MaxLike_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+                val_map = stats['MAP_' + key][val_mode[ss]]
+                val_med = stats['Med_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
 
-                val *= scale[key]
+                val_mli *= scale[key]
+                val_map *= scale[key]
+                val_med *= scale[key]
                 elo *= scale[key]
                 ehi *= scale[key]
 
-                tab_file.write(fmt.format(val, elo, ehi))
+                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
-                fmt = ' & & '
+                fmt = ' & & & & '
                 tab_file.write(fmt)
 
         tab_file.write(' \\\ \n')
     
     return
 
-def table_ob150211_phot_astrom():
-    # Load up the params file so we know what kind of 
-    # data and model we are working with. Note that we 
-    # are assuming that all the Nruns are using the same
-    # parameters.
+def table_ob150211_phot():
+    """
+    Print the latex table for the photometry-only fit.
+    """
     target = 'ob150211'
     
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
-    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
+    # No longer using
+              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+
+    # This dictionary sets the order of the parameters in the table.
+    # If I want a horizontal line in between the two, I just add 'break#' where
+    # the "#" symbol is just any arbitrary number. 
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
+              'mag_base1': '$I_{base}$ (mag)',
+              'break1':   '',
               'mag_src1': '$I_{src}$ (mag)',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
-              'thetaE':   '$\\theta_E$ (mas)',
-              'piS':      '$\pi_S$ (mas)',
-              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
-              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
-              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
-              'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
-              'mL':       '$M_L$ ($\msun$)',
-              'piL':      '$\pi_L$ (mas)',
-              'piRel':    '$\pi_{rel}$ (mas)',
-              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
-              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
-              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
              }
+        
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
              'tE':      1.0,
@@ -2422,6 +3759,7 @@ def table_ob150211_phot_astrom():
              'piE_N':   1.0,
              'b_sff1':  1.0,
              'mag_src1':1.0,
+             'mag_base1':1.0,
              'add_err1':1e3,
              'thetaE':  1.0,
              'piS':     1.0,
@@ -2431,6 +3769,7 @@ def table_ob150211_phot_astrom():
              'xS0_N':   1e3,
              'b_sff2':  1.0,
              'mag_src2':1.0,
+             'mag_base2':1.0,
              'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
@@ -2438,7 +3777,11 @@ def table_ob150211_phot_astrom():
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -2447,6 +3790,7 @@ def table_ob150211_phot_astrom():
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
                   'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
                   'add_err1': '0.1f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
@@ -2456,6 +3800,7 @@ def table_ob150211_phot_astrom():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
                   'add_err2': '0.1f',
                   'mL':       '0.1f',
                   'piL':      '0.3f',
@@ -2463,30 +3808,41 @@ def table_ob150211_phot_astrom():
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0m = 1
-    pho_u0p = 0
-    ast_u0m = 0
-    ast_u0p = 1
-    
-    tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
+    pho_u0m = 0
+    pho_u0p = 1
+
+    tab_file = open(paper_dir + target + '_OGLE_phot.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0m]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_logL'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_logL'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
+                                                               stats_pho['MAP_logL'][pho_u0p],
+                                                               stats_pho['Med_logL'][pho_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0m],
+                                                               stats_pho['MAP_logL'][pho_u0m],
+                                                               stats_pho['Med_logL'][pho_u0m])
+                   + ' \\\ \n')
     tab_file.write('$\chi^2_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0m]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['MaxLike_rchi2'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['MaxLike_rchi2'][ast_u0p]) + ' & \\\ \n')
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
+                                                               stats_pho['MAP_rchi2'][pho_u0p],
+                                                               stats_pho['Med_rchi2'][pho_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
+                                                               stats_pho['MAP_rchi2'][pho_u0m],
+                                                               stats_pho['Med_rchi2'][pho_u0m])
+                   + ' \\\ \n')
+    tab_file.write('log$\mathcal{Z}$ ' 
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0m])
+                   + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0m]) + ' & ' 
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0m]) + ' & '
-                   + '& {0:.2f}'.format(stats_pho['N_dof'][pho_u0p]) + ' & '
-                   + '& {0:.2f}'.format(stats_ast['N_dof'][ast_u0p]) + ' & \\\ \n'
+                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
+                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0m])
+                   + ' \\\ \n'
                    + r'\hline ' + '\n')
     
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
@@ -2495,12 +3851,11 @@ def table_ob150211_phot_astrom():
     for key, label in labels.items():
         # We will have 4 solutions... each has a value and error bar.
         # Setup an easy way to walk through them (and rescale) as necessary.
-        val_dict = [stats_pho, stats_ast, stats_pho, stats_ast]
-        val_mode = [pho_u0m, ast_u0m, pho_u0p, ast_u0p]
+        val_dict = [stats_pho, stats_pho]
+        val_mode = [pho_u0p, pho_u0m]
 
-        if (key in mod_ast.additional_param_names) and not start_extra_params:
+        if 'break' in key:
             tab_file.write('\\tableline\n')
-            start_extra_params = True
 
         tab_file.write(label)
                            
@@ -2508,19 +3863,219 @@ def table_ob150211_phot_astrom():
             stats = val_dict[ss]
             
             if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & [{1:' + sig_digits[key] + '}, {2:' + sig_digits[key] + '}] '
+                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
+                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
                 
-                val = stats['MaxLike_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['MaxLike_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+                val_map = stats['MAP_' + key][val_mode[ss]]
+                val_med = stats['Med_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
 
-                val *= scale[key]
+                val_mli *= scale[key]
+                val_map *= scale[key]
+                val_med *= scale[key]
                 elo *= scale[key]
                 ehi *= scale[key]
 
-                tab_file.write(fmt.format(val, elo, ehi))
+                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
-                fmt = ' & & '
+                fmt = ' & & & & '
+                tab_file.write(fmt)
+
+        tab_file.write(' \\\ \n')
+    
+    return
+
+    
+    
+    
+def table_ob150211_phot_astrom():
+    # Load up the params file so we know what kind of 
+    # data and model we are working with. Note that we 
+    # are assuming that all the Nruns are using the same
+    # parameters.
+    target = 'ob150211'
+    
+    stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+
+    # No longer using
+              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+
+    # This dictionary sets the order of the parameters in the table.
+    # If I want a horizontal line in between the two, I just add 'break#' where
+    # the "#" symbol is just any arbitrary number. 
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_base1': '$I_{base}$ (mag)',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
+              'thetaE':   '$\\theta_E$ (mas)',
+              'piS':      '$\pi_S$ (mas)',
+              'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
+              'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
+              'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
+              'xS0_N':    '$x_{S0,\delta}$ (mas)',
+              'break1':   '',
+              'mL':       '$M_L$ ($\msun$)',
+              'piL':      '$\pi_L$ (mas)',
+              'piRel':    '$\pi_{rel}$ (mas)',
+              'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
+              'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
+              'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)'
+              # 'break2':   '',
+              # 'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
+              # 'gp_rho1':            '$\\rho_{GP, I}$ (days)',
+              # 'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
+              # 'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)'
+             }
+        
+    scale = {'t0':      1.0,
+             'u0_amp':  1.0,
+             'tE':      1.0,
+             'piE_E':   1.0,
+             'piE_N':   1.0,
+             'b_sff1':  1.0,
+             'mag_src1':1.0,
+             'mag_base1':1.0,
+             'add_err1':1e3,
+             'thetaE':  1.0,
+             'piS':     1.0,
+             'muS_E':   1.0,
+             'muS_N':   1.0,
+             'xS0_E':   1e3,
+             'xS0_N':   1e3,
+             'b_sff2':  1.0,
+             'mag_src2':1.0,
+             'mag_base2':1.0,
+             'add_err2':1e3,
+             'mL':      1.0,
+             'piL':     1.0,
+             'piRel':   1.0,
+             'muL_E':   1.0,
+             'muL_N':   1.0,
+             'muRel_E': 1.0,
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
+        }
+    sig_digits = {'t0':       '0.2f',
+                  'u0_amp':   '0.2f',
+                  'tE':       '0.1f',
+                  'piE_E':    '0.3f',
+                  'piE_N':    '0.3f',
+                  'b_sff1':   '0.3f',
+                  'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
+                  'add_err1': '0.1f',
+                  'thetaE':   '0.2f',
+                  'piS':      '0.3f',
+                  'muS_E':    '0.2f',
+                  'muS_N':    '0.2f',
+                  'xS0_E':    '0.2f',
+                  'xS0_N':    '0.2f',
+                  'b_sff2':   '0.2f',
+                  'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
+                  'add_err2': '0.1f',
+                  'mL':       '0.1f',
+                  'piL':      '0.3f',
+                  'piRel':    '0.3f',
+                  'muL_E':    '0.2f',
+                  'muL_N':    '0.2f',
+                  'muRel_E':  '0.2f',
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
+                  }
+
+    ast_u0p_hi = 0  # hi muRel
+    ast_u0p_lo = 1  # lo muRel
+    ast_u0m_al = 2  # all neg u0
+
+    tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
+    tab_file.write('log$\mathcal{L}$ '
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0p_hi],
+                                                               stats_ast['MAP_logL'][ast_u0p_hi], 
+                                                               stats_ast['Med_logL'][ast_u0p_hi])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0p_lo],
+                                                               stats_ast['MAP_logL'][ast_u0p_lo],
+                                                               stats_ast['Med_logL'][ast_u0p_lo])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0m_al],
+                                                               stats_ast['MAP_logL'][ast_u0m_al],
+                                                               stats_ast['Med_logL'][ast_u0m_al])
+                   + ' \\\ \n')
+    tab_file.write('$\chi^2_{dof}$ ' 
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0p_hi],
+                                                               stats_ast['MAP_rchi2'][ast_u0p_hi],
+                                                               stats_ast['Med_rchi2'][ast_u0p_hi])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0p_lo],
+                                                               stats_ast['MAP_rchi2'][ast_u0p_lo],
+                                                               stats_ast['Med_rchi2'][ast_u0p_lo])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0m_al],
+                                                               stats_ast['MAP_rchi2'][ast_u0m_al],
+                                                               stats_ast['Med_rchi2'][ast_u0m_al])
+                   + ' \\\ \n')
+    tab_file.write('log$\mathcal{Z}$ ' 
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0p_hi])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0p_lo])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0m_al])
+                   + ' \\\ \n')
+    tab_file.write('$N_{dof}$ ' 
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p_hi])
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p_lo])
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0m_al])
+                   + ' \\\ \n'
+                   + r'\hline ' + '\n')
+    
+    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+    start_extra_params = False
+    
+    for key, label in labels.items():
+        # We will have 4 solutions... each has a value and error bar.
+        # Setup an easy way to walk through them (and rescale) as necessary.
+        val_dict = [stats_ast, stats_ast, stats_ast]
+        val_mode = [ast_u0p_hi, ast_u0p_lo, ast_u0m_al]
+
+        if 'break' in key:
+            tab_file.write('\\tableline\n')
+
+        tab_file.write(label)
+                           
+        for ss in range(len(val_dict)):
+            stats = val_dict[ss]
+            
+            if ('MaxLike_' + key in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
+                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
+                
+                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+                val_map = stats['MAP_' + key][val_mode[ss]]
+                val_med = stats['Med_' + key][val_mode[ss]]
+                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+
+                val_mli *= scale[key]
+                val_map *= scale[key]
+                val_med *= scale[key]
+                elo *= scale[key]
+                ehi *= scale[key]
+
+                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
+            else:
+                fmt = ' & & & & '
                 tab_file.write(fmt)
 
         tab_file.write(' \\\ \n')
@@ -2536,10 +4091,11 @@ def results_best_params_all():
               'muRel_E', 'muRel_N', 'muS_E', 'muS_N', 'muL_E', 'muL_N',
               'piS', 'piL', 'piRel',
               'xS0_E', 'xS0_N',
-              'b_sff1', 'mag_src1', 'add_err1',
-              'b_sff2', 'mag_src2', 'add_err2']
+              'b_sff1', 'mag_src1',
+              'b_sff2', 'mag_src2']
+        # , 'add_err1', 'add_err2'
         
-    fmt = '   {0:13s} = {1:12.5f}  [{2:12.5f} - {3:12.5f}]  [{4:12.5f} - {5:12.5f}]'
+    fmt = '   {0:13s} = {1:12.4f} {2:12.4f} {3:12.4f}  [{4:12.4f} - {5:12.4f}]  [{6:12.4f} - {7:12.4f}]'
 
     def get_68CI(samples, weights):
         sumweights = np.sum(weights)
@@ -2572,30 +4128,51 @@ def results_best_params_all():
     for targ in targets:
         print('')
         print('**********')
-        print('Best-Fit (Max L, 68.3% CI, 99.7% CI) Parameters for ', targ)
+        print('Best-Fit (Max L, MAP, Median, 68.3% CI, 99.7% CI) Parameters for ', targ)
         print('**********')
         stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[targ])
 
-        # Find the solution with max log L
-        mdx = stats_ast['MaxLike_logL'].argmax()
+        # Find the best-fit solution
+        mdx = pspl_ast_multiphot_mode[targ]
+
+        print('*  NOTE Best solution is idx = ', mdx)
 
         for par in params:
             if targ == 'ob140613' and par.startswith('add'):
                 par = par.replace('add', 'mult')
                 
             print(fmt.format(par, stats_ast['MaxLike_' + par][mdx],
+                                  stats_ast['MAP_' + par][mdx],
+                                  stats_ast['Med_' + par][mdx],
                                   stats_ast['lo68_' + par][mdx],
                                   stats_ast['hi68_' + par][mdx],
                                   stats_ast['lo99_' + par][mdx],
                                   stats_ast['hi99_' + par][mdx]))
 
         # Print a few more summary params
-        muRel = np.hypot(stats_ast['MaxLike_muRel_E'][mdx], stats_ast['MaxLike_muRel_N'][mdx])
-        piE = np.hypot(stats_ast['MaxLike_piE_E'][mdx], stats_ast['MaxLike_piE_N'][mdx])
-        u0 = stats_ast['MaxLike_u0_amp'][mdx]
-        thetaE = stats_ast['MaxLike_thetaE'][mdx]
-        Amp = (u0**2 + 2.0) / (np.abs(u0) * np.sqrt(u0**2 + 4.0))
-        deltaC = thetaE * 2**0.5 / 4.0
+        muRel_mli = np.hypot(stats_ast['MaxLike_muRel_E'][mdx], stats_ast['MaxLike_muRel_N'][mdx])
+        muRel_map = np.hypot(stats_ast['MAP_muRel_E'][mdx], stats_ast['MAP_muRel_N'][mdx])
+        muRel_med = np.hypot(stats_ast['Med_muRel_E'][mdx], stats_ast['Med_muRel_N'][mdx])
+        
+        piE_mli = np.hypot(stats_ast['MaxLike_piE_E'][mdx], stats_ast['MaxLike_piE_N'][mdx])
+        piE_map = np.hypot(stats_ast['MAP_piE_E'][mdx], stats_ast['MAP_piE_N'][mdx])
+        piE_med = np.hypot(stats_ast['Med_piE_E'][mdx], stats_ast['Med_piE_N'][mdx])
+        
+        u0_mli = stats_ast['MaxLike_u0_amp'][mdx]
+        u0_map = stats_ast['MAP_u0_amp'][mdx]
+        u0_med = stats_ast['Med_u0_amp'][mdx]
+        
+        thetaE_mli = stats_ast['MaxLike_thetaE'][mdx]
+        thetaE_map = stats_ast['MAP_thetaE'][mdx]
+        thetaE_med = stats_ast['Med_thetaE'][mdx]
+        
+        Amp_mli = (u0_mli**2 + 2.0) / (np.abs(u0_mli) * np.sqrt(u0_mli**2 + 4.0))
+        Amp_map = (u0_map**2 + 2.0) / (np.abs(u0_map) * np.sqrt(u0_map**2 + 4.0))
+        Amp_med = (u0_med**2 + 2.0) / (np.abs(u0_med) * np.sqrt(u0_med**2 + 4.0))
+        
+        deltaC_mli = thetaE_mli * 2**0.5 / 4.0
+        deltaC_map = thetaE_map * 2**0.5 / 4.0
+        deltaC_med = thetaE_med * 2**0.5 / 4.0
 
         # Actually fetch the samples to calculate the errors on these.
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[targ])
@@ -2604,7 +4181,12 @@ def results_best_params_all():
         
         muRel_samp = np.hypot(samps['muRel_E'], samps['muRel_N'])
         piE_samp = np.hypot(samps['piE_E'], samps['piE_N'])
-        thetaE_samp = samps['thetaE']
+
+        # Add thetaE (from log thetaE)
+        if ('log10_thetaE' in samps.colnames) and ('thetaE' not in samps.colnames):
+            thetaE_samp = 10**samps['log10_thetaE']
+        else:
+            thetaE_samp = samps['thetaE']
         u0 = samps['u0_amp']
         Amp_samp = (u0**2 + 2.0) / (np.abs(u0) * np.sqrt(u0**2 + 4.0))
         deltaC_samp = thetaE_samp * 2**0.5 / 4.0
@@ -2619,10 +4201,10 @@ def results_best_params_all():
         Amp_lo3, Amp_hi3 = get_99CI(Amp_samp, samps['weights'])
         deltaC_lo3, deltaC_hi3 = get_99CI(deltaC_samp, samps['weights'])
         
-        print(fmt.format('muRel', muRel, muRel_lo1, muRel_hi1, muRel_lo3, muRel_hi3))
-        print(fmt.format('piE', piE, piE_lo1, piE_hi1, piE_lo3, piE_hi3))
-        print(fmt.format('A', Amp, Amp_lo1, Amp_hi1, Amp_lo3, Amp_hi3))
-        print(fmt.format('deltaC_max', deltaC, deltaC_lo1, deltaC_hi1, deltaC_lo3, deltaC_hi3))
+        print(fmt.format('muRel', muRel_mli, muRel_map, muRel_med, muRel_lo1, muRel_hi1, muRel_lo3, muRel_hi3))
+        print(fmt.format('piE', piE_mli, piE_map, piE_med, piE_lo1, piE_hi1, piE_lo3, piE_hi3))
+        print(fmt.format('A', Amp_mli, Amp_map, Amp_med, Amp_lo1, Amp_hi1, Amp_lo3, Amp_hi3))
+        print(fmt.format('deltaC_max', deltaC_mli, deltaC_map, deltaC_med, deltaC_lo1, deltaC_hi1, deltaC_lo3, deltaC_hi3))
     
     return
 
@@ -2634,8 +4216,8 @@ def plot_mass_posterior(target):
     stats = calc_summary_statistics(fitter)
     tab = fitter.load_mnest_modes()
 
-    # Select out the maximum likelihood solutoin.
-    mdx = stats['maxlogL'].argmax()
+    # Find the best-fit solution
+    mdx = pspl_ast_multiphot_mode[target]
     tab = tab[mdx]
     stats = stats[mdx]
     
@@ -2672,6 +4254,27 @@ def plot_mass_posterior(target):
 
     return
 
+def get_CIs(samples, weights):
+    sumweights = np.sum(weights)
+    tmp_weights = weights / sumweights
+    
+    sig1 = 0.682689
+    sig2 = 0.9545
+    sig3 = 0.9973
+    sig1_lo = (1. - sig1) / 2.
+    sig2_lo = (1. - sig2) / 2.
+    sig3_lo = (1. - sig3) / 2.
+    sig1_hi = 1. - sig1_lo
+    sig2_hi = 1. - sig2_lo
+    sig3_hi = 1. - sig3_lo
+
+    tmp = model_fitter.weighted_quantile(samples, [sig1_lo, sig1_hi, sig2_lo, sig2_hi, sig3_lo, sig3_hi],
+                                         sample_weight = tmp_weights)
+
+    return tmp
+
+
+
 def plot_all_mass_posteriors():
     fontsize1 = 18
     fontsize2 = 14
@@ -2681,58 +4284,68 @@ def plot_all_mass_posteriors():
               'ob140613': 'red',
               'ob150029': 'darkorange',
               'ob150211': 'black'}
+    kde_bw = {'ob120169': 0.1,
+              'ob140613': 0.2,
+              'ob150029': 0.1,
+              'ob150211': 0.1}
 
+    plt.close(1)
     plt.figure(1)
     plt.clf()
     plt.subplots_adjust(bottom = 0.15)
-
-    def get_CIs(samples, weights):
-        sumweights = np.sum(weights)
-        tmp_weights = weights / sumweights
-        
-        sig1 = 0.682689
-        sig2 = 0.9545
-        sig3 = 0.9973
-        sig1_lo = (1. - sig1) / 2.
-        sig2_lo = (1. - sig2) / 2.
-        sig3_lo = (1. - sig3) / 2.
-        sig1_hi = 1. - sig1_lo
-        sig2_hi = 1. - sig2_lo
-        sig3_hi = 1. - sig3_lo
-
-        tmp = model_fitter.weighted_quantile(samples, [sig1_lo, sig1_hi, sig2_lo, sig2_hi, sig3_lo, sig3_hi],
-                                             sample_weight = tmp_weights)
-
-        return tmp
-
 
     for target in targets:
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
         stats = calc_summary_statistics(fitter)
         tab = fitter.load_mnest_modes()
+        
+        # Select out the best mode.
+        mode = pspl_ast_multiphot_mode[target]
+        tab = tab[mode]
+        stats = stats[mode]
 
-        # Select out the maximum likelihood solutoin.
-        mdx = stats['maxlogL'].argmax()
-        tab = tab[mdx]
-        stats = stats[mdx]
-    
-        bins = np.logspace(-3, 2, 100)
+        # KDE
+        kde = scipy.stats.gaussian_kde(np.log10(tab['mL']), weights=tab['weights'], bw_method=kde_bw[target])
+        kde_mass = np.linspace(-2, 2, 500)
+        # kde_mass = np.arange(0.0, 10, 0.01)
+        kde_prob = kde(kde_mass)
+        kde_bin_size = np.zeros(len(kde_prob), dtype=float)
+        kde_bin_size[:-1] = np.diff(kde_mass)
+        kde_bin_size[-1] = kde_bin_size[-2]
+        kde_norm = (kde_prob * kde_bin_size).sum()
+        kde_prob /= kde_norm
 
-        n, b = np.histogram(tab['mL'], bins = bins, 
-                            weights = tab['weights'], density = False)
+        # Normalize kde_prob
+        # kde_prob /= kde_prob.max()
+        plt.plot(kde_mass, kde_prob, color=colors[target], linestyle='-', label=target.upper())        
+
+        # Bins for the histogram
+        bins = np.linspace(-2, 2, 80)
+        # bins = np.linspace(00, 10, 0.1)
+        # bins = np.arange(0.0, 10, 0.1)
+
+        n, b = np.histogram(np.log10(tab['mL']), bins = bins, 
+                            weights = tab['weights'], density = True)
         b0 = 0.5 * (b[1:] + b[:-1])
+        # n /= n.max()
 
-        plt.plot(b[:-1], n, drawstyle='steps-pre',
-                     color=colors[target], label=target)
+        # plt.plot(b[:-1], n, drawstyle='steps-mid',
+        #              color=colors[target], label=target)
 
-        plt.xscale('log')
+        # plt.xscale('log')
 
-        plt.axvline(stats['MaxLike_mL'], color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(stats['MaxLike_mL'], color=colors[target], linestyle='--', lw = 2)
+        plt.axvline(np.log10(stats['Med_mL']), color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(np.log10(stats['MAP_mL']), color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(np.log10(stats['MaxLike_mL']), color=colors[target], linestyle='-.', lw = 2)
         # plt.axvline(stats['lo68_mL'], color=colors[target], linestyle='--', lw = 2)
         # plt.axvline(stats['hi68_mL'], color=colors[target], linestyle='--', lw = 2)
 
         conf_int = get_CIs(tab['mL'], tab['weights'])
-        print('Best-Fit Lens Mass = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], target))
+        print('Best-Fit Lens Mass MaxLike = {0:.2f} for {1:s}'.format(stats['MaxLike_mL'], target))
+        print('Best-Fit Lens Mass MAP     = {0:.2f} for {1:s}'.format(stats['MAP_mL'], target))
+        print('Best-Fit Lens Mass Median  = {0:.2f} for {1:s}'.format(stats['Med_mL'], target))
+        print('Best-Fit Lens Mass Mean    = {0:.2f} for {1:s}'.format(stats['Mean_mL'], target))
         print('          68.3% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[0], conf_int[1]))
         print('          95.5% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[2], conf_int[3]))
         print('          99.7% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[4], conf_int[5]))
@@ -2741,8 +4354,26 @@ def plot_all_mass_posteriors():
     plt.ylabel('Posterior Probability', fontsize=fontsize1, labelpad=10)
     plt.xticks(fontsize=fontsize2)
     plt.yticks(fontsize=fontsize2)
-    plt.xlim(0.1, 60)
+    plt.xlim(-1.1, 2.0)
+    plt.tick_params(axis='x', which='minor')
+    # plt.ylim(0, 2)
+    # plt.xlim(0, 5)
+    plt.ylim(0, 5)
     plt.legend()
+
+    def pow_10(x, pos):
+        """The two args are the value and tick position.
+        Label ticks with the product of the exponentiation"""
+        return '%0.1f' % (10**x)
+
+    formatter = plt.FuncFormatter(pow_10)
+    plt.gca().xaxis.set_major_formatter(formatter)
+
+    x_minor = matplotlib.ticker.FixedLocator([np.log10(mm) for mm in np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                                                                               1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+                                                                               10, 20, 30, 40, 50, 60, 70, 80, 90, 100])])
+    plt.gca().xaxis.set_minor_locator(x_minor)
+    plt.gca().xaxis.set_minor_formatter(plt.NullFormatter())
 
     plt.savefig(paper_dir + 'all_mass_posteriors.png')
 
@@ -2754,11 +4385,15 @@ def plot_trace_corner(target):
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
+              'piE':      '$\pi_{E}$',
               'b_sff1':   '$b_{SFF,I}$',
               'mag_src1': '$I_{src}$ (mag)',
+              'mag_base1': '$I_{base}$ (mag)',
               'mult_err1': '$\\varepsilon_{m,I}$',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
-              'thetaE':   '$\\theta_E$ (mas)',
+              'add_err1':  '$\\varepsilon_{a,I}$ (mmag)',
+              'thetaE_amp':'$\\theta_E$ (mas)',
+              'thetaE':    '$\\theta_E$ (mas)',
+              'log10_thetaE':'$\log_{10} [\\theta_E$ (mas)]',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
@@ -2766,6 +4401,7 @@ def plot_trace_corner(target):
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
               'b_sff2':   '$b_{SFF,Kp}$',
               'mag_src2': '$Kp_{src}$ (mag)',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'mult_err2': '$\\varepsilon_{m,Kp}$',
               'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
               'mL':       '$M_L (M_\odot)$',
@@ -2774,7 +4410,12 @@ def plot_trace_corner(target):
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'muRel':    '$\mu_{rel}$ (mas/yr)',
+              'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
+              'gp_rho1':            '$\\rho_{GP, I}$ (days)',
+              'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
+              'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)'
              }
 
         
@@ -2784,20 +4425,82 @@ def plot_trace_corner(target):
     from dynesty import plotting as dyplot
 
     res = fitter.load_mnest_results_for_dynesty()
-    smy = fitter.load_mnest_summary()
+    res_m = fitter.load_mnest_modes_results_for_dynesty()
+    params_global = fitter.get_best_fit(def_best='median')[0]
+    fitter_params = copy.deepcopy(fitter.all_param_names)
+    smy = calc_summary_statistics(fitter)
+    fitter.all_param_names = fitter_params
 
+    #
+    # Add ampltidue of piE
+    #
+    idx_piEE = fitter.all_param_names.index('piE_E')
+    idx_piEN = fitter.all_param_names.index('piE_N')
+    
+    piE = np.hypot(res['samples'][:, idx_piEE], res['samples'][:, idx_piEN])
+    res['samples'] = np.append(res['samples'], np.array([piE]).T, axis=1)
+    for mm in range(len(res_m)):
+        piE_m = np.hypot(res_m[mm]['samples'][:, idx_piEE], res_m[mm]['samples'][:, idx_piEN])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([piE_m]).T, axis=1)
+
+    fitter.all_param_names.append('piE')
+    smy['MaxLike_piE'] = np.hypot(smy['MaxLike_piE_E'], smy['MaxLike_piE_N'])
+    smy['MAP_piE'] = np.hypot(smy['MAP_piE_E'], smy['MAP_piE_N'])
+    smy['Med_piE'] = np.hypot(smy['Med_piE_E'], smy['Med_piE_N'])
+    params_global['piE'] = np.hypot(params_global['piE_E'], params_global['piE_N'])
+
+    #
+    # Add ampltidue of muRel
+    #
+    idx_muRelE = fitter.all_param_names.index('muRel_E')
+    idx_muRelN = fitter.all_param_names.index('muRel_N')
+    
+    muRel = np.hypot(res['samples'][:, idx_muRelE], res['samples'][:, idx_muRelN])
+    res['samples'] = np.append(res['samples'], np.array([muRel]).T, axis=1)
+    for mm in range(len(res_m)):
+        muRel_m = np.hypot(res_m[mm]['samples'][:, idx_muRelE], res_m[mm]['samples'][:, idx_muRelN])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([muRel_m]).T, axis=1)
+    
+    fitter.all_param_names.append('muRel')
+    smy['MaxLike_muRel'] = np.hypot(smy['MaxLike_muRel_E'], smy['MaxLike_muRel_N'])
+    smy['MAP_muRel'] = np.hypot(smy['MAP_muRel_E'], smy['MAP_muRel_N'])
+    smy['Med_muRel'] = np.hypot(smy['Med_muRel_E'], smy['Med_muRel_N'])
+    params_global['muRel'] = np.hypot(params_global['muRel_E'], params_global['muRel_N'])
+
+    
     # # Trim down to just the primary fitting parameters.
     # N_fit = len(fitter.fitter_param_names)
-    # samples = res.samples[0:N_fit]
+    # samples = res['samples'][0:N_fit]
 
-    truths = []
+    #
+    # Setup the truths arrays (choose Median)
+    #
+    best_sol = 'Med_'
+    truths = np.zeros(len(fitter.all_param_names), dtype=float)
+    truths_m = np.zeros((len(res_m), len(fitter.all_param_names)), dtype=float)
     ax_labels = []
-    for param in fitter.all_param_names:
-        truths.append(smy['MaxLike_' + param][0])  # global best fit.
-        ax_labels.append(labels[param])
-    truths = np.array(truths)
-    ax_labels = np.array(ax_labels)
+    
+    for pp in range(len(fitter.all_param_names)):
+        param = fitter.all_param_names[pp]
         
+        ax_labels.append(labels[param])
+
+        # Global solution
+        if param in params_global:
+            # truths[pp] = smy[best_sol + param][0]  # global best fit.
+            truths[pp] = params_global[param]  # global best fit.
+        else:
+            truths[pp] = None
+
+        # Mode solutions
+        for mm in range(len(res_m)):
+            if best_sol + param in smy.colnames:
+                truths_m[mm, pp] = smy[best_sol + param][mm]  # global best fit.
+            else:
+                truths_m[mm, pp] = None
+            
+    ax_labels = np.array(ax_labels)
+
 
     # plt.close('all')
     # dyplot.traceplot(res, labels=ax_labels,
@@ -2806,44 +4509,267 @@ def plot_trace_corner(target):
     # plt.savefig(paper_dir + target + '_dy_trace.png')
 
 
-    # Prep the figurel
+    sigma_vals = np.array([0.682689])  # , 0.9545, 0.9973])
+    credi_ints_lo = (1.0 - sigma_vals) / 2.0
+    credi_ints_hi = (1.0 + sigma_vals) / 2.0
+    credi_ints_med = np.array([0.5])
+    quantiles = np.concatenate([credi_ints_med, credi_ints_lo, credi_ints_hi])
+
+    ##########
+    # Prep the figure
+    ##########
 
     # First subset
-    fig1 = ['u0_amp', 't0', 'tE', 'thetaE', 'piRel', 'mL']
-    fig2 = ['u0_amp', 'piS', 'piL', 'piE_E', 'piE_N', 'xS0_E', 'xS0_N']
-    if target == 'ob140613':
-        fig3 = ['u0_amp', 'b_sff1', 'mag_src1', 'mult_err1', 'b_sff2', 'mag_src2', 'mult_err2']
-    else:
-        fig3 = ['u0_amp', 'b_sff1', 'mag_src1', 'add_err1', 'b_sff2', 'mag_src2', 'add_err2']
-    fig4 = ['u0_amp', 'muS_E', 'muS_N', 'muL_E', 'muL_N', 'muRel_E', 'muRel_N']
+    fig1 = ['mL', 'piE', 'muRel']
+    # fig1 = ['mL', 'u0_amp', 'tE', 'piE', 'log10_thetaE', 'muRel', 'piRel', ]
+    fig2 = ['mL', 'piS', 'piL', 'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 't0']
+    # if target == 'ob140613':
+    #     fig3 = ['mL', 'b_sff1', 'mag_base1', 'mult_err1', 'b_sff2', 'mag_base2', 'mult_err2']
+    # else:
+    #     fig3 = ['mL', 'b_sff1', 'mag_base1', 'add_err1', 'b_sff2', 'mag_base2', 'add_err2']
+    fig3 = ['mL', 'b_sff1', 'mag_base1', 'b_sff2', 'mag_base2']
+    fig4 = ['mL', 'muS_E', 'muS_N', 'muL_E', 'muL_N', 'muRel_E', 'muRel_N']
 
     idx1 = [fitter.all_param_names.index(fig1_val) for fig1_val in fig1]
     idx2 = [fitter.all_param_names.index(fig2_val) for fig2_val in fig2]
     idx3 = [fitter.all_param_names.index(fig3_val) for fig3_val in fig3]
     idx4 = [fitter.all_param_names.index(fig4_val) for fig4_val in fig4]
 
-    all_idxs = [idx1, idx2, idx3, idx4]
+    # all_idxs = [idx1, idx2, idx3, idx4]
+    all_idxs = [idx1]
 
     for ii in range(len(all_idxs)):
         idx = all_idxs[ii]
         ndim = len(idx)
 
-        span = np.repeat(1.0 - 1e-3, ndim)
+        # Set the axis limits. hard code the mass limit.
+        span = [1.0 - 1e-6] * ndim
+        mdx = np.where(np.array(fitter.all_param_names)[idx] == 'mL')[0]
+        if len(mdx) > 0:
+            if target == 'ob150211':
+                span[mdx[0]] = [0, 100]
+            else:
+                span[mdx[0]] = [0, 10]
+        
         smooth = 0.05
         
         fig, axes = plt.subplots(ndim, ndim, figsize=(20, 20))
         plt.subplots_adjust(left=0.3, bottom=0.3)
         dyplot.cornerplot(res,
                           dims=idx, labels=ax_labels[idx], truths=truths[idx],
-                          show_titles=False, 
+                          show_titles=False, quantiles=quantiles,
                           fig=(fig, axes), span=span, smooth=smooth)
         ax = plt.gca()
         ax.tick_params(axis='both', which='major', labelsize=10)
         plt.savefig(paper_dir + target + '_dy_corner_' + str(ii) + '.png')
     
     plt.close('all')
+
+    #####
+    # Now plot the individual modes.
+    #####
+    if (len(smy) > 1):
+        for mm in range(len(smy)):
+            for ii in range(len(all_idxs)):
+                idx = all_idxs[ii]
+                ndim = len(idx)
+
+                # Set the axis limits. hard code the mass limit.
+                span = [1.0 - 1e-6] * ndim
+                mdx = np.where(np.array(fitter.all_param_names)[idx] == 'mL')[0]
+                if len(mdx) > 0:
+                    if target == 'ob150211':
+                        span[mdx[0]] = [0, 100]
+                    else:
+                        span[mdx[0]] = [0, 10]
+
+                smooth = 0.05
+        
+                fig, axes = plt.subplots(ndim, ndim, figsize=(20, 20))
+                plt.subplots_adjust(left=0.3, bottom=0.3)
+                dyplot.cornerplot(res_m[mm],
+                                      dims=idx, labels=ax_labels[idx], truths=truths_m[mm, idx],
+                                      show_titles=False, quantiles=quantiles,
+                                      fig=(fig, axes), span=span, smooth=smooth)
+                ax = plt.gca()
+                ax.tick_params(axis='both', which='major', labelsize=10)
+                plt.savefig(paper_dir + target + '_dy_corner_' + 'mode' + str(mm) + '_' + str(ii) + '.png')
     
     return
+
+def plot_ob150211_mass_piE_muRel_all_modes():
+    target = 'ob150211'
+    
+    foo = get_data_fitter_params_models_samples(target, return_mode = 'all')
+    fitter = foo[0]
+    data = foo[1]
+    stats_all = foo[2]
+    params_all = foo[3]
+    models_all = foo[4]
+    sampls_all = foo[5]
+
+    # plt.close('all')
+    # plt.figure(1, figsize=(12, 6))
+    # plt.clf()
+    # plt.subplots_adjust(left=0.08, right=0.95, top=0.95)
+    # ax1 = plt.subplot(1, 2, 1)
+    # ax2 = plt.subplot(1, 2, 2)
+
+    plt.figure(1, figsize=(6, 6))
+    plt.clf()
+    plt.subplots_adjust(left=0.15, right=0.95, top=0.95)
+    ax1 = plt.subplot(1, 1, 1)
+    # ax2 = plt.subplot(1, 2, 2)
+
+    colors = ['black', 'purple', 'green']
+
+    for ii in range(len(sampls_all)):
+        sampls_all[ii]['muRel'] = np.hypot(sampls_all[ii]['muRel_E'], sampls_all[ii]['muRel_N'])
+        sampls_all[ii]['piE'] = np.hypot(sampls_all[ii]['piE_E'], sampls_all[ii]['piE_N'])
+
+        span_mL = 1.0 - 1e-3
+        span_muRel = 1.0 - 1e-3
+        span_piE = 1.0 - 1e-3
+
+        smooth_mL = 0.025
+        smooth_muRel = 0.05
+        smooth_piE = 0.05
+
+        plot_2d_contour(np.log10(sampls_all[ii]['mL']), sampls_all[ii]['muRel'],
+                        sampls_all[ii]['weights'],
+                        ax1, colors[ii],
+                        span1=span_mL, span2=span_muRel,
+                        smooth1=smooth_mL, smooth2=smooth_muRel)
+        # plot_2d_contour(sampls_all[ii]['piE'], sampls_all[ii]['muRel'],
+        #                 sampls_all[ii]['weights'],
+        #                 ax2, colors[ii],
+        #                 span1=span_piE, span2=span_muRel,       
+        #                 smooth1=smooth_piE, smooth2=smooth_muRel)
+        
+    # ax1.set_xscale('log')
+    ax1.set_xlabel('$\log M_L$ (M$_\odot$)')
+    ax1.set_ylabel('$\mu_{rel}$ (mas/yr)')
+    # ax1.set_xlim(0, 25)
+    ax1.set_xlim(-2, 1.5)
+
+    # ax2.set_xlabel('$\pi_E$')
+    # ax2.set_ylabel('$\mu_{rel}$ (mas/yr)')
+    # ax2.set_xlim(0, 0.15)
+
+    ax1.text(-1.8, 4.3, 'Mode 1 - Preferred', color=colors[0])
+    ax1.text(-1.8, 4.0, 'Mode 2', color=colors[1])
+    ax1.text(-1.8, 3.7, 'Mode 3', color=colors[2])
+    plt.savefig(paper_dir + 'ob150211_mL_piE_muRel_all_modes.png')
+
+
+    # # Check against other corner plot code.
+    # fitter.all_param_names = fitter.all_param_names[:-3]
+    # res_m = fitter.load_mnest_modes_results_for_dynesty()
+    
+    # #
+    # # Add ampltidue of piE and muRel
+    # #
+    # idx_piEE = fitter.all_param_names.index('piE_E')
+    # idx_piEN = fitter.all_param_names.index('piE_N')
+    # idx_muRelE = fitter.all_param_names.index('muRel_E')
+    # idx_muRelN = fitter.all_param_names.index('muRel_N')
+    
+    # for mm in range(len(res_m)):
+    #     piE_m = np.hypot(res_m[mm]['samples'][:, idx_piEE], res_m[mm]['samples'][:, idx_piEN])
+    #     res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([piE_m]).T, axis=1)
+        
+    #     muRel_m = np.hypot(res_m[mm]['samples'][:, idx_muRelE], res_m[mm]['samples'][:, idx_muRelN])
+    #     res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([muRel_m]).T, axis=1)
+    # fitter.all_param_names += ['piE', 'muRel']
+    
+
+    # fig_params = ['mL', 'piE', 'muRel']
+    # idx = [fitter.all_param_names.index(fig_par) for fig_par in fig_params]
+    # ndim = len(idx)
+    
+        
+    # fig, axes = plt.subplots(ndim, ndim, figsize=(10, 10))
+    # plt.subplots_adjust(left=0.3, bottom=0.3)
+    # for mm in range(len(sampls_all)):
+    #     span = [1.0 - 1e-4] * ndim
+    #     mdx = np.where(np.array(fig_params) == 'mL')[0]
+    #     if len(mdx) > 0:
+    #         span[mdx[0]] = [0, 100]
+        
+    #     dyplot.cornerplot(res_m[mm],
+    #                       dims=idx, labels=fig_params, 
+    #                       show_titles=False, color=colors[mm],
+    #                       fig=(fig, axes), span=span, smooth=0.02)
+    #                       # fig=(fig, axes), smooth=100)
+    #     ax = plt.gca()
+    #     ax.tick_params(axis='both', which='major', labelsize=10)
+
+    # plt.savefig(paper_dir + 'ob150211_mL_piE_muRel_all_modes1.png')
+
+    # plt.figure(3)
+    # plt.hist(np.log10(res_m[0]['samples'][:, idx[0]]), bins=100, weights=res_m[0]['weights'])
+    # plt.xlabel('log(mL)')
+    # plt.ylabel('Probability')
+
+    # plt.figure(4)
+    # plt.hist(res_m[0]['samples'][:, idx[0]], bins=1000, weights=res_m[0]['weights'])
+    # plt.xlabel('mL')
+    # plt.ylabel('Probability')
+    # plt.xlim(0, 60)
+    
+    
+    return
+
+
+def plot_2d_contour(samples1, samples2, weights, axes, color,
+                    smooth1=0.02, smooth2=0.02,
+                    span1=0.999, span2=0.999,
+                    truths=None):
+    # Plot the 2-D marginalized posteriors.
+    
+    # Generate distribution.
+    fill_contours = False
+    plot_contours = True
+
+    levels_sigma = np.array([0.5, 1.0, 2.0])
+    quantiles_2d = 1.0 - np.exp(-0.5 * levels_sigma**2)
+    
+    hist2d_kwargs = dict()
+    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
+    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours',
+                                                       fill_contours)
+    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
+                                                       plot_contours)
+    hist2d_kwargs['alpha'] = 1.0
+    hist2d_kwargs['no_fill_contours'] = True
+    hist2d_kwargs['plot_density'] = False
+
+     # This "color map" is the list of colors for the contour levels if the
+    # contours are filled.
+    from matplotlib.colors import LinearSegmentedColormap, colorConverter
+    rgba_color = colorConverter.to_rgba(color)
+    contour_cmap = [list(rgba_color) for l in quantiles_2d] + [rgba_color]
+    for i, l in enumerate(quantiles_2d):
+        contour_cmap[i][-1] *= float(i+1) / (len(quantiles_2d))
+
+    contour_kwargs = dict()
+    contour_kwargs['colors'] = contour_cmap
+
+    dyplot._hist2d(samples1, samples2, ax=axes, 
+                   weights=weights, color=color,
+                   smooth=[smooth1, smooth2], span=[span1, span2],
+                   contour_kwargs=contour_kwargs, **hist2d_kwargs)
+    #span=[span[j], span[i]],
+    
+    # Add truth values
+    if truths is not None:
+        if truths[0] is not None:
+            ax.axvline(truths[0], color=color) #, **truth_kwargs)
+        if truths[1] is not None:
+            ax.axhline(truths[1], color=color) # , **truth_kwargs)
+
+    return
+    
 
 def get_data_and_fitter(mnest_base):
     info_file = open(mnest_base + 'params.yaml', 'r')
@@ -2854,20 +4780,67 @@ def get_data_and_fitter(mnest_base):
         ast_dsets = info['astrom_data']
     else:
         ast_dsets = []
-    
+
     my_model = getattr(model, info['model'])
     my_data = munge.getdata2(info['target'].lower(), 
                              phot_data=pho_dsets,
                              ast_data=ast_dsets)
 
+    # Need this for backwards compatability.
+    if 'use_phot_optional_params' in info:
+        use_phot_opt = info['use_phot_optional_params']
+    else:
+        use_phot_opt = False
+
     # Load up the first fitter object to get the parameter names.
     fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      use_phot_optional_params = use_phot_opt,
                                       add_error_on_photometry = info['add_error_on_photometry'],
                                       multiply_error_on_photometry = info['multiply_error_on_photometry'],
                                       outputfiles_basename = mnest_base)
 
     return fitter, my_data
+
+def get_data_fitter_params_models_samples(target, return_mode = 'best', def_best='median'):
+    """
+    Return the fitter, data, stats table, parameters array, model, and posterior samples for
+    the desired target from the PSPL astrometry + multi-photometry fits. 
+
+    If return_mode == 'best', then return the mode designated in the 
+    pspl_ast_multiphot_mode array.
+
+    If return_mode == 'all' (or anything else), then return all the modes.
+    """
+    # Load model_fitter and data objects
+    fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+
+    # Load best-fit model objects for all modes.
+    models_all = fitter.get_best_fit_modes_model(def_best = def_best)
+
+    # Load best-fit parameters and statistics (median, mean, maxLike, etc.) for all modes.
+    # Load posterior samples for all modes.
+    stats_all, sampls_all = calc_summary_statistics(fitter, return_samples=True)
+
+    # Select the best-fit parameters and make them into a useful table. 
+    params_all = get_best_fit_from_stats(fitter, stats_all, def_best=def_best)
     
+    mode = pspl_ast_multiphot_mode[target]
+
+    # Sort all of the samples by logLike
+    for mm in range(len(stats_all)):
+        sdx = sampls_all[mm]['logLike'].argsort()
+        sampls_all[mm] = sampls_all[mm][sdx]
+        
+    # Return just th designated mode.
+    if return_mode == 'best':
+        stats_all = stats_all[mode]
+        params_all = params_all[mode]
+        models_all = models_all[mode]
+        sampls_all = sampls_all[mode]
+
+
+    return (fitter, data, stats_all, params_all, models_all, sampls_all)
+
 
 def load_summary_statistics(mnest_base, verbose=False):
     info_file = open(mnest_base + 'params.yaml', 'r')
@@ -2878,8 +4851,15 @@ def load_summary_statistics(mnest_base, verbose=False):
                              phot_data=info['phot_data'], 
                              ast_data=info['astrom_data'])
 
+    if 'use_phot_optional_params' in info:
+        use_phot_opt = info['use_phot_optional_params']
+    else:
+        use_phot_opt = False
+    
+
     # Load up the first fitter object to get the parameter names.
     fitter = model_fitter.PSPL_Solver(my_data, my_model,
+                                      use_phot_optional_params = use_phot_opt,
                                       add_error_on_photometry = info['add_error_on_photometry'],
                                       multiply_error_on_photometry = info['multiply_error_on_photometry'],
                                       outputfiles_basename = mnest_base)
@@ -2889,9 +4869,9 @@ def load_summary_statistics(mnest_base, verbose=False):
     return stats, my_data, my_model
     
 
-def calc_summary_statistics(fitter, verbose=False):
+def calc_summary_statistics(fitter, verbose=False, return_samples=False):
     # Get the number of modes.
-    summ_tab = Table.read(fitter.outputfiles_basename + 'summary.txt', format='ascii')
+    summ_tab = Table.read(fitter.outputfiles_basename + 'summary.fits')
     N_modes = len(summ_tab) - 1
     
     # Calculate the number of data points we have all together.
@@ -2916,6 +4896,49 @@ def calc_summary_statistics(fitter, verbose=False):
     
     tab_list = fitter.load_mnest_modes()
     smy = fitter.load_mnest_summary()
+    # remember smy has N+1 because the 0th entry is the global solution.
+    # Trim this one out.
+    smy = smy[1:]
+
+    # Add in custom variables derived from other quantites.
+    current_params = tab_list[0].colnames
+
+    # Add thetaE (from log thetaE)
+    if ('log10_thetaE' in current_params) and ('thetaE' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['thetaE'] = 10**tab_list[ii]['log10_thetaE']
+
+        smy['Mean_thetaE'] = 10**smy['Mean_log10_thetaE']
+        smy['MAP_thetaE'] = 10**smy['MAP_log10_thetaE']
+        smy['MaxLike_thetaE'] = 10**smy['MaxLike_log10_thetaE']
+        #smy['Med_thetaE'] = 10**smy['Med_log10_thetaE']
+
+        fitter.all_param_names.append('thetaE')
+
+    # Add mag_src. 
+    if ('mag_base1' in current_params) and ('mag_src1' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['mag_src1'] = tab_list[ii]['mag_base1'] - 2.5 * np.log10(tab_list[ii]['b_sff1'])
+
+        smy['Mean_mag_src1'] = smy['Mean_mag_base1'] - 2.5 * np.log10(smy['Mean_b_sff1'])
+        smy['MAP_mag_src1'] = smy['MAP_mag_base1'] - 2.5 * np.log10(smy['MAP_b_sff1'])
+        smy['MaxLike_mag_src1'] = smy['MaxLike_mag_base1'] - 2.5 * np.log10(smy['MaxLike_b_sff1'])
+        #smy['Med_mag_src1'] = smy['Med_mag_base1'] - 2.5 * np.log10(smy['Med_b_sff1'])
+
+        fitter.all_param_names.append('mag_src1')
+        
+
+    if ('mag_base2' in current_params) and ('mag_src2' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['mag_src2'] = tab_list[ii]['mag_base2'] - 2.5 * np.log10(tab_list[ii]['b_sff2'])
+
+        smy['Mean_mag_src2'] = smy['Mean_mag_base2'] - 2.5 * np.log10(smy['Mean_b_sff2'])
+        smy['MAP_mag_src2'] = smy['MAP_mag_base2'] - 2.5 * np.log10(smy['MAP_b_sff2'])
+        smy['MaxLike_mag_src2'] = smy['MaxLike_mag_base2'] - 2.5 * np.log10(smy['MaxLike_b_sff2'])
+        #smy['Med_mag_src2'] = smy['Med_mag_base2'] - 2.5 * np.log10(smy['Med_b_sff2'])
+
+        fitter.all_param_names.append('mag_src2')
+        
 
     # Make a deepcopy of this table and set everything to zeros.
     # This will contain our final results.
@@ -2930,7 +4953,7 @@ def calc_summary_statistics(fitter, verbose=False):
         for sol in sol_types:
 
             # Loop through the parameters and get the best fit values.
-            foo = fitter.calc_best_fit(tab_list[nn], smy, s_idx=nn, def_best=sol)
+            foo = fitter.calc_best_fit(tab_list[nn], smy[[nn]], s_idx=0, def_best=sol)
 
             if sol == 'maxl' or sol == 'map':
                 best_par = foo
@@ -3011,15 +5034,53 @@ def calc_summary_statistics(fitter, verbose=False):
     # Add number of degrees of freedom
     stats['N_dof'] = N_dof
 
-    # Sort such that the modes are in reverse order of evidence.
-    # Increasing logZ (nan's are at the end)
-    zdx = np.argsort(stats['logZ'])
-    non_nan = np.where(np.isfinite(stats['logZ'][zdx]))[0]
-    zdx = zdx[non_nan[::-1]]
+    # # Sort such that the modes are in reverse order of evidence.
+    # # Increasing logZ (nan's are at the end)
+    # zdx = np.argsort(stats['logZ'])
+    # non_nan = np.where(np.isfinite(stats['logZ'][zdx]))[0]
+    # zdx = zdx[non_nan[::-1]]
 
-    stats = stats[zdx]
+    # stats = stats[zdx]
 
-    return stats
+    if return_samples:
+        return stats, tab_list
+    else:
+        return stats
+
+def get_best_fit_from_stats(fitter, stats, def_best='median'):
+    """
+    Return a dictionary of all the best-fit parameters for
+    the best-fit style of your choice.
+
+    This will work on a single mode or all modes, 
+    stats or summary tables. 
+    """
+    best_params_all = []
+
+    sol_types = ['maxl', 'mean', 'map', 'median']
+    sol_prefix = {'maxl': 'MaxLike_',
+                  'mean': 'Mean_',
+                  'map': 'MAP_',
+                  'median': 'Med_' }
+
+    # Loop through all solutions/modes.
+    for mm in range(len(stats)):
+        best_params = {}
+        
+        # Loop through all parameters.
+        for pp in range(len(fitter.all_param_names)):
+            param = fitter.all_param_names[pp]
+            prefix = sol_prefix[def_best]
+
+            if prefix + param in stats.colnames:
+                best_params[param] = stats[prefix + param][mm]
+            else:
+                best_params[param] = None
+
+        best_params_all.append(best_params)
+
+    return best_params_all
+
     
 def make_BIC_comparison_table():
     # Use the one with the highest likelihood solution.
@@ -3098,8 +5159,8 @@ def calc_chi2(target):
 
         # Calculate constants needed to subtract from lnL to calculate chi2.
         if pspl.astrometryFlag:
-            lnL_const_ast =  -0.5 * np.log(2.0 * math.pi * fitter.data['xpos_err'] ** 2)
-            lnL_const_ast += -0.5 * np.log(2.0 * math.pi * fitter.data['ypos_err'] ** 2)
+            lnL_const_ast =  -0.5 * np.log(2.0 * math.pi * fitter.data['xpos_err1'] ** 2)
+            lnL_const_ast += -0.5 * np.log(2.0 * math.pi * fitter.data['ypos_err1'] ** 2)
             lnL_const_ast = lnL_const_ast.sum()
         else:
             lnL_const_ast = 0
@@ -3159,11 +5220,11 @@ def calc_chi2(target):
         chi2 = chi2_ast + chi2_phot
 
         if pspl.astrometryFlag:
-            N_dof_ast = len(fitter.data['t_ast']) - len(params)
+            N_dof_ast = len(fitter.data['t_ast1']) - len(params)
             rchi2_ast = chi2_ast / N_dof_ast
             
         N_dof_phot = np.sum(ndata_phot) - len(params)
-        N_dof = len(fitter.data['t_ast']) + np.sum(ndata_phot) - len(params)
+        N_dof = len(fitter.data['t_ast1']) + np.sum(ndata_phot) - len(params)
         rchi2_phot = chi2_phot / N_dof_phot
         rchi2 = chi2 / N_dof
         
@@ -3200,7 +5261,7 @@ def calc_chi2(target):
         
 
         if pspl.astrometryFlag:
-            print('Ndata_ast = {0:d}'.format(len(fitter.data['t_ast'])))
+            print('Ndata_ast = {0:d}'.format(len(fitter.data['t_ast1'])))
         for ff in range(fitter.n_phot_sets):
             print('Ndata_phot{0:d} = {1:d}'.format(ff+1, ndata_phot[ff]))
         print('Ndata_phot all = {0:d}'.format(np.sum(ndata_phot)))
@@ -3228,166 +5289,11 @@ def calc_BIC(n, k, maxlogL):
     return bic
 
 
-
-def piE_tE(fit_type = 'ast'):
-    """
-    Supports plotting for several different fit solutions:
-
-    fit_type = 'ast'
-        Keck + OGLE photometry, Keck astrometry
-    fit_type = 'phot'
-        OGLE photometry
-    fit_type = 'multiphot'
-        Keck + OGLE photometry
-    """
-    if fit_type is 'ast':
-        data_dict = pspl_ast_multiphot
-    if fit_type is 'phot':
-        data_dict = pspl_phot
-    if fit_type is 'multiphot':
-        data_dict = pspl_multiphot
-        
-
-    ##########
-    # !!! NOTE: CHOICE OF THE quantiles_2d HAS A LARGE EFFECT 
-    # ON THE WAY THIS PLOT LOOKS !!!
-    # Plot piE-tE 2D posteriors from OGLE photometry only fits.
-    # Also plot PopSyCLE simulations simultaneously.
-    ##########
-    span = 0.999999426697
-    smooth = 0.04
-    quantiles_2d = None
-    hist2d_kwargs = None
-    labels = None
-    label_kwargs = None
-    show_titles = False 
-    title_fmt = ".2f" 
-    title_kwargs = None
-    
-    # Initialize values.
-    if label_kwargs is None:
-        label_kwargs = dict()
-    if title_kwargs is None:
-        title_kwargs = dict()
-    if hist2d_kwargs is None:
-        hist2d_kwargs = dict()
-
-    # Dictionary of dictionaries containing the tE and piE
-    # label position for each of the text labels.
-    label_pos = {'phot': {'ob120169': [150, 0.01],
-                          'ob140613': [170, 0.1],
-                          'ob150029': [150, 0.2],
-                          'ob150211': [35, 0.04]},
-                 'ast':  {'ob120169': [50, 0.1],
-                          'ob140613': [190, 0.15],
-                          'ob150029': [50, 0.2],
-                          'ob150211': [160, 0.03]}
-                 }
-    colors = {'ob120169': 'purple',
-              'ob140613': 'red',
-              'ob150029': 'darkorange',
-              'ob150211': 'black'}
-
-    # Set defaults.
-    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.2)
-    hist2d_kwargs['levels'] = hist2d_kwargs.get('levels', quantiles_2d)
-
-    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
-    tE = {}
-    piE = {}
-    weights = {}
-
-    for targ in targets:
-        fit_targ, dat_targ = get_data_and_fitter(data_dict[targ])
-        
-        res_targ = fit_targ.load_mnest_modes()
-        smy_targ = fit_targ.load_mnest_summary()
-
-        # Get rid of the global mode in the summary table.
-        smy_targ = smy_targ[1:]
-
-        # Find which solution has the max likelihood.
-        mdx = smy_targ['maxlogL'].argmax()
-        res_targ = res_targ[mdx]
-        smy_targ = smy_targ[mdx]
-
-        tE[targ] = res_targ['tE']
-        piE[targ] = np.hypot(res_targ['piE_E'], res_targ['piE_N'])
-        weights[targ] = res_targ['weights']
-
-
-    # Plot the piE-tE 2D posteriors.
-    plt.close(1)
-    fig = plt.figure(1, figsize=(6,6))
-    plt.clf()
-    axes = plt.gca()
-    plt.subplots_adjust(bottom=0.15)
-
-    sx = smooth
-    sy = smooth
-
-    hist2d_kwargs['fill_contours'] = hist2d_kwargs.get('fill_contours', False)
-    hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours', True)
-
-    for targ in targets:
-        model_fitter.contour2d_alpha(tE[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
-                                 weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
-                                 **hist2d_kwargs, plot_density=False)
-
-        axes.text(label_pos[fit_type][targ][0], label_pos[fit_type][targ][1],
-                      targ.upper(), color=colors[targ])    
-
-
-    # Add the PopSyCLE simulation points.
-    # NEED TO UPDATE THIS WITH BUGFIX IN DELTAM
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2.fits') 
-
-    bh_idx = np.where(t['rem_id_L'] == 103)[0]
-    ns_idx = np.where(t['rem_id_L'] == 102)[0]
-    wd_idx = np.where(t['rem_id_L'] == 101)[0]
-    st_idx = np.where(t['rem_id_L'] == 0)[0]
-
-    axes.scatter(t['t_E'][st_idx], t['pi_E'][st_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'paleturquoise')
-    axes.scatter(t['t_E'][wd_idx], t['pi_E'][wd_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'aqua')
-    axes.scatter(t['t_E'][ns_idx], t['pi_E'][ns_idx], 
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'blue')
-    axes.scatter(t['t_E'][bh_idx], t['pi_E'][bh_idx],
-                 alpha = 0.4, marker = '.', s = 25, 
-                 color = 'dimgray')
-    # Trickery to make the legend darker
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'Star', color = 'paleturquoise')
-    axes.scatter(0.01, 100, 
-                 alpha = 0.8, marker = '.', s = 25,
-                 label = 'WD', color = 'aqua')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'blue')
-    axes.scatter(0.01, 100,
-                 alpha = 0.8, marker = '.', s = 25, 
-                 label = 'BH', color = 'dimgray')
-
-    axes.set_xlim(10, 500)
-    axes.set_ylim(0.005, 0.5)
-    axes.set_xlabel('$t_E$ (days)')
-    axes.set_ylabel('$\pi_E$')
-    axes.set_xscale('log')
-    axes.set_yscale('log')
-    axes.legend(loc=3)
-    plt.savefig(paper_dir + 'piE_tE_' + fit_type + '.png')
-
-
 ####################################
 ### PopSyCLE Visualization Stuff ###
 ####################################
 def murel_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -3442,7 +5348,7 @@ def murel_popsycle():
     plt.legend()
 
 def dLdS_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -3478,7 +5384,7 @@ def dLdS_popsycle():
     plt.show()
 
 def dS_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -3535,7 +5441,7 @@ def dS_popsycle():
     plt.show()
 
 def pi_popsycle():
-    t = Table.read('/Users/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popsycle_events)
 
     long_idx = np.where(t['t_E'] > 100)[0]
 
@@ -3751,11 +5657,11 @@ def plot_astrometry(target):
     plt.clf()
 
     # Data
-    plt.errorbar(data['xpos']*1e3, data['ypos']*1e3,
-                     xerr=data['xpos_err']*1e3, yerr=data['ypos_err']*1e3, fmt='k.')
+    plt.errorbar(data['xpos1']*1e3, data['ypos1']*1e3,
+                     xerr=data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3, fmt='k.')
 
     # 1 day sampling over whole range
-    t_mod = np.arange(data['t_ast'].min(), data['t_ast'].max(), 1)
+    t_mod = np.arange(data['t_ast1'].min(), data['t_ast1'].max(), 1)
 
     # Model - usually from fitter
     pos_out = mymodel.get_astrometry(t_mod)
@@ -3771,8 +5677,8 @@ def plot_astrometry(target):
     #####
     plt.figure(3)
     plt.clf()
-    plt.errorbar(data['t_ast'], data['xpos']*1e3,
-                     yerr=data['xpos_err']*1e3, fmt='k.')
+    plt.errorbar(data['t_ast1'], data['xpos1']*1e3,
+                     yerr=data['xpos_err1']*1e3, fmt='k.')
     plt.plot(t_mod, pos_out[:, 0]*1e3, 'r-')
     plt.xlabel('t - t0 (days)')
     plt.ylabel(r'$\Delta \alpha^*$ (mas)')
@@ -3780,8 +5686,8 @@ def plot_astrometry(target):
 
     plt.figure(4)
     plt.clf()
-    plt.errorbar(data['t_ast'], data['ypos']*1e3,
-                     yerr=data['ypos_err']*1e3, fmt='k.')
+    plt.errorbar(data['t_ast1'], data['ypos1']*1e3,
+                     yerr=data['ypos_err1']*1e3, fmt='k.')
     plt.plot(t_mod, pos_out[:, 1]*1e3, 'r-')
     plt.xlabel('t - t0 (days)')
     plt.ylabel(r'$\Delta \delta$ (mas)')
@@ -3792,11 +5698,11 @@ def plot_astrometry(target):
     # astrometry vs. time
     #####
     # Make the model unlensed points.
-    p_mod_unlens_tdat = mymodel.get_astrometry_unlensed(data['t_ast'])
+    p_mod_unlens_tdat = mymodel.get_astrometry_unlensed(data['t_ast1'])
     x_mod_tdat = p_mod_unlens_tdat[:, 0]
     y_mod_tdat = p_mod_unlens_tdat[:, 1]
-    x_no_pm = data['xpos'] - x_mod_tdat
-    y_no_pm = data['ypos'] - y_mod_tdat
+    x_no_pm = data['xpos1'] - x_mod_tdat
+    y_no_pm = data['ypos1'] - y_mod_tdat
 
     # Make the dense sampled model for the same plot
     dp_tmod_unlens = mymodel.get_astrometry(t_mod) - mymodel.get_astrometry_unlensed(t_mod)
@@ -3805,7 +5711,7 @@ def plot_astrometry(target):
 
     # Prep some colorbar stuff
     cmap = plt.cm.viridis
-    norm = plt.Normalize(vmin=data['t_ast'].min(), vmax=data['t_ast'].max())
+    norm = plt.Normalize(vmin=data['t_ast1'].min(), vmax=data['t_ast1'].max())
     smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     smap.set_array([])
 
@@ -3816,7 +5722,7 @@ def plot_astrometry(target):
     xe_year = []
     ye_year = []
 
-    t_dat_yr = multinest_plot.mmjd_to_year(data['t_ast'])
+    t_dat_yr = multinest_plot.mmjd_to_year(data['t_ast1'])
 
     min_year = np.floor(t_dat_yr.min())
     max_year = np.ceil(t_dat_yr.max())
@@ -3826,20 +5732,20 @@ def plot_astrometry(target):
         ii = np.where((years[tt] < t_dat_yr) & (t_dat_yr <= years[tt+1]))[0]
 
         if tt == 100:
-            t_year = data['t_ast'][ii].data
+            t_year = data['t_ast1'][ii].data
             x_year = x_no_pm[ii]
             y_year = y_no_pm[ii]
-            xe_year = data['xpos_err'][ii]
-            ye_year = data['ypos_err'][ii]
+            xe_year = data['xpos_err1'][ii]
+            ye_year = data['ypos_err1'][ii]
         else:
-            #wgts = np.hypot(data['xpos_err'][ii], data['ypos_err'][ii])
-            wgts = (data['xpos_err'][ii] + data['ypos_err'][ii]) / 2.0
-            t_avg, t_std = weighted_avg_and_std(data['t_ast'][ii], wgts )
+            #wgts = np.hypot(data['xpos_err1'][ii], data['ypos_err1'][ii])
+            wgts = (data['xpos_err1'][ii] + data['ypos_err1'][ii]) / 2.0
+            t_avg, t_std = weighted_avg_and_std(data['t_ast1'][ii], wgts )
             x_avg, x_std = weighted_avg_and_std(x_no_pm[ii], wgts )
             y_avg, y_std = weighted_avg_and_std(y_no_pm[ii], wgts )
 
-            t_avg = data['t_ast'][ii].mean()
-            t_std = data['t_ast'][ii].std()
+            t_avg = data['t_ast1'][ii].mean()
+            t_std = data['t_ast1'][ii].std()
             x_avg = x_no_pm[ii].mean()
             x_std = x_no_pm[ii].std()
             y_avg = y_no_pm[ii].mean()
@@ -3878,11 +5784,11 @@ def plot_astrometry(target):
 
     plt.figure(6)
     plt.clf()
-    plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast'],
+    plt.scatter(x_no_pm*1e3, y_no_pm*1e3, c=data['t_ast1'],
                 cmap=cmap, norm=norm, s=10)
     plt.errorbar(x_no_pm*1e3, y_no_pm*1e3,
-                 xerr=data['xpos_err']*1e3, yerr=data['ypos_err']*1e3,
-                 fmt='none', ecolor=smap.to_rgba(data['t_ast']))
+                 xerr=data['xpos_err1']*1e3, yerr=data['ypos_err1']*1e3,
+                 fmt='none', ecolor=smap.to_rgba(data['t_ast1']))
     plt.scatter(x_mod_no_pm*1e3, y_mod_no_pm*1e3, c=t_mod, cmap=cmap, norm=norm, s=4)
     plt.gca().invert_xaxis()
     plt.axis('equal')
@@ -4452,7 +6358,7 @@ def plot_ob150211_phot():
     return
 
 def marginalize_tE_piE():
-    t = Table.read('/u/casey/scratch/papers/microlens_2019/plot_files/Mock_EWS.fits')
+    t = Table.read(popscyle_events)
 
     mas_to_rad = 4.848 * 10**-9
 
@@ -4580,7 +6486,7 @@ def plot_photometry_single(target):
     f2 = fig_a.add_axes([0.2, 0.13, 0.75, 0.2])
 
     # Amplification Curve
-    f1.plot(t_mod, amp_mod, 'k-', label='model')
+    f1.plot(t_mod, amp_mod, '-', label='model')
     f1.errorbar(data['t_phot1'], amp1, yerr=amp_err1, color='red',
                    label='OGLE I', fmt='r.', alpha=0.4, zorder=3000)
     f1.errorbar(data['t_phot2'], amp2, yerr=amp_err2, color='blue',
@@ -4757,9 +6663,9 @@ def get_num_data_points(data_dict, astrometryFlag=True, verbose=False):
         for aa in range(len(data_dict['ast_files'])):
             # Multiply astrometry by 2 to account for X and Y independent positions.
             if len(data_dict['ast_files']) > 1:
-                N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(pp+1)])
+                N_ast_aa = 2 * len(data_dict['t_ast{0:d}'.format(aa+1)])
             else:
-                N_ast_aa = 2 * len(data_dict['t_ast'])
+                N_ast_aa = 2 * len(data_dict['t_ast1'])
                 
             if verbose: print('N_ast_aa = ', N_ast_aa)
             N_data += N_ast_aa

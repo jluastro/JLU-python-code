@@ -20,14 +20,21 @@ class StarTable(Table):
     Input:
     target: type str - Target name (lowercase).
     """
-    def __init__(self, target):
-        self.target = target
-        tab = Table.read(astrom_data[self.target])
-        Table.__init__(self, tab)
+    def __init__(self, target=None, masked=False):
+        if target == None:
+            Table.__init__(self)
+            
+            # self['name'] = self['name'].astype('U20')
+            # self.cut = self.cut
+            # self.time_cut = self.time_cut
+        else:
+            self.target = target
+            tab = Table.read(astrom_data[self.target])
+            Table.__init__(self, tab)
 
-        self['name'] = self['name'].astype('U20')
-        self.cut = False # Tracks whether the data has been cut or not
-        self.time_cut = time_cuts[target]
+            self['name'] = self['name'].astype('U20')
+            self.cut = False # Tracks whether the data has been cut or not
+            self.time_cut = time_cuts[target]
 
         return
 
@@ -288,10 +295,12 @@ class StarTable(Table):
         # Change signs of the East                                                                        
         x = x*-1.0
         x0 = self['x0'][ss]*-1.0
+        y0 = self['y0'][ss]
         vx = self['vx'][ss]*-1.0
+        vy = self['vy'][ss]
         
         xmod_at_t = x0 + vx * (t - self['t0'][ss])
-        ymod_at_t = self['y0'][ss] + self['vy'][ss] * (t - self['t0'][ss])
+        ymod_at_t = y0 + vy * (t - self['t0'][ss])
         xres = (x - xmod_at_t)
         yres = (y - ymod_at_t)
 
@@ -300,7 +309,14 @@ class StarTable(Table):
         chi2_y = yres**2 / ye**2
 
         chi2 = np.sum(chi2_x + chi2_y)
-        chi2_red = chi2 / (len(x) - 2) 
+
+        N_data = len(x) + len(y)
+        N_param = 4
+        N_dof = N_data - N_param
+        
+        chi2_red = chi2 / N_dof
+        print(star, self.cut)
+        pdb.set_trace()
 
         return chi2, chi2_red
 
@@ -369,35 +385,38 @@ class StarTable(Table):
 
             # Change signs of the East
             x = star['x']*-1.0
+            y = star['y']
             x0 = star['x0']*-1.0
+            y0 = star['y0']
             vx = star['vx']*-1.0
+            vy = star['vy']
 
             # Make the model curves
             tmod = np.arange(tmin, tmax, 0.1)
             xmod = x0 + vx * (tmod - star['t0'])
-            ymod = star['y0'] + star['vy'] * (tmod - star['t0'])
+            ymod = y0 + vy * (tmod - star['t0'])
             xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0']))
             ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0']))
 
             xmod_at_t = x0 + vx * (star['t'] - star['t0'])
-            ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
+            ymod_at_t = y0 + vy * (star['t'] - star['t0'])
 
             # Plot Positions on Sky
-            ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
-            ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
-            ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
-            sc = ax_sky.scatter(x, star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
-            ax_sky.errorbar(x, star['y'], xerr=star['xe'], yerr=star['ye'],
+            ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+            ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+            ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
+            sc = ax_sky.scatter(x, y, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+            ax_sky.errorbar(x, y, xerr=star['xe'], yerr=star['ye'],
                                 ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
             ax_sky.set_aspect('equal', adjustable='datalim')
 
             # Figure out which axis has the bigger data range.
             xrng = np.abs(x.max() - x.min())
-            yrng = np.abs(star['y'].max() - star['y'].min())
+            yrng = np.abs(y.max() - y.min())
             if xrng > yrng:
                 ax_sky.set_xlim(x.min() - 0.001, x.max() + 0.001)
             else:
-                ax_sky.set_ylim(star['y'].min() - 0.001, star['y'].max() + 0.001)
+                ax_sky.set_ylim(y.min() - 0.001, y.max() + 0.001)
 
             # Set labels
             ax_sky.invert_xaxis()
@@ -408,7 +427,7 @@ class StarTable(Table):
 
             # Plot Residuals vs. Time
             xres = (x - xmod_at_t) * 1e3
-            yres = (star['y'] - ymod_at_t) * 1e3
+            yres = (y - ymod_at_t) * 1e3
             xrese = star['xe'] * 1e3
             yrese = star['ye'] * 1e3
             ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
@@ -480,8 +499,8 @@ class StarTable(Table):
 
         # st = fig.suptitle(self.target + " astrometry", fontsize = 20)
 
-        grid_t = plt.GridSpec(1, 1, hspace=5.0, wspace=0.5, bottom=0.60, top=0.90, left=0.22, right=0.79)
-        grid_b = plt.GridSpec(2, 1, hspace=0.1, wspace=0.5, bottom=0.10, top=0.45, left=0.22, right=0.79)
+        grid_t = plt.GridSpec(1, 1, hspace=3.0, wspace=0.5, bottom=0.60, top=0.90, left=0.3, right=0.79)
+        grid_b = plt.GridSpec(2, 1, hspace=0.1, wspace=0.5, bottom=0.10, top=0.45, left=0.3, right=0.79)
 
         cmap = plt.cm.plasma
         norm = plt.Normalize(vmin=tmin, vmax=tmax)
@@ -498,35 +517,38 @@ class StarTable(Table):
 
         # Change signs of the East
         x = star['x']*-1.0
+        y = star['y']
         x0 = star['x0']*-1.0
+        y0 = star['y0']
         vx = star['vx']*-1.0
-
+        vy = star['vy']
+        
         # Make the model curves
         tmod = np.arange(tmin, tmax, 0.1)
         xmod = x0 + vx * (tmod - star['t0'])
-        ymod = star['y0'] + star['vy'] * (tmod - star['t0'])
+        ymod = y0 + vy * (tmod - star['t0'])
         xmode = np.hypot(star['x0e'], star['vxe'] * (tmod - star['t0']))
         ymode = np.hypot(star['y0e'], star['vye'] * (tmod - star['t0']))
 
         xmod_at_t = x0 + vx * (star['t'] - star['t0'])
-        ymod_at_t = star['y0'] + star['vy'] * (star['t'] - star['t0'])
+        ymod_at_t = y0 + vy * (star['t'] - star['t0'])
 
         # Plot Positions on Sky
-        ax_sky.plot(xmod, ymod, 'k-', color='grey', zorder=1)
-        ax_sky.plot(xmod + xmode, ymod + ymode, 'k--', color='grey', zorder=1)
-        ax_sky.plot(xmod - xmode, ymod - ymode, 'k--', color='grey', zorder=1)
-        sc = ax_sky.scatter(x, star['y'], c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
-        ax_sky.errorbar(x, star['y'], xerr=star['xe'], yerr=star['ye'],
+        ax_sky.plot(xmod, ymod, '-', color='grey', zorder=1)
+        ax_sky.plot(xmod + xmode, ymod + ymode, '--', color='grey', zorder=1)
+        ax_sky.plot(xmod - xmode, ymod - ymode, '--', color='grey', zorder=1)
+        sc = ax_sky.scatter(x, y, c=star['t'], cmap=cmap, norm=norm, s=20, zorder=2)
+        ax_sky.errorbar(x, y, xerr=star['xe'], yerr=star['ye'],
                             ecolor=smap.to_rgba(star['t']), fmt='none', elinewidth=2, zorder=2)
         ax_sky.set_aspect('equal', adjustable='datalim')
 
         # Figure out which axis has the bigger data range.
         xrng = np.abs(x.max() - x.min())
-        yrng = np.abs(star['y'].max() - star['y'].min())
+        yrng = np.abs(y.max() - y.min())
         if xrng > yrng:
             ax_sky.set_xlim(x.min() - 0.001, x.max() + 0.001)
         else:
-            ax_sky.set_ylim(star['y'].min() - 0.001, star['y'].max() + 0.001)
+            ax_sky.set_ylim(y.min() - 0.001, y.max() + 0.001)
 
         # Set labels
         ax_sky.invert_xaxis()
@@ -536,7 +558,7 @@ class StarTable(Table):
 
         # Plot Residuals vs. Time
         xres = (x - xmod_at_t) * 1e3
-        yres = (star['y'] - ymod_at_t) * 1e3
+        yres = (y - ymod_at_t) * 1e3
         xrese = star['xe'] * 1e3
         yrese = star['ye'] * 1e3
         ax_resX.errorbar(star['t'], xres, yerr=xrese, fmt='r.', label=r'$\alpha*$', elinewidth=2)
