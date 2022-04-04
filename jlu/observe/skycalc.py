@@ -215,7 +215,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
         #             color=colors[mm], fontsize=14)
 
     py.plot([0,31], [30,30], 'k')
-    legend = py.legend(loc=9, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
+    legend = py.legend(loc=2, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
     [handle.set_facecolor('w') for handle in legend.legendHandles]
     py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), fontsize=20)
     py.xlabel('Day of Month (UT)', fontsize = 20)

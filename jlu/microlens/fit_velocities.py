@@ -316,7 +316,6 @@ class StarTable(Table):
         
         chi2_red = chi2 / N_dof
         print(star, self.cut)
-        pdb.set_trace()
 
         return chi2, chi2_red
 
@@ -646,15 +645,15 @@ class StarTable(Table):
         rres = np.hypot(xres, yres)
         rrese = np.hypot(xres/rres * xrese, yres/rres * yrese)
 
-        weights = 1/rrese
-        average = np.multiply(rres, weights).sum() / weights.sum()
-        var = 1/np.power(weights, 2).sum()/len(idx)
+        weights = 1 / rrese**2
+        average = np.average(rres, weights=weights)
+        variance = np.average((rres-average)**2, weights=weights)
 
         if return_results:
-            return average, var, np.array([all_chi2, all_chi2_red]), np.array([cut_chi2, cut_chi2_red])
+            return average, variance, np.array([all_chi2, all_chi2_red]), np.array([cut_chi2, cut_chi2_red])
         else:
             print("N_obs = %d"%len(idx))
-            print("average deviation = %.2f +/- %.2f mas"%(average, np.sqrt(var)))
+            print("average deviation = %.2f +/- %.2f mas"%(average, np.sqrt(variance)))
             print("     chi^2       chi^2_red")
             print("all: %.2f        %.2f"%(all_chi2, all_chi2_red))
             print("cut: %.2f        %.2f"%(cut_chi2, cut_chi2_red))
