@@ -1657,17 +1657,17 @@ def plot_airmass_moon():
     # coordinates to center of OGLE field BLG502 (2017 objects)
     ra = "18:00:00"
     dec = "-30:00:00"
-    months = np.array([8, 9])
-    days = np.array([1, 1])
+    months = np.array([4, 5, 6, 7])
+    days = np.array([10, 15, 15, 30])
     # outdir = '/Users/jlu/doc/proposals/keck/uc/18A/'
     outdir = '/u/abrams/code/JLU-python-code/jlu/papers/'
 
     # Keck 2
-    skycalc.plot_airmass(ra, dec, 2022, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_22B.png', date_idx=-1)
-    skycalc.plot_moon(ra, dec, 2022, np.array([8, 9]), outfile=outdir + 'microlens_moon_22B.png')
+    skycalc.plot_airmass(ra, dec, 2023, months, days, 'keck2', outfile=outdir + 'microlens_airmass_keck2_23A.png', date_idx=-1, proposal_cycle = 'A')
+    skycalc.plot_moon(ra, dec, 2023, months, outfile=outdir + 'microlens_moon_23A.png')
 
     # Keck 1
-    skycalc.plot_airmass(ra, dec, 2022, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_22B.png', date_idx=-1)
+    skycalc.plot_airmass(ra, dec, 2023, months, days, 'keck1', outfile=outdir + 'microlens_airmass_keck1_23A.png', date_idx=-1, proposal_cycle = 'A')
     
     return
 
