@@ -2696,3 +2696,86 @@ def plot_prob_v_mass():
     plt.savefig('prob_v_mass.png')
     
     return
+
+def ligo_compare():
+    fig, ax = plt.subplots(figsize=(9,6))
+    R = Table.read('/u/samrose/scratch/metal_ifmr_runs/Raithel_bh_ns_masses_10E-3.fits', format='fits')
+    S = Table.read('/u/samrose/scratch/metal_ifmr_runs/Spera_bh_ns_masses_10E-3.fits', format='fits')
+    N = Table.read('/u/samrose/scratch/metal_ifmr_runs/N20_bh_ns_masses_10E-3.fits', format='fits')
+    
+    R_BH_idx = np.where(R['phase']==103)[0]
+    S_BH_idx = np.where(S['phase']==103)[0]
+    N_BH_idx = np.where(N['phase']==103)[0]
+    mass_bins = np.logspace(0, 3, 1000)
+    S_counts, S_bin_edges = np.histogram(S['mass_current'][S_BH_idx], bins=mass_bins)
+    mass_bin_cent = np.zeros(len(S_counts))
+    
+    for i in range(0, len(S_counts)):
+        mass_bin_cent[i] = 0.5*(S_bin_edges[i]+S_bin_edges[i+1])
+        
+    R_counts, R_bin_edges = np.histogram(R['mass_current'][R_BH_idx], bins=mass_bins)
+    N_counts, N_bin_edges = np.histogram(N['mass_current'][N_BH_idx], bins=mass_bins)
+    
+    BH_num = 5e7
+    
+#    ax.plot(mass_bin_cent, R_counts*1.0e3, 'r-', 
+#            label='Raithel18', linewidth=2)
+    ax.plot(mass_bin_cent, S_counts*1.0e3, 'b-', 
+            label='Spera15', linewidth=2)
+    ax.plot(mass_bin_cent, N_counts*1.0e3, 'm-', 
+            label='SukhboldN20', linewidth=2)
+    
+    import scipy.integrate as integrate
+    # old https://arxiv.org/pdf/2010.14533.pdf figure 16
+    # new https://ui.adsabs.harvard.edu/abs/2021arXiv211103634T/abstract
+    #use the old because the new paper says that their new fit values agree with the old ones
+    alpha = 3.5 # bottom of left column, page 29
+    m_max = 86 
+    m_min = 4.6 
+    del_m = 4.82 
+    gaussian_mean = 34 # bottom of left column, page 29
+    gaussian_sigma = 5.69 
+    lambda_peak = 0.038 # top of right column, page 29 
+    mass = np.linspace(0.1, 100, 1000)
+
+    # mmin and delm... 2.3, 0.39 OR 5.0, 4.9???
+
+    def power_law(mass, alpha, m_min, m_max):
+        integral = integrate.quad(lambda x: x**(-alpha), m_min, m_max)[0]
+        a = 1/integral
+        values = np.zeros(len(mass))
+        idx0 = np.where(mass < m_min)
+        idx1 = np.where((mass >= m_min) & (mass <= m_max))
+        idx2 = np.where(mass > m_max)
+        values[idx0] = 0.0
+        values[idx2] = 0.0
+        values[idx1] = a*mass[idx1]**(-alpha)
+        return values
+    
+    def gaussian(mass, gaussian_mean, gaussian_sigma):
+        integral = integrate.quad(lambda x: np.exp(-0.5*(x-gaussian_mean)**2/gaussian_sigma**2), m_min, m_max)[0]
+        a = 1/integral
+        return a*np.exp(-0.5*(mass-gaussian_mean)**2/gaussian_sigma**2)
+    
+    def smooth(x, del_m, m_min):
+        values = np.zeros(len(x))
+        idx0 = np.where(x <= m_min)
+        idx1 = np.where((x > m_min) & (x < m_min + del_m))
+        idx2 = np.where(x >= m_min + del_m)
+        values[idx0] = 0.0
+        values[idx1] = (1 + np.exp((del_m/(x[idx1]-m_min))+(del_m/(x[idx1]-m_min-del_m))))**(-1)
+        values[idx2] = 1.0
+        return np.array(values)
+
+    pdf = ((1-lambda_peak)*power_law(mass, alpha, m_min, m_max)+lambda_peak*gaussian(mass, gaussian_mean, gaussian_sigma))*smooth(mass, del_m, m_min)
+    
+    
+    ax.plot(mass, pdf*BH_num,
+            'c-', label='LIGO \nPower Law + Peak', linewidth=2)
+    ax.set(yscale='log', xscale='log',
+           xlabel='$M_{BH}$ [$M_{\odot}$]', ylabel='Number',
+          xlim=(4, 100), ylim=(1e3, 1e8))  
+    ax.legend(loc='upper right')
+#    ax.set_title('Galactic Present-Day BH Mass function')
+    plt.tight_layout()
+    plt.show()
