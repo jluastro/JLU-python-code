@@ -20,7 +20,7 @@ from astropy.utils.iers import conf as iers_conf
 iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'
 iers_conf.auto_max_age = None
 
-def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0):
+def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0, proposal_cycle = 'A'):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
     dec = Dec. value of target (e.g. '-29:00:28.12')
@@ -29,6 +29,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     days = array of days (integers), of same length as months.
     observatory = Either 'keck1' or 'keck2'
     date_idx = Index of day to use for twilight dashed lines.  Defaults to first day.
+    proposal_cycle = A or B to determine where the text with dates is. Default to A.
 
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
@@ -111,9 +112,13 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w', mec=colors[ii], ms=12)
         py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii], ms=12)
         py.plot(times, airmass, colors[ii] + '-')
-
+        
+        if proposal_cycle == 'A':
+            text_offset = 1.1
+        else:
+            text_offset = 1.3
         py.text(-3.5,
-                airmass[15] + (ii*0.1) - 0.35,
+                text_offset + (ii*0.1),
                 labels[ii], color=colors[ii], fontsize=20)
 
     # Make observatory name nice for title
@@ -215,7 +220,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
         #             color=colors[mm], fontsize=14)
 
     py.plot([0,31], [30,30], 'k')
-    legend = py.legend(loc=9, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
+    legend = py.legend(loc=2, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
     [handle.set_facecolor('w') for handle in legend.legendHandles]
     py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), fontsize=20)
     py.xlabel('Day of Month (UT)', fontsize = 20)
