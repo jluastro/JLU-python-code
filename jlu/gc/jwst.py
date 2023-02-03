@@ -849,7 +849,7 @@ def plot_spectra_yng_old(mag_f212n=18, snr=False, save_fits=False):
     
     stars = [yng[ydx], old[odx], lom[mdx]]
     stars_tab = table.vstack(stars) # destroys meta data. 
-    red_law = reddening.RedLawHosek18()
+    red_law = reddening.RedLawHosek18b()
     AKs = 2.70
     
     ## make the plot
