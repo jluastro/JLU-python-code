@@ -3,15 +3,15 @@ import pylab as py
 import pdb
 import math
 import os
-from observe import skycalc
+from jlu.observe import skycalc
 from microlens.jlu import residuals
 import shutil, os, sys
 import scipy
 import scipy.stats
-#from gcwork import starset
-#from gcwork import starTables
+from gcwork import starset
+from gcwork import starTables
 from astropy.table import Table
-from util import fileUtil
+from jlu.util import fileUtil
 
 def plot_airmass_moon():
     # coordinates to center of OGLE field BLG502 (2017 objects)
@@ -36,30 +36,31 @@ def plot_airmass_moon():
 def plot_3_targs():
     
     #name three objects
-    targNames = ['ob140613', 'OB150211', 'ob150029']
+    targNames = ['ob140613', 'ob150211', 'ob150029']
 
     #object alignment directories
-    an_dirs = ['/u/nijaid/work/OB140613/a_2017_09_21/prop/',
-                 '/Users/jlu/work/microlens/OB150211/a_2017_09_19/prop/',
-                 '/Users/jlu/work/microlens/OB150029/a_2017_09_21/prop/']
+    an_dirs = ['/g/lu/microlens/cross_epoch/OB140613/a_2018_09_24/prop/',
+               '/g/lu/microlens/cross_epoch/OB150211/a_2018_09_19/prop/',
+               '/g/lu/microlens/cross_epoch/OB150029/a_2018_09_24/prop/']
     align_dirs = ['align/align_t', 'align/align_t', 'align/align_t']
-    points_dirs = ['points_d/', 'points_a/', 'points_d/']
-    poly_dirs = ['polyfit_d/fit', 'polyfit_a/fit', 'polyfit_d/fit']
+    points_dirs = ['points_a/', 'points_d/', 'points_d/']
+    poly_dirs = ['polyfit_a/fit', 'polyfit_d/fit', 'polyfit_d/fit']
 
-    xlim = [1.0, 2.0, 1.5]
-    ylim = [1.0, 4.0, 1.5]
+    xlim = [1.2, 2.0, 1.5]
+    ylim = [1.0, 7.0, 1.5]
 
     #Output file
-    filename = '/Users/jlu/doc/proposals/keck/uc/18A/plot_3_targs.png'
-    figsize = (15, 4.5)
+    #filename = '/Users/jlu/doc/proposals/keck/uc/19A/plot_3_targs.png'
+    filename = '/Users/jlu/plot_3_targs.png'
+    #figsize = (15, 4.5)
+    figsize = (10, 4.5)
     
     ps = 9.92
-
 
     py.close(1)
     py.figure(1, figsize=figsize)
     
-    Ntarg = len(targNames)
+    Ntarg = len(targNames) - 1
     for i in range(Ntarg):
         rootDir = an_dirs[i]
         starName = targNames[i]
@@ -86,15 +87,17 @@ def plot_3_targs():
         xerr = pointsTab[pointsTab.colnames[3]]
         yerr = pointsTab[pointsTab.colnames[4]]
 
-        if i == 1:
+        if i == 0:
             print('Doing MJD')
             idx_2015 = np.where(time <= 57387)
             idx_2016 = np.where((time > 57387) & (time <= 57753))
             idx_2017 = np.where((time > 57753) & (time <= 58118))
+            idx_2018 = np.where((time > 58119) & (time <= 58484))
         else:
             idx_2015 = np.where(time < 2016)
             idx_2016 = np.where((time >= 2016) & (time < 2017))
             idx_2017 = np.where((time >= 2017) & (time < 2018))
+            idx_2018 = np.where((time >= 2018) & (time < 2019))
 
         fitx = star.fitXv
         fity = star.fitYv
@@ -126,10 +129,11 @@ def plot_3_targs():
         fitSigX *= ps
         fitSigY *= ps
 
-        paxes = py.subplot(1, 3, i+1)
+        paxes = py.subplot(1, Ntarg, i+1)
         py.errorbar(x[idx_2015], y[idx_2015], xerr=xerr[idx_2015], yerr=yerr[idx_2015], fmt='r.', label='2015')  
         py.errorbar(x[idx_2016], y[idx_2016], xerr=xerr[idx_2016], yerr=yerr[idx_2016], fmt='g.', label='2016')  
         py.errorbar(x[idx_2017], y[idx_2017], xerr=xerr[idx_2017], yerr=yerr[idx_2017], fmt='b.', label='2017')  
+        py.errorbar(x[idx_2018], y[idx_2018], xerr=xerr[idx_2018], yerr=yerr[idx_2018], fmt='c.', label='2018')  
 
         # if i==1:
         #     py.yticks(np.arange(np.min(y-yerr-0.1*ps), np.max(y+yerr+0.1*ps), 0.3*ps))
@@ -154,6 +158,8 @@ def plot_3_targs():
                 color_line = 'green'
             if ee in idx_2017[0].tolist():
                 color_line = 'blue'
+            if ee in idx_2018[0].tolist():
+                color_line = 'cyan'
                 
             py.plot([fitLineX[ee], x[ee]], [fitLineY[ee], y[ee]], color=color_line, linestyle='dashed', alpha=0.8)
         
@@ -161,7 +167,7 @@ def plot_3_targs():
         
         py.title(starName.upper())
         if i==0:
-            py.legend(loc=1)
+            py.legend(loc=1, fontsize=12)
 
 
     

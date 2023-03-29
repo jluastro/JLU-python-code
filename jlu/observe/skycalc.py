@@ -8,7 +8,19 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import pdb
 
-def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0):
+##################
+# Added March 2020
+##################
+# Workaround for our out-of-date Astropy
+# The USNO IERS services (needed by PyLIMA for
+# calculating the sidereal time) are being modernized,
+# so mirror sites have been set up to obtain the IERS tables.
+# Updated Astropy has this internalized.
+from astropy.utils.iers import conf as iers_conf
+iers_conf.iers_auto_url = 'https://astroconda.org/aux/astropy_mirror/iers_a_1/finals2000A.all'
+iers_conf.auto_max_age = None
+
+def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass.png', date_idx = 0, proposal_cycle = 'A'):
     """
     ra =  R.A. value of target (e.g. '17:45:40.04')
     dec = Dec. value of target (e.g. '-29:00:28.12')
@@ -17,6 +29,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     days = array of days (integers), of same length as months.
     observatory = Either 'keck1' or 'keck2'
     date_idx = Index of day to use for twilight dashed lines.  Defaults to first day.
+    proposal_cycle = A or B to determine where the text with dates is. Default to A.
 
     Notes:
     Months are 1-based (i.e. 1 = January). Same for days.
@@ -43,6 +56,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         labels.append(label)
 
     colors = ['r', 'b', 'g', 'c', 'm', 'y']
+    heights = [1.45, 1.35, 1.25, 1.15]
 
     # Get sunset and sunrise times on the first specified day
     midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[date_idx], days[date_idx])) - utc_offset
@@ -67,7 +81,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     py.close(3)
     py.figure(3, figsize=(7, 7))
     py.clf()
-    py.subplots_adjust(left=0.1)
+    py.subplots_adjust(left=0.15)
     for ii in range(len(days)):
         midnight = Time('{0:d}-{1:d}-{2:d} 00:00:00'.format(year, months[ii], days[ii])) - utc_offset
         delta_midnight = np.arange(-7, 7, 0.2) * u.hour
@@ -98,10 +112,14 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         py.plot(times[belowDeck], airmass[belowDeck], colors[ii] + 'o', mfc='w', mec=colors[ii], ms=12)
         py.plot(times[aboveDeck], airmass[aboveDeck], colors[ii] + 'o', mec=colors[ii], ms=12)
         py.plot(times, airmass, colors[ii] + '-')
-
+        
+        if proposal_cycle == 'A':
+            text_offset = 1.1
+        else:
+            text_offset = 1.3
         py.text(-3.5,
-                airmass[15] + (ii*0.1) - 0.65,
-                labels[ii], color=colors[ii])
+                text_offset + (ii*0.1),
+                labels[ii], color=colors[ii], fontsize=20)
 
     # Make observatory name nice for title
     if observatory == "keck1":
@@ -109,9 +127,11 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     if observatory == "keck2":
         observatory = 'Keck II'
 
-    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
-    py.xlabel('Local Time in Hours (0 = midnight)', fontsize=16)
-    py.ylabel('Air Mass', fontsize=16)
+    py.tick_params(labelsize=20)      
+    py.title('Obs. RA = 18:00, DEC = -30:00 from %s' %observatory, fontsize = 20, y=1.02)
+#    py.title('Observing RA = %s, DEC = %s from %s' % (ra, dec, observatory), fontsize=14)
+    py.xlabel('Local Time in Hours (0 = midnight)', fontsize=20)
+    py.ylabel('Air Mass', fontsize=20)
 
     loAirmass = 1
     hiAirmass = 2.2
@@ -139,8 +159,8 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     # Observatory (for symbol)
     keck_loc = EarthLocation.of_site('keck')
     keck = ephem.Observer()
-    keck.long = keck_loc.longitude.value
-    keck.lat = keck_loc.latitude.value
+    keck.long = keck_loc.lon.value
+    keck.lat = keck_loc.lat.value
     
     # Setup Object
     obj = ephem.FixedBody()
@@ -172,7 +192,7 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
     py.close(3)
     py.figure(3, figsize=(7, 7))
     py.clf()
-    py.subplots_adjust(left=0.1)
+    py.subplots_adjust(left=0.15)
 
     for mm in range(len(months)):
         for dd in range(len(daysInMonth)):
@@ -192,17 +212,22 @@ def plot_moon(ra, dec, year, months, outfile='plot_moon.png'):
             print( 'Day: %2d   Moon Illum: %4.1f   Moon Dist: %4.1f' % \
                   (daysInMonth[dd], moonillum[dd], moondist[dd]))
 
-        py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
+        # py.plot(daysInMonth, moondist, sym[mm],label=labels[mm])
+        py.scatter(daysInMonth, moondist, c=moonillum, s = 250, cmap='Greys_r',edgecolors=colors[mm], label=labels[mm])
 
-        for dd in range(len(daysInMonth)):
-            py.text(daysInMonth[dd] + 0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
-                    color=colors[mm])
+        # for dd in range(len(daysInMonth)):
+        #     py.text(daysInMonth[dd] + 0.45, moondist[dd]-2, '%2d' % moonillum[dd], 
+        #             color=colors[mm], fontsize=14)
 
     py.plot([0,31], [30,30], 'k')
-    py.legend(loc=2, numpoints=1)
-    py.title('Moon distance and %% Illumination (RA = %s, DEC = %s)' % (ra, dec), fontsize=14)
-    py.xlabel('Day of Month (UT)', fontsize = 16)
-    py.ylabel('Moon Distance (degrees)', fontsize = 16)
+    legend = py.legend(loc=2, numpoints=1, fontsize=20, labelcolor=colors, handlelength=0, markerscale=0)
+    [handle.set_facecolor('w') for handle in legend.legendHandles]
+    py.title('Moon distance and %% Illumination \n (RA = %s, DEC = %s)' % (ra, dec), fontsize=20)
+    py.xlabel('Day of Month (UT)', fontsize = 20)
+    py.ylabel('Moon Distance (degrees)', fontsize = 20)
+    py.tick_params(labelsize=20)  
     py.axis([0, 31, 0, 200])
-
+    py.yticks([0,30,60,90,120,150,180])
+    py.xticks([0,5,10,15,20,25,30])
+    # py.show()
     py.savefig(outfile)
