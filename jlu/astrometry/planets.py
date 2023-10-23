@@ -24,8 +24,8 @@ def astro_wobble(m_planet=1, m_star=1, distance=10, semi_major_axis=1):
 
     period = (semi_major_axis**3 / m_star)**(1.0/2.0)
 
-    print 'Period of Planet = {0:.2f} yr'.format(period)
-    print 'Astrometric Wobble (peak-to-peak) = {0:.3f} mas'.format(wobble)
+    print( 'Period of Planet = {0:.2f} yr'.format(period) )
+    print( 'Astrometric Wobble (peak-to-peak) = {0:.3f} mas'.format(wobble) )
 
     return
 

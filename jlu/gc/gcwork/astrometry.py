@@ -8,9 +8,11 @@
 ##################################################
 
 
-from pyraf import iraf
-import ephem
-import asciidata, pyfits, pickle
+# from pyraf import iraf
+# import ephem
+# import asciidata
+from astropy.io import fits as pyfits
+import pickle
 import os, sys, math
 import numpy as np
 import pylab as py
@@ -29,6 +31,8 @@ from keckdar import dar
 import datetime
 import pdb
 import histNofill
+from astropy import units as u
+from astropy import constants as c
 
 def astroIsokin(root, outsuffix):
     """
@@ -2429,11 +2433,11 @@ def plotScaleAngle(align):
     for rr in range(tab.nrows):
         t = objects.Transform()
 
-	t.a = [tab[3][rr], tab[5][rr], tab[7][rr]]
-	t.b = [tab[9][rr], tab[11][rr], tab[13][rr]]
+        t.a = [tab[3][rr], tab[5][rr], tab[7][rr]]
+        t.b = [tab[9][rr], tab[11][rr], tab[13][rr]]
 
-	t.aerr = [tab[4][rr],  tab[6][rr],  tab[8][rr]]
-	t.berr = [tab[10][rr], tab[12][rr], tab[14][rr]]
+        t.aerr = [tab[4][rr],  tab[6][rr],  tab[8][rr]]
+        t.berr = [tab[10][rr], tab[12][rr], tab[14][rr]]
 
         t.linearToSpherical(override=False)
 
@@ -2923,3 +2927,56 @@ def comparePos_combo2submaps(epoch='10maylgs'):
     py.savefig(root + '_comparePos_comboVsSubmaps.png')
 
 
+def astro_wobble(m_star=1*u.msun, m_bh=1*u.msun,
+                 distance=8*u.kpc, semi_major_axis=1*u.AU):
+    """
+    Calculate the astrometric wobble of the star induced by a dark object
+    (e.g. black hole).
+
+    Inputs
+    ------
+    m_star : flt
+      Mass of luminous star whose wobble will be calculated.
+      Should have astropy units attached.
+    m_bh : flt
+      Mass of dark object (e.g. BH). Should have astropy units attached.
+    distance : flt
+      Distance in kpc with astropy units attached.
+    semi_major_axis : flt
+      Semi-major axis of binary in AU with astropy units attached.
+
+    Example
+    -------
+    astro_wobble(m_star=1*u.msun, m_bh=10*u.msun,
+                 distance=8*u.kpc, semi_major_axis=1*u.AU)
+    """
+    m_p_msun = m_planet / mjup_in_msun
+    a_pc = semi_major_axis / au_in_pc
+
+    wobble = semi_major_axis * m_star / (distance * m_bh)
+    wobble *= 2.0  # switch to peak to peak
+
+    period = (semi_major_axis**3 / m_bh)**(1.0/2.0)
+
+    print( 'Period of Binary = {0:.2f} yr'.format(period) )
+    print( 'Astrometric Wobble (peak-to-peak) = {0:.3f} mas'.format(wobble) )
+
+    return
+
+
+def mass_ratio_for_wobble(semi_major_axis=1, distance=10, wobble=1):
+    """
+    wobble - in milli-arcseconds (peak-to-peak)
+    """
+    a_pc = semi_major_axis / au_in_pc
+
+    # Switch from peak-to-peak to half-amplitude
+    wobble /= 2.0
+
+    # Convert to radians
+    wobble_radians = wobble / mas_in_radian
+
+    # Calculate the mass ratio
+    mass_ratio = wobble_radians * distance / a_pc
+
+    return mass_ratio
