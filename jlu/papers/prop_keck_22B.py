@@ -69,6 +69,7 @@ phot_ast_fits = {'MB09260' : '/u/jlu/work/microlens/MB09260/a_2021_09_19/model_f
                  'OB110462_el' : '/u/jlu/work/microlens/OB110462/a_2021_12_28/model_fits/ogle_hst_phot_ast/pspl/fixed_weight/a0_', # EQUAL LIKELIHOOD    
                  'OB110462_p' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0p_En_Nn/a0_',
                  'OB110462_n' : '/u/jlu/work/microlens/OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/u0n_En_Nn/a0_',
+                 'OB110462_2023' :'/u/jlu/work/microlens/OB110462/a_2023_03_21/model_fits/ogle_hst_phot_ast_gp/u0n_En_Nn/a0_',
                  'MB19284' : '/u/jlu/work/microlens/MB19284/a_2022_02_27/model_fit/base_b_bspl_photastrom/b0_'}
 
 phot_fits = {'OB110462' : '/u/jlu/work/microlens/OB110462/a_2021_12_20/model_fits/ogle_hst_phot/base_a/a0_'} # nominal fits                              
