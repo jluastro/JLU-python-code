@@ -75,6 +75,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     # Get the half-night split times
     splittime = twilite1 + ((twilite2 - twilite1) / 2.0)
 
+    print('Midnight:', midnight)
     print( 'Sunrise %4.1f   Sunset %4.1f  (hours around midnight HST)' % (sunrise, sunset))
     print( '12-degr %4.1f  12-degr %4.1f  (hours around midnight HST)' % (twilite1, twilite2))
 
@@ -140,7 +141,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
     py.axvline(splittime, color='k', linestyle='--')
     py.axvline(twilite1 + 0.5, color='k', linestyle='--')
     py.axvline(twilite2, color='k', linestyle='--')
-
+    
     py.axis([sunset, sunrise, loAirmass, hiAirmass])
     py.savefig(outfile)
 
