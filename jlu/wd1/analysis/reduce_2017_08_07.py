@@ -2066,6 +2066,7 @@ def combine_mosaic_pos(catalog_name_in, catalog_name_out):
         t['n'] = np.delete(t['n'], epochs_idx, axis=1)
         t.meta['EPNAMES'] = np.delete(t.meta['EPNAMES'], epochs_idx).tolist()
         t.meta['YEARS'] = np.delete(t.meta['YEARS'], epochs_idx).tolist()
+        years_orig = np.delete(years_orig, epochs_idx)
 
         # Add in the new column with the combined list.
         t['x'] = np.append(t['x'], x_wavg[[ii], :].T, axis=1)
@@ -2077,6 +2078,7 @@ def combine_mosaic_pos(catalog_name_in, catalog_name_out):
         t['n'] = np.append(t['n'], nframes[[ii], :].T, axis=1)
         t.meta['EPNAMES'] = np.append(t.meta['EPNAMES'], mosaic_epochs[ii]).tolist()
         t.meta['YEARS'] = np.append(t.meta['YEARS'], years[ii]).tolist()
+        years_orig = np.append(years_orig, years[ii])
 
     # Remove the xorig and yorig for the other epochs
     t.remove_column('xorig')
@@ -2085,13 +2087,16 @@ def combine_mosaic_pos(catalog_name_in, catalog_name_out):
     t.write(work_dir + '50.ALIGN_KS2/' + catalog_name_out,
             format='fits', overwrite=True)
 
-def add_velocities_to_catalog(catalog_in, catalog_out, bootstrap=0, use_RMSE=True, vel_weight=True):
+def add_velocities_to_catalog(catalog_in, catalog_out, bootstrap=0, use_RMSE=True, vel_weight=True, trimmed=True):
     """
     Call after make_catalog_from_align(). 
     """
     catalog_in = work_dir + '50.ALIGN_KS2/' + catalog_in
     catalog_out = work_dir + '50.ALIGN_KS2/' + catalog_out
-    use_columns = ['2005_F814W', '2010_F160W', '2013_F160W', '2015_F160W']
+    if trimmed:
+        use_columns = ['2005_F814W', '2010_F160W', '2013_F160W', '2015_F160W']
+    else:
+        use_columns = [3, ['2005_F814W', '2010_F160W', '2013_F160W', '2015_F160W']]    
 
     ast.fit_velocity(catalog_in, catalog_out, use_columns=use_columns,
                      bootstrap=bootstrap, use_RMSE=use_RMSE, vel_weight=vel_weight)

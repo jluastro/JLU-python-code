@@ -113,6 +113,7 @@ def plot_period_wobble():
                                     m_star=m_star,
                                     distance=D,
                                     semi_major_axis=a_dense)
+
         plt.plot(P_ii, wob_ii, marker=None, ls='--', color='blue')
 
         mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))
@@ -139,6 +140,7 @@ def plot_period_wobble():
                                     m_star=m_star,
                                     distance=D,
                                     semi_major_axis=a[ii])
+        
         plt.plot(P_ii, wob_ii, marker=None, ls='-.', color='red')
 
         mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))

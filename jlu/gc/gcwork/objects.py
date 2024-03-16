@@ -1,7 +1,7 @@
 import numpy as np
-import atpy
 import math
 import os
+from astropy.table import Table
 
 
 class Star(object):
@@ -309,7 +309,7 @@ class Transform(object):
     def loadFromAbsolute(self,
                          root='/u/jlu/work/gc/proper_motion/align/07_01_17/',
                          align='absolute/align1000.trans', idx=2):
-        transTab = atpy.Table(root + align, type='ascii')
+        transTab = Table.read(root + align, format='ascii')
 
         self.numStars = transTab['NumStars'][idx]
         self.a = [transTab['a0'][idx], transTab['a1'][idx], transTab['a2'][idx]]
@@ -318,7 +318,7 @@ class Transform(object):
         self.berr = [transTab['b0err'][idx], transTab['b1err'][idx], transTab['b2err'][idx]]
 
     def loadFromAlignTrans(self, root, idx=1):
-        transTab = atpy.Table(root + '.trans', type='ascii')
+        transTab = Table.read(root + '.trans', format='ascii')
 
         self.numStars = transTab['NumStars'][idx]
         self.a = [transTab['a0'][idx], transTab['a1'][idx], transTab['a2'][idx]]
@@ -328,7 +328,7 @@ class Transform(object):
 
     def loadFromAlign(self, root):
         if os.path.exists(root + '.sgra'):
-            sgraTab = atpy.Table(root + '.sgra', type='ascii')
+            sgraTab = Table.read(root + '.sgra', format='ascii')
             self.sgra = [sgraTab['col1'][0], sgraTab['col2'][0]]
             self.sgraErr = [0.0, 0.0]
             self.angle = sgraTab['col3'][0]

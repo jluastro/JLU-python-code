@@ -160,13 +160,13 @@ hst_phot = {'MB09260' : mlens_dir + 'MB09260/a_2021_07_08/model_fits/moa_hst_pho
 
 
 def all_paper():
-    # plot_images()
-    # make_obs_table()
-    # calc_base_mag()
-    # plot_pos_err()
+    plot_images()
+    make_obs_table()
+    calc_base_mag()
+    plot_pos_err()
 
-    # compare_all_linear_motions()
-    # plot_linear_motion_all()
+    compare_all_linear_motions()
+    plot_linear_motion_all()
 
     # separate_modes_all()
     separate_ob150211_modes()
@@ -187,7 +187,7 @@ def all_paper():
     table_ob150211_phot()
 
     # Parameters and confidence intervals for the results text.
-    results_best_params_all()
+    # results_best_params_all()
 
     # Lens Geometry, velocity plots
     targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
@@ -202,7 +202,8 @@ def all_paper():
     plot_all_mass_posteriors()
 
     # Statistics
-    calc_bayes_factor()
+    for targ in targets:
+        calc_bayes_factor(targ)
 
     # tE vs. piE vs. deltaC plots
     piE_tE_deltac(fit_type='ast')
@@ -808,11 +809,15 @@ def separate_ob150211_modes():
     #
     muRel = np.hypot(tab_g['muRel_E'], tab_g['muRel_N'])
 
+
+    # Plot muRel histogram to find mode separation
     bins_murel = np.arange(0, 7, 0.04)
 
     plt.figure(1)
     plt.clf()
     n, b, p = plt.hist(muRel, weights=tab_g['weights'], bins=bins_murel)
+    plt.xlabel('muRel (mas/yr)')
+    plt.ylabel('Probability')
 
     # Find the min point between 0-2 mas/yr.
     min_murel_idx = n[b[:-1]<2].argmin()
@@ -821,6 +826,16 @@ def separate_ob150211_modes():
 
     plt.axvline(min_murel, color='k', linestyle='--', linewidth=2)
 
+
+    # Check how muRel correlates with mass.
+    bins_murel2 = np.arange(0, 7, 0.2)
+    bins_log_mass = np.arange(-3, 2, 0.1)
+    plt.figure(4)
+    plt.clf()
+    plt.hist2d(muRel, np.log10(tab_g['mL']), weights=tab_g['weights'], bins=[bins_murel2, bins_log_mass])
+    plt.xlabel('muRel (mas/yr)')
+    plt.ylabel('log(mL)')
+    plt.colorbar()
     
     # Split the mode along the minimum muRel.
     mode1_mask = muRel > min_murel
@@ -833,6 +848,8 @@ def separate_ob150211_modes():
                  bins=bins_murel, color='orange', label='lo')
     plt.hist(muRel[mode1_mask], weights=tab_g_hi_murel['weights'],
                  bins=bins_murel, color='green', label='hi')
+    plt.xlabel('muRel (mas/yr)')
+    plt.ylabel('Probability')
     plt.legend()
 
     # Find the maximum likelihood solution for OB150211... both modes.
@@ -1055,7 +1072,7 @@ def calc_bayes_factor(target):
         plt.legend()
 
     # print out the Bayes Factors
-    if target == 'ob120160':
+    if target == 'ob120169':
         print('Single mode... no Bayes Factor')
         prior_vol = 1.0
         log_BF = None
@@ -1838,7 +1855,7 @@ def piE_tE_deltac(fit_type = 'ast'):
         
         # Find the best-fit solution
         samps_targ = samps_targ[mode]
-        stats_targ = stats_targ[mode]
+        stats_targ = Table(stats_targ[mode])
         
         param_targ = get_best_fit_from_stats(fit_targ, stats_targ, def_best='median')
 
@@ -2351,8 +2368,8 @@ def calc_velocity(target):
     import astropy.units as u
 
     fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    stats = calc_summary_statistics(fitter, verbose=False)
     mod_all = fitter.get_best_fit_modes_model(def_best = 'median')
+    stats = calc_summary_statistics(fitter, verbose=False)
     mode = pspl_ast_multiphot_mode[target]
     bf_mod = mod_all[mode]
 
