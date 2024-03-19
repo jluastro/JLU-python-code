@@ -1773,8 +1773,8 @@ def align_to_fits(align_root):
 
     return
 
-def combine_mosaic_pos():
-    t = Table.read(work_dir + '50.ALIGN_KS2/align_a4_t.fits')
+def combine_mosaic_pos(align_root='align_a4_t'):
+    t = Table.read(work_dir + '50.ALIGN_KS2/' + align_root + '.fits')
     
     # First we need to combine all the positions of the mosaic together.
     mosaic_epochs = ['2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W']
@@ -1906,7 +1906,7 @@ def combine_mosaic_pos():
     t.remove_column('xorig_2013_F160Ws')
     t.remove_column('yorig_2013_F160Ws')
 
-    t.write(work_dir + '50.ALIGN_KS2/align_a4_t_combo_pos.fits',
+    t.write(work_dir + '50.ALIGN_KS2/' + align_root + '_combo_pos.fits',
             format='fits', overwrite=True)
 
                     

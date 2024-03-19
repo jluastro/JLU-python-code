@@ -70,6 +70,55 @@ def defocus_keck_ao(focus_coeff, wavelength=2.12, tel_diam=10.0, f_num=15):
 
     return
 
+def defocus_ao_vs_wavelength(focus_coeff, wavelength, tel_diam=10.0, f_num=15):
+    """
+    Parameters
+    ---------------
+    focus_coeff : float (nm)
+        Coefficient of the defocs term assuming that the optical path difference
+        from defocus is given by:
+            c * sqrt(3) * (2 \rho^2  - 1)
+
+    wavelength : array (microns)
+        Wavelength to evaluate the de-focused FWHM. 
+
+    Optional Parameters
+    ---------------
+    tel_diam : float (m)
+    f_num : float
+    """
+    pix_scale = 206265. / (tel_diam * f_num)   # arcsec / m
+    pix_scale *= 1.0e3 / 1e6   # mas / micron
+
+    fwhm_z0_asec = 0.21 * (wavelength / tel_diam)  # arcsec
+    fwhm_z0_micron = 1.02 * wavelength * f_num     # microns
+
+    # Handy quantities:
+    sqrt_2ln2 = math.sqrt(2.0 * math.log(2.0))
+    
+    # Gaussian Beam Approximation:
+    # The beam radius at focus:
+    w0 = fwhm_z0_micron / sqrt_2ln2  # micron
+
+    # Delta-focus length set by rayliegh criteria
+    z_R = math.pi * w0**2 * 1e-3 / wavelength  # mm
+    
+    # Peak-to-valley of defocused wavefront
+    p2v = 2.0 * math.sqrt(3) * focus_coeff  # nm
+
+    # The focal shift distance (along z)
+    z = 8.0 * p2v * f_num**2   # nm
+    z *= 1e-6 # mm
+
+    # Defocused beam radius
+    w = w0 * np.sqrt(1.0 + (z / z_R)**2)   # micron
+
+    # Defocused beam FWHM
+    fwhm_z_micron = w * sqrt_2ln2  # micron
+    fwhm_z_mas = fwhm_z_micron * pix_scale     # mas
+
+    return fwhm_z_micron, fwhm_z_mas
+    
 
 def make_defocus_phase_map(rms_wfe, circular_pupil=False):
     # We will use some files from AIROPA

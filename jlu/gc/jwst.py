@@ -33,6 +33,7 @@ import time
 import math
 from pandeia.engine.perform_calculation import perform_calculation
 from functools import reduce
+from jlu.gc.gcwork import wobble
 
 saturate = {'F070W': 14.81,
             'F090W': 15.35,
@@ -64,7 +65,8 @@ saturate = {'F070W': 14.81,
             'F470N': 9.69,
             'F480M': 12.00}
 
-work_dir = '/u/jlu/work/gc/jwst/2020_11_01/'
+#work_dir = '/u/jlu/work/gc/jwst/2022_01_20/'
+work_dir = '/u/jlu/work/gc/jwst/2023_10_20/'
 
 def plot_sim_cluster():
     yng_file = work_dir + 'iso_gc_jwst/iso_6.61_2.70_08000_p00.fits'
@@ -238,7 +240,7 @@ def make_sim_cluster():
     
     evo = evolution.MergedBaraffePisaEkstromParsec()
     atm_func = atm.get_merged_atmosphere
-    red_law = reddening.RedLawHosek18_extended()
+    red_law = reddening.RedLawHosek18b()
     multi = multiplicity.MultiplicityUnresolved()
 
     imf_mass_limits = np.array([0.07, 0.5, 1, np.inf])
@@ -305,7 +307,7 @@ def plot_cycle1_fig1():
                  'iso_9.00_2.70_08000_p00.fits', 'iso_10.00_2.70_08000_p00.fits']
     clu_files = [iso_f.replace('iso', 'clu').replace('.fits', '.pkl') for iso_f in iso_files]
     iso_files = [iso_dir + iso_f for iso_f in iso_files]
-    clu_files = [iso_dir + 'with_diff_reddening_0.015/' + clu_f for clu_f in clu_files]
+    clu_files = [iso_dir + 'with_diff_reddening_0.1/' + clu_f for clu_f in clu_files]
     # clu_files = [iso_dir + clu_f for clu_f in clu_files]
 
     colors = ['cyan', 'blue', 'red', 'salmon', 'darkorange', 'maroon']
@@ -405,8 +407,8 @@ def plot_cycle1_fig1():
     # plt.text(8.0, 21.5-0.2, 'JWST', fontsize=10, color='black')
                     
     lg = plt.legend(fontsize=12, bbox_to_anchor=(1.12, 1.14), markerscale=3, loc='center', ncol=2)
-    for lh in lg.legendHandles: 
-        lh._legmarker.set_alpha(1)
+    # for lh in lg.legendHandles: 
+    #     lh._legmarker.set_alpha(1)
 
     def label_mass(iso, col_color, col_mag,
                    mass_val, mass_label, label_dcol=-1.0, color='blue'):
@@ -596,8 +598,8 @@ def plot_cycle1_fig1_f182m():
     # plt.text(7.0, 22.5-0.2, 'JWST', fontsize=10, color='black')
 
     lg = plt.legend(fontsize=12, bbox_to_anchor=(1.12, 1.14), markerscale=3, loc='center', ncol=2)
-    for lh in lg.legendHandles: 
-        lh._legmarker.set_alpha(1)
+    # for lh in lg.legendHandles: 
+    #     lh._legmarker.set_alpha(1)
                     
 
     def label_mass(iso, col_color, col_mag,
@@ -651,8 +653,10 @@ def plot_cycle1_fig1_f182m():
                      stars['m_jwst_F182M'][sdx], marker='.', linestyle='none',
                      label=label, alpha=0.1, markersize=3, color=colors[ss])
     
-    plt.ylim(25, 10)
-    plt.xlim(5.5, 7.5)
+    # plt.ylim(25, 10)
+    # plt.xlim(5.5, 7.5)
+    plt.ylim(21, 11)
+    plt.xlim(0, 13)
     plt.xlabel('F115W - F182M (mag)')
     plt.ylabel('F182M (mag)')
     
@@ -671,6 +675,203 @@ def plot_cycle1_fig1_f182m():
     
     plt.savefig(out_dir + 'cycle1_cmd_f182m.png')
 
+def plot_cycle2_fig1(iso=None, clu=None):
+    iso_dir = work_dir + 'iso_gc_jwst/'
+    out_dir = work_dir + 'plots/'
+
+    import glob
+    iso_files = ['iso_6.90_2.70_08000_p00.fits', 'iso_6.60_2.70_08000_p00.fits', 
+                 'iso_9.90_2.70_08000_p00.fits', 'iso_9.90_2.70_08000_m10.fits',
+                 'iso_9.00_2.70_08000_p00.fits', 'iso_10.00_2.70_08000_p00.fits']
+    clu_files = [iso_f.replace('iso', 'clu').replace('.fits', '.pkl') for iso_f in iso_files]
+    iso_files = [iso_dir + iso_f for iso_f in iso_files]
+    clu_files = [iso_dir + 'with_diff_reddening_0.1/' + clu_f for clu_f in clu_files]
+    # clu_files = [iso_dir + clu_f for clu_f in clu_files]
+
+    colors = ['cyan', 'blue', 'red', 'salmon', 'darkorange', 'maroon']
+
+    # Reverse order for plotting
+    iso_files = iso_files[::-1]
+    clu_files = clu_files[::-1]
+    colors = colors[::-1]
+
+    if iso == None and clu == None:
+        iso = []
+        clu = []
+
+        for ff in range(len(iso_files)):
+            print(iso_files[ff])
+            iso_tmp = Table.read(iso_files[ff])
+            clu_tmp = pickle.load(open(clu_files[ff], 'rb'))
+            
+            good = np.where(iso_tmp['phase'] < 7)[0]
+            iso.append(iso_tmp[good])
+
+            # Cut the stars out below F212N > 24 (gets rid of a bunch).
+            stars = clu_tmp.star_systems
+            bdx = np.where(stars['m_jwst_F212N'] <= 24)[0]
+            stars = stars[bdx]
+
+            # Add some noise to the filters we will observe in.
+            # snr is calculated in jwst_gc_etc.ipynb and is calibrated relative to a K-band magnitude.
+            snr_f115w = 979.0  * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f182m = 1228.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f212n = 1066.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)        
+            snr_f323n = 1102.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f405n = 1025.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+
+            stars['m_jwst_F115W'] += np.random.randn(len(stars)) / snr_f115w
+            stars['m_jwst_F182M'] += np.random.randn(len(stars)) / snr_f182m
+            stars['m_jwst_F212N'] += np.random.randn(len(stars)) / snr_f323n
+            stars['m_jwst_F323N'] += np.random.randn(len(stars)) / snr_f323n
+            # stars['m_jwst_F405N'] += np.random.randn(len(stars)) / snr_f405n
+
+            # Also perturb based on extinction uncertainties.
+            stars['m_jwst_F115W'] += np.random.randn(len(stars)) * 0.050
+            stars['m_jwst_F182M'] += np.random.randn(len(stars)) * 0.020
+            stars['m_jwst_F212N'] += np.random.randn(len(stars)) * 0.010
+            stars['m_jwst_F323N'] += np.random.randn(len(stars)) * 0.008
+            # stars['m_jwst_F405N'] += np.random.randn(len(stars)) * 0.010
+
+            clu_tmp.star_systems = stars
+        
+            clu.append(clu_tmp)
+
+
+    ## CMD
+    plt.close(10)
+    plt.figure(10, figsize=(10, 5))
+    plt.clf()
+    plt.subplots_adjust(left=0.08, bottom=0.17, wspace=0.25, top=0.8, right=0.98)
+
+    plt.subplot(1, 2, 1)
+    for ss in range(len(iso)):
+        label = 'Age = {0:5.3f} Gyr, [Fe/H] = {1:3.1f}, d = {2:3.1f} kpc'
+        label = label.format(10**iso[ss].meta['LOGAGE'] / 1e9,
+                             iso[ss].meta['METAL_IN'],
+                             iso[ss].meta['DISTANCE'] / 1e3)
+        plt.plot(iso[ss]['m_jwst_F212N'] - iso[ss]['m_jwst_F323N'], iso[ss]['m_jwst_F212N'],
+                     color=colors[ss], label=label)
+
+    plt.ylim(22, 9)
+    plt.xlim(0.75, 1.3)
+    plt.xlabel('F212N - F323N (mag)')
+    plt.ylabel('F212N (mag)')
+
+    confusion = {'F090W': 32, 
+                 'F115W': 27.2,
+                 'F212N': 21.5,
+                 'F323N': 19.3}
+                 # 'F212N': 22.5,
+        
+    # Modified the F212N one to be a bit closer in.
+    
+    plt.axhline(18, color='grey', linestyle='--')
+    plt.text(1.15, 18-0.2, 'HST Imaging', fontsize=10)
+    
+    plt.axhline(19, color='grey', linestyle='--')
+    plt.text(1.15, 19-0.2, 'AO Imaging', fontsize=10)
+    
+    plt.axhline(15, color='grey', linestyle='--')
+    plt.text(1.11, 15-0.2, 'Narrow-Field\nAO Spectra', fontsize=10)
+
+    plt.axhline(11.5, color='grey', linestyle='--')
+    plt.text(1.11, 11.5-0.2, '50% Complete\nWide-Field Spectra', fontsize=10)
+    
+    
+    # plt.axhline(21.5, color='black', linestyle='--')
+    # plt.text(8.0, 21.5-0.2, 'JWST', fontsize=10, color='black')
+                    
+    lg = plt.legend(fontsize=12, bbox_to_anchor=(1.12, 1.14), markerscale=3, loc='center', ncol=2)
+    # for lh in lg.legendHandles: 
+    #     lh._legmarker.set_alpha(1)
+
+    def label_mass(iso, col_color, col_mag,
+                   mass_val, mass_label, label_dcol=-1.0, color='blue'):
+        idx = np.argmin(np.abs(iso['mass'] - mass_val))
+        # print(mass_val, idx, iso['mass'][idx])
+
+        m_label = '{0:s} M$_\odot$'.format(mass_label)
+        xy = (col_color[idx], col_mag[idx])
+        xytext = (col_color[idx] + label_dcol, col_mag[idx])
+        arrow_props = dict(facecolor=color, edgecolor=color,
+                           shrink=0.05, width=1, headwidth=2)
+        plt.annotate(m_label, xy=xy, xytext=xytext,
+                     color=color,
+                     arrowprops=arrow_props)
+
+    # label_mass(yng, ycol, ymag, 10, '10')
+    # label_mass(yng, ycol, ymag, 5, '5')
+    # label_mass(yng, ycol, ymag, 2, '2')
+    # label_mass(yng, ycol, ymag, 1, '1', label_dcol=0.4)
+    # label_mass(yng, ycol, ymag, 0.5, '0.5', label_dcol=0.4)
+
+    # label_mass(old, ocol, omag, 1, '1', color='red')
+    # label_mass(old, ocol, omag, 2, '2', color='red')
+    # label_mass(old, ocol, omag, 0.5, '0.5', label_dcol=0.4, color='red')
+    
+    # plt.legend(fontsize=12, loc='lower left')
+
+    
+    plt.subplot(1, 2, 2)
+    for ss in range(len(clu)-1):
+        label = 'Age = {0:5.3f} Gyr, [Fe/H] = {1:4.1f}, d = {2:3.1f} kpc'
+        label = label.format(10**clu[ss].iso.points.meta['LOGAGE'] / 1e9,
+                             clu[ss].iso.points.meta['METAL_IN'],
+                             clu[ss].iso.points.meta['DISTANCE'] / 1e3)
+
+
+        stars = clu[ss].star_systems
+
+        # Pick out a random sample of "samp_size" for plotting.
+        # Too many to plot all of them.
+        if clu[ss].iso.points.meta['LOGAGE'] < 9.1:
+            samp_size = int(2e4)
+        else:
+            samp_size = int(2e5)
+
+        if clu[ss].iso.points.meta['METAL_IN'] < 0:
+            samp_size = int(1e4)
+        # print(samp_size)
+        
+        sdx = np.random.randint(0, high=len(stars), size=samp_size)
+        # print(sdx)
+
+        plt.plot(stars['m_jwst_F212N'][sdx] - stars['m_jwst_F323N'][sdx],
+                     stars['m_jwst_F212N'][sdx], marker='.', linestyle='none',
+                     label=label, alpha=0.1, markersize=3, color=colors[ss])
+    
+    plt.ylim(22, 9)
+    plt.xlim(0.75, 1.3)
+    plt.xlabel('F212N - F323N (mag)')
+    plt.ylabel('F212N (mag)')
+    
+    plt.axhline(saturate['F212N'], color='black', linestyle='--')
+    plt.text(0.76, saturate['F212N']-0.2, 'JWST Saturation Limit', fontsize=10)
+    
+    plt.fill_between([0.75, 1.5], [confusion['F212N'], confusion['F212N']],
+                     [confusion['F212N']-1.5, confusion['F212N']-1.5],
+                     color='black', alpha=0.2)
+    plt.text(0.76, confusion['F212N']-0.2, 'JWST Confusion Limit', fontsize=10)
+    
+    # plt.axhline(saturate['F212N'], color='black', linestyle='--')
+    # plt.text(6.7, saturate['F212N']-0.2, 'Saturation', fontsize=10)
+    
+    # plt.axhline(confusion['F212N'], color='black', linestyle='--')
+    # plt.text(6.7, confusion['F212N']-0.2, 'Confusion', fontsize=10)
+    
+    plt.axhline(20, color='black', linestyle='--')
+    plt.text(1.15, 20-0.2, 'JWST Imaging', fontsize=10, color='black')
+    
+    plt.axhline(16.5, color='black', linestyle='--')
+    plt.text(1.15, 16.5-0.2, 'JWST Spectra', fontsize=10, color='black')
+
+    # plt.axhline(18, color='black', linestyle='--')
+    # plt.text(1.15, 18-0.2, 'JWST Spectra', fontsize=10, color='black')
+
+    plt.savefig(out_dir + 'cycle2_cmd.png')
+
+    return iso, clu
 
 def plot_image_spec_fov():
     gc_hst_img_root = '/Users/jlu/work/gc/hst/rgb/'
@@ -847,7 +1048,9 @@ def plot_spectra_yng_old(mag_f212n=18, snr=False, save_fits=False):
     odx = np.argmin(np.abs(old['m_jwst_F212N'] - mag_f212n))
     mdx = np.argmin(np.abs(lom['m_jwst_F212N'] - mag_f212n))
     
-    stars = [yng[ydx], old[odx], lom[mdx]]
+    # stars = [yng[ydx], old[odx], lom[mdx]]
+    stars = [yng[ydx], old[odx]]
+    # stars = [old[odx]]
     stars_tab = table.vstack(stars) # destroys meta data. 
     red_law = reddening.RedLawHosek18b()
     AKs = 2.70
@@ -869,7 +1072,8 @@ def plot_spectra_yng_old(mag_f212n=18, snr=False, save_fits=False):
         distance = 8000 # pc
         
         ## get the spectrum
-        star = atm.get_phoenixv16_atmosphere(temperature=T, gravity=g, metallicity=feh, rebin=False)
+        star = atm.get_phoenixv16_atmosphere(temperature=T, gravity=g, metallicity=feh,
+                                             rebin=False)
         
         # Convert into flux observed at Earth (unreddened)
         star *= (R / distance)**2  # in erg s^-1 cm^-2 A^-1
@@ -962,9 +1166,10 @@ def plot_spectra_yng_old(mag_f212n=18, snr=False, save_fits=False):
     plt.xlabel('Wavelength ($\mu$m)')
     # plt.ylabel('Flux (erg/s/cm$^2$/Ang)')
     plt.ylabel('Normalized Flux')
-    plt.ylim(0.5, 1.1)
+    plt.ylim(0.2, 1.2)
+    #plt.xlim(2.1, 2.35)
 
-    title = 'F212N = {0:.0f}'.format(mag_f212n)
+    title = 'F212N = {0:.1f}'.format(mag_f212n)
     if snr != False:
         title += ', SNR = {0:.1f}'.format(snr)
         
@@ -1503,7 +1708,7 @@ def etc_nirspec_plot_snr_vs_ngroup(metrics, input_json):
     x_msg = 0.72
     y_msg = 0.85
     for key, val in cs['configuration']['detector'].items():
-        if key is 'ngroup':
+        if key == 'ngroup':
             continue
         msg = '{0:s} = {1}'.format(key, val)
         plt.text(x_msg, y_msg, msg, ha='left', va='top', 
@@ -1642,54 +1847,56 @@ def plot_klf_yng():
     # Plot the KLF
     ##########
     ax1 = plt.subplot(2, 1, 1)
-    klf, klfb, klfp = plt.hist(stars['m_nirc2_Kp'], bins=kbins, histtype='step', linewidth=2, label='Multiples')
+    klf, klfb, klfp = plt.hist(stars['m_nirc2_Kp'], bins=kbins,
+                               histtype='step', linewidth=2, label='Multiples')
     plt.ylabel('N$_{{stars}}$')
     plt.title('Young Nuclear Cluster')
-    plt.xlim(9, 20)
-    plt.ylim(1, 400)
+    plt.xlim(9, 18)
+    plt.ylim(1, 250)
     rng = plt.axis()
 
     plt.setp(ax1.get_xticklabels(), visible=False)
     plt.xticks([])
 
-    # Get the mass at the Keck spectra/RV limit
-    keck_lim = 15
-    kdx_all = np.where(stars['m_nirc2_Kp'] < keck_lim)[0]
+    # Get the mass at the ground-based spectra/RV limit. This is for
+    # wide-coverage IFU spectra, including seeing-limited and AO. 
+    grnd_lim = 11.5 
+    kdx_all = np.where(stars['m_nirc2_Kp'] < grnd_lim)[0]
     kdx_min = np.argmin(stars['mass'][kdx_all])
     kdx = kdx_all[kdx_min]
     keck_mass_label = '{0:.0f} M$_\odot$'.format(stars['mass'][kdx])
     
-    plt.axvline(keck_lim, color='grey', linestyle='--', linewidth=2)
-    plt.text(keck_lim - 1, rng[3] - 30, keck_mass_label,
+    plt.axvline(grnd_lim, color='grey', linestyle='--', linewidth=2)
+    plt.text(grnd_lim - 0.7, rng[3] - 30, keck_mass_label,
                  fontsize=14,
                  horizontalalignment='center')
-    ar1 = FancyArrow(keck_lim, 100, -1, 0, width=8, color='black', head_length=0.3)
+    ar1 = FancyArrow(grnd_lim, 100, -1, 0, width=8, color='black', head_length=0.3)
     plt.gca().add_patch(ar1)
-    plt.text(keck_lim - 0.2, 110, 'Keck\nSpectra',
+    plt.text(grnd_lim - 0.2, 110, 'Ground\nSpectra',
                  fontsize=14,
                  horizontalalignment='right', verticalalignment='bottom')
 
     # Get the mass at the JWST spectra/RV limit
-    jwst_lim = 18
+    jwst_lim = 16.5
     jdx = np.argmin(np.abs(stars['m_nirc2_Kp'] - jwst_lim))
     jwst_mass_label = '{0:.1f} M$_\odot$'.format(stars['mass'][jdx])
     
     plt.axvline(jwst_lim, color='black', linestyle='--', linewidth=2)
-    plt.text(jwst_lim - 1, rng[3] - 30, jwst_mass_label,
+    plt.text(jwst_lim - 0.7, rng[3] - 30, jwst_mass_label,
                  fontsize=14,
                  horizontalalignment='center')
-    ar1 = FancyArrow(jwst_lim, 240, -1, 0, width=8, color='black', head_length=0.3)
+    ar1 = FancyArrow(jwst_lim, 100, -1, 0, width=8, color='black', head_length=0.3)
     plt.gca().add_patch(ar1)
-    plt.text(jwst_lim - 0.2, 248, 'JWST\nSpectra',
+    plt.text(jwst_lim - 0.2, 110, 'JWST\nSpectra',
                  fontsize=14,
                  horizontalalignment='right', verticalalignment='bottom')
 
-    pdx = np.where(stars['phase'] < 0)[0]
-    pms_mag = np.min(stars['m_nirc2_Kp'][pdx])
-    ar1 = FancyArrow(pms_mag + 0.1, 80, 0, 20, width=0.1, color='blue', head_length=10)
-    plt.gca().add_patch(ar1)
-    plt.text(pms_mag + 0.2, 70, 'Pre-MS\nTurn-On', color='blue',
-            horizontalalignment='right', verticalalignment='top')
+    # pdx = np.where(stars['phase'] < 0)[0]
+    # pms_mag = np.min(stars['m_nirc2_Kp'][pdx])
+    # ar1 = FancyArrow(pms_mag + 0.1, 80, 0, 20, width=0.1, color='blue', head_length=10)
+    # plt.gca().add_patch(ar1)
+    # plt.text(pms_mag + 0.2, 72, 'Pre-MS\nTurn-On', color='blue',
+    #          horizontalalignment='right', verticalalignment='top', fontsize=14)
 
     ##########
     # Completeness panel
@@ -1727,11 +1934,26 @@ def plot_klf_yng():
     plt.plot(mag, comp, 'r-', label='C$_{{spec,RV}}$')
     plt.xlabel('Kp')
     plt.ylabel('Completeness')
-    plt.xlim(9, 20)
+    plt.xlim(9, 18)
     plt.legend(loc='lower left', fontsize=12)
 
-    plt.axvline(keck_lim, color='grey', linestyle='--', linewidth=2)
-    plt.axvline(jwst_lim, color='black', linestyle='--', linewidth=2)
+    plt.axvline(grnd_lim, color='grey', linestyle='--', linewidth=2)
+    # plt.axvline(jwst_lim, color='black', linestyle='--', linewidth=2)
+
+    # Get the mass at the JWST spectra/RV limit
+    jwst_rv_lim = 16.5
+    jwst_rv_label = '$\sigma_{RV}$~10 km/s'
+
+    plt.axvline(jwst_rv_lim, color='black', linestyle='--', linewidth=2)
+    # plt.text(jwst_rv_lim + 1.6, 0.5, jwst_rv_label,
+    #              fontsize=14,
+    #              horizontalalignment='center', verticalalignment='center')
+    # ar1 = FancyArrow(jwst_rv_lim, 0.5, -1, 0, width=0.025, color='black', head_length=0.3)
+    # plt.gca().add_patch(ar1)
+    # plt.text(jwst_rv_lim - 0.18, 0.53, 'JWST\nSpectra',
+    #              fontsize=14,
+    #              horizontalalignment='right', verticalalignment='bottom')
+    
 
     plt.savefig('plots/jwst_klf_spectral_sensitivity.png')
 
@@ -1743,7 +1965,7 @@ def plot_klf_yng():
 
     cj_at_kbins = f_img(kbins_mid)
     cj_at_kbins[kbins_mid<9] = 1.0
-    cj_at_kbins[kbins_mid>=19.5] = 0.0
+    cj_at_kbins[kbins_mid>=16.5] = 0.0
     
     N_tot = klf.sum()
     N_keck = (klf * ck_at_kbins).sum()
@@ -1758,7 +1980,9 @@ def plot_klf_yng():
     print('N_jwst = {0:.0f}'.format(N_jwst))
 
     foo = Table.read('/g/lu/scratch/siyao/work/3_young/data_rv/final.txt', format='ascii.fixed_width', delimiter='|')
-    in_jwst = np.where((foo['x'] > -4.5) & (foo['x'] < 4.5) & (foo['y'] > -4.5) & (foo['y'] < 4.5))[0]
+    in_jwst = np.where((foo['x'] > -4.5) & (foo['x'] < 4.5) &
+                       (foo['y'] > -4.5) & (foo['y'] < 4.5) &
+                       (foo['kp'] <= 16.5))[0]
     print('N_known = {0:d}'.format( len(foo)) )
     print('N_known_in_jwst_field = {0:d}'.format( len(in_jwst)) )
     
@@ -1768,3 +1992,7 @@ def plot_klf_yng():
 def factors(n): 
     return list(reduce(list.__add__, 
                 ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
+
+def plot_period_wobble():
+    wobble.plot_period_wobble()
+    return
