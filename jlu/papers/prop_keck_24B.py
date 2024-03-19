@@ -38,7 +38,7 @@ from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
 
 # Fontsize
-plt.rc('font', size=15)
+#plt.rc('font', size=17)
 
 # Default matplotlib color cycles.
 mpl_b = '#1f77b4'
@@ -163,6 +163,8 @@ def piE_tE(fit_type = 'ast'):
     fit_type = 'multiphot'
         Keck + OGLE photometry
     """
+    piE_tE_textsize = 17
+    
     if fit_type == 'ast':
         data_dict = lu_2019_lens.pspl_ast_multiphot
     if fit_type == 'phot':
@@ -212,10 +214,10 @@ def piE_tE(fit_type = 'ast'):
                           'ob150029': [40, 0.22],
                           'ob150211': [140, 0.01],
                           'ob170019': [120, 0.045],
-                          'ob170095': [40, 0.04],
-                          'ob190017': [80, 0.21],
+                          'ob170095': [30, 0.04],
+                          'ob190017': [70, 0.21],
                           'kb200101': [180, 0.016],
-                          'MB19284' : [380, 0.08]}}
+                          'MB19284' : [340, 0.08]}}
 
     label_pos_ast = {'ob120169': [0.006, 0.06],
                      'ob140613': [0.04, 0.145],
@@ -454,12 +456,12 @@ def piE_tE(fit_type = 'ast'):
 
     axes.set_xlim(10, 1000)
     axes.set_ylim(0.005, 0.5)
-    axes.set_xlabel('$t_E$ (days)')
-    axes.set_ylabel('$\pi_E$')
+    axes.set_xlabel('$t_E$ (days)', fontsize=piE_tE_textsize)
+    axes.set_ylabel('$\pi_E$', fontsize=piE_tE_textsize)
     axes.set_xscale('log')
     axes.set_yscale('log')
     axes.legend(loc=3)
-    plt.savefig('piE_tE_24B.png')
+    plt.savefig('piE_tE_24B.png', bbox_inches='tight')
     #plt.show()
 
     # Plot the deltac-piE 2D posteriors.
@@ -556,7 +558,7 @@ def piE_tE(fit_type = 'ast'):
 #    axes.set_ylim(0.009, 0.5)
     axes.set_xlim(0.02, 3)
     axes.set_ylim(0.005, 0.5)
-    plt.savefig('piE_deltac_24B.png')
+    plt.savefig('piE_deltac_24B.png', bbox_inches='tight')
     #plt.show()
 
 
@@ -2952,7 +2954,7 @@ def plot_prob_v_mass():
     # plt.xlabel('Lens Mass (M$_\odot$)')
     plt.ylabel('Fraction of Lenses')
 
-    plt.savefig('prob_v_mass.png')
+    plt.savefig('prob_v_mass.png', bbox_inches='tight')
     
     return
 
