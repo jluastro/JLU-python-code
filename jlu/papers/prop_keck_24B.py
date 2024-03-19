@@ -38,7 +38,7 @@ from jlu.util import datetimeUtil as dtUtil
 from datetime import datetime as dt
 
 # Fontsize
-#plt.rc('font', size=17)
+plt.rc('font', size=17)
 
 # Default matplotlib color cycles.
 mpl_b = '#1f77b4'
@@ -163,7 +163,7 @@ def piE_tE(fit_type = 'ast'):
     fit_type = 'multiphot'
         Keck + OGLE photometry
     """
-    piE_tE_textsize = 17
+    piE_tE_textsize = 22
     
     if fit_type == 'ast':
         data_dict = lu_2019_lens.pspl_ast_multiphot
@@ -311,7 +311,6 @@ def piE_tE(fit_type = 'ast'):
     plt.clf()
     axes = plt.gca()
     plt.subplots_adjust(bottom=0.15)
-
     sx = smooth
     sy = smooth
 
@@ -384,7 +383,6 @@ def piE_tE(fit_type = 'ast'):
 
     u0_arr = t['u0']
     thetaE_arr = t['theta_E']
-    
     # Stores the maximum astrometric shift
     final_delta_arr = np.zeros(len(u0_arr))
     
@@ -462,7 +460,7 @@ def piE_tE(fit_type = 'ast'):
     axes.set_yscale('log')
     axes.legend(loc=3)
     plt.savefig('piE_tE_24B.png', bbox_inches='tight')
-    #plt.show()
+    #plt.close()
 
     # Plot the deltac-piE 2D posteriors.
 #    plt.close(2)
@@ -550,8 +548,8 @@ def piE_tE(fit_type = 'ast'):
                   alpha = 0.8, marker = '.', s = 25,
                   c = 'black')
 
-    axes.set_xlabel('$\delta_{c,max}$ (mas)')
-    axes.set_ylabel('$\pi_E$')
+    axes.set_xlabel('$\delta_{c,max}$ (mas)', fontsize=piE_tE_textsize)
+    axes.set_ylabel('$\pi_E$', fontsize=piE_tE_textsize)
     axes.set_xscale('log')
     axes.set_yscale('log')
 #    axes.set_xlim(0.005, 4)
