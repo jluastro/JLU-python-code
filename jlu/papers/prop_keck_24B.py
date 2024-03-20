@@ -2919,7 +2919,7 @@ def plot_prob_v_mass():
     # prob_obs_err *= 10
     # prob_obs_err_120 *= 20
     
-    plt.figure(1)
+    plt.figure(1, figsize=(6,6))
     plt.clf()
     plt.subplots_adjust(bottom=0.16, top=0.95)
     # plt.plot(m_mean, prob, label='PopSyCLE: Completed Sample')
@@ -2928,13 +2928,13 @@ def plot_prob_v_mass():
                 label='Sim: Completed',
                 alpha=0.5)
     plt.bar(m_mid + m_width, prob_120, width=m_width,
-                label='Sim: New',
+                label='Sim: w/ New',
                 alpha=0.5)
     plt.errorbar(m_mid, prob_obs, yerr=prob_obs_err,
                      label=f'Obs: Completed ({n_tot:.0f})',
                      ls='none', marker='^', ms=10, capsize=8)
     plt.errorbar(m_mid + m_width, prob_obs_120, yerr=prob_obs_err_120,
-                     label=f'Pred: New ({n_tot_120:.0f})',
+                     label=f'Pred: w/ New ({n_tot_120:.0f})',
                      ls='none', marker='s', ms=10, capsize=8)
     # plt.legend(fontsize=13, title='Samples', title_fontsize=14)
     plt.legend(title='Samples')
