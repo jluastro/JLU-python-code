@@ -11,7 +11,7 @@ import pdb
 
 
 
-def get_obs_times(cadence, duration):
+def get_obs_times(cadence, duration, start_time='2024-10-01T00:00:00.0'):
     """
     Parameters
     ----------
@@ -21,7 +21,7 @@ def get_obs_times(cadence, duration):
         Duration (time from start to end of survey) in days.
     """
     # Start at the beginning of Cycle 32
-    t32_start = Time('2024-10-01T00:00:00.0')
+    t32_start = Time(start_time)
 
     # Total number of observing times, before any filtering for Sun exclusion.
     n_times_tmp = int(np.ceil(duration / cadence))
@@ -63,7 +63,7 @@ def get_pspl_lightcurve_parameters(event_table, photometric_system, filter_name,
         in the global filt_dict parameter at the top of this module.
 
     event_id : float
-        Corresponding event_id in event_table
+        Corresponding event_id in event_table (just the row index in the table).
 
     Returns
     -------
@@ -111,7 +111,7 @@ def get_pspl_lightcurve_parameters(event_table, photometric_system, filter_name,
 
     mag_src = event_table[event_id]['%s_%s_app_S' % (photometric_system, filter_name)]
     b_sff = event_table[event_id]['f_blend_%s' % filter_name]
-    model_name = 'PSPL_PhotAstrom_Par_Param1'
+    model_name = 'PSPL_Phot_noPar_Param1'
 
     pspl_parameter_dict = {'model': model_name, 'raL': raL, 'decL': decL,
                            't0': t0, 'u0': u0, 'tE': tE, 'thetaE': thetaE,
@@ -123,105 +123,229 @@ def get_pspl_lightcurve_parameters(event_table, photometric_system, filter_name,
     return pspl_parameter_dict
 
 
-def pspl_model_gen(pspl_parameter_dict):
-    """
-    Generate pspl_photastrom_par_param1 model from parameter dict
-
-    Parameters
-    ----------
-    pspl_parameter_dict : dict
-        Dictionary of the PSPL_PhotAstrom_Par_Param1 parameters
-
-    Returns
-    -------
-    pspl model
-    """
-    ##########
-    # Calculate PSPL model and photometry
-    ##########
-    raL = pspl_parameter_dict['raL']  # Lens R.A.
-    decL = pspl_parameter_dict['decL']  # Lens dec
-    t0 = pspl_parameter_dict['t0']  # mjd
-    u0 = pspl_parameter_dict['u0']
-    tE = pspl_parameter_dict['tE']
-    thetaE = pspl_parameter_dict['thetaE']
-    piS = pspl_parameter_dict['piS']
-    piE_E = pspl_parameter_dict['piE_E']
-    piE_N = pspl_parameter_dict['piE_N']
-    xS0_E = pspl_parameter_dict['xS0_E']
-    xS0_N = pspl_parameter_dict['xS0_N']
-    muS_E = pspl_parameter_dict['muS_E']  # lens proper motion mas/year
-    muS_N = pspl_parameter_dict['muS_N']  # lens proper motion mas/year
-    b_sff = pspl_parameter_dict['b_sff']
-    mag_src = pspl_parameter_dict['mag_src']
-
-    pspl = model.PSPL_PhotAstrom_Par_Param2(t0, u0, tE, thetaE,
-                                            piS, piE_E, piE_N,
-                                            xS0_E, xS0_N, muS_E, muS_N,
-                                            b_sff, mag_src,
-                                            raL=raL, decL=decL)
-
-    return pspl
-
-
-
-def get_detectable_sim_events(events_table, t_obs, mH_max=24, bump_mag_cut=0.3):
+def get_detectable_sim_events(events_table, t_obs, mH_max=24, bump_mag_cut=0.3,
+                              verbose=False):
     # Add a detectable column:
     events_table['hst_det'] = np.ones(len(events_table), dtype=bool)
 
     # Apply magnitude cut.
-    mag_col = 'ubv_I_app_LSN'
-    idx = np.where(events_table[mag_col] < mH_max)[0]
-    print(len(idx))
+    mag_col = 'ubv_H_app_LSN'
+    idx = np.where(events_table[mag_col] > mH_max)[0]
     events_table['hst_det'][idx] = False
+    print(f'Brightness cut: N_events = {events_table["hst_det"].sum()}')
 
     # Apply bump magnitude cut.
-    events_table['hst_det'][events_table['delta_m_I'] < bump_mag_cut] = False
+    events_table['hst_det'][events_table['delta_m_H'] < bump_mag_cut] = False
+    print(f'Delta-mag cut:  N_events = {events_table["hst_det"].sum()}')
+
+    # Trim out masked or empty magnitude values. Typically happens when
+    # the source is a compact object.
+    events_table['hst_det'][events_table['delta_m_H'].mask] = False
+    print(f'Dark source cut: N_events = {events_table["hst_det"].sum()}')
+
+    # Trim out sources with negative blend fluxes. Something went wrong in
+    # PopSyCLE (question to Natasha).
+    events_table['hst_det'][events_table['f_blend_H'] <= 0] = False
+    print(f'Neg. blend cut:  N_events = {events_table["hst_det"].sum()}')
+
+    # Define model class used in sensitivity analysis.
+    model_class = model.PSPL_Phot_Par_Param1
+
+    # Add a tE_snr column.
+    events_table['tE_snr'] = np.zeros(len(events_table), dtype=float)
 
     # Determine tE uncertainty for each event.
-    for ee in range(len(events_table)):
-        print(ee, events_table[ee][mag_col], events_table[ee]['hst_det'])
-        if events_table['hst_det'][ee] == False:
-            pass
+    idx = np.where(events_table['hst_det'] == True)[0]
 
-        model_class = model.PSPL_PhotAstrom_Par_Param2
-        params = get_pspl_lightcurve_parameters(events_table, 'ubv', 'I', ee)
+    for ee in idx:
+        event = events_table[ee]
 
-        keys_var = ['t0', 'u0', 'tE', 'thetaE', 'piS', 'piE_E', 'piE_N',
-                    'xS0_E', 'xS0_N', 'muS_E', 'muS_N', 'b_sff', 'mag_src']
+        # Fetch params from even table.
+        params = get_pspl_lightcurve_parameters(events_table, 'ubv', 'H', ee)
+
+        # Reformat the parameters.
+        keys_var = ['t0', 'u0', 'tE', 'piE_E', 'piE_N', 'b_sff', 'mag_src']
         keys_fix = ['raL', 'decL']
         params_var = {k: params[k] for k in keys_var}
         params_fix = {k: params[k] for k in keys_fix}
 
-        print(params_var)
+        # Figure out if this is an event we should print out:
+        print_ev =  ((verbose is True) and
+                     (params_var['t0'] > t_obs.min()) and
+                     (params_var['t0'] < t_obs.max()) and
+                     (np.abs(params_var['u0']) < 1) and
+                     (params_var['tE'] > 10) and
+                     (params_var['mag_src'] < 20))
 
-        # Make a model lightcurve at the appropriate times
-        pspl_mod = pspl_model_gen(params)
+        if print_ev:
+            print('----------')
+            print('Good Object:', ee)
+            print(f'mag = {event[mag_col]:.2f}',
+                  f'bump = {event["delta_m_H"]:.2f}',
+                  f't0 = {event["t0"]:.0f}',
+                  f'detectable = {event["hst_det"]}')
 
 
+        # Make a model lightcurve at the appropriate times to estimate flux errors.
+        pspl_mod = model.get_model(model_class, params_var, params_fix)
+
+        # Assign Roman flux errors.
         # Following conventions of Wilson et al. 2023 Eq. 12-13
-        zp_w146 = 27.648  # 1 e- / sec
-        F_aper = 0.5
+        merr_146, perr_146 = get_mag_pos_error(pspl_mod, t_obs)
 
-        mag_w146 = pspl_mod.get_photometry(t_obs)
-        flux_w146 = F_aper * 10 ** (-0.4 * (mag_w146 - zp_w146))
-        merr_146 = (2.5 / math.log(10)) * (1.0 / flux_w146 ** 0.5)
+        # Define steps used in numerical derivative in fisher matrix.
+        param_delta = params_var.copy()
+        param_delta['t0'] = 10.0 # day
+        param_delta['u0'] = 0.1
+        param_delta['tE'] = 5.0
+        param_delta['piE_E'] = 0.1
+        param_delta['piE_N'] = 0.1
+        param_delta['b_sff'] = 0.01
+        param_delta['mag_src'] = 0.1
 
-        perr_146 = np.array([100.0 * merr_146, 100.0 * merr_146]).T
-
-        cov_mat = sensitivity.fisher_cov_matrix_phot_astrom(t_obs, merr_146, perr_146,
+        cov_mat = sensitivity.fisher_matrix(t_obs, merr_146,
                                             model_class,
                                             params_var,
                                             params_fix,
-                                            num_deriv_frac=1.0e-4)
+                                            num_deriv_frac=0.01,
+                                            param_delta=param_delta)
 
         err_on_params = np.sqrt(np.diagonal(cov_mat))
 
         tE_snr = params_var['tE'] / err_on_params[2]
-        print(err_on_params)
+        events_table['tE_snr'][ee] = tE_snr
 
-        print('tE_snr = ', tE_snr)
-        pdb.set_trace()
+        # Filter out those events that don't have well-measured tE.
+        if tE_snr < 3:
+            events_table[ee]['hst_det'] = False
+
+        # Examine some sensible events:
+
+        if print_ev:
+            with np.printoptions(precision=3, suppress=True):
+                print(f'mag error range = [{merr_146.min():.3f}, {merr_146.max():.3f}]')
+                print('params = ', np.array(list(params_var.values())))
+                print('errors = ', err_on_params)
+                #print('covariance matrix')
+                #print(cov_mat[0:3,0:3])
+
+            print(f'tE_snr = {tE_snr:.2f}')
+
+
+    print(f'tE SNR cut:    N_events = {events_table["hst_det"].sum()}')
+
+    return events_table
+
+
+def get_mag_pos_error(pspl_mod, t_obs):
+    """
+    Get photometric and astrometric errors from the input model and
+    at specified times.
+
+    Parameters
+    ----------
+    pspl_mod : bagle.model
+        Model instance that supports photometry.
+
+    t_obs : array-like
+        Array of times (in MJD).
+
+    Returns
+    -------
+    mag_err : array-like
+        Magnitude errors at specified times. Same shape as t_obs.
+
+    pos_err : array-like
+        Position errors at specified times. Same shape as t_obs.
+    """
+    zp_w146 = 27.648  # 1 e- / sec
+    F_aper = 0.5
+
+    # Assign Roman flux errors.
+    # Following conventions of Wilson et al. 2023 Eq. 12-13
+    mag_w146 = pspl_mod.get_photometry(t_obs)
+    flux_w146 = F_aper * 10 ** (-0.4 * (mag_w146 - zp_w146))
+
+    merr_146 = (2.5 / math.log(10)) * (1.0 / flux_w146 ** 0.5)
+    perr_146 = np.array([100.0 * merr_146, 100.0 * merr_146]).T
+
+    return merr_146, perr_146
+
+
+def plot_event_lightcurve(events_table, ee, t_obs, oversamp=3):
+    """
+    Plot an event lightcurve.
+
+    Parameters
+    ----------
+    events_table
+    ee
+    t_obs
+
+    Returns
+    -------
+
+    """
+    # Define model class used in sensitivity analysis.
+    model_class = model.PSPL_Phot_Par_Param1
+
+    # Fetch params from even table.
+    params = get_pspl_lightcurve_parameters(events_table, 'ubv', 'H', ee)
+
+    # Reformat the parameters.
+    keys_var = ['t0', 'u0', 'tE', 'piE_E', 'piE_N', 'b_sff', 'mag_src']
+    keys_fix = ['raL', 'decL']
+    params_var = {k: params[k] for k in keys_var}
+    params_fix = {k: params[k] for k in keys_fix}
+
+    # Make a model lightcurve at the appropriate times to estimate flux errors.
+    pspl_mod = model.get_model(model_class, params_var, params_fix)
+
+    mag = pspl_mod.get_photometry(t_obs)
+    merr, perr = get_mag_pos_error(pspl_mod, t_obs)
+
+    # Make a more densely sampled model curve as well
+    dt = t_obs[1] - t_obs[0]
+    model_t = np.arange(t_obs.min(), t_obs.max(), dt/oversamp)
+    model_mag = pspl_mod.get_photometry(model_t)
+
+    plt.figure()
+    markers, caps, bars = plt.errorbar(t_obs, mag, yerr=merr,
+                                       ls="none", marker='.', ms=2,
+                                       color='black', label='Sim Data')
+    plt.plot(model_t, model_mag, ls='-', color='red',
+             lw=1, marker='none', label='Model')
+    plt.xlabel('Time (MJD)')
+    plt.ylabel('H mag')
+    plt.title(f'Event #{ee}')
+    plt.gca().invert_yaxis()
+    plt.legend()
+
+    [bar.set_alpha(0.3) for bar in bars]
+    [cap.set_alpha(0.3) for cap in caps]
 
     return
 
+def plot_tE_snr_hist(sims, cadence, duration):
+    # Trim down to just those events that have tE_snr != 0
+    idx = np.where(sims['tE_snr'] > 0)[0]
+
+    # Calculate the number of objects per HST WFC3-IR field.
+    sim_area = 0.1 * u.deg ** 2
+    wfc3_area = 123 * u.arcsec * 137 * u.arcsec
+
+    sim_per_wfc3ir = (sim_area / wfc3_area).to('').value
+    weights = np.repeat(1./sim_per_wfc3ir, len(idx))
+
+    n_snr3_wfc3ir = np.sum(sims["hst_det"]) / sim_per_wfc3ir
+
+    plt.figure()
+    logbins = np.logspace(0, 3, 20)
+    plt.hist(sims['tE_snr'][idx], bins=logbins, weights=weights)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('$t_E$ SNR')
+    plt.ylabel('Events per WFC3-IR Field')
+    plt.title(f'Cadence={cadence} d, Duration={duration} d, $N_{{tE>3,WFC3-IR}}$={n_snr3_wfc3ir:.1f}')
+
+    return
