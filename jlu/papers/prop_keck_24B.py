@@ -3038,3 +3038,113 @@ def ligo_compare():
 #    ax.set_title('Galactic Present-Day BH Mass function')
     plt.tight_layout()
     plt.show()
+
+def plot_pos_error():
+    from flystar import starlists
+
+    target_epochs = []
+    target_epochs.append({'target': 'ob170095', 'epoch': '17may21',
+                          'combo_dir': 'combo_2018_10_19', 'filt': 'kp'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '17jun08',
+                          'combo_dir': 'combo_2019_04_26', 'filt': 'kp'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '17jul14',
+                          'combo_dir': 'combo_2018_10_19', 'filt': 'kp'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '17jul19',
+                          'combo_dir': 'combo_2019_04_26', 'filt': 'kp'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '20jun13os',
+                          'combo_dir': 'combo', 'filt': 'kp_tdHband'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '20aug23os',
+                          'combo_dir': 'combo', 'filt': 'l_kp_tdOpen'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '20aug23os',
+                          'combo_dir': 'combo', 'filt': 's_kp_tdOpen'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '20sep04os',
+                          'combo_dir': 'combo', 'filt': 'kp_tdOpen'})
+    target_epochs.append({'target': 'ob170095', 'epoch': '21sep03os',
+                          'combo_dir': 'combo', 'filt': 'kp_tdOpen'})
+
+    #target_epochs.append({'target': 'kb200101', 'epoch': '23july16os',
+    #                      'combo_dir': 'combo', 'filt': 'kp_tdOpen'})
+
+    scale = 10.0    # mas/pix
+    magStep = 0.25  # mag
+    magBinWidth = 1.0
+    radiusCut = 4  # arcsec
+    magBins = np.arange(10.0, 22.0, magStep)
+
+    errMag = np.zeros((len(target_epochs), len(magBins)), dtype=float)
+    errTarg = np.zeros(len(target_epochs), dtype=float)
+    magTarg = np.zeros(len(target_epochs), dtype=float)
+
+    for tt in range(len(target_epochs)):
+        epoch = target_epochs[tt]['epoch']
+        targ = target_epochs[tt]['target']
+        combo = target_epochs[tt]['combo_dir']
+        filt = target_epochs[tt]['filt']
+
+        data_dir = '/g/lu/data/microlens'
+        lis_file = f'{data_dir}/{epoch}/{combo}/starfinder/mag{epoch}_{targ}_{filt}_rms_named.lis'
+
+        lis = starlists.read_starlist(lis_file, error=True)
+
+        # Find the target in our list.
+        tdx = np.where(lis['name'] == targ)[0][0]
+
+        if epoch == '21sep03os':
+            mag_base_ob170095 = 16.58
+            lis['m'] += mag_base_ob170095 - lis['m'][tdx]
+
+        r = np.hypot(lis['x'] - lis['x'][tdx],
+                     lis['y'] - lis['y'][tdx])
+        r *= scale / 1e3   # arcsec
+
+        lis['perr'] = np.hypot(0.5 * (lis['xe'] + lis['ye']), 0.01)
+
+        errTarg[tt] = lis['perr'][tdx] * scale
+        magTarg[tt] = lis['m'][tdx]
+
+        ##########
+        # Compute errors in magnitude bins
+        ##########
+        for mm in range(len(magBins)):
+            mMin = magBins[mm] - (magBinWidth / 2.0)
+            mMax = magBins[mm] + (magBinWidth / 2.0)
+            idx = (np.where((lis['m'] >= mMin) & (lis['m'] < mMax) & (r < radiusCut)))[0]
+
+            if (len(idx) > 0):
+                errMag[tt, mm] = np.median(lis[idx]['perr']) * scale  # mas
+
+
+        # Clean up some of the null values.
+        good = np.where(errMag[tt] != 0)[0]
+
+        # First get the too-bright bins and make a flat line.
+        idx = np.where((errMag[tt] == 0) & (magBins < lis['m'].min()))[0]
+        errMag[tt, idx] = errMag[tt, good[0]]
+
+        # Now clean up faint end.
+        idx = np.where((errMag[tt] == 0) & (magBins > lis['m'].max()))[0]
+        errMag[tt, idx] = errMag[tt, good[-1]]
+
+        # Finally clean up any bins in the emiddle
+        idx = np.where((errMag[tt] == 0) &
+                       (magBins >= lis['m'].min()) &
+                       (magBins <= lis['m'].max()))[0]
+        for ii in idx:
+            errMag[tt, ii] = 0.5 * (errMag[tt, ii-1] + errMag[tt, ii+1])
+
+
+    colors = plt.cm.jet(np.linspace(0, 1, len(target_epochs)))
+
+    plt.figure(figsize=(8,4))
+    plt.subplots_adjust(left=0.15, bottom=0.2)
+    for tt in range(len(target_epochs)):
+        p = plt.plot(magBins, errMag[tt], label=target_epochs[tt]['epoch'], color=colors[tt])
+        plt.plot(magTarg[tt], errTarg[tt], color=colors[tt], marker='x', ms=10, ls='none')
+    plt.xlabel('Kp Magnitude')
+    plt.ylabel('Pos. Error (mas)')
+    plt.yscale('log')
+    plt.xlim(11, 21)
+    plt.legend(fontsize=10)
+    plt.title('OB170095 (x) + Reference Stars (line)')
+
+    return
