@@ -3148,3 +3148,124 @@ def plot_pos_error():
     plt.title('OB170095 (x) + Reference Stars (line)')
 
     return
+
+### Plots for 24B Supplemental Proposals ###
+def plot_period_wobble():
+    """
+    Plot astrometric wobble vs. period for a range of BH binaries. 
+    """
+    from jlu.gc.gcwork import wobble
+    
+    m_star = 1.0 * u.Msun
+    m_bh = np.array([1., 10., 100.]) * u.Msun
+    a = np.array([3., 6., 10., 15.]) * u.AU
+    P = np.array([1., 5., 10.]) * u.yr
+    D = 8. * u.kpc
+
+    # Default index when looping through arrays on other parameters. 
+    ii_def = 1
+
+    plt.close(1)
+    plt.figure(1, figsize=(4,4))
+    plt.clf()
+
+    # Loop through m_bh
+    a_dense = np.geomspace(0.1, 1000., 500) * u.AU
+    label_P_pos = [12, 11, 6]
+    for ii in range(len(m_bh)):
+        wob_ii, P_ii = astro_wobble(m_bh=m_bh[ii],
+                                    m_star=m_star,
+                                    distance=D,
+                                    semi_major_axis=a_dense)
+
+        plt.plot(P_ii, wob_ii, marker=None, ls='--', color='blue')
+
+        mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))
+        #mid = int(len(wob_ii) / 2.) + 100
+        
+        dy = ((wob_ii[mid+1] - wob_ii[mid]) / u.mas).value
+        dx = ((P_ii[mid+1] - P_ii[mid]) / u.yr).value
+
+        angle = np.rad2deg(np.arctan2(dy, dx))
+
+        # annotate with transform_rotates_text to align text and line
+        plt.text(P_ii[mid].value, wob_ii[mid].value, 
+                 f'M$_{{BH}}$={m_bh[ii].value:.0f} M$_\odot$',
+                 ha='center', va='bottom',
+                 transform_rotates_text=True,
+                 rotation=angle, rotation_mode='anchor',
+                 color='blue')
+
+    # Loop through semi-major axis
+    m_bh_dense = np.geomspace(0.01, 3e6, 500) * u.Msun
+    label_P_pos = [2.5, 4.5, 6, 9]
+    for ii in range(len(a)):
+        wob_ii, P_ii = astro_wobble(m_bh=m_bh_dense,
+                                    m_star=m_star,
+                                    distance=D,
+                                    semi_major_axis=a[ii])
+        
+        plt.plot(P_ii, wob_ii, marker=None, ls='-.', color='red')
+
+        mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))
+        # mid = int(len(wob_ii) / 2.)# - 50
+        
+        dy = ((wob_ii[mid+1] - wob_ii[mid]) / u.mas).value
+        dx = ((P_ii[mid+1] - P_ii[mid]) / u.yr).value
+
+        angle = np.rad2deg(np.arctan2(dy, dx))
+        if angle > 90 or angle < -90:
+            angle += 180
+        
+        # annotate with transform_rotates_text to align text and line
+        plt.text(P_ii[mid].value, wob_ii[mid].value, 
+                 f'a={a[ii].value:.0f} AU',
+                 ha='center', va='bottom',
+                 transform_rotates_text=True,
+                 rotation=angle, rotation_mode='anchor',
+                 color='red')
+        
+
+    plt.xlabel('Period (yr)')
+    plt.ylabel('Astrometric P2V Wobble (mas)')
+
+    plt.xlim(0, 30)
+    plt.ylim(0, 5)
+    plt.gca().set_xscale('log')
+
+    plt.title("BH + Star (1M$_\odot$) Binaries at the GC")
+
+    # Plot S1-32 and S1-36 on the figure
+    star_dir = '/u/yinruoyi/Documents/binary_jupyter/models_all/multinest_add_long_tp'
+    star_dir = '.'
+    s1_32_mnest_file = '{star_dir}/S1-32_try4_.txt'
+    s1_36_mnest_file = '{star_dir}/S1-36_try4_.txt'
+
+    s1_32_mnest = Table.read(s1_32_mnest_file, format='ascii')
+    s1_36_mnest = Table.read(s1_36_mnest_file, format='ascii')
+
+    P_s1_32 = s1_32_mnest['col7']
+    P_s1_36 = s1_36_mnest['col7']
+    aleph_s1_32 = s1_32_mnest['col9']
+    aleph_s1_36 = s1_36_mnest['col9']
+    w_s1_32 = s1_32_mnest['col1']
+    w_s1_36 = s1_36_mnest['col1']
+
+    import scipy.stats as st
+    PP, aa = np.meshgrid(np.logspace(0, 0.3, 30),
+                         np.linspace(0, 5.0, 30))
+
+    kde_s1_32 = st.gaussian_kde(np.vstack([P_s1_32, aleph_s1_32]))
+    Z_s1_32_tmp = kde_s1_32(np.vstack([PP.ravel(), aa.ravel()])).T
+    Z_s1_32 = np.reshape(Z_s1_32_tmp, PP.shape) 
+
+    kde_s1_36 = st.gaussian_kde(np.vstack([P_s1_36, aleph_s1_36]))
+    Z_s1_36_tmp = kde_s1_36(np.vstack([PP.ravel(), aa.ravel()])).T
+    Z_s1_36 = np.reshape(Z_s1_36_tmp, PP.shape) 
+    
+    plt.contour(PP, aa, Z_s1_32)
+    
+    plt.savefig('gc_bh_astrom_wobble_24B_candidates.png')
+
+    
+    return
