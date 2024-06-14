@@ -3157,7 +3157,7 @@ def plot_period_wobble():
     from jlu.gc.gcwork import wobble
     
     m_star = 1.0 * u.Msun
-    m_bh = np.array([1., 10., 100.]) * u.Msun
+    m_bh = np.array([1., 5., 10., 100.]) * u.Msun
     a = np.array([3., 6., 10., 15.]) * u.AU
     P = np.array([1., 5., 10.]) * u.yr
     D = 8. * u.kpc
@@ -3166,14 +3166,14 @@ def plot_period_wobble():
     ii_def = 1
 
     plt.close(1)
-    plt.figure(1, figsize=(4,4))
+    plt.figure(1, figsize=(6,6))
     plt.clf()
 
     # Loop through m_bh
     a_dense = np.geomspace(0.1, 1000., 500) * u.AU
-    label_P_pos = [12, 11, 6]
+    label_P_pos = [12, 11, 11, 6]
     for ii in range(len(m_bh)):
-        wob_ii, P_ii = astro_wobble(m_bh=m_bh[ii],
+        wob_ii, P_ii = wobble.astro_wobble(m_bh=m_bh[ii],
                                     m_star=m_star,
                                     distance=D,
                                     semi_major_axis=a_dense)
@@ -3200,7 +3200,7 @@ def plot_period_wobble():
     m_bh_dense = np.geomspace(0.01, 3e6, 500) * u.Msun
     label_P_pos = [2.5, 4.5, 6, 9]
     for ii in range(len(a)):
-        wob_ii, P_ii = astro_wobble(m_bh=m_bh_dense,
+        wob_ii, P_ii = wobble.astro_wobble(m_bh=m_bh_dense,
                                     m_star=m_star,
                                     distance=D,
                                     semi_major_axis=a[ii])
@@ -3229,17 +3229,17 @@ def plot_period_wobble():
     plt.xlabel('Period (yr)')
     plt.ylabel('Astrometric P2V Wobble (mas)')
 
-    plt.xlim(0, 30)
+    plt.xlim(1, 30)
     plt.ylim(0, 5)
-    plt.gca().set_xscale('log')
+    #plt.gca().set_xscale('log')
 
     plt.title("BH + Star (1M$_\odot$) Binaries at the GC")
 
     # Plot S1-32 and S1-36 on the figure
     star_dir = '/u/yinruoyi/Documents/binary_jupyter/models_all/multinest_add_long_tp'
-    star_dir = '.'
-    s1_32_mnest_file = '{star_dir}/S1-32_try4_.txt'
-    s1_36_mnest_file = '{star_dir}/S1-36_try4_.txt'
+    #star_dir = '.'
+    s1_32_mnest_file = f'{star_dir}/S1-32_try3_.txt'
+    s1_36_mnest_file = f'{star_dir}/S1-36_try3_.txt'
 
     s1_32_mnest = Table.read(s1_32_mnest_file, format='ascii')
     s1_36_mnest = Table.read(s1_36_mnest_file, format='ascii')
@@ -3252,18 +3252,32 @@ def plot_period_wobble():
     w_s1_36 = s1_36_mnest['col1']
 
     import scipy.stats as st
-    PP, aa = np.meshgrid(np.logspace(0, 0.3, 30),
-                         np.linspace(0, 5.0, 30))
+    P_arr = np.logspace(0, 1.5, 80)
+    a_arr = np.linspace(0, 5.0, 50)
+    PP, aa = np.meshgrid(P_arr, a_arr)
+    PPaa = np.vstack([PP.ravel(), aa.ravel()])
 
-    kde_s1_32 = st.gaussian_kde(np.vstack([P_s1_32, aleph_s1_32]))
-    Z_s1_32_tmp = kde_s1_32(np.vstack([PP.ravel(), aa.ravel()])).T
-    Z_s1_32 = np.reshape(Z_s1_32_tmp, PP.shape) 
+    sigma_levels = np.array([2.0, 1.0])
+    levels = np.exp(-0.5 * sigma_levels ** 2)
 
-    kde_s1_36 = st.gaussian_kde(np.vstack([P_s1_36, aleph_s1_36]))
-    Z_s1_36_tmp = kde_s1_36(np.vstack([PP.ravel(), aa.ravel()])).T
-    Z_s1_36 = np.reshape(Z_s1_36_tmp, PP.shape) 
+    coo_s1_32 = np.vstack([P_s1_32, aleph_s1_32])
+    kde_s1_32 = st.gaussian_kde(coo_s1_32, weights=w_s1_32)
+    Z_s1_32_tmp = kde_s1_32(PPaa).T
+    Z_s1_32 = np.reshape(Z_s1_32_tmp, PP.shape)
+    Z_s1_32 = (Z_s1_32 - Z_s1_32.min()) / (Z_s1_32.max() - Z_s1_32.min())
     
-    plt.contour(PP, aa, Z_s1_32)
+    coo_s1_36 = np.vstack([P_s1_36, aleph_s1_36])
+    kde_s1_36 = st.gaussian_kde(coo_s1_36, weights=w_s1_36)
+    Z_s1_36_tmp = kde_s1_36(PPaa).T
+    Z_s1_36 = np.reshape(Z_s1_36_tmp, PP.shape)
+    Z_s1_36 = (Z_s1_36 - Z_s1_36.min()) / (Z_s1_36.max() - Z_s1_36.min())
+    
+    plt.contour(PP, aa, Z_s1_32, levels=levels, 
+                colors=[[0.6, 0.2, 0.6, 0.5], [0.6, 0.2, 0.6, 1.0]])
+    plt.text(18, 2.0, 'S1-32', color=[0.6, 0.3, 0.8, 1.0])
+    plt.contour(PP, aa, Z_s1_36, levels=levels, 
+                colors=[[0.0, 1.0, 0.0, 0.5], [0.0, 1.0, 0.0, 1.0]])
+    plt.text(24, 1.7, 'S1-36', color=[0.0, 1.0, 0.0, 1.0])
     
     plt.savefig('gc_bh_astrom_wobble_24B_candidates.png')
 
