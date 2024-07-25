@@ -3,6 +3,10 @@ import pylab as plt
 from jlu.ao.keck import kola
 from astropy import table
 from astropy import units as u
+from astropy.io import fits
+import scipy
+from astropy.convolution import convolve_fft
+import matplotlib.animation as animation
 
 outdir = '/Users/jlu/doc/papers/2024_spie_kola/figures/'
 
@@ -231,5 +235,394 @@ def planet_resolutions():
 
     return
 
+
+def plot_kola_gs_layout():
+    from matplotlib.patches import Circle, Rectangle
+
+    plt.figure(1, figsize=(7.5,7.5))
+    plt.subplots_adjust(left=0.13, bottom=0.10, top=0.95, right=0.95)
+    plt.clf()
+
+    # Science Field of View
+    sci_fov = Rectangle([-30, -30], 60, 60, fc='lightgrey', ec='none',
+                        label='Science FOV')
+    plt.gca().add_patch(sci_fov)
+
+    # Notional Science Targets
+    sci_x = scipy.stats.truncnorm.rvs(-30, 30, scale=10, size=50)
+    sci_y = scipy.stats.truncnorm.rvs(-30, 30, scale=10, size=50)
+    plt.plot(sci_x, sci_y, ls='none', marker='o',
+             mec='none', mfc='firebrick', ms=4,
+             label='Science Target')
+
+    # TT Field of Regard
+    tt_fov = Circle([0,0], 60, ec='steelblue', fc='none', lw=2,
+                     label='NGS TT Field of Regard')
+    plt.gca().add_patch(tt_fov)
     
+    # LGS FOV
+    lgs_fov = Circle([0,0], 30, fc='none', ec='limegreen', lw=1)
+    plt.gca().add_patch(lgs_fov)
+
+    # LGS Stars
+    lgs_thetax = np.array([30.0, 21.21, 0.0, -21.21,
+                           -30.0, -21.21, -0.0, 21.21])
+    lgs_thetay = np.array([ 0.0, 21.21, 30.0, 21.21,
+                            0.0, -21.21, -30.0, -21.21])
+    plt.plot(lgs_thetax, lgs_thetay,
+             ls='none', marker='*', ms=30, mfc='yellowgreen', mec='green',
+             label="LGS Beacons")
+    
+    # NGS Stars
+    ngs_thetax = np.array([15,   -30, 15])
+    ngs_thetay = np.array([25.98,  0, -25.98])
+    plt.plot(ngs_thetax, ngs_thetay,
+             ls='none', marker='*', ms=15, mfc='steelblue', mec='mediumblue',
+             label='TT Stars')
+
+    plt.xlabel('(arcsec)')
+    plt.ylabel('(arcsec)')
+    plt.legend(fontsize=14, ncol=2, loc='upper center')
+    plt.axis('equal')
+    plt.ylim(-100, 100)
+    plt.xlim(-70, 70)
+    plt.show()
+    plt.savefig('kola_asterism.png')
+
+    return
+    
+    
+def plot_microlens_event(psf_wave_idx=5):
+    from bagle import model
+    from matplotlib import patches
+    from skimage.draw import polygon
+
+    mL = 20.0 # msun
+    t0 = 60000 # MJD
+    beta = 7.0 # mas
+    dL = 1000.0 # pc
+    dL_dS = dL / 8000.0 # pc
+    xS0_E = 0.0     # arcsec
+    xS0_N = beta/1e3 # arcsec
+    muL_E = 0.0 # mas/yr
+    muL_N = 0.0 # mas/yr
+    muS_E = 40.0 # mas/yr
+    muS_N = 0.0 # mas/yr
+    radiusS = 4.0 # mas
+    b_sff = 1.0
+    mag_src = 20.0
+    n_outline = 30
+    raL = 17.75 * 15.0
+    decL = -29.0
+
+    fspl = model.FSPL_PhotAstrom_noPar_Param1(mL, t0, beta, dL, dL_dS,
+                                            xS0_E, xS0_N,
+                                            muL_E, muL_N, muS_E, muS_N,
+                                            radiusS,
+                                            b_sff, mag_src, n_outline,
+                                            raL=raL, decL=decL)
+
+    # dt = 1
+    # dt_max = 1
+    dt = 20
+    dt_max = 400
+    t_obs = np.arange(60000-dt_max, 60001+dt_max, dt)
+    xS_images = fspl.get_resolved_astrometry_outline(t_obs) * 1e3 # mas
+    xS = fspl.get_astrometry_unlensed(t_obs) * 1e3 # mas
+    xL = fspl.get_lens_astrometry(t_obs) * 1e3 # mas
+    A = fspl.get_resolved_amplification(t_obs).T
+    thetaE = fspl.thetaE_amp # mas
+
+    psf_file = '/Users/jlu/work/ao/keck/maos/keck_maos/vismcao/A_keck_scao_lgs/'
+    psf_file += 'evlpsfcl_1_x0_y0.fits'
+
+    psf_fits = fits.open(psf_file)
+    psf = psf_fits[psf_wave_idx].data
+    psf_hdr = psf_fits[psf_wave_idx].header
+    psf_scale = psf_hdr['DP'] * 1e3 # mas/pixel
+    psf_wave = psf_hdr['wvl'] * 1e9 # nm
+
+    # Make an empty image.
+    img_scale = 2 # mas/pix sampling
+    img_size = 100   # pixels (about 200 mas)
+    rescale = psf_scale / img_scale
+    print(f'image scale = {img_scale:.2f} mas/pix')
+    print(f'orig psf scale = {psf_scale:.2f} mas/pix')
+    print(f'rescale = {rescale:.2f}')
+    print(f'image size = {img_size} pix')
+    print(f'thetaE = {thetaE:.2f} mas')
+    print(f'tE = {fspl.tE:.2f} days')
+    
+    img = np.zeros((len(t_obs), img_size, img_size), dtype=float)
+    img_c = np.zeros((len(t_obs), img_size, img_size), dtype=float)
+
+    # # Rescale the PSF, cutof first 2 pixels to recenter.
+    psf = scipy.ndimage.zoom(psf, zoom=rescale, order=3)
+    trim_ii = int(rescale)
+    psf = psf[trim_ii:, trim_ii+1:-1]  # why is it different in x and y?
+
+    for tt in range(len(t_obs)):
+        # Make the image polygons
+        poly_p_verts = np.append(xS_images[tt, :, 0, :],
+                                 [xS_images[tt, 0, 0, :]], axis=0)
+        poly_n_verts = np.append(xS_images[tt, :, 1, :],
+                                 [xS_images[tt, 0, 1, :]], axis=0)
+        poly_p_verts *= 1.0 / img_scale
+        poly_n_verts *= 1.0 / img_scale
+        poly_p_verts += img_size/2.0
+        poly_n_verts += img_size/2.0
+        
+        rr_p, cc_p = polygon(poly_p_verts[:, 1], poly_p_verts[:, 0], img[tt].shape)
+        rr_n, cc_n = polygon(poly_n_verts[:, 1], poly_n_verts[:, 0], img[tt].shape)
+        img[tt, rr_p, cc_p] = A[tt, 0] / len(rr_p)
+        img[tt, rr_n, cc_n] = A[tt, 1] / len(rr_n)
+        print(f'image {tt} flux after = {img[tt].sum()}, pix_cnt = {len(rr_p)}')
+
+        #Convolve our image with the PSF.
+        img_c[tt, :, :] = convolve_fft(img[tt, :, :], psf, boundary='wrap')
+
+    
+    ##########
+    # Plot
+    ##########
+    ##
+    ## Plot schematic.
+    ##
+    plt.close('all')
+    fig1 = plt.figure(1)
+    plt.clf()
+
+    plt.plot([0], [0], 'k.')
+
+    # Plot Enstein radius in mas and the black hole.
+    f1_thetaE = plt.gca().add_patch(patches.Circle(xL[0], thetaE,
+                                       ec='purple', fc='none'))
+    f1_xL = plt.gca().add_patch(patches.Circle(xL[0], thetaE/20.0,
+                                       ec='none', fc='black'))
+    f1_xS = plt.gca().add_patch(patches.Circle(xS[0], thetaE/20.0,
+                                       ec='red', fc='none'))
+
+    f1_img_p = patches.Polygon(xS_images[0, :, 0, :], fc='orange', ec='darkorange')
+    f1_img_n = patches.Polygon(xS_images[0, :, 1, :], fc='orange', ec='darkorange')
+    plt.gca().add_patch(f1_img_p)
+    plt.gca().add_patch(f1_img_n)
+
+    plt.axis('equal')
+    lim = thetaE*2
+    plt.xlim(-lim, lim)
+    plt.ylim(-lim, lim)
+    plt.xlabel('(mas)')
+    plt.ylabel('(mas)')
+    plt.text(0.05, 0.95, f'M$_{{BH}}$ = {mL:.0f} M$_\odot$', color='black',
+             transform = fig1.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.90, f't$_{{E}}$ = {fspl.tE:.0f} days', color='black',
+             transform = fig1.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.85, f'$\\theta_{{E}}$ = {thetaE:.0f} mas', color='black',
+             transform = fig1.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.80, f'$\lambda_{{PSF}}$ = {psf_hdr["wvl"]*1e3:.0f} nm', color='black',
+             transform = fig1.gca().transAxes, fontsize=14)
+    
+
+    ##
+    ## Plot the intrinsic image.
+    ##
+    fig2 = plt.figure(2)
+    plt.clf()
+    img_ext = np.array([-img[0].shape[0], img[0].shape[0]]) * img_scale / 2.0
+    img_ext = np.append(img_ext, img_ext)
+    f2_img = plt.imshow(img[0, :, :], cmap='binary_r', extent=img_ext)
+    
+    # Plot Enstein radius in mas, the black hole, and the true source position.
+    f2_thetaE = plt.gca().add_patch(patches.Circle(xL[0], thetaE,
+                                       ec='cyan', fc='none', ls='--'))
+    f2_xL = plt.gca().add_patch(patches.Circle(xL[0], thetaE/20.0,
+                                       ec='lightgrey', fc='black'))
+    f2_xS = plt.gca().add_patch(patches.Circle(xS[0], thetaE/20.0,
+                                       ec='yellow', fc='yellow'))
+    plt.xlabel('(mas)')
+    plt.ylabel('(mas)')
+    plt.title('Intrinsic Flux')
+
+    ##
+    ## Plot the PSF
+    ##
+    fig3 = plt.figure(3)
+    plt.clf()
+    psf_ext = np.array([-psf.shape[0], psf.shape[0]]) * img_scale / 2.0
+    psf_ext = np.append(psf_ext, psf_ext)
+    plt.imshow(psf, cmap='binary_r', extent=psf_ext)
+    plt.xlim(img_ext[0], img_ext[1])
+    plt.ylim(img_ext[0], img_ext[1])
+    plt.xlabel('(mas)')
+    plt.ylabel('(mas)')
+    plt.title('PSF')
+    
+    ##
+    ## Plot the convolved image.
+    ##
+    fig4 = plt.figure(4)
+    plt.clf()
+    f4_img = plt.imshow(img_c[0, :, :], cmap='binary_r', extent=img_ext)
+    
+    # Plot Enstein radius in mas, the black hole, and the true source position.
+    f4_thetaE = plt.gca().add_patch(patches.Circle(xL[0], thetaE,
+                                       ec='cyan', fc='none', ls='--'))
+    f4_xL = plt.gca().add_patch(patches.Circle(xL[0], thetaE/20.0,
+                                       ec='lightgrey', fc='black'))
+    f4_xS = plt.gca().add_patch(patches.Circle(xS[0], thetaE/20.0,
+                                       ec='yellow', fc='yellow'))
+    plt.xlabel('(mas)')
+    plt.ylabel('(mas)')
+    plt.title('Observed Flux')
+    plt.text(0.05, 0.95, f'M$_{{BH}}$ = {mL:.0f} M$_\odot$', color='white',
+             transform = fig4.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.90, f't$_{{E}}$ = {fspl.tE:.0f} days', color='white',
+             transform = fig4.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.85, f'$\\theta_{{E}}$ = {thetaE:.0f} mas', color='white',
+             transform = fig4.gca().transAxes, fontsize=14)
+    plt.text(0.05, 0.80, f'$\lambda_{{PSF}}$ = {psf_hdr["wvl"]*1e6:.0f} nm', color='white',
+             transform = fig4.gca().transAxes, fontsize=14)
+
+    ##
+    ## Plot 2 panel
+    ##
+    fig5 = plt.figure(5, figsize=(12,6))
+    plt.clf()
+    f5a1 = plt.subplot(1, 2, 1)
+    f5a2 = plt.subplot(1, 2, 2)
+    plt.subplots_adjust(left=0.1, right=0.95)
+
+    # Left Panel - Schematic
+    f5a1.plot([0], [0], 'k.')
+
+    # Plot Enstein radius in mas and the black hole.
+    f5a1_thetaE = f5a1.add_patch(patches.Circle(xL[0], thetaE,
+                                       ec='purple', fc='none'))
+    f5a1_xL = f5a1.add_patch(patches.Circle(xL[0], thetaE/20.0,
+                                       ec='none', fc='black'))
+    f5a1_xS = f5a1.add_patch(patches.Circle(xS[0], thetaE/20.0,
+                                       ec='red', fc='none'))
+
+    f5a1_img_p = patches.Polygon(xS_images[0, :, 0, :], fc='orange', ec='darkorange')
+    f5a1_img_n = patches.Polygon(xS_images[0, :, 1, :], fc='orange', ec='darkorange')
+    f5a1.add_patch(f5a1_img_p)
+    f5a1.add_patch(f5a1_img_n)
+
+    lim = thetaE*2
+    f5a1.set_xlabel('(mas)')
+    f5a1.set_ylabel('(mas)')
+    f5a1.set_title('Schematic')
+    f5a1.text(0.05, 0.95, f'M$_{{BH}}$ = {mL:.0f} M$_\odot$', color='black',
+             transform = f5a1.transAxes, fontsize=14)
+    f5a1.text(0.05, 0.90, f't$_{{E}}$ = {fspl.tE:.0f} days', color='black',
+             transform = f5a1.transAxes, fontsize=14)
+    f5a1.text(0.05, 0.85, f'$\\theta_{{E}}$ = {thetaE:.0f} mas', color='black',
+             transform = f5a1.transAxes, fontsize=14)
+    f5a1.text(0.05, 0.80, f'$\lambda_{{PSF}}$ = {psf_hdr["wvl"]*1e3:.0f} nm',
+              color='black',
+              transform = f5a1.transAxes, fontsize=14)
+
+                        
+
+    # Right Panel
+    f5a2_img = f5a2.imshow(img_c[0, :, :], cmap='binary_r', extent=img_ext)
+    
+    # Plot Enstein radius in mas, the black hole, and the true source position.
+    f5a2_thetaE = f5a2.add_patch(patches.Circle(xL[0], thetaE,
+                                       ec='cyan', fc='none', ls='--'))
+    f5a2_xL = f5a2.add_patch(patches.Circle(xL[0], thetaE/20.0,
+                                       ec='lightgrey', fc='black'))
+    f5a2_xS = f5a2.add_patch(patches.Circle(xS[0], thetaE/20.0,
+                                       ec='yellow', fc='yellow'))
+    f5a2.set_xlabel('(mas)')
+    f5a2.set_title('Observed')
+
+    f5a1.axis('equal')
+    f5a1.set_xlim(img_ext[0], img_ext[1])
+    f5a1.set_ylim(img_ext[0], img_ext[1])
+    f5a2.axis('equal')
+    f5a2.set_xlim(img_ext[0], img_ext[1])
+    f5a2.set_ylim(img_ext[0], img_ext[1])
+    
+    
+    ##########
+    # Animate
+    ##########
+    
+    plt_objs1 = [f1_thetaE, f1_xL, f1_xS, f1_img_p, f1_img_n]
+    plt_objs2 = [f2_thetaE, f2_xL, f2_xS, f2_img]
+    plt_objs4 = [f4_thetaE, f4_xL, f4_xS, f4_img]
+    plt_objs5 = [f5a1_thetaE, f5a1_xL, f5a1_xS, f5a1_img_p, f5a1_img_n,
+                 f5a2_thetaE, f5a2_xL, f5a2_xS, f5a2_img]
+
+    
+    def f1_update(t, xL, xS, p_outline, n_outline, plt_objs1):
+        f1_thetaE, f1_xL, f1_xS, f1_img_p, f1_img_n = plt_objs1
+        f1_thetaE.center = xL[t]
+        f1_xL.center = xL[t]
+        f1_xS.center = xS[t]
+        f1_img_p.xy = p_outline[t]
+        f1_img_n.xy = n_outline[t]
+        return plt_objs1
+        
+    def f2_update(t, xL, xS, img, plt_objs2):
+        f2_thetaE, f2_xL, f2_xS, f2_img = plt_objs2
+        f2_thetaE.center = xL[t]
+        f2_xL.center = xL[t]
+        f2_xS.center = xS[t]
+        f2_img.set_array(img[t])
+        return plt_objs2
+
+    def f4_update(t, xL, xS, img_c, plt_objs4):
+        f4_thetaE, f4_xL, f4_xS, f4_img = plt_objs4
+        f4_thetaE.center = xL[t]
+        f4_xL.center = xL[t]
+        f4_xS.center = xS[t]
+        f4_img.set_array(img_c[t])
+        return plt_objs4
+
+    def f5_update(t, xL, xS, p_outline, n_outline, img_c, plt_objs5):
+        f5a1_thetaE, f5a1_xL, f5a1_xS, f5a1_img_p, f5a1_img_n, f5a2_thetaE, f5a2_xL, f5a2_xS, f5a2_img = plt_objs5
+        
+        f5a1_thetaE.center = xL[t]
+        f5a1_xL.center = xL[t]
+        f5a1_xS.center = xS[t]
+        f5a1_img_p.xy = p_outline[t]
+        f5a1_img_n.xy = n_outline[t]
+        
+        f5a2_thetaE.center = xL[t]
+        f5a2_xL.center = xL[t]
+        f5a2_xS.center = xS[t]
+        f5a2_img.set_array(img_c[t])
+        
+        return plt_objs5
+    
+    p_outline = xS_images[:, :, 0, :]
+    n_outline = xS_images[:, :, 1, :]
+    frame_time = 100 # ms
+    
+    ani1 = animation.FuncAnimation(fig1, f1_update, len(t_obs),
+                                  fargs=[xL, xS, p_outline, n_outline, plt_objs1],
+                                  blit=True, interval=frame_time)
+    ani1.save(f'fspl_schematic_{psf_wave:04.0f}nm.gif')
+    
+
+    ani2 = animation.FuncAnimation(fig2, f2_update, len(t_obs),
+                                  fargs=[xL, xS, img, plt_objs2],
+                                  blit=True, interval=frame_time)
+    ani2.save(f'fspl_image_raw_{psf_wave:04.0f}nm.gif')
+
+    
+    ani4 = animation.FuncAnimation(fig4, f4_update, len(t_obs),
+                                  fargs=[xL, xS, img_c, plt_objs4],
+                                  blit=True, interval=frame_time)
+    ani4.save(f'fspl_image_conv_{psf_wave:04.0f}nm.gif')
+
+    ani5 = animation.FuncAnimation(fig5, f5_update, len(t_obs),
+                                  fargs=[xL, xS, p_outline, n_outline, img_c, plt_objs5],
+                                  blit=True, interval=frame_time)
+    ani5.save(f'fspl_2panel_{psf_wave:04.0f}nm.gif')
+    
+    return fspl
+
     
