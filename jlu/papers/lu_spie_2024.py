@@ -239,8 +239,8 @@ def planet_resolutions():
 def plot_kola_gs_layout():
     from matplotlib.patches import Circle, Rectangle
 
-    plt.figure(1, figsize=(7.5,7.5))
-    plt.subplots_adjust(left=0.13, bottom=0.10, top=0.95, right=0.95)
+    plt.figure(1, figsize=(5.5,5.5))
+    plt.subplots_adjust(left=0.17, bottom=0.13, top=0.95, right=0.95)
     plt.clf()
 
     # Science Field of View
@@ -257,7 +257,7 @@ def plot_kola_gs_layout():
 
     # TT Field of Regard
     tt_fov = Circle([0,0], 60, ec='steelblue', fc='none', lw=2,
-                     label='NGS TT Field of Regard')
+                     label='TT Field of Regard')
     plt.gca().add_patch(tt_fov)
     
     # LGS FOV
@@ -270,14 +270,14 @@ def plot_kola_gs_layout():
     lgs_thetay = np.array([ 0.0, 21.21, 30.0, 21.21,
                             0.0, -21.21, -30.0, -21.21])
     plt.plot(lgs_thetax, lgs_thetay,
-             ls='none', marker='*', ms=30, mfc='yellowgreen', mec='green',
+             ls='none', marker='*', ms=20, mfc='yellowgreen', mec='green',
              label="LGS Beacons")
     
     # NGS Stars
     ngs_thetax = np.array([15,   -30, 15])
     ngs_thetay = np.array([25.98,  0, -25.98])
     plt.plot(ngs_thetax, ngs_thetay,
-             ls='none', marker='*', ms=15, mfc='steelblue', mec='mediumblue',
+             ls='none', marker='*', ms=10, mfc='steelblue', mec='mediumblue',
              label='TT Stars')
 
     plt.xlabel('(arcsec)')
