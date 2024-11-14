@@ -66,7 +66,8 @@ saturate = {'F070W': 14.81,
             'F480M': 12.00}
 
 #work_dir = '/u/jlu/work/gc/jwst/2022_01_20/'
-work_dir = '/u/jlu/work/gc/jwst/2023_10_20/'
+#work_dir = '/u/jlu/work/gc/jwst/2023_10_10/'
+work_dir = '/u/jlu/work/gc/jwst/2024_10_11/'
 
 def plot_sim_cluster():
     yng_file = work_dir + 'iso_gc_jwst/iso_6.61_2.70_08000_p00.fits'
@@ -870,6 +871,211 @@ def plot_cycle2_fig1(iso=None, clu=None):
     # plt.text(1.15, 18-0.2, 'JWST Spectra', fontsize=10, color='black')
 
     plt.savefig(out_dir + 'cycle2_cmd.png')
+
+    return iso, clu
+
+def plot_cycle4_fig1(iso=None, clu=None):
+    iso_dir = work_dir + 'iso_gc_jwst/'
+    out_dir = work_dir + 'plots/'
+
+    import glob
+    iso_files = ['iso_6.90_2.70_08000_p00.fits', 'iso_6.60_2.70_08000_p00.fits', 
+                 'iso_9.90_2.70_08000_p00.fits', 'iso_9.90_2.70_08000_m10.fits',
+                 'iso_9.00_2.70_08000_p00.fits', 'iso_10.00_2.70_08000_p00.fits']
+    clu_files = [iso_f.replace('iso', 'clu').replace('.fits', '.pkl') for iso_f in iso_files]
+    iso_files = [iso_dir + iso_f for iso_f in iso_files]
+    clu_files = [iso_dir + 'with_diff_reddening_0.1/' + clu_f for clu_f in clu_files]
+    # clu_files = [iso_dir + clu_f for clu_f in clu_files]
+
+    colors = ['cyan', 'blue', 'red', 'salmon', 'darkorange', 'maroon']
+
+    # Reverse order for plotting
+    iso_files = iso_files[::-1]
+    clu_files = clu_files[::-1]
+    colors = colors[::-1]
+
+    if iso == None and clu == None:
+        iso = []
+        clu = []
+
+        for ff in range(len(iso_files)):
+            print(iso_files[ff])
+            iso_tmp = Table.read(iso_files[ff])
+            clu_tmp = pickle.load(open(clu_files[ff], 'rb'))
+            
+            good = np.where(iso_tmp['phase'] < 7)[0]
+            iso.append(iso_tmp[good])
+
+            # Cut the stars out below F212N > 24 (gets rid of a bunch).
+            stars = clu_tmp.star_systems
+            bdx = np.where(stars['m_jwst_F212N'] <= 24)[0]
+            stars = stars[bdx]
+
+            # Add some noise to the filters we will observe in.
+            # snr is calculated in jwst_gc_etc.ipynb and is calibrated relative to a K-band magnitude.
+            snr_f115w = 979.0  * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f182m = 1228.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f212n = 1066.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)        
+            snr_f323n = 1102.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+            snr_f405n = 1025.0 * 10**(-(stars['m_nirc2_Kp'] - 14.00) / 5)
+
+            stars['m_jwst_F115W'] += np.random.randn(len(stars)) / snr_f115w
+            stars['m_jwst_F182M'] += np.random.randn(len(stars)) / snr_f182m
+            stars['m_jwst_F212N'] += np.random.randn(len(stars)) / snr_f323n
+            stars['m_jwst_F323N'] += np.random.randn(len(stars)) / snr_f323n
+            # stars['m_jwst_F405N'] += np.random.randn(len(stars)) / snr_f405n
+
+            # Also perturb based on extinction uncertainties.
+            stars['m_jwst_F115W'] += np.random.randn(len(stars)) * 0.050
+            stars['m_jwst_F182M'] += np.random.randn(len(stars)) * 0.020
+            stars['m_jwst_F212N'] += np.random.randn(len(stars)) * 0.010
+            stars['m_jwst_F323N'] += np.random.randn(len(stars)) * 0.008
+            # stars['m_jwst_F405N'] += np.random.randn(len(stars)) * 0.010
+
+            clu_tmp.star_systems = stars
+        
+            clu.append(clu_tmp)
+
+
+    ## CMD
+    plt.close(10)
+    fig = plt.figure(10, figsize=(12, 3.5))
+    plt.clf()
+    plt.subplots_adjust(left=0.07, bottom=0.2, wspace=0.27, top=0.90, right=0.75)
+
+    plt.subplot(1, 2, 1)
+    for ss in range(len(iso)):
+        if 10**iso[ss].meta['LOGAGE'] >= 1e9:
+            label = 'Age = {0:2.0f} Gyr, [Fe/H] = {1:3.1f}'  #, d = {2:3.1f} kpc'
+            label = label.format(10**iso[ss].meta['LOGAGE'] / 1e9,
+                                 iso[ss].meta['METAL_IN'])
+        else:
+            label = 'Age = {0:2.0f} Myr, [Fe/H] = {1:3.1f}'  #, d = {2:3.1f} kpc'
+            label = label.format(10**iso[ss].meta['LOGAGE'] / 1e6,
+                                 iso[ss].meta['METAL_IN'])
+        plt.plot(iso[ss]['m_jwst_F212N'] - iso[ss]['m_jwst_F323N'], iso[ss]['m_jwst_F212N'],
+                     color=colors[ss], label=label)
+
+    plt.ylim(22, 9)
+    plt.xlim(0.75, 1.3)
+    plt.xlabel('F212N - F323N (mag)')
+    plt.ylabel('F212N (mag)')
+    plt.title('Spectral Limits')
+    
+    confusion = {'F090W': 32, 
+                 'F115W': 27.2,
+                 'F212N': 21.5,
+                 'F323N': 19.3}
+                 # 'F212N': 22.5,
+        
+    # Modified the F212N one to be a bit closer in.
+    
+    plt.axhline(15, color='grey', linestyle='--')
+    plt.text(1.1, 15-0.2, 'Narrow-Field\nAO Spectra', fontsize=10)
+
+    plt.axhline(11.5, color='grey', linestyle='--')
+    plt.text(1.1, 11.5-0.2, 'Seeing-Limited\nWide-Field Spectra', fontsize=10)
+
+    plt.axhline(16.5, color='black', linestyle='--', lw=2)
+    plt.text(1.1, 16.5-0.2, 'JWST Spectra', fontsize=10, color='black')
+    
+    # plt.axhline(21.5, color='black', linestyle='--')
+    # plt.text(8.0, 21.5-0.2, 'JWST', fontsize=10, color='black')
+                    
+    lg = plt.legend(fontsize=12, bbox_to_anchor=(0.88, 0.7),
+                    bbox_transform=fig.transFigure,
+                    markerscale=3, loc='center', ncol=1)
+    # for lh in lg.legendHandles: 
+    #     lh._legmarker.set_alpha(1)
+
+    def label_mass(iso, col_color, col_mag,
+                   mass_val, mass_label, label_dcol=-1.0, color='blue'):
+        idx = np.argmin(np.abs(iso['mass'] - mass_val))
+        # print(mass_val, idx, iso['mass'][idx])
+
+        m_label = '{0:s} M$_\odot$'.format(mass_label)
+        xy = (col_color[idx], col_mag[idx])
+        xytext = (col_color[idx] + label_dcol, col_mag[idx])
+        arrow_props = dict(facecolor=color, edgecolor=color,
+                           shrink=0.05, width=1, headwidth=2)
+        plt.annotate(m_label, xy=xy, xytext=xytext,
+                     color=color,
+                     arrowprops=arrow_props)
+
+    # label_mass(yng, ycol, ymag, 10, '10')
+    # label_mass(yng, ycol, ymag, 5, '5')
+    # label_mass(yng, ycol, ymag, 2, '2')
+    # label_mass(yng, ycol, ymag, 1, '1', label_dcol=0.4)
+    # label_mass(yng, ycol, ymag, 0.5, '0.5', label_dcol=0.4)
+
+    # label_mass(old, ocol, omag, 1, '1', color='red')
+    # label_mass(old, ocol, omag, 2, '2', color='red')
+    # label_mass(old, ocol, omag, 0.5, '0.5', label_dcol=0.4, color='red')
+    
+    # plt.legend(fontsize=12, loc='lower left')
+
+    
+    plt.subplot(1, 2, 2)
+    for ss in range(len(clu)-1):
+        label = 'Age = {0:5.3f} Gyr, [Fe/H] = {1:4.1f}, d = {2:3.1f} kpc'
+        label = label.format(10**clu[ss].iso.points.meta['LOGAGE'] / 1e9,
+                             clu[ss].iso.points.meta['METAL_IN'],
+                             clu[ss].iso.points.meta['DISTANCE'] / 1e3)
+
+
+        stars = clu[ss].star_systems
+
+        # Pick out a random sample of "samp_size" for plotting.
+        # Too many to plot all of them.
+        if clu[ss].iso.points.meta['LOGAGE'] < 9.1:
+            samp_size = int(2e4)
+        else:
+            samp_size = int(2e5)
+
+        if clu[ss].iso.points.meta['METAL_IN'] < 0:
+            samp_size = int(1e4)
+        # print(samp_size)
+        
+        sdx = np.random.randint(0, high=len(stars), size=samp_size)
+        # print(sdx)
+
+        plt.plot(stars['m_jwst_F212N'][sdx] - stars['m_jwst_F323N'][sdx],
+                     stars['m_jwst_F212N'][sdx], marker='.', linestyle='none',
+                     label=label, alpha=0.1, markersize=3, color=colors[ss])
+    
+    plt.ylim(22, 9)
+    plt.xlim(0.75, 1.3)
+    plt.xlabel('F212N - F323N (mag)')
+    plt.ylabel('F212N (mag)')
+    plt.title('Imaging Limits')
+    
+    plt.axhline(saturate['F212N'], color='black', linestyle='--')
+    plt.text(0.76, saturate['F212N']-0.2, 'JWST Saturation Limit', fontsize=10)
+    
+    plt.axhline(18, color='grey', linestyle='--')
+    plt.text(1.15, 18-0.2, 'HST Imaging', fontsize=10)
+    
+    plt.axhline(19, color='grey', linestyle='--')
+    plt.text(1.15, 19-0.2, 'AO Imaging', fontsize=10)
+    
+    plt.fill_between([0.75, 1.5], [confusion['F212N'], confusion['F212N']],
+                     [confusion['F212N']-1.5, confusion['F212N']-1.5],
+                     color='black', alpha=0.2)
+    plt.text(0.76, confusion['F212N']-0.2, 'JWST Confusion Limit', fontsize=10)
+    
+    # plt.axhline(saturate['F212N'], color='black', linestyle='--')
+    # plt.text(6.7, saturate['F212N']-0.2, 'Saturation', fontsize=10)
+    
+    # plt.axhline(confusion['F212N'], color='black', linestyle='--')
+    # plt.text(6.7, confusion['F212N']-0.2, 'Confusion', fontsize=10)
+    
+    plt.axhline(20, color='black', linestyle='--', lw=2)
+    plt.text(1.15, 20-0.2, 'JWST Imaging', fontsize=10, color='black', fontweight='bold')
+    
+    # plt.axhline(18, color='black', linestyle='--')
+    # plt.text(1.15, 18-0.2, 'JWST Spectra', fontsize=10, color='black')
+
+    plt.savefig(out_dir + 'cycle4_cmd.png')
 
     return iso, clu
 
@@ -1993,6 +2199,91 @@ def factors(n):
     return list(reduce(list.__add__, 
                 ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))
 
+
 def plot_period_wobble():
-    wobble.plot_period_wobble()
+    """
+    Plot astrometric wobble vs. period for a range of BH binaries. 
+    """
+    m_star = 1.0 * u.Msun
+    m_bh = np.array([1., 10., 100.]) * u.Msun
+    a = np.array([3., 6., 10., 15.]) * u.AU
+    P = np.array([1., 5., 10.]) * u.yr
+    D = 8. * u.kpc
+
+    # Default index when looping through arrays on other parameters. 
+    ii_def = 1
+
+    plt.close(1)
+    plt.figure(1, figsize=(8,4))
+    plt.clf()
+    plt.subplots_adjust(left=0.13, bottom=0.2, top=0.90)
+
+    # Loop through m_bh
+    a_dense = np.geomspace(0.1, 1000., 500) * u.AU
+    label_P_pos = [12, 11, 6]
+    for ii in range(len(m_bh)):
+        wob_ii, P_ii = wobble.astro_wobble(m_bh=m_bh[ii],
+                                    m_star=m_star,
+                                    distance=D,
+                                    semi_major_axis=a_dense)
+
+        plt.plot(P_ii, wob_ii, marker=None, ls='--', color='blue')
+
+        mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))
+        #mid = int(len(wob_ii) / 2.) + 100
+        
+        dy = ((wob_ii[mid+1] - wob_ii[mid]) / u.mas).value
+        dx = ((P_ii[mid+1] - P_ii[mid]) / u.yr).value
+
+        angle = np.rad2deg(np.arctan2(dy, dx))
+
+        # annotate with transform_rotates_text to align text and line
+        plt.text(P_ii[mid].value, wob_ii[mid].value, 
+                 f'M$_{{BH}}$={m_bh[ii].value:.0f} M$_\odot$',
+                 ha='center', va='bottom',
+                 transform_rotates_text=True,
+                 rotation=angle, rotation_mode='anchor',
+                 color='blue')
+
+    # Loop through semi-major axis
+    m_bh_dense = np.geomspace(0.01, 3e6, 500) * u.Msun
+    label_P_pos = [2.5, 4.5, 6, 9]
+    for ii in range(len(a)):
+        wob_ii, P_ii = wobble.astro_wobble(m_bh=m_bh_dense,
+                                    m_star=m_star,
+                                    distance=D,
+                                    semi_major_axis=a[ii])
+        
+        plt.plot(P_ii, wob_ii, marker=None, ls='-.', color='red')
+
+        mid = np.argmin(np.abs(P_ii.value - label_P_pos[ii]))
+        # mid = int(len(wob_ii) / 2.)# - 50
+        
+        dy = ((wob_ii[mid+1] - wob_ii[mid]) / u.mas).value
+        dx = ((P_ii[mid+1] - P_ii[mid]) / u.yr).value
+
+        angle = np.rad2deg(np.arctan2(dy, dx))
+        if angle > 90 or angle < -90:
+            angle += 180
+        
+        # annotate with transform_rotates_text to align text and line
+        plt.text(P_ii[mid].value, wob_ii[mid].value, 
+                 f'a={a[ii].value:.0f} AU',
+                 ha='center', va='bottom',
+                 transform_rotates_text=True,
+                 rotation=angle, rotation_mode='anchor',
+                 color='red')
+        
+
+    plt.xlabel('Period (yr)')
+    plt.ylabel('Astrometric P2V\nWobble (mas)')
+
+    plt.xlim(0, 14)
+    plt.ylim(0, 5)
+    
+    plt.fill_between([0, 14], [0, 0], [0.3, 0.3], color='grey', alpha=0.1)
+
+    plt.title("BH + Star (1M$_\odot$) Binaries at the GC")
+    plt.savefig('gc_bh_astrom_wobble.png')
+    
     return
