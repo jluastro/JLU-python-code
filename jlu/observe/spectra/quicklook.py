@@ -1,6 +1,7 @@
 import numpy as np
 import pylab as plt
 from astropy.io import fits
+from astropy.stats import sigma_clipped_stats
 
 def kast_red(filename, spec_pix_x, box_size_x):
     """
@@ -92,19 +93,19 @@ def spec_extract_and_plot(img, spec_pix, box_size, fignum=1):
     xlo = int(spec_pix - 0.5 * box_size)
     xhi = int(spec_pix + 0.5 * box_size)
     cutout = img[:, xlo:xhi]
-    spec1d = np.median(cutout, axis=1)
+    spec1d, fu, bar = sigma_clipped_stats(cutout, axis=1)
     spec1d = spec1d[::-1]
 
     xlo_s1 = int(spec_pix + 2 * box_size)
     xhi_s1 = int(spec_pix + 3 * box_size)
     sky_cutout1 = img[:, xlo_s1:xhi_s1]
-    sky1d_1 = np.median(sky_cutout1, axis=1)
+    sky1d_1, fu, bar = sigma_clipped_stats(sky_cutout1, axis=1)
     sky1d_1 = sky1d_1[::-1]
 
     xlo_s2 = int(spec_pix - 3 * box_size)
     xhi_s2 = int(spec_pix - 2 * box_size)
     sky_cutout2 = img[:, xlo_s2:xhi_s2]
-    sky1d_2 = np.median(sky_cutout2, axis=1)
+    sky1d_2, fu, bar = sigma_clipped_stats(sky_cutout2, axis=1)
     sky1d_2 = sky1d_2[::-1]
 
     sky1d = (sky1d_1 + sky1d_2) * 0.5

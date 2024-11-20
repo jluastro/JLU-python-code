@@ -301,7 +301,7 @@ def plot_microlens_event(psf_wave_idx=5):
     t0 = 60000 # MJD
     beta = 7.0 # mas
     dL = 1000.0 # pc
-    dL_dS = dL / 8000.0 # pc
+    dS = 8000.0 # pc
     xS0_E = 0.0     # arcsec
     xS0_N = beta/1e3 # arcsec
     muL_E = 0.0 # mas/yr
@@ -315,7 +315,7 @@ def plot_microlens_event(psf_wave_idx=5):
     raL = 17.75 * 15.0
     decL = -29.0
 
-    fspl = model.FSPL_PhotAstrom_noPar_Param1(mL, t0, beta, dL, dL_dS,
+    fspl = model.FSPL_PhotAstrom_noPar_Param1(mL, t0, beta, dL, dS,
                                             xS0_E, xS0_N,
                                             muL_E, muL_N, muS_E, muS_N,
                                             radiusS,
@@ -332,6 +332,8 @@ def plot_microlens_event(psf_wave_idx=5):
     xL = fspl.get_lens_astrometry(t_obs) * 1e3 # mas
     A = fspl.get_resolved_amplification(t_obs).T
     thetaE = fspl.thetaE_amp # mas
+
+    import pdb
 
     psf_file = '/Users/jlu/work/ao/keck/maos/keck_maos/vismcao/A_keck_scao_lgs/'
     psf_file += 'evlpsfcl_1_x0_y0.fits'
@@ -381,7 +383,6 @@ def plot_microlens_event(psf_wave_idx=5):
         #Convolve our image with the PSF.
         img_c[tt, :, :] = convolve_fft(img[tt, :, :], psf, boundary='wrap')
 
-    
     ##########
     # Plot
     ##########
