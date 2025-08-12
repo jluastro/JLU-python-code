@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from flystar.startables import StarTable
+from flystar.fit_velocity import linear_fit
 from jlu import photometry as photo
 from matplotlib import colors
 from tqdm import tqdm
@@ -24,6 +25,8 @@ from hst_flystar import photometry
 from hst_flystar import reduce as flystar
 from hst_flystar import starlists
 from hst_flystar import completeness as comp
+from hst_flystar.starlists import read_matchup
+from functools import reduce
 from flystar import starlists as fly_starlists
 import astropy.table
 from astropy.table import Table
@@ -39,14 +42,18 @@ work_dir = f'{user_path}/Westerlund1/data/reduce_2024_03_26/'
 # code_dir = '/u/jlu/code/fortran/hst/'
 
 # Load this variable with outputs from calc_years()
-years = {'2005_F814W':  2005.485,
-         '2010_F125W':  2010.652,
-         '2010_F139M':  2010.652,
-         '2010_F160W':  2010.652,
-         '2013_F160W':  2013.199,
-         '2013_F160Ws': 2013.202,
-         '2015_F160W':  2015.148,
-         '2015_F160Ws': 2015.149}
+years = {
+    '2005_F814W':  2005.485,
+    '2010_F125W':  2010.652,
+    '2010_F139M':  2010.652,
+    '2010_F160W':  2010.652,
+    '2013_F160W':  2013.199,
+    '2013_F160Ws': 2013.202,
+    '2015_F160W':  2015.148,
+    '2015_F160Ws': 2015.149,
+    '2024_F160W':  2024.109,
+    '2024_F160Ws': 2024.113
+}
 
 topStars = [{'name':'wd1_00001', 'x': 1838.81, 'y':  568.98, 'm160': -10.2},
             {'name':'wd1_00002', 'x': 3396.91, 'y': 1389.27, 'm160': -10.1},
@@ -924,128 +931,212 @@ def plot_vpd_across_field(nside=4, interact=False):
     out = '{0}/plots/vec_proper_motion_grid_sig_nside{1}.png'
     plt.savefig(out.format(work_dir, nside))
 
-def calc_years():
+def calc_years(data_dir):
     """
     Calculate the epoch for each data set.
     """
-    years = ['2005', '2010', '2010', '2010', '2013', '2013', '2015', '2015']
-    filts = ['F814W', 'F125W', 'F139M', 'F160W', 'F160W', 'F160Ws', 'F160W', 'F160Ws']
+    # years = ['2005', '2010', '2010', '2010', '2013', '2013', '2015', '2015', '2024', '2024']
+    # filts = ['F814W', 'F125W', 'F139M', 'F160W', 'F160W', 'F160Ws', 'F160W', 'F160Ws', 'F160W', 'F160Ws']
+    
+    years = ['2024', '2024']
+    filts = ['F160W', 'F160Ws']
     
     for ii in range(len(years)):
-        dataDir = '{0}/{1}_{2}/00.DATA/'.format(work_dir, years[ii], filts[ii])
-
-        epoch = flystar.calc_mean_year(glob.glob(dataDir + '*_flt.fits'))
+        search_path = f'{data_dir}/{years[ii]}_{filts[ii]}/00.DATA'
+        search_path_list = glob.glob(f'{search_path}/*_flt.fits')
+        # print(f'Searching {search_path}: {search_path_list}')
+        assert len(search_path_list) > 0, f'No files found in {search_path}'
+        epoch = flystar.calc_mean_year(glob.glob(f'{search_path}/*_flt.fits'))
 
         print(('{0}_{1} at {2:8.3f}'.format(years[ii], filts[ii], epoch)))
-        
+
+
+def make_master_list(data_dir, years=years, pscale=50, vel_cut=0.7, vel_err_cut=0.2, outdir_list=None):
+    """Trim stars with preliminary proper motions within vel_cut and vel_err_cut
+
+    Parameters
+    ----------
+    data_dir : str
+        Directory containing the 02.MAT/MATCHUP.XYMEEE.YEAR.ref files.
+    years : dict
+        Dictionary of observation time in the form of 'year_filt': yeardecimal, e.g. '2005_F814W': 2005.0
+    pscale : float, optional
+        Pixel scale in mas/pixel, by default 50.0
+    vel_cut : float, optional
+        Velocity cut in mas/yr, by default 0.7
+    vel_err_cut : float, optional
+        Velocity error cut in mas/yr, by default 0.2
+    outdir_list : list of str, optional
+        Output directory list to save the master list, by default None
+    """
+    t2005_814 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F814W.2005.ref5')
+    t2010_125 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F125W.2010.ref5')
+    t2010_139 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F139M.2010.ref5')
+    t2010_160 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160W.2010.ref5')
+    t2013_160 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160W.2013.ref5')
+    t2013_160s = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160Ws.2013.ref5')
+    t2015_160 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160W.2015.ref5')
+    t2015_160s = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160Ws.2015.ref5')
+    t2024_160 = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160W.2024.ref5')
+    t2024_160s = starlists.read_matchup(f'{data_dir}/02.MAT/MATCHUP.XYMEEE.F160Ws.2024.ref5')
     
-def make_master_lists():
-    """
-    Trim the ref5 master lists for each filter down to just stars with
-    proper motions within 1 mas/yr of the cluster motion.
-    """
-    # Read in matched and aligned star lists from the *.ref5 analysis.
-    # Recall these data sets are in the F814W reference frame with a 50 mas plate scale.
-    print('Loading Data')
-    t2005_814 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F814W.2005.ref5')
-    t2010_125 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F125W.2010.ref5')
-    t2010_139 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F139M.2010.ref5')
-    t2010_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2010.ref5')
-    t2013_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2013.ref5')
-    t2013_160s = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160Ws.2013.ref5')
-    t2015_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2015.ref5')
-    t2015_160s = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160Ws.2015.ref5')
-
-    scale = 50.0 # mas per pixel
-
+    # Assert all tables have the same length
+    nrows = len(t2005_814)
+    assert all(len(tbl) == nrows for tbl in [
+        t2010_125, t2010_139, t2010_160, t2013_160, t2013_160s,
+        t2015_160, t2015_160s, t2024_160, t2024_160s
+    ]), "All tables must have the same number of rows"
+    
     # Trim down to only those stars that are detected in all epochs.
     # Also make cuts on astrometric/photometric errors, etc.
     # We only want the well measured stars in this analysis.
-    perrLim2005 = 3.0 / scale
-    perrLim2010 = 4.0 / scale
-    perrLim2013 = 5.0 / scale
-    perrLim2015 = 5.0 / scale
+    perrLim2005 = 3.0 / pscale
+    perrLim2010 = 4.0 / pscale
+    perrLim2013 = 5.0 / pscale
+    perrLim2015 = 5.0 / pscale
+    perrLim2024 = 5.0 / pscale
     merrLim2005 = 0.05
     merrLim2010 = 0.1
     merrLim2013 = 0.1
     merrLim2015 = 0.1
-    
-    print('Trimming Data')
-    cond = ((t2005_814['m'] != 0) & (t2010_125['m'] != 0) &
-            (t2010_139['m'] != 0) & (t2010_160['m'] != 0) &
-            (t2013_160['m'] != 0) & (t2015_160['m'] != 0) &
-            (t2005_814['xe'] < perrLim2005) & (t2005_814['ye'] < perrLim2005) &
-            (t2010_125['xe'] < perrLim2010) & (t2010_125['ye'] < perrLim2010) &
-            (t2010_139['xe'] < perrLim2010) & (t2010_139['ye'] < perrLim2010) &
-            (t2010_160['xe'] < perrLim2010) & (t2010_160['ye'] < perrLim2010) &
-            (t2013_160['xe'] < perrLim2013) & (t2013_160['ye'] < perrLim2013) &
-            (t2015_160['xe'] < perrLim2015) & (t2015_160['ye'] < perrLim2015) &
-            (t2005_814['me'] < merrLim2005) & (t2010_125['me'] < merrLim2010) &
-            (t2010_139['me'] < merrLim2010) & (t2010_160['me'] < merrLim2010) &
-            (t2013_160['me'] < merrLim2013) & (t2015_160['me'] < merrLim2015))
-    print('    Cutting down to {0} from {1}'.format(cond.sum(), len(t2005_814)))
+    merrLim2024 = 0.1
 
-    t2005_814 = t2005_814[cond]
-    t2010_125 = t2010_125[cond]
-    t2010_139 = t2010_139[cond]
-    t2010_160 = t2010_160[cond]
-    t2013_160 = t2013_160[cond]
-    t2013_160s = t2013_160s[cond]
-    t2015_160 = t2015_160[cond]
-    t2015_160s = t2015_160s[cond]
 
+    detect_2005 = (
+        (t2005_814['m'] != 0) & 
+        (t2005_814['xe'] < perrLim2005) & (t2005_814['ye'] < perrLim2005) &
+        (t2005_814['me'] < merrLim2005)
+    )
+
+    detect_2010 = (
+        (t2010_125['m'] != 0) & (t2010_139['m'] != 0) & (t2010_160['m'] != 0) &
+        (t2010_125['xe'] < perrLim2010) & (t2010_125['ye'] < perrLim2010) &
+        (t2010_139['xe'] < perrLim2010) & (t2010_139['ye'] < perrLim2010) &
+        (t2010_160['xe'] < perrLim2010) & (t2010_160['ye'] < perrLim2010) &
+        (t2010_125['me'] < merrLim2010) & (t2010_139['me'] < merrLim2010) & (t2010_160['me'] < merrLim2010)
+    )
+
+    detect_2013 = (
+        (t2013_160['m'] != 0) &
+        (t2013_160['xe'] < perrLim2013) & (t2013_160['ye'] < perrLim2013) &
+        (t2013_160['me'] < merrLim2013)
+    )
+
+    detect_2015 = (
+        (t2015_160['m'] != 0) &
+        (t2015_160['xe'] < perrLim2015) & (t2015_160['ye'] < perrLim2015) &
+        (t2015_160['me'] < merrLim2015)
+    )
+
+    detect_2024 = (
+        (t2024_160['m'] != 0) &
+        (t2024_160['xe'] < perrLim2024) & (t2024_160['ye'] < perrLim2024) &
+        (t2024_160['me'] < merrLim2024)
+    )
+
+    detect_all = reduce(np.logical_and, [
+        detect_2005, detect_2010, detect_2013, detect_2015, detect_2024
+    ])
+
+    detect_ir = reduce(np.logical_and, [
+        detect_2010, detect_2013, detect_2015
+    ])
+
+    detect_old = reduce(np.logical_and, [
+        detect_2005, detect_2010, detect_2013, detect_2015
+    ])
+
+    print(f'Detected in all years: {detect_all.sum()} out of {len(detect_all)}')
+    print(f'Detected in all IR filters: {detect_ir.sum()} out of {len(detect_ir)}')
+    print(f'Detected in all years except 2024: {detect_old.sum()} out of {len(detect_old)}')
+
+    t2005_814 = t2005_814[detect_ir]
+    t2010_125 = t2010_125[detect_ir]
+    t2010_139 = t2010_139[detect_ir]
+    t2010_160 = t2010_160[detect_ir]
+    t2013_160 = t2013_160[detect_ir]
+    t2013_160s = t2013_160s[detect_ir]
+    t2015_160 = t2015_160[detect_ir]
+    t2015_160s = t2015_160s[detect_ir]
+    t2024_160 = t2024_160[detect_ir]
+    t2024_160s = t2024_160s[detect_ir]
+
+    table_list = [t2005_814, t2010_160, t2013_160, t2015_160, t2024_160]
     # Calculate proper motions
-    print('Calculating velocities')
-    t = np.array([years['2005_F814W'], years['2010_F160W'], years['2013_F160W'], years['2015_F160W']])
-    x = np.array([t2005_814['x'], t2010_160['x'], t2013_160['x'], t2015_160['x']]).T
-    y = np.array([t2005_814['y'], t2010_160['y'], t2013_160['y'], t2015_160['y']]).T
-    xe = np.array([t2005_814['xe'], t2010_160['xe'], t2013_160['xe'], t2015_160['xe']]).T
-    ye = np.array([t2005_814['ye'], t2010_160['ye'], t2013_160['ye'], t2015_160['ye']]).T
+    t = np.array([
+        years['2005_F814W'], 
+        years['2010_F160W'], 
+        years['2013_F160W'], 
+        years['2015_F160W'], 
+        years['2024_F160W']
+    ])
+    x = np.array([table['x'] for table in table_list]).T
+    y = np.array([table['y'] for table in table_list]).T
+    xe = np.array([table['xe'] for table in table_list]).T
+    ye = np.array([table['ye'] for table in table_list]).T
 
-    def linefit2(time, pos, pos_err):
-        epochs = np.tile(time, (pos_err.shape[1], 1)).T
+    t_reference = 2010.
+    N = len(x)
+    vx = np.zeros(N)
+    vy = np.zeros(N)
+    vxe = np.zeros(N)
+    vye = np.zeros(N)
+    x0 = np.zeros(N)
+    y0 = np.zeros(N)
+    x0e = np.zeros(N)
+    y0e = np.zeros(N)
+    chi2_vx = np.zeros(N)
+    chi2_vy = np.zeros(N)
+    t0 = np.zeros(N)
 
-        # t_w = epochs / (pos_err ** 2)
-        # p_w = pos / (pos_err ** 2)
+    for i in tqdm(range(len(x))):
+        vx_result = linear_fit(t[1:] - t_reference, x[i, 1:] * pscale, sigma=xe[i, 1:] * pscale)
+        vy_result = linear_fit(t[1:] - t_reference, y[i, 1:] * pscale, sigma=ye[i, 1:] * pscale)
+        vx[i] = vx_result['slope']
+        vy[i] = vy_result['slope']
+        vxe[i] = vx_result['e_slope']
+        vye[i] = vy_result['e_slope']
+        x0[i] = vx_result['intercept']
+        y0[i] = vy_result['intercept']
+        x0e[i] = vx_result['e_intercept']
+        y0e[i] = vy_result['e_intercept']
+        chi2_vx[i] = vx_result['chi2']
+        chi2_vy[i] = vy_result['chi2']
+        t0[i] = np.average(t, weights=1. / np.hypot(xe[i], ye[i]))
 
-        w = 1.0 / (pos_err ** 2)
+    fig, ax = plt.subplots()
+    ax.scatter(vx, vy, s=1, c='k', alpha=0.2)
+    circle = plt.Circle((0, 0), 0.7, color='red', fill=False, linewidth=1.5)
+    ax.add_patch(circle)
+    ax.set_aspect('equal')
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 1.5)
+    ax.set_xlabel('Proper Motion in X (mas/yr)')
+    ax.set_ylabel('Proper Motion in Y (mas/yr)')
+    ax.set_title('Proper Motion Vector Field')
+    plt.tight_layout()
+    plt.show()
 
-        w_sum = w.sum(axis=0)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 4))
+    ax1.scatter(t2005_814['m'], vxe, s=1, alpha=0.2, label='X')
+    ax2.scatter(t2005_814['m'], vye, s=1, alpha=0.2, label='Y', color='C3')
+    ax1.set_xlabel('Magnitude', fontsize=12)
+    ax1.set_ylabel('Proper Motion Error in X (mas/yr)', fontsize=12)
+    ax2.set_xlabel('Magnitude', fontsize=12)
+    ax2.set_ylabel('Proper Motion Error in Y (mas/yr)', fontsize=12)
+    ax1.set_title('Proper Motion Error in X vs Magnitude', fontsize=12)
+    ax2.set_title('Proper Motion Error in Y vs Magnitude', fontsize=12)
+    ax1.legend()
+    ax2.legend()
+    plt.tight_layout()
+    plt.show()
 
-        wxy = (w * epochs * pos).sum(axis=0)
-        wx = (w * epochs).sum(axis=0)
-        wy = (w * pos).sum(axis=0)
-        wxx = (w * epochs ** 2).sum(axis=0)
-
-        denom = (w_sum * wxx) - (wx ** 2)
-        
-        vel = (w_sum * wxy - wx * wy) / denom
-        pos0 = (wxx * wy - wx * wxy) / denom
-
-        vel_err = np.sqrt( w_sum / denom )
-        pos0_err = np.sqrt( wxx / denom )
-
-        return pos0, vel, pos0_err, vel_err
-        
+    v = np.hypot(vx, vy)
+    # ve = np.sqrt((vxe * vx / v)**2 + (vye * vy / v)**2)
     
-    # Lets set a t0 value:
-    t0 = 2010.0
-    x0, vx, x0e, vxe = linefit2(t - t0, x.T, xe.T)
-    y0, vy, y0e, vye = linefit2(t - t0, y.T, ye.T)
-    vx *= scale
-    vy *= scale
-    vxe *= scale
-    vye *= scale
-
-    # Add the velocity fits to the 2005 table
-    t2005_814['vx'] = vx
-    t2005_814['vy'] = vy
-    t2005_814['vxe'] = vxe
-    t2005_814['vye'] = vye
-
-    # Get rid of stars without velocities
-    good = ((np.isnan(vx) == False) & (np.isnan(vy) == False))
-    print('    Cutting down to {0} from {1}'.format(good.sum(), len(t2005_814)))
+    good = (
+        (v <= vel_cut) & (vxe <= vel_err_cut) & (vye <= vel_err_cut)
+    )
     t2005_814 = t2005_814[good]
     t2010_125 = t2010_125[good]
     t2010_139 = t2010_139[good]
@@ -1054,106 +1145,245 @@ def make_master_lists():
     t2013_160s = t2013_160s[good]
     t2015_160 = t2015_160[good]
     t2015_160s = t2015_160s[good]
-
-    vx = vx[good]
-    vy = vy[good]
-    vxe = vxe[good]
-    vye = vye[good]
-
-    # Trim down to a 1 mas/yr radius
-    # vx_mean = statsIter.mean(vx, lsigma=4, hsigma=4, iter=10, verbose=True)
-    # vy_mean = statsIter.mean(vy, lsigma=4, hsigma=4, iter=10, verbose=True)
-    vx_mean = 0.0
-    vy_mean = 0.0 
-    velCut = 0.7
-    velErrCut = 0.2
-
-    # Make a couple of plots to decide on (and show) the cuts
-    plt.clf()
-    plt.plot(vx, vy, 'k.', alpha=0.2)
-    circ = plt.Circle([vx_mean, vy_mean], radius=velCut, color='red', fill=False)
-    plt.gca().add_artist(circ)
-    plt.xlabel('X Velocity (mas/yr)')
-    plt.ylabel('Y Velocity (mas/yr)')
-    plt.axis([-2, 2, -2, 2])
-    plt.savefig('plots/make_master_vpd_cuts.png')
-
-    plt.clf()
-    plt.plot(t2005_814['m'], vxe, 'r.', alpha=0.2, label='X')
-    plt.plot(t2005_814['m'], vye, 'b.', alpha=0.2, label='Y')
-    plt.axhline(velErrCut, color='black')
-    plt.xlabel('F814W Magnitude')
-    plt.ylabel('Velocity Error (mas/yr)')
-    plt.legend()
-    plt.savefig('plots/make_master_verr_cuts.png')
-
-    dv = np.hypot(vx - vx_mean, vy - vy_mean)
-    idx2 = ((dv < velCut) & (vxe < velErrCut) & (vye < velErrCut))
-    print('Making Velocity Cuts: v < {0:3.1f} mas/yr and verr < {1:3.1f} mas/yr'.format(velCut, velErrCut))
-    print('    Cutting down to {0} from {1}'.format(idx2.sum(), len(t2005_814)))
-
-    t2005_814 = t2005_814[idx2]
-    t2010_125 = t2010_125[idx2]
-    t2010_139 = t2010_139[idx2]
-    t2010_160 = t2010_160[idx2]
-    t2013_160 = t2013_160[idx2]
-    t2013_160s = t2013_160s[idx2]
-    t2015_160 = t2015_160[idx2]
-    t2015_160s = t2015_160s[idx2]
-
-    _o814_05 = open(work_dir + '/02.MAT/MASTER.F814W.2005.ref5', 'w')
-    _o125_10 = open(work_dir + '/02.MAT/MASTER.F125W.2010.ref5', 'w')
-    _o139_10 = open(work_dir + '/02.MAT/MASTER.F139M.2010.ref5', 'w')
-    _o160_10 = open(work_dir + '/02.MAT/MASTER.F160W.2010.ref5', 'w')
-    _o160_13 = open(work_dir + '/02.MAT/MASTER.F160W.2013.ref5', 'w')
-    _o160s_13 = open(work_dir + '/02.MAT/MASTER.F160Ws.2013.ref5', 'w')
-    _o160_15 = open(work_dir + '/02.MAT/MASTER.F160W.2015.ref5', 'w')
-    _o160s_15 = open(work_dir + '/02.MAT/MASTER.F160Ws.2015.ref5', 'w')
-
-    _o_align = open(work_dir + '/50.ALIGN_KS2/wd1_1pass_label.dat', 'w')
-
-    ofmt = '{0:10.4f} {1:10.4f} {2:8.4f} {3:10.4f} {4:10.4f} {5:8.4f} {6}\n'
+    t2024_160 = t2024_160[good]
+    t2024_160s = t2024_160s[good]
     
-    for ii in range(len(t2005_814)):
-        _o814_05.write(ofmt.format(t2005_814['x'][ii], t2005_814['y'][ii], t2005_814['m'][ii],
-                                   t2005_814['xe'][ii], t2005_814['ye'][ii], t2005_814['me'][ii],
-                                   t2005_814['name'][ii]))
-        _o125_10.write(ofmt.format(t2010_125['x'][ii], t2010_125['y'][ii], t2010_125['m'][ii],
-                                   t2010_125['xe'][ii], t2010_125['ye'][ii], t2010_125['me'][ii],
-                                   t2010_125['name'][ii]))
-        _o139_10.write(ofmt.format(t2010_139['x'][ii], t2010_139['y'][ii], t2010_139['m'][ii],
-                                   t2010_139['xe'][ii], t2010_139['ye'][ii], t2010_139['me'][ii],
-                                   t2010_139['name'][ii]))
-        _o160_10.write(ofmt.format(t2010_160['x'][ii], t2010_160['y'][ii], t2010_160['m'][ii],
-                                   t2010_160['xe'][ii], t2010_160['ye'][ii], t2010_160['me'][ii],
-                                   t2010_160['name'][ii]))
-        _o160_13.write(ofmt.format(t2013_160['x'][ii], t2013_160['y'][ii], t2013_160['m'][ii],
-                                   t2013_160['xe'][ii], t2013_160['ye'][ii], t2013_160['me'][ii],
-                                   t2013_160['name'][ii]))
-        _o160s_13.write(ofmt.format(t2013_160s['x'][ii], t2013_160s['y'][ii], t2013_160s['m'][ii],
-                                    t2013_160s['xe'][ii], t2013_160s['ye'][ii], t2013_160s['me'][ii],
-                                    t2013_160s['name'][ii]))
-        _o160_15.write(ofmt.format(t2015_160['x'][ii], t2015_160['y'][ii], t2015_160['m'][ii],
-                                   t2015_160['xe'][ii], t2015_160['ye'][ii], t2015_160['me'][ii],
-                                   t2015_160['name'][ii]))
-        _o160s_15.write(ofmt.format(t2015_160s['x'][ii], t2015_160s['y'][ii], t2015_160s['m'][ii],
-                                    t2015_160s['xe'][ii], t2015_160s['ye'][ii], t2015_160s['me'][ii],
-                                    t2015_160s['name'][ii]))
+    all_tables = [t2005_814, t2010_125, t2010_139, t2010_160, t2013_160, t2013_160s, t2015_160, t2015_160s, t2024_160, t2024_160s]
+
+    output_format = {
+        'x': '10.4f', 'y': '10.4f', 'm': '8.4f',
+        'xe': '10.4f', 'ye': '10.4f', 'me': '8.4f'
+    }
+    columns = ['x', 'y', 'm', 'xe', 'ye', 'me', 'name']
+
+
+    if outdir_list:
+        for table, outdir in zip(all_tables, outdir_list):
+            table[columns].write(
+                outdir,
+                delimiter='',
+                format='ascii.fixed_width_no_header',
+                formats=output_format,
+                overwrite=True
+            )
+    return
+
+
+# def make_master_lists():
+#     """
+#     Trim the ref5 master lists for each filter down to just stars with
+#     proper motions within 1 mas/yr of the cluster motion.
+#     """
+#     # Read in matched and aligned star lists from the *.ref5 analysis.
+#     # Recall these data sets are in the F814W reference frame with a 50 mas plate scale.
+#     print('Loading Data')
+#     t2005_814 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F814W.2005.ref5')
+#     t2010_125 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F125W.2010.ref5')
+#     t2010_139 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F139M.2010.ref5')
+#     t2010_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2010.ref5')
+#     t2013_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2013.ref5')
+#     t2013_160s = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160Ws.2013.ref5')
+#     t2015_160 = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160W.2015.ref5')
+#     t2015_160s = starlists.read_matchup(work_dir + '/02.MAT/MATCHUP.XYMEEE.F160Ws.2015.ref5')
+
+#     scale = 50.0 # mas per pixel
+
+#     # Trim down to only those stars that are detected in all epochs.
+#     # Also make cuts on astrometric/photometric errors, etc.
+#     # We only want the well measured stars in this analysis.
+#     perrLim2005 = 3.0 / scale
+#     perrLim2010 = 4.0 / scale
+#     perrLim2013 = 5.0 / scale
+#     perrLim2015 = 5.0 / scale
+#     merrLim2005 = 0.05
+#     merrLim2010 = 0.1
+#     merrLim2013 = 0.1
+#     merrLim2015 = 0.1
+    
+#     print('Trimming Data')
+#     cond = ((t2005_814['m'] != 0) & (t2010_125['m'] != 0) &
+#             (t2010_139['m'] != 0) & (t2010_160['m'] != 0) &
+#             (t2013_160['m'] != 0) & (t2015_160['m'] != 0) &
+#             (t2005_814['xe'] < perrLim2005) & (t2005_814['ye'] < perrLim2005) &
+#             (t2010_125['xe'] < perrLim2010) & (t2010_125['ye'] < perrLim2010) &
+#             (t2010_139['xe'] < perrLim2010) & (t2010_139['ye'] < perrLim2010) &
+#             (t2010_160['xe'] < perrLim2010) & (t2010_160['ye'] < perrLim2010) &
+#             (t2013_160['xe'] < perrLim2013) & (t2013_160['ye'] < perrLim2013) &
+#             (t2015_160['xe'] < perrLim2015) & (t2015_160['ye'] < perrLim2015) &
+#             (t2005_814['me'] < merrLim2005) & (t2010_125['me'] < merrLim2010) &
+#             (t2010_139['me'] < merrLim2010) & (t2010_160['me'] < merrLim2010) &
+#             (t2013_160['me'] < merrLim2013) & (t2015_160['me'] < merrLim2015))
+#     print('    Cutting down to {0} from {1}'.format(cond.sum(), len(t2005_814)))
+
+#     t2005_814 = t2005_814[cond]
+#     t2010_125 = t2010_125[cond]
+#     t2010_139 = t2010_139[cond]
+#     t2010_160 = t2010_160[cond]
+#     t2013_160 = t2013_160[cond]
+#     t2013_160s = t2013_160s[cond]
+#     t2015_160 = t2015_160[cond]
+#     t2015_160s = t2015_160s[cond]
+
+#     # Calculate proper motions
+#     print('Calculating velocities')
+#     t = np.array([years['2005_F814W'], years['2010_F160W'], years['2013_F160W'], years['2015_F160W']])
+#     x = np.array([t2005_814['x'], t2010_160['x'], t2013_160['x'], t2015_160['x']]).T
+#     y = np.array([t2005_814['y'], t2010_160['y'], t2013_160['y'], t2015_160['y']]).T
+#     xe = np.array([t2005_814['xe'], t2010_160['xe'], t2013_160['xe'], t2015_160['xe']]).T
+#     ye = np.array([t2005_814['ye'], t2010_160['ye'], t2013_160['ye'], t2015_160['ye']]).T
+
+#     def linefit2(time, pos, pos_err):
+#         epochs = np.tile(time, (pos_err.shape[1], 1)).T
+
+#         # t_w = epochs / (pos_err ** 2)
+#         # p_w = pos / (pos_err ** 2)
+
+#         w = 1.0 / (pos_err ** 2)
+
+#         w_sum = w.sum(axis=0)
+
+#         wxy = (w * epochs * pos).sum(axis=0)
+#         wx = (w * epochs).sum(axis=0)
+#         wy = (w * pos).sum(axis=0)
+#         wxx = (w * epochs ** 2).sum(axis=0)
+
+#         denom = (w_sum * wxx) - (wx ** 2)
+        
+#         vel = (w_sum * wxy - wx * wy) / denom
+#         pos0 = (wxx * wy - wx * wxy) / denom
+
+#         vel_err = np.sqrt( w_sum / denom )
+#         pos0_err = np.sqrt( wxx / denom )
+
+#         return pos0, vel, pos0_err, vel_err
+        
+    
+#     # Lets set a t0 value:
+#     t0 = 2010.0
+#     x0, vx, x0e, vxe = linefit2(t - t0, x.T, xe.T)
+#     y0, vy, y0e, vye = linefit2(t - t0, y.T, ye.T)
+#     vx *= scale
+#     vy *= scale
+#     vxe *= scale
+#     vye *= scale
+
+#     # Add the velocity fits to the 2005 table
+#     t2005_814['vx'] = vx
+#     t2005_814['vy'] = vy
+#     t2005_814['vxe'] = vxe
+#     t2005_814['vye'] = vye
+
+#     # Get rid of stars without velocities
+#     good = ((np.isnan(vx) == False) & (np.isnan(vy) == False))
+#     print('    Cutting down to {0} from {1}'.format(good.sum(), len(t2005_814)))
+#     t2005_814 = t2005_814[good]
+#     t2010_125 = t2010_125[good]
+#     t2010_139 = t2010_139[good]
+#     t2010_160 = t2010_160[good]
+#     t2013_160 = t2013_160[good]
+#     t2013_160s = t2013_160s[good]
+#     t2015_160 = t2015_160[good]
+#     t2015_160s = t2015_160s[good]
+
+#     vx = vx[good]
+#     vy = vy[good]
+#     vxe = vxe[good]
+#     vye = vye[good]
+
+#     # Trim down to a 1 mas/yr radius
+#     # vx_mean = statsIter.mean(vx, lsigma=4, hsigma=4, iter=10, verbose=True)
+#     # vy_mean = statsIter.mean(vy, lsigma=4, hsigma=4, iter=10, verbose=True)
+#     vx_mean = 0.0
+#     vy_mean = 0.0 
+#     velCut = 0.7
+#     velErrCut = 0.2
+
+#     # Make a couple of plots to decide on (and show) the cuts
+#     plt.clf()
+#     plt.plot(vx, vy, 'k.', alpha=0.2)
+#     circ = plt.Circle([vx_mean, vy_mean], radius=velCut, color='red', fill=False)
+#     plt.gca().add_artist(circ)
+#     plt.xlabel('X Velocity (mas/yr)')
+#     plt.ylabel('Y Velocity (mas/yr)')
+#     plt.axis([-2, 2, -2, 2])
+#     plt.savefig('plots/make_master_vpd_cuts.png')
+
+#     plt.clf()
+#     plt.plot(t2005_814['m'], vxe, 'r.', alpha=0.2, label='X')
+#     plt.plot(t2005_814['m'], vye, 'b.', alpha=0.2, label='Y')
+#     plt.axhline(velErrCut, color='black')
+#     plt.xlabel('F814W Magnitude')
+#     plt.ylabel('Velocity Error (mas/yr)')
+#     plt.legend()
+#     plt.savefig('plots/make_master_verr_cuts.png')
+
+#     dv = np.hypot(vx - vx_mean, vy - vy_mean)
+#     idx2 = ((dv < velCut) & (vxe < velErrCut) & (vye < velErrCut))
+#     print('Making Velocity Cuts: v < {0:3.1f} mas/yr and verr < {1:3.1f} mas/yr'.format(velCut, velErrCut))
+#     print('    Cutting down to {0} from {1}'.format(idx2.sum(), len(t2005_814)))
+
+#     t2005_814 = t2005_814[idx2]
+#     t2010_125 = t2010_125[idx2]
+#     t2010_139 = t2010_139[idx2]
+#     t2010_160 = t2010_160[idx2]
+#     t2013_160 = t2013_160[idx2]
+#     t2013_160s = t2013_160s[idx2]
+#     t2015_160 = t2015_160[idx2]
+#     t2015_160s = t2015_160s[idx2]
+
+#     _o814_05 = open(work_dir + '/02.MAT/MASTER.F814W.2005.ref5', 'w')
+#     _o125_10 = open(work_dir + '/02.MAT/MASTER.F125W.2010.ref5', 'w')
+#     _o139_10 = open(work_dir + '/02.MAT/MASTER.F139M.2010.ref5', 'w')
+#     _o160_10 = open(work_dir + '/02.MAT/MASTER.F160W.2010.ref5', 'w')
+#     _o160_13 = open(work_dir + '/02.MAT/MASTER.F160W.2013.ref5', 'w')
+#     _o160s_13 = open(work_dir + '/02.MAT/MASTER.F160Ws.2013.ref5', 'w')
+#     _o160_15 = open(work_dir + '/02.MAT/MASTER.F160W.2015.ref5', 'w')
+#     _o160s_15 = open(work_dir + '/02.MAT/MASTER.F160Ws.2015.ref5', 'w')
+
+#     _o_align = open(work_dir + '/50.ALIGN_KS2/wd1_1pass_label.dat', 'w')
+
+#     ofmt = '{0:10.4f} {1:10.4f} {2:8.4f} {3:10.4f} {4:10.4f} {5:8.4f} {6}\n'
+    
+#     for ii in range(len(t2005_814)):
+#         _o814_05.write(ofmt.format(t2005_814['x'][ii], t2005_814['y'][ii], t2005_814['m'][ii],
+#                                    t2005_814['xe'][ii], t2005_814['ye'][ii], t2005_814['me'][ii],
+#                                    t2005_814['name'][ii]))
+#         _o125_10.write(ofmt.format(t2010_125['x'][ii], t2010_125['y'][ii], t2010_125['m'][ii],
+#                                    t2010_125['xe'][ii], t2010_125['ye'][ii], t2010_125['me'][ii],
+#                                    t2010_125['name'][ii]))
+#         _o139_10.write(ofmt.format(t2010_139['x'][ii], t2010_139['y'][ii], t2010_139['m'][ii],
+#                                    t2010_139['xe'][ii], t2010_139['ye'][ii], t2010_139['me'][ii],
+#                                    t2010_139['name'][ii]))
+#         _o160_10.write(ofmt.format(t2010_160['x'][ii], t2010_160['y'][ii], t2010_160['m'][ii],
+#                                    t2010_160['xe'][ii], t2010_160['ye'][ii], t2010_160['me'][ii],
+#                                    t2010_160['name'][ii]))
+#         _o160_13.write(ofmt.format(t2013_160['x'][ii], t2013_160['y'][ii], t2013_160['m'][ii],
+#                                    t2013_160['xe'][ii], t2013_160['ye'][ii], t2013_160['me'][ii],
+#                                    t2013_160['name'][ii]))
+#         _o160s_13.write(ofmt.format(t2013_160s['x'][ii], t2013_160s['y'][ii], t2013_160s['m'][ii],
+#                                     t2013_160s['xe'][ii], t2013_160s['ye'][ii], t2013_160s['me'][ii],
+#                                     t2013_160s['name'][ii]))
+#         _o160_15.write(ofmt.format(t2015_160['x'][ii], t2015_160['y'][ii], t2015_160['m'][ii],
+#                                    t2015_160['xe'][ii], t2015_160['ye'][ii], t2015_160['me'][ii],
+#                                    t2015_160['name'][ii]))
+#         _o160s_15.write(ofmt.format(t2015_160s['x'][ii], t2015_160s['y'][ii], t2015_160s['m'][ii],
+#                                     t2015_160s['xe'][ii], t2015_160s['ye'][ii], t2015_160s['me'][ii],
+#                                     t2015_160s['name'][ii]))
 
 
         
-    _o814_05.close()
-    _o125_10.close()
-    _o139_10.close()
-    _o160_10.close()
-    _o160_13.close()
-    _o160s_13.close()
-    _o160_15.close()
-    _o160s_15.close()
+#     _o814_05.close()
+#     _o125_10.close()
+#     _o139_10.close()
+#     _o160_10.close()
+#     _o160_13.close()
+#     _o160s_13.close()
+#     _o160_15.close()
+#     _o160s_15.close()
 
-    _o_align.close()
+#     _o_align.close()
 
-    return
+#     return
 
 def make_pos_directories():
     """
@@ -1170,8 +1400,7 @@ def make_pos_directories():
     filts = {'2005': ['F814W'],
              '2010': ['F125W', 'F139M', 'F160W'],
              '2013': ['F160W', 'F160Ws'],
-             '2015': ['F160W', 'F160Ws'],
-             '2024': ['F160W']}
+             '2015': ['F160W', 'F160Ws']}
 
     pos4_exceptions = ['2005_F814W', '2013_F160Ws', '2015_F160Ws']
     old_mat_dir = '../02.MAT'
@@ -1239,17 +1468,17 @@ def calc_pos_number():
         # Decide the epoch and the filter.
         if (mat_num >= 0) and (mat_num <= 99):
             epoch_filt[mm] = '2005_F814W'
-        if (mat_num >= 100) and (mat_num <= 129):
+        elif (mat_num >= 100) and (mat_num <= 129):
             epoch_filt[mm] = '2010_F125W'
-        if (mat_num >= 130) and (mat_num <= 161):
+        elif (mat_num >= 130) and (mat_num <= 161):
             epoch_filt[mm] = '2010_F139M'
-        if (mat_num >= 162) and (mat_num <= 199):
+        elif (mat_num >= 162) and (mat_num <= 199):
             epoch_filt[mm] = '2010_F160W'
-        if (mat_num >= 200) and (mat_num <= 259):
+        elif (mat_num >= 200) and (mat_num <= 259):
             epoch_filt[mm] = '2013_F160W'
-        if (mat_num >= 270) and (mat_num <= 299):
+        elif (mat_num >= 270) and (mat_num <= 299):
             epoch_filt[mm] = '2013_F160Ws'
-        if (mat_num >= 300) and (mat_num <= 359):
+        elif (mat_num >= 300) and (mat_num <= 359):
             epoch_filt[mm] = '2015_F160W'
         if (mat_num >= 370) and (mat_num <= 399):
             epoch_filt[mm] = '2015_F160Ws'
@@ -3516,3 +3745,40 @@ def plot_chi2_dist(startable, chi2_lim=10, bins=20, log=True):
 
 #     d.write(work_dir + '/50.ALIGN_KS2/' + catalog_name, format='fits', overwrite=True)
     
+def plot_matchup_error(matchup_file, mag_range=None, xlabel=None):
+    table = read_matchup(matchup_file)
+    N = len(table)
+    if mag_range is None:
+        mag_range = (np.nanmin(table['m']), np.nanmax(table['m']))
+    if mag_range is not None:
+        table = table[(table['m'] >= mag_range[0]) & (table['m'] <= mag_range[1])]
+    
+    mag_min = None
+    # mag_max = -14
+    
+    fig, ax = plt.subplots()
+    ax.plot(table['m'], table['xe'], color='C0', marker='.', ms=2, alpha=0.5, ls='none', label='X')
+    ax.plot(table['m'], table['ye'], color='C1', marker='.', ms=2, alpha=0.5, ls='none', label='Y')
+    # plt.axvline(mag_max, ls='--', color='C3')
+    if xlabel is None:
+        ax.set_xlabel('Mag', fontsize=12)
+    else:
+        ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel('Astrometric Uncertainty (pix)', fontsize=12)
+    ax.legend()
+    # ax.set_xlim([-22, 0])
+    # ax.set_ylim([1e-3, 10])
+    ax.set_yscale('log')
+    plt.tight_layout()
+    plt.show()
+
+    # mag_range = (-13.5, -5)
+    # within_mag_range = (table['m'] >= mag_range[0]) & (table['m'] <= mag_range[1])
+    # table_within_range = table[within_mag_range]
+    xerr_median = np.median(table['xe'])
+    yerr_median = np.median(table['ye'])
+    merr_median = np.median(table['me'])
+    print(f'Median Errors for {len(table)} of {N} stars between {mag_range[0]:.2f} - {mag_range[-1]:.2f}:')
+    print(f'Median X error: {xerr_median:.3f} mas')
+    print(f'Median Y error: {yerr_median:.3f} mas')
+    print(f'Median Mag error: {merr_median:.3f} mag')
