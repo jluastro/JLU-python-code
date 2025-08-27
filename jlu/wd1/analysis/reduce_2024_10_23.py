@@ -8,6 +8,7 @@ import math
 import glob
 import shutil
 import subprocess
+from weakref import ref
 import pylab as py
 import numpy as np
 import pandas as pd
@@ -36,6 +37,7 @@ from scipy.stats import binned_statistic, chi2
 from astropy.stats import sigma_clip
 from matplotlib import colors as mcolors
 from matplotlib import colorbar
+from tqdm import tqdm
 
 user_path = os.path.expanduser('~')
 work_dir = f'{user_path}/Westerlund1/data/reduce_2024_03_26/'
@@ -218,79 +220,116 @@ def plot_cmd_one_pass(reread=False):
     return
 
 
-def plot_quiver_one_pass(reread=False):
+def plot_quiver_one_pass(path, reread=False):
     """
     Plot a quiver vector plot between F814W in 2005 and F160W in 2010 and 2013.
     This is just to check that we don't hae any gross flows between the two cameras.
     """
+    
+    ref5_paths = [
+        f'{path}/MATCHUP.XYMEEE.F814W.2005.ref5',
+        f'{path}/MATCHUP.XYMEEE.F160W.2010.ref5',
+        f'{path}/MATCHUP.XYMEEE.F160W.2013.ref5',
+        f'{path}/MATCHUP.XYMEEE.F160W.2015.ref5',
+        f'{path}/MATCHUP.XYMEEE.F160W.2024.ref5',
+    ]
+    
     if reread:
-        t2005 = starlists.read_matchup('MATCHUP.XYMEEE.F814W.2005.ref5')
-        t2010 = starlists.read_matchup('MATCHUP.XYMEEE.F160W.2010.ref5')
-        t2013 = starlists.read_matchup('MATCHUP.XYMEEE.F160W.2013.ref5')
-        t2015 = starlists.read_matchup('MATCHUP.XYMEEE.F160W.2015.ref5')
+        t2005 = starlists.read_matchup(ref5_paths[0])
+        t2010 = starlists.read_matchup(ref5_paths[1])
+        t2013 = starlists.read_matchup(ref5_paths[2])
+        t2015 = starlists.read_matchup(ref5_paths[3])
+        t2024 = starlists.read_matchup(ref5_paths[4])
 
-        t2005.write('MATCHUP.XYMEEE.F814W.2005.ref5.fits')
-        t2010.write('MATCHUP.XYMEEE.F160W.2010.ref5.fits')
-        t2013.write('MATCHUP.XYMEEE.F160W.2013.ref5.fits')
-        t2015.write('MATCHUP.XYMEEE.F160W.2015.ref5.fits')
+        for ref5_path, t in zip(ref5_paths, [t2005, t2010, t2013, t2015, t2024]):
+            if not os.path.exists(f'{ref5_path}.fits'):
+                t.write(f'{ref5_path}.fits')
     else:
-        t2005 = Table.read('MATCHUP.XYMEEE.F814W.2005.ref5.fits')
-        t2010 = Table.read('MATCHUP.XYMEEE.F160W.2010.ref5.fits')
-        t2013 = Table.read('MATCHUP.XYMEEE.F160W.2013.ref5.fits')
-        t2015 = Table.read('MATCHUP.XYMEEE.F160W.2015.ref5.fits')
+        t2005 = Table.read(f'{ref5_paths[0]}.fits')
+        t2010 = Table.read(f'{ref5_paths[1]}.fits')
+        t2013 = Table.read(f'{ref5_paths[2]}.fits')
+        t2015 = Table.read(f'{ref5_paths[3]}.fits')
+        t2024 = Table.read(f'{ref5_paths[4]}.fits')
 
-    good = np.where((t2005['m'] < -8) & (t2010['m'] < -8) & (t2013['m'] < -8) & (t2015['m'] < -8) &
-                    (t2005['xe'] < 0.05) & (t2010['xe'] < 0.05) & (t2013['xe'] < 0.05) & (t2015['xe'] < 0.05) &
-                    (t2005['ye'] < 0.05) & (t2010['ye'] < 0.05) & (t2013['ye'] < 0.05) & (t2015['ye'] < 0.05) &
-                    (t2005['me'] < 0.05) & (t2010['me'] < 0.05) & (t2013['me'] < 0.05) & (t2015['me'] < 0.05))[0]
+    good = np.where((t2005['m'] < -8) & (t2010['m'] < -8) & (t2013['m'] < -8) & (t2015['m'] < -8) & (t2024['m'] < -8) &
+                    (t2005['xe'] < 0.05) & (t2010['xe'] < 0.05) & (t2013['xe'] < 0.05) & (t2015['xe'] < 0.05) & (t2024['xe'] < 0.05) &
+                    (t2005['ye'] < 0.05) & (t2010['ye'] < 0.05) & (t2013['ye'] < 0.05) & (t2015['ye'] < 0.05) & (t2024['ye'] < 0.05) &
+                    (t2005['me'] < 0.05) & (t2010['me'] < 0.05) & (t2013['me'] < 0.05) & (t2015['me'] < 0.05) & (t2024['me'] < 0.05))[0]
 
     g2005 = t2005[good]
     g2010 = t2010[good]
     g2013 = t2013[good]
     g2015 = t2015[good]
+    g2024 = t2024[good]
 
+    # Compute all pairwise differences (mas)
     dx_05_10 = (g2010['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
     dy_05_10 = (g2010['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
 
     dx_05_13 = (g2013['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
     dy_05_13 = (g2013['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
 
+    dx_05_15 = (g2015['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
+    dy_05_15 = (g2015['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
+
+    dx_05_24 = (g2024['x'] - g2005['x']) * ast.scale['WFC'] * 1e3
+    dy_05_24 = (g2024['y'] - g2005['y']) * ast.scale['WFC'] * 1e3
+
     dx_10_13 = (g2013['x'] - g2010['x']) * ast.scale['WFC'] * 1e3
     dy_10_13 = (g2013['y'] - g2010['y']) * ast.scale['WFC'] * 1e3
-
-    dx_05_15 = (g2015['x'] - g2010['x']) * ast.scale['WFC'] * 1e3
-    dy_05_15 = (g2015['y'] - g2010['y']) * ast.scale['WFC'] * 1e3
 
     dx_10_15 = (g2015['x'] - g2010['x']) * ast.scale['WFC'] * 1e3
     dy_10_15 = (g2015['y'] - g2010['y']) * ast.scale['WFC'] * 1e3
 
+    dx_10_24 = (g2024['x'] - g2010['x']) * ast.scale['WFC'] * 1e3
+    dy_10_24 = (g2024['y'] - g2010['y']) * ast.scale['WFC'] * 1e3
+
     dx_13_15 = (g2015['x'] - g2013['x']) * ast.scale['WFC'] * 1e3
     dy_13_15 = (g2015['y'] - g2013['y']) * ast.scale['WFC'] * 1e3
-        
-    small = np.where((np.abs(dx_05_10) < 20) & (np.abs(dy_05_10) < 20) & 
-                     (np.abs(dx_05_13) < 20) & (np.abs(dy_05_13) < 20) & 
-                     (np.abs(dx_10_13) < 20) & (np.abs(dy_10_13) < 20) &
-                     (np.abs(dx_05_15) < 20) & (np.abs(dy_05_15) < 20) &
-                     (np.abs(dx_10_15) < 20) & (np.abs(dy_10_15) < 20) &
-                     (np.abs(dx_13_15) < 20) & (np.abs(dy_13_15) < 20))[0]
+
+    dx_13_24 = (g2024['x'] - g2013['x']) * ast.scale['WFC'] * 1e3
+    dy_13_24 = (g2024['y'] - g2013['y']) * ast.scale['WFC'] * 1e3
+
+    dx_15_24 = (g2024['x'] - g2015['x']) * ast.scale['WFC'] * 1e3
+    dy_15_24 = (g2024['y'] - g2015['y']) * ast.scale['WFC'] * 1e3
+
+    # Keep only stars with all differences < 20 mas in all pairs
+    diffs = [
+        dx_05_10, dy_05_10, dx_05_13, dy_05_13, dx_05_15, dy_05_15, dx_05_24, dy_05_24,
+        dx_10_13, dy_10_13, dx_10_15, dy_10_15, dx_10_24, dy_10_24,
+        dx_13_15, dy_13_15, dx_13_24, dy_13_24,
+        dx_15_24, dy_15_24
+    ]
+    small = np.where(np.all([np.abs(d) < 20 for d in diffs], axis=0))[0]
 
     print(len(g2005), len(small), len(dx_05_10))
     g2005 = g2005[small]
     g2010 = g2010[small]
     g2013 = g2013[small]
     g2015 = g2015[small]
+    g2024 = g2024[small]
     dx_05_10 = dx_05_10[small]
     dx_05_13 = dx_05_13[small]
-    dx_10_13 = dx_10_13[small]
     dx_05_15 = dx_05_15[small]
+    dx_05_24 = dx_05_24[small]
+    dx_10_13 = dx_10_13[small]
     dx_10_15 = dx_10_15[small]
+    dx_10_24 = dx_10_24[small]
     dx_13_15 = dx_13_15[small]
+    dx_13_24 = dx_13_24[small]
+    dx_15_24 = dx_15_24[small]
+    
     dy_05_10 = dy_05_10[small]
     dy_05_13 = dy_05_13[small]
-    dy_10_13 = dy_10_13[small]
     dy_05_15 = dy_05_15[small]
+    dy_05_24 = dy_05_24[small]
+    dy_10_13 = dy_10_13[small]
     dy_10_15 = dy_10_15[small]
+    dy_10_24 = dy_10_24[small]
     dy_13_15 = dy_13_15[small]
+    dy_13_24 = dy_13_24[small]
+    dy_15_24 = dy_15_24[small]
+    
     print(len(g2005), len(small), len(dx_05_10))
 
     qscale = 1e2
@@ -299,37 +338,62 @@ def plot_quiver_one_pass(reread=False):
     q = plt.quiver(g2005['x'], g2005['y'], dx_05_10, dy_05_10, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2010 - 2005')
-    plt.savefig('vec_diff_ref5_05_10.png')
+    plt.savefig(f'{path}/vec_diff_ref5_05_10.png')
 
     plt.clf()
     q = plt.quiver(g2005['x'], g2005['y'], dx_05_13, dy_05_13, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2013 - 2005')
-    plt.savefig('vec_diff_ref5_05_13.png')
-
-    plt.clf()
-    q = plt.quiver(g2005['x'], g2005['y'], dx_10_13, dy_10_13, scale=qscale)
-    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
-    plt.title('2013 - 2010')
-    plt.savefig('vec_diff_ref5_10_13.png')
+    plt.savefig(f'{path}/vec_diff_ref5_05_13.png')
 
     plt.clf()
     q = plt.quiver(g2005['x'], g2005['y'], dx_05_15, dy_05_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2005')
-    plt.savefig('vec_diff_ref5_05_15.png')
+    plt.savefig(f'{path}/vec_diff_ref5_05_15.png')
+    
+    plt.clf()
+    q = plt.quiver(g2005['x'], g2005['y'], dx_05_24, dy_05_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2005')
+    plt.savefig(f'{path}/vec_diff_ref5_05_24.png')
+
+    plt.clf()
+    q = plt.quiver(g2005['x'], g2005['y'], dx_10_13, dy_10_13, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2013 - 2010')
+    plt.savefig(f'{path}/vec_diff_ref5_10_13.png')
 
     plt.clf()
     q = plt.quiver(g2005['x'], g2005['y'], dx_10_15, dy_10_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2010')
-    plt.savefig('vec_diff_ref5_10_15.png')
+    plt.savefig(f'{path}/vec_diff_ref5_10_15.png')
+
+    plt.clf()
+    q = plt.quiver(g2005['x'], g2005['y'], dx_10_24, dy_10_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2010')
+    plt.savefig(f'{path}/vec_diff_ref5_10_24.png')
 
     plt.clf()
     q = plt.quiver(g2005['x'], g2005['y'], dx_13_15, dy_13_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2013')
-    plt.savefig('vec_diff_ref5_13_15.png')
+    plt.savefig(f'{path}/vec_diff_ref5_13_15.png')
+
+    plt.clf()
+    q = plt.quiver(g2005['x'], g2005['y'], dx_13_24, dy_13_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2013')
+    plt.savefig(f'{path}/vec_diff_ref5_13_24.png')
+    
+    plt.clf()
+    q = plt.quiver(g2005['x'], g2005['y'], dx_15_24, dy_15_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2015')
+    plt.savefig(f'{path}/vec_diff_ref5_15_24.png')
+
 
     ##########
     # VPD
@@ -341,71 +405,121 @@ def plot_quiver_one_pass(reread=False):
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2010 - 2005')
-    plt.savefig('pm_diff_ref5_05_10.png')
+    plt.savefig(f'{path}/pm_diff_ref5_05_10.png')
+    plt.close()
 
-    plt.clf()
     plt.plot(dx_05_13, dy_05_13, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2013 - 2005')
-    plt.savefig('pm_diff_ref5_05_13.png')
+    plt.savefig(f'{path}/pm_diff_ref5_05_13.png')
+    plt.close()
 
-    plt.clf()
-    plt.plot(dx_10_13, dy_10_13, 'k.', ms=2)
-    plt.axis([-lim, lim, -lim, lim])
-    plt.xlabel('X Proper Motion (mas)')
-    plt.ylabel('Y Proper Motion (mas)')
-    plt.title('2013 - 2010')
-    plt.savefig('pm_diff_ref5_10_13.png')
-
-    plt.clf()
     plt.plot(dx_05_15, dy_05_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2005')
-    plt.savefig('pm_diff_ref5_05_15.png')
+    plt.savefig(f'{path}/pm_diff_ref5_05_15.png')
+    plt.close()
 
-    plt.clf()
+    plt.plot(dx_05_24, dy_05_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2005')
+    plt.savefig(f'{path}/pm_diff_ref5_05_24.png')
+    plt.close()
+
+    plt.plot(dx_10_13, dy_10_13, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2013 - 2010')
+    plt.savefig(f'{path}/pm_diff_ref5_10_13.png')
+    plt.close()
+
     plt.plot(dx_10_15, dy_10_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2010')
-    plt.savefig('pm_diff_ref5_10_15.png')
+    plt.savefig(f'{path}/pm_diff_ref5_10_15.png')
+    plt.close()
 
-    plt.clf()
+    plt.plot(dx_10_24, dy_10_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2010')
+    plt.savefig(f'{path}/pm_diff_ref5_10_24.png')
+    plt.close()
+
     plt.plot(dx_13_15, dy_13_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2013')
-    plt.savefig('pm_diff_ref5_13_15.png')
-    
+    plt.savefig(f'{path}/pm_diff_ref5_13_15.png')
+    plt.close()
+
+    plt.plot(dx_13_24, dy_13_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2013')
+    plt.savefig(f'{path}/pm_diff_ref5_13_24.png')
+    plt.close()
+
+    plt.plot(dx_15_24, dy_15_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2015')
+    plt.savefig(f'{path}/pm_diff_ref5_15_24.png')
+    plt.close()
+
     print('2010 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_10.mean(), dye=dy_05_10.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_10.mean(), dye=dy_05_10.std()))
 
     print('2013 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_13.mean(), dye=dy_05_13.std()))
-
-    print('2013 - 2010')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_13.mean(), dye=dy_05_13.std()))
 
     print('2015 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_15.mean(), dxe=dx_05_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_15.mean(), dye=dy_05_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_15.mean(), dxe=dx_05_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_15.mean(), dye=dy_05_15.std()))
+    
+    print('2024 - 2005')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_24.mean(), dxe=dx_05_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_24.mean(), dye=dy_05_24.std()))
+    
+    print('2013 - 2010')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std()))
 
     print('2015 - 2010')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_15.mean(), dxe=dx_10_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_15.mean(), dye=dy_10_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_15.mean(), dxe=dx_10_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_15.mean(), dye=dy_10_15.std()))
+
+    print('2024 - 2010')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_24.mean(), dxe=dx_10_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_24.mean(), dye=dy_10_24.std()))
 
     print('2015 - 2013')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_13_15.mean(), dxe=dx_13_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_13_15.mean(), dye=dy_13_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_13_15.mean(), dxe=dx_13_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_13_15.mean(), dye=dy_13_15.std()))
+    
+    print('2024 - 2013')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_13_24.mean(), dxe=dx_13_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_13_24.mean(), dye=dy_13_24.std()))
+    
+    print('2024 - 2015')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_15_24.mean(), dxe=dx_15_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_15_24.mean(), dye=dy_15_24.std()))
+
 
 def make_refClust_catalog():
     """
@@ -465,17 +579,20 @@ def make_refClust_catalog():
                                         
     return
 
-def plot_quiver_one_pass_refClust():
+def plot_quiver_one_pass_refClust(path):
     """
     Plot a quiver vector plot between F814W in 2005 and F160W in 2010 and 2013 and 2015.
     This is just to check that we don't hae any gross flows between the two cameras.
 
     See notes from "HST Data Reduction (2014-06) for creation of the FITS table.
     """
-    t = Table.read('mat_all_good.fits')
+    t = Table.read(f'{path}/mat_all_good.fits')
     t.rename_column('col02', 'x_2005')
     t.rename_column('col03', 'y_2005')
     t.rename_column('col04', 'm_2005')
+    t.rename_column('col05', 'xe_2005')
+    t.rename_column('col06', 'ye_2005')
+    t.rename_column('col07', 'me_2005')
 
     t.rename_column('col10', 'x_2010')
     t.rename_column('col11', 'y_2010')
@@ -498,10 +615,19 @@ def plot_quiver_one_pass_refClust():
     t.rename_column('col30', 'ye_2015')
     t.rename_column('col31', 'me_2015')
     
-    good = np.where((t['m_2005'] < -8) & (t['m_2010'] < -8) & (t['m_2013'] < -8) & (t['m_2015'] < -8) &
-                    (t['xe_2010'] < 0.05) & (t['xe_2013'] < 0.05) & (t['xe_2015'] < 0.05) & 
-                    (t['ye_2010'] < 0.05) & (t['ye_2013'] < 0.05) & (t['ye_2015'] < 0.05) & 
-                    (t['me_2010'] < 0.05) & (t['me_2013'] < 0.05) & (t['me_2015'] < 0.05))[0]
+    t.rename_column('col34', 'x_2024')
+    t.rename_column('col35', 'y_2024')
+    t.rename_column('col36', 'm_2024')
+    t.rename_column('col37', 'xe_2024')
+    t.rename_column('col38', 'ye_2024')
+    t.rename_column('col39', 'me_2024')
+    
+    good = np.where(
+        (t['m_2005'] < -8) & (t['m_2010'] < -8) & (t['m_2013'] < -8) & (t['m_2015'] < -8) & (t['m_2024'] < -8) &
+        (t['xe_2010'] < 0.05) & (t['xe_2013'] < 0.05) & (t['xe_2015'] < 0.05) & (t['xe_2024'] < 0.05) &
+        (t['ye_2010'] < 0.05) & (t['ye_2013'] < 0.05) & (t['ye_2015'] < 0.05) & (t['ye_2024'] < 0.05) &
+        (t['me_2010'] < 0.05) & (t['me_2013'] < 0.05) & (t['me_2015'] < 0.05) & (t['me_2024'] < 0.05)
+    )[0]
 
     g = t[good]
 
@@ -511,155 +637,249 @@ def plot_quiver_one_pass_refClust():
     dx_05_13 = (g['x_2013'] - g['x_2005']) * ast.scale['WFC'] * 1e3
     dy_05_13 = (g['y_2013'] - g['y_2005']) * ast.scale['WFC'] * 1e3
 
-    dx_10_13 = (g['x_2013'] - g['x_2010']) * ast.scale['WFC'] * 1e3
-    dy_10_13 = (g['y_2013'] - g['y_2010']) * ast.scale['WFC'] * 1e3
-
     dx_05_15 = (g['x_2015'] - g['x_2005']) * ast.scale['WFC'] * 1e3
     dy_05_15 = (g['y_2015'] - g['y_2005']) * ast.scale['WFC'] * 1e3
 
+    dx_05_24 = (g['x_2024'] - g['x_2005']) * ast.scale['WFC'] * 1e3
+    dy_05_24 = (g['y_2024'] - g['y_2005']) * ast.scale['WFC'] * 1e3
+    
+    dx_10_13 = (g['x_2013'] - g['x_2010']) * ast.scale['WFC'] * 1e3
+    dy_10_13 = (g['y_2013'] - g['y_2010']) * ast.scale['WFC'] * 1e3
+
     dx_10_15 = (g['x_2015'] - g['x_2010']) * ast.scale['WFC'] * 1e3
     dy_10_15 = (g['y_2015'] - g['y_2010']) * ast.scale['WFC'] * 1e3
+    
+    dx_10_24 = (g['x_2024'] - g['x_2010']) * ast.scale['WFC'] * 1e3
+    dy_10_24 = (g['y_2024'] - g['y_2010']) * ast.scale['WFC'] * 1e3
 
     dx_13_15 = (g['x_2015'] - g['x_2013']) * ast.scale['WFC'] * 1e3
     dy_13_15 = (g['y_2015'] - g['y_2013']) * ast.scale['WFC'] * 1e3
-        
-    small = np.where((np.abs(dx_05_10) < 20) & (np.abs(dy_05_10) < 20) & 
-                     (np.abs(dx_05_13) < 20) & (np.abs(dy_05_13) < 20) & 
-                     (np.abs(dx_10_13) < 20) & (np.abs(dy_10_13) < 20) &
-                     (np.abs(dx_05_15) < 20) & (np.abs(dy_05_15) < 20) &
-                     (np.abs(dx_10_15) < 20) & (np.abs(dy_10_15) < 20) &
-                     (np.abs(dx_13_15) < 20) & (np.abs(dy_13_15) < 20))[0]
+    
+    dx_13_24 = (g['x_2024'] - g['x_2013']) * ast.scale['WFC'] * 1e3
+    dy_13_24 = (g['y_2024'] - g['y_2013']) * ast.scale['WFC'] * 1e3
+    
+    dx_15_24 = (g['x_2024'] - g['x_2015']) * ast.scale['WFC'] * 1e3
+    dy_15_24 = (g['y_2024'] - g['y_2015']) * ast.scale['WFC'] * 1e3
+    
+    # Keep only stars with all pairwise differences < 20 mas
+    diffs = [
+        dx_05_10, dy_05_10, dx_05_13, dy_05_13, dx_05_15, dy_05_15, dx_05_24, dy_05_24,
+        dx_10_13, dy_10_13, dx_10_15, dy_10_15, dx_10_24, dy_10_24,
+        dx_13_15, dy_13_15, dx_13_24, dy_13_24,
+        dx_15_24, dy_15_24
+    ]
+    small = np.where(np.all([np.abs(d) < 20 for d in diffs], axis=0))[0]
 
     print(len(g), len(small), len(dx_05_10))
     g = g[small]
     dx_05_10 = dx_05_10[small]
     dx_05_13 = dx_05_13[small]
-    dx_10_13 = dx_10_13[small]
     dx_05_15 = dx_05_15[small]
+    dx_05_24 = dx_05_24[small]
+    dx_10_13 = dx_10_13[small]
     dx_10_15 = dx_10_15[small]
+    dx_10_24 = dx_10_24[small]
     dx_13_15 = dx_13_15[small]
+    dx_13_24 = dx_13_24[small]
+    dx_15_24 = dx_15_24[small]
     
     dy_05_10 = dy_05_10[small]
     dy_05_13 = dy_05_13[small]
-    dy_10_13 = dy_10_13[small]
     dy_05_15 = dy_05_15[small]
+    dy_05_24 = dy_05_24[small]
+    dy_10_13 = dy_10_13[small]
     dy_10_15 = dy_10_15[small]
+    dy_10_24 = dy_10_24[small]
     dy_13_15 = dy_13_15[small]
+    dy_13_24 = dy_13_24[small]
+    dy_15_24 = dy_15_24[small]
     print(len(g), len(small), len(dx_05_10))
 
     qscale = 2e2
-        
-    plt.clf()
+    
     q = plt.quiver(g['x_2005'], g['y_2005'], dx_05_10, dy_05_10, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2010 - 2005')
-    plt.savefig('vec_diff_ref5_05_10.png')
+    plt.savefig(f'{path}/vec_diff_ref5_05_10.png')
+    plt.close()
 
-    plt.clf()
     q = plt.quiver(g['x_2005'], g['y_2005'], dx_05_13, dy_05_13, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2013 - 2005')
-    plt.savefig('vec_diff_ref5_05_13.png')
+    plt.savefig(f'{path}/vec_diff_ref5_05_13.png')
+    plt.close()
 
-    plt.clf()
-    q = plt.quiver(g['x_2005'], g['y_2005'], dx_10_13, dy_10_13, scale=qscale)
-    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
-    plt.title('2013 - 2010')
-    plt.savefig('vec_diff_ref5_10_13.png')
-
-    plt.clf()
     q = plt.quiver(g['x_2005'], g['y_2005'], dx_05_15, dy_05_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2005')
-    plt.savefig('vec_diff_ref5_05_15.png')
-
-    plt.clf()
+    plt.savefig(f'{path}/vec_diff_ref5_05_15.png')
+    plt.close()
+    
+    q = plt.quiver(g['x_2005'], g['y_2005'], dx_05_24, dy_05_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2005')
+    plt.savefig(f'{path}/vec_diff_ref5_05_24.png')
+    plt.close()
+    
+    q = plt.quiver(g['x_2005'], g['y_2005'], dx_10_13, dy_10_13, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2013 - 2010')
+    plt.savefig(f'{path}/vec_diff_ref5_10_13.png')
+    plt.close()
+    
     q = plt.quiver(g['x_2005'], g['y_2005'], dx_10_15, dy_10_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2010')
-    plt.savefig('vec_diff_ref5_10_15.png')
-
-    plt.clf()
+    plt.savefig(f'{path}/vec_diff_ref5_10_15.png')
+    plt.close()
+    
+    q = plt.quiver(g['x_2005'], g['y_2005'], dx_10_24, dy_10_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2010')
+    plt.savefig(f'{path}/vec_diff_ref5_10_24.png')
+    plt.close()
+    
     q = plt.quiver(g['x_2005'], g['y_2005'], dx_13_15, dy_13_15, scale=qscale)
     plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
     plt.title('2015 - 2013')
-    plt.savefig('vec_diff_ref5_13_15.png')
+    plt.savefig(f'{path}/vec_diff_ref5_13_15.png')
+    plt.close()
+    
+    q = plt.quiver(g['x_2005'], g['y_2005'], dx_13_24, dy_13_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2013')
+    plt.savefig(f'{path}/vec_diff_ref5_13_24.png')
+    plt.close()
+    
+    q = plt.quiver(g['x_2005'], g['y_2005'], dx_15_24, dy_15_24, scale=qscale)
+    plt.quiverkey(q, 0.95, 0.95, 5, '5 mas', color='red', labelcolor='red')
+    plt.title('2024 - 2015')
+    plt.savefig(f'{path}/vec_diff_ref5_15_24.png')
+    plt.close()
 
     ##########
     # VPD
     ##########
-    plt.clf()
     plt.plot(dx_05_10, dy_05_10, 'k.', ms=2)
     lim = 10
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2010 - 2005')
-    plt.savefig('pm_diff_ref5_05_10.png')
+    plt.savefig(f'{path}/pm_diff_ref5_05_10.png')
+    plt.close()
 
-    plt.clf()
     plt.plot(dx_05_13, dy_05_13, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2013 - 2005')
-    plt.savefig('pm_diff_ref5_05_13.png')
+    plt.savefig(f'{path}/pm_diff_ref5_05_13.png')
+    plt.close()
 
-    plt.clf()
-    plt.plot(dx_10_13, dy_10_13, 'k.', ms=2)
-    plt.axis([-lim, lim, -lim, lim])
-    plt.xlabel('X Proper Motion (mas)')
-    plt.ylabel('Y Proper Motion (mas)')
-    plt.title('2013 - 2010')
-    plt.savefig('pm_diff_ref5_10_13.png')
-
-    plt.clf()
     plt.plot(dx_05_15, dy_05_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2005')
-    plt.savefig('pm_diff_ref5_05_15.png')
-
-    plt.clf()
+    plt.savefig(f'{path}/pm_diff_ref5_05_15.png')
+    plt.close()
+    
+    plt.plot(dx_05_24, dy_05_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2005')
+    plt.savefig(f'{path}/pm_diff_ref5_05_24.png')
+    plt.close()
+    
+    plt.plot(dx_10_13, dy_10_13, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2013 - 2010')
+    plt.savefig(f'{path}/pm_diff_ref5_10_13.png')
+    plt.close()
+    
     plt.plot(dx_10_15, dy_10_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2010')
-    plt.savefig('pm_diff_ref5_10_15.png')
+    plt.savefig(f'{path}/pm_diff_ref5_10_15.png')
+    plt.close()
+    
+    plt.plot(dx_10_24, dy_10_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2010')
+    plt.savefig(f'{path}/pm_diff_ref5_10_24.png')
+    plt.close()
 
-    plt.clf()
     plt.plot(dx_13_15, dy_13_15, 'k.', ms=2)
     plt.axis([-lim, lim, -lim, lim])
     plt.xlabel('X Proper Motion (mas)')
     plt.ylabel('Y Proper Motion (mas)')
     plt.title('2015 - 2013')
-    plt.savefig('pm_diff_ref5_13_15.png')
+    plt.savefig(f'{path}/pm_diff_ref5_13_15.png')
+    plt.close()
+    
+    plt.plot(dx_13_24, dy_13_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2013')
+    plt.savefig(f'{path}/pm_diff_ref5_13_24.png')
+    plt.close()
+    
+    plt.plot(dx_15_24, dy_15_24, 'k.', ms=2)
+    plt.axis([-lim, lim, -lim, lim])
+    plt.xlabel('X Proper Motion (mas)')
+    plt.ylabel('Y Proper Motion (mas)')
+    plt.title('2024 - 2015')
+    plt.savefig(f'{path}/pm_diff_ref5_15_24.png')
+    plt.close()
 
     print('2010 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_10.mean(), dye=dy_05_10.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_10.mean(), dxe=dx_05_10.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_10.mean(), dye=dy_05_10.std()))
 
     print('2013 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_13.mean(), dye=dy_05_13.std()))
-
-    print('2013 - 2010')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_13.mean(), dxe=dx_05_13.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_13.mean(), dye=dy_05_13.std()))
 
     print('2015 - 2005')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_05_15.mean(), dxe=dx_05_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_05_15.mean(), dye=dy_05_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_15.mean(), dxe=dx_05_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_15.mean(), dye=dy_05_15.std()))
+
+    print('2024 - 2005')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_05_24.mean(), dxe=dx_05_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_05_24.mean(), dye=dy_05_24.std()))
+    
+    print('2013 - 2010')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_13.mean(), dxe=dx_10_13.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_13.mean(), dye=dy_10_13.std()))
 
     print('2015 - 2010')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_10_15.mean(), dxe=dx_10_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_10_15.mean(), dye=dy_10_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_15.mean(), dxe=dx_10_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_15.mean(), dye=dy_10_15.std()))
 
+    print('2024 - 2010')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_10_24.mean(), dxe=dx_10_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_10_24.mean(), dye=dy_10_24.std()))
+    
     print('2015 - 2013')
-    print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx_13_15.mean(), dxe=dx_13_15.std()))
-    print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy_13_15.mean(), dye=dy_13_15.std()))
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_13_15.mean(), dxe=dx_13_15.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_13_15.mean(), dye=dy_13_15.std()))
+
+    print('2024 - 2013')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_13_24.mean(), dxe=dx_13_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_13_24.mean(), dye=dy_13_24.std()))
+    
+    print('2024 - 2015')
+    print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx_15_24.mean(), dxe=dx_15_24.std()))
+    print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy_15_24.mean(), dye=dy_15_24.std()))
 
     return
     
@@ -745,12 +965,12 @@ def plot_quiver_align(pos, orig='', catalog='catalog_align_a4_t.fits'):
             plt.savefig(plot_dir + 'vpd_' + ename_bb + '_' + ename_aa + orig + '.png')
     
             # print(title)
-            # print('   dx = {dx:6.2f} +/- {dxe:6.2f} mas'.format(dx=dx.mean(), dxe=dx.std()))
-            # print('   dy = {dy:6.2f} +/- {dye:6.2f} mas'.format(dy=dy.mean(), dye=dy.std()))
+            # print('   dx = {dx:6.2f} ± {dxe:6.2f} mas'.format(dx=dx.mean(), dxe=dx.std()))
+            # print('   dy = {dy:6.2f} ± {dye:6.2f} mas'.format(dy=dy.mean(), dye=dy.std()))
 
             _out.write(title + '\n')
-            _out.write('   dx = {dx:6.2f} +/- {dxe:6.2f} mas\n'.format(dx=dx.mean(), dxe=dx.std()))
-            _out.write('   dy = {dy:6.2f} +/- {dye:6.2f} mas\n'.format(dy=dy.mean(), dye=dy.std()))
+            _out.write('   dx = {dx:6.2f} ± {dxe:6.2f} mas\n'.format(dx=dx.mean(), dxe=dx.std()))
+            _out.write('   dy = {dy:6.2f} ± {dye:6.2f} mas\n'.format(dy=dy.mean(), dye=dy.std()))
     
     _out.close()
     
@@ -828,7 +1048,7 @@ def plot_vpd_across_field(nside=4, interact=False):
     pmy_all = np.median( t2005.pmy[idx2] )
     
     out = 'All X:{0:5.0f}-{1:5.0f}  Y:{2:5.0f}-{3:5.0f}  '
-    out += 'PMX:{4:5.2f} +/- {5:5.2f} PMY:{6:5.2f} +/- {7:5.2f}  '
+    out += 'PMX:{4:5.2f} ± {5:5.2f} PMY:{6:5.2f} ± {7:5.2f}  '
     out += 'N:{8:5d}'
     print((out.format(xlo, xhi, ylo, yhi, pmx_all, 0.0, pmy_all, 0.0, len(idx2))))
 
@@ -887,7 +1107,7 @@ def plot_vpd_across_field(nside=4, interact=False):
             pmye[xx, yy] = ymean_err
 
             out = 'Box X:{0:5.0f}-{1:5.0f}  Y:{2:5.0f}-{3:5.0f}  '
-            out += 'PMX:{4:5.2f} +/- {5:5.2f} PMY:{6:5.2f} +/- {7:5.2f}  '
+            out += 'PMX:{4:5.2f} ± {5:5.2f} PMY:{6:5.2f} ± {7:5.2f}  '
             out += 'N:{8:5d}  '
 
             if interact:
@@ -990,7 +1210,7 @@ def make_master_list(data_dir, years=years, pscale=50, vel_cut=0.7, vel_err_cut=
     # Trim down to only those stars that are detected in all epochs.
     # Also make cuts on astrometric/photometric errors, etc.
     # We only want the well measured stars in this analysis.
-    perrLim2005 = 3.0 / pscale
+    perrLim2005 = 3.0 / pscale # unit: pix, equivalent to error < 3 mas
     perrLim2010 = 4.0 / pscale
     perrLim2013 = 5.0 / pscale
     perrLim2015 = 5.0 / pscale
@@ -1385,31 +1605,35 @@ def make_master_list(data_dir, years=years, pscale=50, vel_cut=0.7, vel_err_cut=
 
 #     return
 
-def make_pos_directories():
+def make_pos_directories(reduce_path):
     """
-    Make the individual position directories. The structure is complicated
-    enough that it is worth doing in code. All of this goes under
-
-        03.MAT_POS/
-
+    Make 03.MAT_POS directory, and the year_filter_pos1 through pos4 directories.
+    
+    Parameters
+    ----------
+    reduce_path : str
+        The path to the reduction directory where the 03.MAT_POS directory will be created.
     """
-    os.chdir(work_dir + '/03.MAT_POS')
+    mat_pos_path = os.path.join(reduce_path, '03.MAT_POS')
+    if not os.path.exists(mat_pos_path):
+        os.makedirs(mat_pos_path)
 
-    years = ['2005', '2010', '2013', '2015']
+    years = ['2005', '2010', '2013', '2015', '2024']
 
     filts = {'2005': ['F814W'],
              '2010': ['F125W', 'F139M', 'F160W'],
              '2013': ['F160W', 'F160Ws'],
-             '2015': ['F160W', 'F160Ws']}
+             '2015': ['F160W', 'F160Ws'],
+             '2024': ['F160W', 'F160Ws']}
 
-    pos4_exceptions = ['2005_F814W', '2013_F160Ws', '2015_F160Ws']
-    old_mat_dir = '../02.MAT'
+    pos4_exceptions = ['2005_F814W', '2013_F160Ws', '2015_F160Ws', '2024_F160Ws']
+    mat_path = f'{reduce_path}/02.MAT'
 
     for year in years:
         filts_in_year = filts[year]
 
         for filt in filts_in_year:
-            epoch_filt = '{0}_{1}'.format(year, filt)
+            epoch_filt = f'{year}_{filt}'
 
             if epoch_filt in pos4_exceptions:
                 posits = ['']
@@ -1417,23 +1641,25 @@ def make_pos_directories():
                 posits = ['pos1', 'pos2', 'pos3', 'pos4']
 
             # Define the master file for this combo
-            master_file = '{0}/MASTER.{1}.{2}.ref5'.format(old_mat_dir, filt, year)
-            
+            master_file = f'{mat_path}/MASTER.{filt}.{year}.ref5'
+
             for pos in posits:
                 ep_filt_pos = epoch_filt
                 if pos != '':
-                    ep_filt_pos += '_{0}'.format(pos)
+                    ep_filt_pos += f'_{pos}'
 
                 # Make the directory
-                fileUtil.mkdir(ep_filt_pos)
-                fileUtil.mkdir(ep_filt_pos + '/01.XYM')
+                if not os.path.exists(f'{mat_pos_path}/{ep_filt_pos}'):
+                    os.makedirs(f'{mat_pos_path}/{ep_filt_pos}')
+                if not os.path.exists(f'{mat_pos_path}/{ep_filt_pos}/01.XYM'):
+                    os.makedirs(f'{mat_pos_path}/{ep_filt_pos}/01.XYM')
 
                 # Copy over the master file
-                shutil.copy(master_file, ep_filt_pos + '/01.XYM/')
+                shutil.copy(master_file, f'{mat_pos_path}/{ep_filt_pos}/01.XYM/')
 
     return
 
-def calc_pos_number():
+def calc_pos_number(reduce_path, verbose=True):
     """
     Calculate the position number (in 2005 ACS coordinate system) of all the
     MAT.*** files in 02.MAT directory. This can then be used to separate out
@@ -1446,7 +1672,7 @@ def calc_pos_number():
     Just read in the MAT.*** file, take the average of columns 3 and 4 and use
     rough, hard-coded quadrant separations to pick out the position. 
     """
-    mat_files = glob.glob(work_dir + '/02.MAT/MAT.*')
+    mat_files = glob.glob(f'{reduce_path}/02.MAT/MAT.*')
     epoch_filt = np.zeros(len(mat_files), dtype='U12')
     pos = np.zeros(len(mat_files), dtype='U4')
     mat_root = np.zeros(len(mat_files), dtype='U8')
@@ -1480,8 +1706,14 @@ def calc_pos_number():
             epoch_filt[mm] = '2013_F160Ws'
         elif (mat_num >= 300) and (mat_num <= 359):
             epoch_filt[mm] = '2015_F160W'
-        if (mat_num >= 370) and (mat_num <= 399):
+        elif (mat_num >= 370) and (mat_num <= 399):
             epoch_filt[mm] = '2015_F160Ws'
+        elif (mat_num >= 400) and (mat_num <= 459):
+            epoch_filt[mm] = '2024_F160W'
+        elif (mat_num >= 470) and (mat_num <= 499):
+            epoch_filt[mm] = '2024_F160Ws'
+        else:
+            raise ValueError('Unknown MAT file number: {0}'.format(mat_num))
             
         # Decide the position
         if (xavg[mm] > 2000) and (yavg[mm] > 2000):
@@ -1503,59 +1735,62 @@ def calc_pos_number():
     for ee in efilt_unique:
         for pp in pos_unique:
             idx = np.where((epoch_filt == ee) & (pos == pp))[0]
-
-            print() 
-            for ii in idx:
-                print(fmt.format(mat_root[ii], epoch_filt[ii], pos[ii],
-                                 xavg[ii], yavg[ii]))
+            
+            if verbose:
+                print() 
+                for ii in idx:
+                    print(fmt.format(mat_root[ii], epoch_filt[ii], pos[ii], xavg[ii], yavg[ii]))
                     
     return mat_root, epoch_filt, pos
 
-def setup_xym_by_pos():
+def setup_xym_by_pos(reduce_path, mat_root=None, epoch_filt=None, pos=None):
     """
     Something
     """
-    os.chdir(work_dir + '/03.MAT_POS')
+    mat_pos_path = os.path.join(reduce_path, '03.MAT_POS')
 
-    pos4_exceptions = ['2005_F814W', '2013_F160Ws', '2015_F160Ws']
-    old_mat_dir = '../02.MAT/'
+    pos4_exceptions = ['2005_F814W', '2013_F160Ws', '2015_F160Ws', '2024_F160Ws']
+    mat_path = f'{reduce_path}/02.MAT/'
 
     # Get the MAT file names and positions.
-    mat_root, epoch_filt, pos = calc_pos_number()
+    if any([mat_root is None, epoch_filt is None, pos is None]):
+        mat_root, epoch_filt, pos = calc_pos_number(reduce_path=reduce_path, verbose=False)
 
     # Read the old IN.xym2bar file to match MAT.??? to the *.xym files
-    mat_xym_files = read_in_xym2mat(old_mat_dir + 'IN.xym2mat')
-    
+    mat_xym_files = read_in_xym2mat(f'{mat_path}/IN.xym2mat')
     open_logs = {}
     
-    for ii in range(len(mat_root)):
+    for ii in tqdm(range(len(mat_root)), desc="Copying MAT/XYM files"):
+    # for ii in range(1):
         # copy stuff to this directory
         to_dir = epoch_filt[ii]
 
         if epoch_filt[ii] not in pos4_exceptions:
             to_dir += '_' + pos[ii]
 
-        to_dir += '/01.XYM/'
-        print('Copying to {0} for {1}'.format(to_dir, mat_root[ii]))
+        to_dir = f'{mat_pos_path}/{to_dir}/01.XYM/'
+        # print('Copying to {0} for {1}'.format(to_dir, mat_root[ii]))
         
         # Get rid of the filter-related letters for the 02.MAT/ sub-dir.
         efilt_strip = epoch_filt[ii].replace('W', '').replace('F', '').replace('M', '')
 
         # Copy the old MAT file
-        from_file = old_mat_dir + efilt_strip + '/' + mat_root[ii]
+        from_file = f'{mat_path}{efilt_strip}/{mat_root[ii]}'
         shutil.copy(from_file, to_dir)
-        print('    Copy ' + from_file)
+        # print('    Copy ' + from_file + ' to ' + to_dir)
 
         # Copy the xym file
         mat_num = mat_root[ii].split('.')[1]
 
         xym_file = mat_xym_files[mat_num]
-        
-        shutil.copy(xym_file, to_dir)
-        print('    Copy ' + xym_file)
+        # Convert xym_file to absolute path using reduce_path
+        # Remove leading "../"
+        xym_path = os.path.join(reduce_path, xym_file[3:])
+        shutil.copy(xym_path, to_dir)
+        # print('    Copy ' + xym_path + ' to ' + to_dir)
 
         # Keep a record of the match between XYM and MAT files
-        logfile = to_dir + 'xym_mat.txt'
+        logfile = f'{to_dir}/xym_mat.txt'
 
         if logfile not in list(open_logs.keys()):
             _log = open(logfile, 'w')
@@ -1602,34 +1837,47 @@ def read_in_xym2mat(in_file):
 
 
             
-def xym_by_pos(year, filt, pos, Nepochs):
+def xym_by_pos(reduce_path, year, filt, pos, Nepochs):
     """
-    Re-do the alignment with the ref5 master frames (cluster members only);
-    but do the alignments on each position separately.
-
-    Doesn't work for 2005_F814W or 2013_F160Ws or 2015_F160Ws.
+    Re-do the alignment with the ref5 master frames (cluster members only) on each position separately.
+    Doesn't work for 2005_F814W or 2013_F160Ws or 2015_F160Ws or 2024_F160Ws.
+    
+    Parameters
+    ----------
+    reduce_path : str
+        The path to the reduction directory where the 03.MAT_POS directory is located.
+    year : str
+        The year of the observations (e.g., '2005', '2010', '2013', '2015', '2024').
+    filt : str
+        The filter used in the observations (e.g., 'F125W', 'F139M', 'F160W', 'F160W').
+    pos : str
+        The position of the observations (e.g., 'pos1', 'pos2', 'pos3', 'pos4').
+    Nepochs : int
+        The number of images where an object must be detected to make the list, passed as rNIMMIN to xym2bar.
     """
-    mat_dir = '{0}/03.MAT_POS/{1}_{2}_{3}/01.XYM/'.format(work_dir, year, filt, pos)
+    
+    mat_dir = f'{reduce_path}/03.MAT_POS/{year}_{filt}_{pos}/01.XYM'
 
-    master_file = 'MASTER.{0}.{1}.ref5'.format(filt, year)
+    master_file = f'MASTER.{filt}.{year}.ref5'
 
     # Read in the xym_mat.txt file that maps the MAT and XYM files together.
-    tab = Table.read(mat_dir + 'xym_mat.txt', format='ascii')
-    
+    tab = Table.read(f'{mat_dir}/xym_mat.txt', format='ascii')
+
     # Make IN.xym2mat and IN.xym2bar file
-    _mat = open(mat_dir + 'IN.xym2mat', 'w')
-    _bar = open(mat_dir + 'IN.xym2bar', 'w')
-    
-    _mat.write('000 ' + master_file + ' c0\n')
+    _mat = open(f'{mat_dir}/IN.xym2mat', 'w')
+    _bar = open(f'{mat_dir}/IN.xym2bar', 'w')
+
+    _mat.write(f'000 {master_file} c0\n')
 
     for ii in range(len(tab)):
-        _mat.write('{0} {1} c9\n'.format(tab[ii][0], tab[ii][1]))
-        _bar.write('{0} {1} c9\n'.format(tab[ii][0], tab[ii][1]))
+        _mat.write(f'{tab[ii][0]} {tab[ii][1]} c9\n')
+        _bar.write(f'{tab[ii][0]} {tab[ii][1]} c9\n')
 
     _mat.close()
     _bar.close()
 
     # Run xym2mat
+    cwd = os.getcwd()
     os.chdir(mat_dir)
     subprocess.call(['xym2mat', '22'])
     subprocess.call(['xym2mat', '24'])
@@ -1639,16 +1887,18 @@ def xym_by_pos(year, filt, pos, Nepochs):
     subprocess.call(['xym2bar', str(Nepochs)])
 
     # Copy final output files
-    suffix = '.{0}.{1}.{2}.refClust'.format(filt, year, pos)
-    shutil.copy('MATCHUP.XYMEEE', 'MATCHUP.XYMEEE' + suffix)
-    shutil.copy('TRANS.xym2mat', 'TRANS.xym2mat' + suffix)
-    shutil.copy('TRANS.xym2bar', 'TRANS.xym2bar' + suffix)
-    shutil.copy('IN.xym2mat', 'IN.xym2mat' + suffix)
-    shutil.copy('IN.xym2bar', 'IN.xym2bar' + suffix)
+    suffix = f'.{filt}.{year}.{pos}.refClust'
+    shutil.copy('MATCHUP.XYMEEE', f'MATCHUP.XYMEEE{suffix}')
+    shutil.copy('TRANS.xym2mat', f'TRANS.xym2mat{suffix}')
+    shutil.copy('TRANS.xym2bar', f'TRANS.xym2bar{suffix}')
+    shutil.copy('IN.xym2mat', f'IN.xym2mat{suffix}')
+    shutil.copy('IN.xym2bar', f'IN.xym2bar{suffix}')
+    
+    os.chdir(cwd)
 
     return
-            
-def make_brite_list_2010():
+
+def make_brite_list_2010(reduce_path):
     """
     Copy over the MATCHUP ref5 files from the 02.MAT directory. It has to be ref5
     because we want the starlists to be matched. The difference between ref5 and
@@ -1672,15 +1922,15 @@ def make_brite_list_2010():
                     'MATCHUP.XYMEEE.F125W.2010.ref5']
     trimMags = [-8, -7, -8]
 
-    os.chdir(work_dir + '/12.KS2_2010')
-    shutil.copy('{0}/02.MAT/{1}'.format(work_dir, matchup_file[0]), './')
-    shutil.copy('{0}/02.MAT/{1}'.format(work_dir, matchup_file[1]), './')
-    shutil.copy('{0}/02.MAT/{1}'.format(work_dir, matchup_file[2]), './')
+    # os.chdir(f'{reduce_path}/12.KS2_2010')
+    shutil.copy(f'{reduce_path}/02.MAT/{matchup_file[0]}', f'{reduce_path}/12.KS2_2010/')
+    shutil.copy(f'{reduce_path}/02.MAT/{matchup_file[1]}', f'{reduce_path}/12.KS2_2010/')
+    shutil.copy(f'{reduce_path}/02.MAT/{matchup_file[2]}', f'{reduce_path}/12.KS2_2010/')
 
     # Read in the matchup files.
-    list_160 = starlists.read_matchup(matchup_file[0])
-    list_139 = starlists.read_matchup(matchup_file[1])
-    list_125 = starlists.read_matchup(matchup_file[2])
+    list_160 = starlists.read_matchup(f'{reduce_path}/12.KS2_2010/{matchup_file[0]}')
+    list_139 = starlists.read_matchup(f'{reduce_path}/12.KS2_2010/{matchup_file[1]}')
+    list_125 = starlists.read_matchup(f'{reduce_path}/12.KS2_2010/{matchup_file[2]}')
 
     stars = astropy.table.hstack([list_160, list_139, list_125])
     print('Loaded {0} stars'.format(len(stars)))
@@ -1733,10 +1983,10 @@ def make_brite_list_2010():
     # these will be appended to the ks2 output if ks2 doesn't find
     # the bright source. In other wordes, trust the one pass output
     # at the brightest stars.
-    brite_obs_125 = open('BRITE_F125W.XYMEEE', 'w')
-    brite_obs_139 = open('BRITE_F139M.XYMEEE', 'w')
-    brite_obs_160 = open('BRITE_F160W.XYMEEE', 'w')
-    
+    brite_obs_125 = open(f'{reduce_path}/12.KS2_2010/BRITE_F125W.XYMEEE', 'w')
+    brite_obs_139 = open(f'{reduce_path}/12.KS2_2010/BRITE_F139M.XYMEEE', 'w')
+    brite_obs_160 = open(f'{reduce_path}/12.KS2_2010/BRITE_F160W.XYMEEE', 'w')
+
     for ii in range(len(stars)):
         fmt = '{x:10.4f}  {y:10.4f}  {m:10.4f}  {me:10.4f}  {ye:10.4f}  {ye:10.4f}\n'
 
@@ -1817,8 +2067,8 @@ def make_brite_list_2010():
         print('no magnitudes in some filters')
         pdb.set_trace()
 
-    brite = open('BRITE.XYM', 'w')
-    
+    brite = open(f'{reduce_path}/12.KS2_2010/BRITE.XYM', 'w')
+
     for ii in range(len(stars)):
         fmt = '{x:10.4f}  {y:10.4f}  {m1:10.4f}  {m2:10.4f}  {m3:10.4f}\n'
 
@@ -3178,9 +3428,9 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
 
     idx = np.where((np.abs(vx) < 3) & (np.abs(vy) < 3))[0]
     print('Cluster Members (within vx < 10 mas/yr and vy < 10 mas/yr)')
-    print(('   vx = {vx:6.2f} +/- {vxe:6.2f} mas/yr'.format(vx=vx[idx].mean(),
+    print(('   vx = {vx:6.2f} ± {vxe:6.2f} mas/yr'.format(vx=vx[idx].mean(),
                                                            vxe=vx[idx].std())))
-    print(('   vy = {vy:6.2f} +/- {vye:6.2f} mas/yr'.format(vy=vy[idx].mean(),
+    print(('   vy = {vy:6.2f} ± {vye:6.2f} mas/yr'.format(vy=vy[idx].mean(),
                                                            vye=vy[idx].std())))
     
     return
@@ -3745,13 +3995,14 @@ def plot_chi2_dist(startable, chi2_lim=10, bins=20, log=True):
 
 #     d.write(work_dir + '/50.ALIGN_KS2/' + catalog_name, format='fits', overwrite=True)
     
-def plot_matchup_error(matchup_file, mag_range=None, xlabel=None):
+def plot_matchup_error(matchup_file, mag_range=None, xlabel=None, title=None):
     table = read_matchup(matchup_file)
+    table = table[(table['xe'] != 1.) & (table['ye'] != 1.)]
     N = len(table)
     if mag_range is None:
         mag_range = (np.nanmin(table['m']), np.nanmax(table['m']))
-    if mag_range is not None:
-        table = table[(table['m'] >= mag_range[0]) & (table['m'] <= mag_range[1])]
+    
+    table_trim = table[(table['m'] >= mag_range[0]) & (table['m'] <= mag_range[1])]
     
     mag_min = None
     # mag_max = -14
@@ -3764,6 +4015,9 @@ def plot_matchup_error(matchup_file, mag_range=None, xlabel=None):
         ax.set_xlabel('Mag', fontsize=12)
     else:
         ax.set_xlabel(xlabel, fontsize=12)
+    
+    if title:
+        ax.set_title(title, fontsize=14)
     ax.set_ylabel('Astrometric Uncertainty (pix)', fontsize=12)
     ax.legend()
     # ax.set_xlim([-22, 0])
@@ -3775,10 +4029,10 @@ def plot_matchup_error(matchup_file, mag_range=None, xlabel=None):
     # mag_range = (-13.5, -5)
     # within_mag_range = (table['m'] >= mag_range[0]) & (table['m'] <= mag_range[1])
     # table_within_range = table[within_mag_range]
-    xerr_median = np.median(table['xe'])
-    yerr_median = np.median(table['ye'])
-    merr_median = np.median(table['me'])
-    print(f'Median Errors for {len(table)} of {N} stars between {mag_range[0]:.2f} - {mag_range[-1]:.2f}:')
+    xerr_median = np.median(table_trim['xe'])
+    yerr_median = np.median(table_trim['ye'])
+    merr_median = np.median(table_trim['me'])
+    print(f'Median Errors for {len(table_trim)} of {N} stars between {mag_range[0]:.2f} - {mag_range[-1]:.2f}:')
     print(f'Median X error: {xerr_median:.3f} mas')
     print(f'Median Y error: {yerr_median:.3f} mas')
     print(f'Median Mag error: {merr_median:.3f} mag')
