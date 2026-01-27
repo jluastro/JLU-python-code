@@ -87,7 +87,7 @@ astrom_data = {}
 for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
     astrom_data[targ] = a_dir[targ] + targ + '_plx_final.fits'
-astrom_data['ob110462'] = None
+astrom_data['ob110462_23apr'] = None
 
 ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/a0_',
                  'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
@@ -104,7 +104,7 @@ ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_
                  'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/a0_',
                  'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
                  'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/a0_',
-                 'ob150211_gp'   : a_dir['ob150211'] + 'model_fits/201_phot_ogle_gp/a0_'}
+                 'ob150211_gp'   : a_dir['ob150211'] + 'model_fits/0201_phot_ogle_gp_old/a0_'}
     
     
 photom_spitzer = {'ob120169': None,
@@ -119,12 +119,12 @@ pspl_phot = {'ob120169' : ogle_phot_all['ob120169_gp'],
              'ob150211' : ogle_phot_all['ob150211_gp']}
 
 # With GP: Not done running -- need to update.
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/220_phot_astrom_gp/a0_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/220_phot_astrom_gp/a0_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/220_phot_astrom_gp/a0_',
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/220_phot_astrom_gp/a0_',
-                      'ob150211_unsplit' : a_dir['ob150211'] + 'model_fits/220_phot_astrom_gp/a0_',
-                      'OB110462' : '/u/jlu/work/microlens/OB110462/a_2023_04_23/model_fits/hst_ast/base_a/a0_'}
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/0220_phot_astrom_gp_old/c0_',
+                      #'ob150211_unsplit' : a_dir['ob150211'] + 'model_fits/0220_phot_astrom_gp_old/a0_',
+                      'OB110462' : "/u/jlu/work/microlens/OB110462/a_2023_04_23/model_fits/hst_phot_ast/trunc_ogle/all_hst/base_a/a0_"}
 
 
 # 0-based... so 0 = first mode (after the global solution).
@@ -134,10 +134,10 @@ pspl_ast_multiphot_mode = {'ob120169': 0,
                            'ob150211': 0}
 
 # With GP: Not done running
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/211_phot_ogle_keck_gp/a0_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/211_phot_ogle_keck_gp/a0_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/211_phot_ogle_keck_gp/a0_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/211_phot_ogle_keck_gp/a0_'}
+pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+                  'ob140613' : a_dir['ob140613'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+                  'ob150029' : a_dir['ob150029'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+                  'ob150211' : a_dir['ob150211'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_'}
 
 ogle_phot = {}
 # ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
@@ -157,11 +157,11 @@ popsycle_events = '/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock
 #                  'ob190017' : mlens_dir + 'OB190017/a_2020_09_10/model_fits/ogle_phot_par/a0_',
 #                  'ob170019' : mlens_dir + 'OB170019/a_2020_09_10/model_fits/ogle_phot_par/a0_',
 #                  'ob170095' : mlens_dir + 'OB170095/a_2021_09_18/model_fits/base_a/a0_'}
-hst_phot = {'MB09260' : mlens_dir + 'MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
-            'MB10364' :  mlens_dir +'MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
-            'OB110037' : mlens_dir +'OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
-            'OB110310' : mlens_dir +'OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
-            'OB110462' : mlens_dir +'OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
+#hst_phot = {'MB09260' : mlens_dir + 'MB09260/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+#            'MB10364' :  mlens_dir +'MB10364/a_2021_07_08/model_fits/moa_hst_phot_ast_gp/base_a/a0_',
+#            'OB110037' : mlens_dir +'OB110037/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+#            'OB110310' : mlens_dir +'OB110310/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_',
+#            'OB110462' : mlens_dir +'OB110462/a_2021_07_08/model_fits/ogle_hst_phot_ast_gp/base_a/a0_'}
 
 
 def all_paper():
@@ -170,11 +170,11 @@ def all_paper():
     calc_base_mag()
     plot_pos_err()
 
-    compare_all_linear_motions()
+    #compare_all_linear_motions()
     plot_linear_motion_all()
 
     # separate_modes_all()
-    separate_ob150211_modes()
+    # separate_ob150211_modes()
 
     plot_ob120169_phot_ast()
     plot_ob140613_phot_ast()
@@ -205,7 +205,8 @@ def all_paper():
     # Mass Posteriors
     plot_ob150211_mass_posterior_modes()
     plot_all_mass_posteriors()
-
+    plot_ob150211_mass_piE_muRel_all_modes()
+    
     # Statistics
     for targ in targets:
         calc_bayes_factor(targ)
@@ -216,8 +217,11 @@ def all_paper():
     # CMDs
     plot_cmds()
     
-    dark_lens_prob('ob150211')
-    dark_lens_prob('ob150211', mode='best')
+    dark_lens_prob('ob150211', use_surot_ext=True)
+    dark_lens_prob('ob150211', mode='best', use_surot_ext=True)
+    dark_lens_prob('ob120169', use_surot_ext=True)
+    dark_lens_prob('ob140613', use_surot_ext=True)
+    dark_lens_prob('ob150029', use_surot_ext=True)
 
     #####
     # OLD BROKEN STUFF
@@ -1039,59 +1043,46 @@ def calc_bayes_factor(target):
         t0_guess = 57225
         fitter.priors['t0'] = model_fitter.make_gen(t0_guess - 100, t0_guess + 100) 
         fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
-        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['tE'] = model_fitter.make_gen(10, 1000)
         fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
         fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
-
-        # Phot Set 1
-        mean1, med1, std1 = sigma_clipped_stats(data['mag1'], sigma_lower=2, sigma_upper=4)
         fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
-        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(mean1, 2 * std1)
-
-        # Phot Set 2
-        mean2, med2, std2 = sigma_clipped_stats(data['mag2'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(17.3, 0.5)
         fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
-        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(mean2, 2 * std2)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(11.25, 0.5)
     elif target == 'ob120169':
         # Adjust the priors to encompass both possible solutions 
         fitter.priors['t0'] = model_fitter.make_gen(56020 - 100, 56020 + 100) 
         fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
-        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['tE'] = model_fitter.make_gen(10, 1000)
         fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
         fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
         fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
-        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(19.35, 0.1)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(19.4, 0.5)
         fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
-        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(17.95, 0.1)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(18.0, 0.5)
     elif target == 'ob140613':
         # Adjust the priors to encompass both possible solutions 
         fitter.priors['t0'] = model_fitter.make_gen(57150 - 100, 57150 + 100) 
         fitter.priors['u0_amp'] = model_fitter.make_gen(-1.0, 1.0)
-        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['tE'] = model_fitter.make_gen(10, 1000)
         fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
         fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
         fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
-        fitter.priors['mag_base1'] = model_fitter.make_gen(18, 18.5)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(18.2, 0.5)
         fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
-        fitter.priors['mag_base2'] = model_fitter.make_gen(14, 14.5)
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(14.3, 0.5)
     elif target == 'ob150029':
         # Adjust the priors
         fitter.priors['t0'] = model_fitter.make_gen(57230 - 100, 57230 + 10) 
         fitter.priors['u0_amp'] = model_fitter.make_gen(-1.5, 1.5)
-        fitter.priors['tE'] = model_fitter.make_gen(1, 2000)
+        fitter.priors['tE'] = model_fitter.make_gen(10, 1000)
         fitter.priors['piE_E'] = model_fitter.make_gen(-1, 1)
         fitter.priors['piE_N'] = model_fitter.make_gen(-1, 1)
-
-        # Phot Set 1
-        mean1, med1, std1 = sigma_clipped_stats(data['mag1'], sigma_lower=2, sigma_upper=4)
         fitter.priors['b_sff1'] = model_fitter.make_gen(0, 1.2)
-        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(mean1, 2 * std1)
-
-        # Phot Set 2
-        mean2, med2, std2 = sigma_clipped_stats(data['mag2'], sigma_lower=2, sigma_upper=4)
+        fitter.priors['mag_base1'] = model_fitter.make_norm_gen(15.1, 0.5)
         fitter.priors['b_sff2'] = model_fitter.make_gen(0, 1.0)
-        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(mean2, 2 * std2)
-        
+        fitter.priors['mag_base2'] = model_fitter.make_norm_gen(12.35, 0.5)
 
     # Draw samples on the priors.
     N_samps = 10000
@@ -1122,6 +1113,8 @@ def calc_bayes_factor(target):
                          label=f'Obs Mode {tt}', density=True, histtype='step')
 
         plt.legend()
+        plt.tight_layout()
+        plt.savefig(paper_dir+f'{target}_prior_{param_name}.png')
 
     # print out the Bayes Factors
     if target == 'ob120169':
@@ -1400,6 +1393,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11.xaxis.set_major_locator(plt.MultipleLocator(1000))
     ax11.set_xlabel('Time (MJD)')
     ax11.set_ylabel('GP')
+    #pdb.set_trace()
     
 
     # Center the position data and model off the reference epoch
@@ -1446,6 +1440,9 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax31.axhline(0, linestyle='--', color='r')
     ax31.set_xlabel('Time (MJD)')
     ax31.set_ylabel('Res.')
+    if target.lower()=='ob150211':
+        ax21.set_ylim(-1.0,0.5)
+        ax31.set_ylim(-0.5,1)
 
     plt.savefig(paper_dir + target + '_phot_astrom.pdf')
     #plt.close(1)
@@ -1754,7 +1751,7 @@ def piE_tE_deltac(fit_type = 'ast'):
                           'ob190017': [180, 0.28],
                           'kb200101': [180, 0.016],
                           'mb190284': [300, 0.025],
-                          'OB110462': [200,0.095]}
+                          'OB110462': [210,0.065]}
                 }
 
     label_pos_ast = {'ob120169': [0.006, 0.06],
@@ -1871,7 +1868,7 @@ def piE_tE_deltac(fit_type = 'ast'):
         if not include[targ] or targ in tE_points:
             continue
         
-        fit_targ, dat_targ = get_data_and_fitter(hst_phot[targ])
+        fit_targ, dat_targ = get_data_and_fitter(pspl_ast_multiphot[targ])
         
         stats_targ = calc_summary_statistics(fit_targ)
         samps_targ = fit_targ.load_mnest_modes()
@@ -2157,7 +2154,7 @@ def piE_tE_deltac(fit_type = 'ast'):
     axes.set_yscale('log')
 #    axes.set_xlim(0.005, 4)
 #    axes.set_ylim(0.009, 0.5)
-    axes.set_xlim(0.02, 2)
+    axes.set_xlim(0.02, 2.5)
     axes.set_ylim(0.005, 0.5)
     plt.savefig(paper_dir + 'piE_deltac_' + fit_type + '.png')
     plt.show()
@@ -2912,10 +2909,12 @@ def dark_lens_prob(target, plot=True, mode='global', use_surot_ext=False):
 #                'ob150029': paper_dir + 'popsycle_ob150029.ebf',
 #                'ob150211': paper_dir + 'popsycle_ob150211.ebf'
 #               }
-    ebf_list = {'ob120169': None,
+    ebf_list = {'ob120169': '/u/nsabrams/work/PopSyCLE_runs/v2023/ob12-15_targets/single_runs_v3_N20'\
+                            '_macy_targets_24-03-04/runs/OB120169_0/OB120169.ebf',
                 'ob140613': '/u/nsabrams/work/PopSyCLE_runs/v2023/ob12-15_targets/single_runs_v3_N20'\
                             '_macy_targets_24-03-04/runs/OB140613_0/OB140613.ebf',
-                'ob150029': None,
+                'ob150029': '/u/nsabrams/work/PopSyCLE_runs/v2023/ob12-15_targets/single_runs_v3_N20'\
+                            '_macy_targets_24-03-04/runs/OB150029_0/OB150029.ebf',
                 'ob150211': '/u/jlu/work/microlens/OB150211/a_2020_08_18/notes/ob150211.ebf'
                  }
 
@@ -4185,9 +4184,9 @@ def compare_all_linear_motions(save_all=False):
                      format='{:.3f}', unit='mas')
     signal = Column(data=signal, name='significance')
     all_chi2 = Column(data=all_chi2, name='$\chi^2$a', format='{:.2f}')
-    all_chi2_red = Column(data=all_chi2_red, name='$\chi^2_{red}$a', format='{:.2f}')
+    all_chi2_red = Column(data=all_chi2_red, name='$\tilde{\chi}^2$a', format='{:.2f}')
     cut_chi2 = Column(data=cut_chi2, name='$\chi^2$', format='{:.2f}')
-    cut_chi2_red = Column(data=cut_chi2_red, name='$\chi^2_{red}$', format='{:.2f}')
+    cut_chi2_red = Column(data=cut_chi2_red, name='$\tilde{\chi}^2$', format='{:.2f}')
 
     tab = Table((Column(data=objects, name='Object'), all_chi2, all_chi2_red, cut_chi2, cut_chi2_red,\
                      av_dev, av_deve, signal))
@@ -4674,7 +4673,7 @@ def table_ob120169_phot_astrom():
                                                                stats_ast['MAP_logL'][ast_u0p],
                                                                stats_ast['Med_logL'][ast_u0p])
                    + '\\\ \n')
-    tab_file.write('$\chi^2_{dof}$ ' 
+    tab_file.write('$\tilde{\chi}^2$ '
                    + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
                                                                stats_pho['MAP_rchi2'][pho_u0p],
                                                                stats_pho['Med_rchi2'][pho_u0p])
@@ -4842,7 +4841,7 @@ def table_ob140613_phot_astrom():
                                                                stats_ast['MAP_logL'][ast_u0p],
                                                                stats_ast['Med_logL'][ast_u0p])
                    + ' \\\ \n')
-    tab_file.write('$\chi^2_{dof}$ ' 
+    tab_file.write('$\tilde{\chi}^2$ '
                    + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
                                                                stats_pho['MAP_rchi2'][pho_u0p],
                                                                stats_pho['Med_rchi2'][pho_u0p])
@@ -5003,7 +5002,7 @@ def table_ob150029_phot_astrom():
                                                                stats_ast['MAP_logL'][ast_u0m],
                                                                stats_ast['Med_logL'][ast_u0m])
                    + ' \\\ \n')
-    tab_file.write('$\chi^2_{dof}$ ' 
+    tab_file.write('$\tilde{\chi}^2$ '
                    + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
                                                                stats_pho['MAP_rchi2'][pho_u0m],
                                                                stats_pho['Med_rchi2'][pho_u0m])
@@ -5165,7 +5164,7 @@ def table_ob150211_phot():
                                                                stats_pho['MAP_logL'][pho_u0m],
                                                                stats_pho['Med_logL'][pho_u0m])
                    + ' \\\ \n')
-    tab_file.write('$\chi^2_{dof}$ ' 
+    tab_file.write('$\tilde{\chi}^2$ '
                    + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
                                                                stats_pho['MAP_rchi2'][pho_u0p],
                                                                stats_pho['Med_rchi2'][pho_u0p])
@@ -5355,7 +5354,7 @@ def table_ob150211_phot_astrom():
 #                                                               stats_ast['MAP_logL'][ast_u0m_al],
 #                                                               stats_ast['Med_logL'][ast_u0m_al])
                    + ' \\\ \n')
-    tab_file.write('$\chi^2_{dof}$ ' 
+    tab_file.write('$\tilde{\chi}^2$ '
                    + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0m],
                                                                stats_ast['MAP_rchi2'][ast_u0m],
                                                                stats_ast['Med_rchi2'][ast_u0m])
@@ -5970,6 +5969,8 @@ def make_pBH_detect_table():
     plt.savefig(paper_dir + 'ndetect_bh_prob.png')
 
     return
+    
+
 
 def calc_pk(k, pi_arr):
     """
@@ -6030,6 +6031,7 @@ def plot_trace_corner(target):
               'mult_err2': '$\\varepsilon_{m,Kp}$',
               'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
               'mL':       '$M_L (M_\odot)$',
+              'log_mL':       '$\log_{10} [M_L (M_\odot)]$',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
@@ -6057,7 +6059,24 @@ def plot_trace_corner(target):
     fitter_params = copy.deepcopy(fitter.all_param_names)
     smy = calc_summary_statistics(fitter)
     fitter.all_param_names = fitter_params
+    
+    #
+    # Add log mL
+    #
+    idx_mL = fitter.all_param_names.index('mL')
+    
+    logmL = np.log10(res['samples'][:, idx_mL])
+    res['samples'] = np.append(res['samples'], np.array([logmL]).T, axis=1)
+    for mm in range(len(res_m)):
+        logmL_m = np.log10(res_m[mm]['samples'][:, idx_mL])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([logmL_m]).T, axis=1)
 
+    fitter.all_param_names.append('log_mL')
+    smy['MaxLike_log_mL'] = np.log10(smy['MaxLike_mL'])
+    smy['MAP_log_mL'] = np.log10(smy['MAP_mL'])
+    smy['Med_log_mL'] = np.log10(smy['Med_mL'])
+    params_global['log_mL'] = np.log10(params_global['mL'])
+    
     #
     # Add ampltidue of piE
     #
@@ -6147,7 +6166,7 @@ def plot_trace_corner(target):
     ##########
 
     # First subset
-    fig5 = ['mL', 'piE', 'muRel']
+    fig5 = ['log_mL', 'piE', 'muRel']
     fig1 = ['mL', 'u0_amp', 'tE', 'piE', 'log10_thetaE', 'muRel', 'piRel', ]
     fig2 = ['mL', 'piS', 'piL', 'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 't0']
     # if target == 'ob140613':
@@ -6191,8 +6210,10 @@ def plot_trace_corner(target):
                           dims=idx, labels=ax_labels[idx], truths=truths[idx],
                           show_titles=False, quantiles=quantiles,
                           fig=(fig, axes),  smooth=smooth) #span=span,
-        ax = plt.gca()
-        ax.tick_params(axis='both', which='major', labelsize=10)
+        #ax = plt.gca()
+        [[ax.tick_params(axis='both', which='major', labelsize=30) for ax in axs] for axs in axes]
+        [[ax.xaxis.get_label().set_fontsize(30) for ax in axs] for axs in axes]
+        [[ax.yaxis.get_label().set_fontsize(30) for ax in axs] for axs in axes]
         plt.savefig(paper_dir + target + '_dy_corner_' + str(ii) + '.png', bbox_inches="tight")
     
     plt.close('all')
@@ -6227,8 +6248,10 @@ def plot_trace_corner(target):
                                       dims=idx, labels=ax_labels[idx], truths=truths_m[mm, idx],
                                       show_titles=False, quantiles=quantiles,
                                       fig=(fig, axes), smooth=smooth) # span=span,
-                ax = plt.gca()
-                ax.tick_params(axis='both', which='major', labelsize=10)
+                #ax = plt.gca()
+                [[ax.tick_params(axis='both', which='major', labelsize=30) for ax in axs] for axs in axes]
+                [[ax.xaxis.get_label().set_fontsize(30) for ax in axs] for axs in axes]
+                [[ax.yaxis.get_label().set_fontsize(30) for ax in axs] for axs in axes]
                 plt.savefig(paper_dir + target + '_dy_corner_' + 'mode' + str(mm) + '_' + str(ii) + '.png',
                             bbox_inches="tight")
     
