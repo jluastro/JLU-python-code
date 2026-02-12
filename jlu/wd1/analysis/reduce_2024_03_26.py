@@ -1977,7 +1977,7 @@ def make_catalog_from_align(align_root):
 
 def combine_mosaic_pos(catalog_name_in, catalog_name_out):
     t = Table.read(work_dir + '/50.ALIGN_KS2/' + catalog_name_in)
-    
+
     # First we need to combine all the positions of the mosaic together.
     mosaic_epochs = ['2010_F125W', '2010_F139M', '2010_F160W', '2013_F160W', '2015_F160W']
     pos = ['pos1', 'pos2', 'pos3', 'pos4']

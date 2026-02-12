@@ -15,7 +15,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from flystar.startables import StarTable
-from flystar.fit_velocity import linear_fit
+# from flystar.fit_velocity import linear_fit
+from flystar.motion_model import Linear
 from jlu import photometry as photo
 from matplotlib import colors
 from tqdm import tqdm
@@ -40,7 +41,7 @@ from matplotlib import colorbar
 from tqdm import tqdm
 
 user_path = os.path.expanduser('~')
-work_dir = f'{user_path}/Westerlund1/data/reduce_2024_03_26/'
+work_dir = f'{user_path}/Westerlund1/data/reduce_2024_10_23/'
 # code_dir = '/u/jlu/code/fortran/hst/'
 
 # Load this variable with outputs from calc_years()
@@ -1310,18 +1311,32 @@ def make_master_list(data_dir, years=years, pscale=50, vel_cut=0.7, vel_err_cut=
     t0 = np.zeros(N)
 
     for i in tqdm(range(len(x))):
-        vx_result = linear_fit(t[1:] - t_reference, x[i, 1:] * pscale, sigma=xe[i, 1:] * pscale)
-        vy_result = linear_fit(t[1:] - t_reference, y[i, 1:] * pscale, sigma=ye[i, 1:] * pscale)
-        vx[i] = vx_result['slope']
-        vy[i] = vy_result['slope']
-        vxe[i] = vx_result['e_slope']
-        vye[i] = vy_result['e_slope']
-        x0[i] = vx_result['intercept']
-        y0[i] = vy_result['intercept']
-        x0e[i] = vx_result['e_intercept']
-        y0e[i] = vy_result['e_intercept']
-        chi2_vx[i] = vx_result['chi2']
-        chi2_vy[i] = vy_result['chi2']
+        mm = Linear()
+        params, param_errors = mm.fit(
+            t=t[1:],
+            x=x[i, 1:] * pscale,
+            y=y[i, 1:] * pscale,
+            xe=xe[i, 1:] * pscale,
+            ye=ye[i, 1:] * pscale,
+            t0=t_reference
+        )
+
+        x0[i], vx[i], y0[i], vy[i] = params
+        x0e[i], vxe[i], y0e[i], vye[i] = param_errors
+        chi2_vx[i], chi2_vy[i] = mm.calc_chi2(params, np.array([t_reference]), t[1:], x[i, 1:], y[i, 1:], xe[i, 1:], ye[i, 1:])
+
+        # vx_result = linear_fit(t[1:] - t_reference, x[i, 1:] * pscale, sigma=xe[i, 1:] * pscale)
+        # vy_result = linear_fit(t[1:] - t_reference, y[i, 1:] * pscale, sigma=ye[i, 1:] * pscale)
+        # vx[i] = vx_result['slope']
+        # vy[i] = vy_result['slope']
+        # vxe[i] = vx_result['e_slope']
+        # vye[i] = vy_result['e_slope']
+        # x0[i] = vx_result['intercept']
+        # y0[i] = vy_result['intercept']
+        # x0e[i] = vx_result['e_intercept']
+        # y0e[i] = vy_result['e_intercept']
+        # chi2_vx[i] = vx_result['chi2']
+        # chi2_vy[i] = vy_result['chi2']
         t0[i] = np.average(t, weights=1. / np.hypot(xe[i], ye[i]))
 
     fig, ax = plt.subplots()
@@ -2082,6 +2097,95 @@ def make_brite_list_2010(reduce_path):
 
     return
 
+def make_brite_list_2024_F160Ws(reduce_path):
+    """
+    Copy over the MATCHUP ref5 files from the 02.MAT directory. It has to be ref5
+    because we want the starlists to be matched. The difference between ref5 and
+    refClust is very small.
+    
+    Take an input list of MATCHUP files (assumes they have the same stars, and the
+    same length) and trim out only the bright stars. The resulting output file contains
+    the X and Y position (from the first file) and the list of all magnitudes for each star.
+
+    trimMags is a list of brightness criteria for each of the matchup files. Any star
+    that satisfies this criteria in any one of the filters will be added to the global
+    bright list.
+
+    This is a modified version of the code that is in hst_flystar. The modifications
+    include:
+    - for bright stars, detection in only 1 filter is required.
+    - a set of hand selected brite stars are validated and added to the list.
+    """
+    matchup_file = ['MATCHUP.XYMEEE.F160Ws.2024.ref5']
+    trimMags = [-8, -7, -8]
+
+    # os.chdir(f'{reduce_path}/12.KS2_2010')
+    shutil.copy(f'{reduce_path}/02.MAT/{matchup_file[0]}', f'{reduce_path}/15.KS2_2024/')
+
+    # Read in the matchup files.
+    list_160 = starlists.read_matchup(f'{reduce_path}/15.KS2_2024/{matchup_file[0]}')
+
+    stars = astropy.table.hstack([list_160])
+    print('Loaded {0} stars'.format(len(stars)))
+
+    # Trim down based on the magnitude cuts. Non-detections will pass
+    # through as long as there is a valid detection in at least one filter.
+    good1 = np.where((stars['m'] < trimMags[0]))[0]
+
+    stars = stars[good1]
+    print('Keeping {0} stars that meet brightness cuts'.format(len(stars)))
+
+    # For sources fainter than [-10, -9, -10], they must be in
+    # all three epochs.
+    keep = np.zeros(len(stars), dtype=bool)
+
+    mag_rng = [-10, -9, -10]
+    good2 = np.where((stars['m'] > mag_rng[0]) & (stars['m'] < 0))[0]
+    keep[good2] = True
+
+    # For sources between [-14, -13, -14] and [-10, -9, -10], they must be in
+    # at least two epochs.
+    mag_lo = [-10, -9, -10]
+    mag_hi = [-14, -13, -14]
+    in12 = np.where((stars['m'] > mag_hi[0]) & (stars['m'] < mag_lo[0]))[0]
+
+    keep[in12] = True
+
+    # For sources brighter than [-14, -13, -14], they must be detected in
+    # at least one epoch.
+    mag_lim = [-14, -13, -14]
+    good3 = np.where((stars['m'] < mag_lim[0]))[0]
+    keep[good3] = True
+
+    stars = stars[keep]
+
+    # Save the matchup stars to a file (with errors). Later on,
+    # these will be appended to the ks2 output if ks2 doesn't find
+    # the bright source. In other wordes, trust the one pass output
+    # at the brightest stars.
+    brite_obs_160 = open(f'{reduce_path}/15.KS2_2024/BRITE_F160Ws.XYM', 'w')
+
+    for ii in range(len(stars)):
+        fmt = '{x:10.4f}  {y:10.4f}  {m:10.4f}\n'
+
+        brite_obs_160.write(fmt.format(x=stars['x'][ii],
+                                       y=stars['y'][ii],
+                                       m=stars['m'][ii]))
+
+    brite_obs_160.close()
+    
+
+    # Double check that everything has a valid magnitude
+    idx = np.where((stars['m'] < 0) &
+                   (stars['x'] != 0) &
+                   (stars['y'] != 0))[0]
+    if len(idx) != len(stars):
+        print('FAILED: finding some bright stars with ')
+        print('no magnitudes in some filters')
+        pdb.set_trace()
+
+    return
+
 def find_top_stars(reread=False):
     """
     Select some stars to be our topStars named sources.
@@ -2096,6 +2200,8 @@ def find_top_stars(reread=False):
     root_2013_160s = work_dir + '/13.KS2_2013/nimfo2bar.xymeee.F2'
     root_2015_160 = work_dir + '/14.KS2_2015/nimfo2bar.xymeee.F1'
     root_2015_160s = work_dir + '/14.KS2_2015/nimfo2bar.xymeee.F2'
+    root_2024_160 = work_dir + '/15.KS2_2024/nimfo2bar.xymeee.F1'
+    root_2024_160s = work_dir + '/15.KS2_2024/nimfo2bar.xymeee.F2'
 
     print('Reading data')
     if reread == True:
@@ -2107,6 +2213,8 @@ def find_top_stars(reread=False):
         t_2013_160s = starlists.read_nimfo2bar(root_2013_160s)
         t_2015_160 = starlists.read_nimfo2bar(root_2015_160)
         t_2015_160s = starlists.read_nimfo2bar(root_2015_160s)
+        t_2024_160 = starlists.read_nimfo2bar(root_2024_160)
+        t_2024_160s = starlists.read_nimfo2bar(root_2024_160s)
 
         t_2005_814.write(root_2005_814 + '.fits', overwrite=True)
         t_2010_160.write(root_2010_160 + '.fits', overwrite=True)
@@ -2116,6 +2224,8 @@ def find_top_stars(reread=False):
         t_2013_160s.write(root_2013_160s + '.fits', overwrite=True)
         t_2015_160.write(root_2015_160 + '.fits', overwrite=True)
         t_2015_160s.write(root_2015_160s + '.fits', overwrite=True)
+        t_2024_160.write(root_2024_160 + '.fits', overwrite=True)
+        t_2024_160s.write(root_2024_160s + '.fits', overwrite=True)
     else:
         t_2005_814 = Table.read(root_2005_814 + '.fits')
         t_2010_160 = Table.read(root_2010_160 + '.fits')
@@ -2125,6 +2235,7 @@ def find_top_stars(reread=False):
         t_2013_160s = Table.read(root_2013_160s + '.fits')
         t_2015_160 = Table.read(root_2015_160 + '.fits')
         t_2015_160s = Table.read(root_2015_160s + '.fits')
+        t_2024_160 = Table.read(root_2024_160 + '.fits')
         
 
     # Trim them all down to some decent magnitude ranges. These
@@ -2144,6 +2255,8 @@ def find_top_stars(reread=False):
     g_2013_160s = np.where(t_2013_160s['m'] < lo160)[0]
     g_2015_160 = np.where(t_2015_160['m'] < lo160)[0]
     g_2015_160s = np.where(t_2015_160s['m'] < lo160)[0]
+    g_2024_160 = np.where(t_2024_160['m'] < lo160)[0]
+    g_2024_160s = np.where(t_2024_160s['m'] < lo160)[0]
 
     t_2005_814 = t_2005_814[g_2005_814]
     t_2010_125 = t_2010_125[g_2010_125]
@@ -2153,6 +2266,8 @@ def find_top_stars(reread=False):
     t_2013_160s = t_2013_160s[g_2013_160s]
     t_2015_160 = t_2015_160[g_2015_160]
     t_2015_160s = t_2015_160s[g_2015_160s]
+    t_2024_160 = t_2024_160[g_2024_160]
+    t_2024_160s = t_2024_160s[g_2024_160s]
 
     # Cross match all the sources. All positions should agree to within
     # a pixel. Do this consecutively so that you build up the good matches.
@@ -2219,19 +2334,48 @@ def find_top_stars(reread=False):
     t_2015_160 = t_2015_160[r6[0]]
     t_2015_160s = t_2015_160s[r6[1]]
     
-    print('Matching 2010_160 and 2005_814')
+    print('Matching 2010_160 and 2024_160')
     r7 = align.match(t_2010_160['x'], t_2010_160['y'], t_2010_160['m'],
-                     t_2005_814['x'], t_2005_814['y'], t_2005_814['m'] + 4.2,
+                     t_2024_160['x'], t_2024_160['y'], t_2024_160['m'],
                      dr_tol=0.5, dm_tol=1.0)
-    print('    found {0:d} matches'.format(len(r7[0])))
+    print('    found {0:d} matches'.format(len(r6[0])))
     t_2010_160 = t_2010_160[r7[0]]
     t_2010_125 = t_2010_125[r7[0]]
-    t_2010_139 = t_2010_139[r7[0]]
+    t_2010_159 = t_2010_159[r7[0]]
     t_2013_160 = t_2013_160[r7[0]]
     t_2013_160s = t_2013_160s[r7[0]]
     t_2015_160 = t_2015_160[r7[0]]
     t_2015_160s = t_2015_160s[r7[0]]
-    t_2005_814 = t_2005_814[r7[1]]
+    t_2024_160 = t_2024_160[r7[1]]
+    
+    print('Matching 2010_160 and 2024_160s')
+    r8 = align.match(t_2010_160['x'], t_2010_160['y'], t_2010_160['m'],
+                     t_2024_160s['x'], t_2024_160s['y'], t_2024_160s['m'],
+                     dr_tol=0.5, dm_tol=1.0)
+    print('    found {0:d} matches'.format(len(r6[0])))
+    t_2010_160 = t_2010_160[r8[0]]
+    t_2010_125 = t_2010_125[r8[0]]
+    t_2010_159 = t_2010_159[r8[0]]
+    t_2013_160 = t_2013_160[r8[0]]
+    t_2013_160s = t_2013_160s[r8[0]]
+    t_2015_160 = t_2015_160[r8[0]]
+    t_2015_160s = t_2015_160s[r8[0]]
+    t_2024_160 = t_2024_160[r8[0]]
+    t_2024_160s = t_2024_160s[r8[1]]
+
+    print('Matching 2010_160 and 2005_814')
+    r9 = align.match(t_2010_160['x'], t_2010_160['y'], t_2010_160['m'],
+                     t_2005_814['x'], t_2005_814['y'], t_2005_814['m'] + 4.2,
+                     dr_tol=0.5, dm_tol=1.0)
+    print('    found {0:d} matches'.format(len(r7[0])))
+    t_2010_160 = t_2010_160[r9[0]]
+    t_2010_125 = t_2010_125[r9[0]]
+    t_2010_139 = t_2010_139[r9[0]]
+    t_2013_160 = t_2013_160[r9[0]]
+    t_2013_160s = t_2013_160s[r9[0]]
+    t_2015_160 = t_2015_160[r9[0]]
+    t_2015_160s = t_2015_160s[r9[0]]
+    t_2005_814 = t_2005_814[r9[1]]
 
     # Sort by brightness and print
     sdx = t_2010_160['m'].argsort()
@@ -2266,7 +2410,7 @@ def find_top_stars(reread=False):
 
     return
 
-def combine_nimfo2bar_brite():
+def combine_nimfo2bar_brite(reduce_path):
     """
     For all the data, we need to add back in the missing bright stars
     from the one-pass analysis.
@@ -2278,7 +2422,10 @@ def combine_nimfo2bar_brite():
               '2013_F160W_pos1', '2013_F160W_pos2', '2013_F160W_pos3', '2013_F160W_pos4',
               '2013_F160Ws',
               '2015_F160W_pos1', '2015_F160W_pos2', '2015_F160W_pos3', '2015_F160W_pos4',
-              '2015_F160Ws']
+              '2015_F160Ws',
+              '2024_F160W_pos1', '2024_F160W_pos2', '2024_F160W_pos3', '2024_F160W_pos4',
+              '2024_F160Ws'
+              ]
     magCuts = [-13.5, 
                -10, -10, -10, -10,
                 -9,  -9,  -9,  -9,
@@ -2286,7 +2433,10 @@ def combine_nimfo2bar_brite():
                -10, -10, -10, -10,
                -12,
                -10, -10, -10, -10,
-               -12]
+               -12,
+               -10, -10, -10, -10,
+               -12
+               ]
                
     
     for ee in range(len(epochs)):
@@ -2294,17 +2444,17 @@ def combine_nimfo2bar_brite():
         year = ep.split('_')[0]
         filt = ep.split('_')[1]
 
-        mat_dir = work_dir + '/03.MAT_POS/' + ep + '/01.XYM/'
+        mat_dir =  f'{reduce_path}/03.MAT_POS/' + ep + '/01.XYM/'
         mat_file = 'MATCHUP.XYMEEE'
-        ks2_dir = work_dir
+        ks2_dir = reduce_path
         ks2_file = 'nimfo2bar.xymeee.F1'
         N_filter = 1
         if year == '2005':
-            ks2_dir += '11.KS2_2005/'
+            ks2_dir += '/11.KS2_2005/'
             ks2_file = ks2_file.replace('.F1', '.ks2.F1')
 
         if year == '2010':
-            ks2_dir += '12.KS2_2010/0{pos}.pos{pos}/'.format(pos=ep[-1])
+            ks2_dir += '/12.KS2_2010/0{pos}.pos{pos}/'.format(pos=ep[-1])
             N_filter = 3
             if filt == 'F139M':
                 ks2_file = ks2_file.replace('.F1', '.F2')
@@ -2312,19 +2462,26 @@ def combine_nimfo2bar_brite():
                 ks2_file = ks2_file.replace('.F1', '.F3')
 
         if year == '2013':
-            ks2_dir += '13.KS2_2013/'
+            ks2_dir += '/13.KS2_2013/'
             if ep.endswith('s'):
                 ks2_dir += '05.F160Ws/'
             else:
                 ks2_dir += '0{pos}.pos{pos}/'.format(pos=ep[-1])
 
         if year == '2015':
-            ks2_dir += '14.KS2_2015/'
+            ks2_dir += '/14.KS2_2015/'
             if ep.endswith('s'):
                 ks2_dir += '05.F160Ws/'
             else:
                 ks2_dir += '0{pos}.pos{pos}/'.format(pos=ep[-1])
-                
+        
+        if year == '2024':
+            ks2_dir += '/15.KS2_2024/'
+            if ep.endswith('s'):
+                ks2_dir += '05.F160Ws/'
+            else:
+                ks2_dir += '0{pos}.pos{pos}/'.format(pos=ep[-1])
+        
         one = starlists.read_matchup(mat_dir + mat_file)
         ks2 = starlists.read_nimfo2bar(ks2_dir + ks2_file)
 
@@ -2408,7 +2565,7 @@ def combine_nimfo2bar_brite():
                   format='ascii.fixed_width_no_header', delimiter=' ',
                   formats={'x': '%10.4f', 'y': '%10.4f', 'm': '%10.3f', 
                            'xe': '%10.4f', 'ye': '%10.4f', 'me': '%10.3f',
-                           'N_fnd': '%3d', 'N_xywell': '%3d', 'name': lambda n: n.decode('utf-8').zfill(6)},
+                           'N_fnd': '%3d', 'N_xywell': '%3d', 'name': lambda n: n.zfill(6)},
                   overwrite=True)
 
             
@@ -2585,7 +2742,14 @@ def add_velocities_to_catalog(catalog_in_dir, catalog_out_dir, epochs=['2005_F81
     startable.meta['HIERARCH LIST_TIMES'] = startable.meta['YEARS']
     epoch_cols = [startable.meta['EPNAMES'].index(_) for _ in epochs]
     mask_lists = [_ for _ in range(len(startable.meta['YEARS'])) if _ not in epoch_cols]
-    startable.fit_velocities(weighting=weighting, use_scipy=use_scipy, absolute_sigma=absolute_sigma, bootstrap=bootstrap, fixed_t0=fixed_t0, verbose=verbose, mask_val=mask_val, mask_lists=mask_lists, show_progress=show_progress)
+    # startable.fit_velocities(weighting=weighting, use_scipy=use_scipy, absolute_sigma=absolute_sigma, bootstrap=bootstrap, fixed_t0=fixed_t0, verbose=verbose, mask_val=mask_val, mask_lists=mask_lists, show_progress=show_progress)
+    startable.fit_velocities_all_detected(
+        motion_model_to_fit=motion_model.Linear(),
+        weighting=weighting,
+        use_scipy=use_scipy,
+        absolute_sigma=absolute_sigma,
+        epoch_cols='all'
+    )
     startable.write(catalog_out_dir, overwrite=True)
     return
     
@@ -3943,19 +4107,21 @@ def catalog_fix_magnitudes(catalog_in, catalog_out):
     d.write(catalog_out, overwrite=True)
 
     return
-        
 
-def plot_chi2_dist(startable, chi2_lim=10, bins=20, log=True):
+
+def plot_chi2_dist(startable, chi2_lim=10, bins=20, log=True, save_path=None):
     xs = np.linspace(0, chi2_lim, 100)
     fig, ax = plt.subplots()
-    ax.hist(startable['chi2_vx'], bins=bins, range=(0, chi2_lim), histtype='step', density=True, log=log, label=r'$\chi^2(v_x)$')
-    ax.hist(startable['chi2_vy'], bins=bins, range=(0, chi2_lim), histtype='step', density=True, log=log, label=r'$\chi^2(v_y)$')
+    ax.hist(startable['chi2_x'], bins=bins, range=(0, chi2_lim), histtype='step', density=True, log=log, label=r'$\chi^2(v_x)$')
+    ax.hist(startable['chi2_y'], bins=bins, range=(0, chi2_lim), histtype='step', density=True, log=log, label=r'$\chi^2(v_y)$')
     ax.plot(xs, chi2.pdf(xs, 2), color='C3', label=r'$\chi_2^2$')
     ax.set_xlabel(r'$\chi^2$')
     ax.set_ylabel('Density')
     ax.legend()
     ax.set_title(r'$N_\mathrm{epoch}=4, N_\mathrm{dof}=2$')
-    fig.tight_layout()
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
 # def junk():
