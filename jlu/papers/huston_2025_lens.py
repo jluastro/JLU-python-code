@@ -16,7 +16,7 @@ from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 from matplotlib.ticker import NullFormatter
 import os, shutil
 from scipy.ndimage import gaussian_filter as norm_kde
-from microlens.jlu import  multinest_utils, multinest_plot, munge_ob150211, munge_ob150029,munge
+from microlens.jlu import  multinest_utils, multinest_plot, munge
 from bagle import model, model_fitter, parallax
 import dynesty.utils as dyutil
 from astropy.stats import sigma_clipped_stats
@@ -44,7 +44,7 @@ ep_ob120169 = ['12jun',   '12jul',   '13apr',   '13jul', '15may05',
 
 ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
                '17jun05', '17jul14', '18may11', '18aug16', '19apr17',
-               '19apr21os']
+               '19apr21os'] #, '25aug02os']
 
 ep_ob150029 = ['15jun07', '15jul23', '16may24', '16jul14', '17may21',
                '17jul14', '17jul19', '18aug21', '19apr17']
@@ -61,10 +61,10 @@ paper_dir = '/u/mhuston/work/kecktargs_paper/paper_figs/'
 # paper_dir = '/u/casey/scratch/code/JLU-python-code/jlu/papers/'
 mlens_dir = '/u/jlu/work/microlens/'
 
-a_date = {'ob120169': '2025_10_31',
-          'ob140613': '2025_10_31',
-          'ob150029': '2025_10_31',
-          'ob150211': '2025_10_31'}
+a_date = {'ob120169': '2026_01_07',
+          'ob140613': '2026_01_07',
+          'ob150029': '2026_01_07',
+          'ob150211': '2026_01_07'}
 
 comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
               'ob140613': ['S002_15_0.7', 'S001_15_0.9'],
@@ -82,30 +82,37 @@ comp_stars = {'ob120169': ['ob120169_L', 'S24_18_0.8'],
 #                 'ob150211': ''}
 
 a_dir = {}
-astrom_data = {}
-
 for targ in a_date:
     a_dir[targ] = mlens_dir + targ.upper() + '/a_' + a_date[targ] + '/'
-    astrom_data[targ] = a_dir[targ] + targ + '_plx_final.fits'
+    #astrom_data[targ] = a_dir[targ] + targ + '_plx_final.fits'
+    
+astrom_data = {'ob120169' : a_dir['ob120169'] + 'ob120169_plx_gaia_final.fits',
+                'ob140613' : a_dir['ob140613'] + 'ob140613_plx_sp_noos.fits',
+                'ob150029' : a_dir['ob150029'] + 'ob150029_plx_gaia_final.fits',
+                'ob150211' : a_dir['ob150211'] + 'ob150211_plx_gaia_final.fits'
+                }
 astrom_data['ob110462_23apr'] = None
 
-ogle_phot_all = {'ob120169_none' : a_dir['ob120169'] + 'model_fits/102_fit_phot_parallax/a0_',
-                 'ob120169_add'  : a_dir['ob120169'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
-                 'ob120169_mult' : a_dir['ob120169'] + 'model_fits/101_fit_phot_parallax_merr/a0_',
-                 'ob120169_gp'   : a_dir['ob120169'] + 'model_fits/201_phot_ogle_gp/a0_',
-                 'ob140613_none' : a_dir['ob140613'] + 'model_fits/102_fit_phot_parallax/a0_',
-                 'ob140613_add'  : a_dir['ob140613'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
-                 'ob140613_mult' : a_dir['ob140613'] + 'model_fits/101_fit_phot_parallax_merr/a0_',
-                 'ob140613_gp'   : a_dir['ob140613'] + 'model_fits/201_phot_ogle_gp/a0_',
-                 'ob150029_none' : a_dir['ob150029'] + 'model_fits/102_fit_phot_parallax/a0_',
-                 'ob150029_add'  : a_dir['ob150029'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
-                 'ob150029_mult' : a_dir['ob150029'] + 'model_fits/101_fit_phot_parallax_merr/a0_',
-                 'ob150029_gp'   : a_dir['ob150029'] + 'model_fits/201_phot_ogle_gp/a0_',
-                 'ob150211_none' : a_dir['ob150211'] + 'model_fits/102_fit_phot_parallax/a0_',
-                 'ob150211_add'  : a_dir['ob150211'] + 'model_fits/103_fit_phot_parallax_aerr/a0_',
-                 'ob150211_mult' : a_dir['ob150211'] + 'model_fits/101_fit_phot_parallax_merr/a0_',
-                 'ob150211_gp'   : a_dir['ob150211'] + 'model_fits/0201_phot_ogle_gp_old/a0_'}
-    
+ogle_phot_all = {'ob120169_none'    : a_dir['ob120169'] + 'model_fits/ogle_only/102_fit_phot_parallax/a1_',
+                 'ob120169_add'     : a_dir['ob120169'] + 'model_fits/ogle_only/103_fit_phot_parallax_aerr/a3_',
+                 'ob120169_mult'    : a_dir['ob120169'] + 'model_fits/ogle_only/101_fit_phot_parallax_merr/a0_',
+                 'ob120169_addmult' : a_dir['ob120169'] + 'model_fits/ogle_only/104_fit_phot_parallax_aerr_merr/a2_',
+                 'ob120169_gp'      : a_dir['ob120169'] + 'model_fits/ogle_only/201_phot_ogle_gp/b2_',
+                 'ob140613_none'    : a_dir['ob140613'] + 'model_fits/perlmutter/ogle_moa_only/102_phot/a1_',
+                 'ob140613_add'     : a_dir['ob140613'] + 'model_fits/perlmutter/ogle_moa_only/103_phot_aerr/a4_',
+                 'ob140613_mult'    : a_dir['ob140613'] + 'model_fits/perlmutter/ogle_moa_only/101_phot_merr/a4_',
+                 'ob140613_addmult' : a_dir['ob140613'] + 'model_fits/perlmutter/ogle_moa_only/104_phot_aerr_merr/a1_',
+                 'ob140613_gp'      : a_dir['ob140613'] + 'model_fits/perlmutter/ogle_moa_only/201_phot_gp/b1_',
+                 'ob150029_none'    : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/102_phot/a2_',
+                 'ob150029_add'     : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/103_phot_aerr/a0_',
+                 'ob150029_mult'    : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/101_phot_merr/a4_',
+                 'ob150029_addmult' : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/104_phot_aerr_merr/a3_',
+                 'ob150029_gp'      : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/201_phot_gp/b0_',
+                 'ob150211_none'    : a_dir['ob150211'] + 'model_fits/ogle_only/102_fit_phot_parallax/a1_',
+                 'ob150211_add'     : a_dir['ob150211'] + 'model_fits/ogle_only/103_fit_phot_parallax_aerr/a2_',
+                 'ob150211_mult'    : a_dir['ob150211'] + 'model_fits/ogle_only/101_fit_phot_parallax_merr/a4_',
+                 'ob150211_addmult' : a_dir['ob150211'] + 'model_fits/ogle_only/104_fit_phot_parallax_aerr_merr/a4_',
+                 'ob150211_gp'      : a_dir['ob150211'] + 'model_fits/ogle_only/0201_phot_ogle_gp_old/b2_'}
     
 photom_spitzer = {'ob120169': None,
                   'ob140613': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob140613_phot_2.txt',
@@ -113,19 +120,17 @@ photom_spitzer = {'ob120169': None,
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
 # With GP.
-pspl_phot = {'ob120169' : ogle_phot_all['ob120169_gp'],
-             'ob140613' : ogle_phot_all['ob140613_gp'],
-             'ob150029' : ogle_phot_all['ob150029_gp'],
-             'ob150211' : ogle_phot_all['ob150211_gp']}
+pspl_phot = {'ob120169' : ogle_phot_all['ob120169_addmult'],
+             'ob140613' : ogle_phot_all['ob140613_addmult'],
+             'ob150029' : ogle_phot_all['ob150029_addmult'],
+             'ob150211' : ogle_phot_all['ob150211_add']}
 
 # With GP: Not done running -- need to update.
-pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
-                      'ob140613' : a_dir['ob140613'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
-                      'ob150029' : a_dir['ob150029'] + 'model_fits/DONTUSE_220_phot_astrom_gp/a0_',
-                      'ob150211' : a_dir['ob150211'] + 'model_fits/0220_phot_astrom_gp_old/c0_',
-                      #'ob150211_unsplit' : a_dir['ob150211'] + 'model_fits/0220_phot_astrom_gp_old/a0_',
+pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/ogle_keck/124_phot_astrom_aerr_merr/a4_',
+                      'ob140613' : a_dir['ob140613'] + 'model_fits/perlmutter/NOOS/ogle_moa_keck/124_phot_astrom_aerr_merr/a2_',
+                      'ob150029' : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_keck/124noV_phot_astrom_aerr_merr/a1_',
+                      'ob150211' : a_dir['ob150211'] + 'model_fits/ogle_keck/123_phot_astrom_aerr/a0_',
                       'OB110462' : "/u/jlu/work/microlens/OB110462/a_2023_04_23/model_fits/hst_phot_ast/trunc_ogle/all_hst/base_a/a0_"}
-
 
 # 0-based... so 0 = first mode (after the global solution).
 pspl_ast_multiphot_mode = {'ob120169': 0,
@@ -133,7 +138,7 @@ pspl_ast_multiphot_mode = {'ob120169': 0,
                            'ob150029': 0,
                            'ob150211': 0}
 
-# With GP: Not done running
+# WITH GP WAS BAD - RETHINK
 pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
                   'ob140613' : a_dir['ob140613'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
                   'ob150029' : a_dir['ob150029'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
@@ -165,63 +170,63 @@ popsycle_events = '/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock
 
 
 def all_paper():
-    plot_images()
-    make_obs_table()
-    calc_base_mag()
-    plot_pos_err()
+    #plot_images()
+    #make_obs_table()
+    #calc_base_mag()
+    #plot_pos_err()
 
     #compare_all_linear_motions()
-    plot_linear_motion_all()
+    #plot_linear_motion_all()
 
     # separate_modes_all()
     # separate_ob150211_modes()
 
-    plot_ob120169_phot_ast()
-    plot_ob140613_phot_ast()
-    plot_ob150029_phot_ast()
-    plot_ob150211_phot_ast()
+    #plot_ob120169_phot_ast()
+    #plot_ob140613_phot_ast()
+    #plot_ob150029_phot_ast()
+    #plot_ob150211_phot_ast()
 
     # PSPL Fit Tables and Results Values
     # org_solutions_for_table()
     # -- Manually adjust which solutions are positive/negative/best
     # -- and the order to display the solutions in the table functions below.
-    table_ob120169_phot_astrom()
-    table_ob140613_phot_astrom()
-    table_ob150029_phot_astrom()
-    table_ob150211_phot_astrom()
-    table_ob150211_phot()
+#    table_ob120169_phot_astrom()
+#    table_ob140613_phot_astrom()
+#    table_ob150029_phot_astrom()
+#    table_ob150211_phot_astrom()
+#    table_ob150211_phot()
 
     # Parameters and confidence intervals for the results text.
     # results_best_params_all()
 
     # Lens Geometry, velocity plots
-    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
-    for targ in targets:
-        #plot_linear_motion(targ)
-        plot_lens_geometry(targ, axis_lim_scale=1, vel_scale=0.25)
-        calc_velocity(targ)
-        plot_trace_corner(targ)
+#    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+#    for targ in targets:
+#        #plot_linear_motion(targ)
+#        plot_lens_geometry(targ, axis_lim_scale=1, vel_scale=0.25)
+#        calc_velocity(targ)
+#        plot_trace_corner(targ)
         
-    # Mass Posteriors
-    plot_ob150211_mass_posterior_modes()
-    plot_all_mass_posteriors()
-    plot_ob150211_mass_piE_muRel_all_modes()
-    
-    # Statistics
-    for targ in targets:
-        calc_bayes_factor(targ)
-
-    # tE vs. piE vs. deltaC plots
-    piE_tE_deltac(fit_type='ast')
+#    # Mass Posteriors
+#    plot_ob150211_mass_posterior_modes()
+#    plot_all_mass_posteriors()
+#    plot_ob150211_mass_piE_muRel_all_modes()
+#
+#    # Statistics
+#    for targ in targets:
+#        calc_bayes_factor(targ)
+#
+#    # tE vs. piE vs. deltaC plots
+#    piE_tE_deltac(fit_type='ast')
 
     # CMDs
     plot_cmds()
     
-    dark_lens_prob('ob150211', use_surot_ext=True)
-    dark_lens_prob('ob150211', mode='best', use_surot_ext=True)
-    dark_lens_prob('ob120169', use_surot_ext=True)
-    dark_lens_prob('ob140613', use_surot_ext=True)
-    dark_lens_prob('ob150029', use_surot_ext=True)
+#    dark_lens_prob('ob150211', use_surot_ext=True)
+#    dark_lens_prob('ob150211', mode='best', use_surot_ext=True)
+#    dark_lens_prob('ob120169', use_surot_ext=True)
+#    dark_lens_prob('ob140613', use_surot_ext=True)
+#    dark_lens_prob('ob150029', use_surot_ext=True)
 
     #####
     # OLD BROKEN STUFF
@@ -1259,16 +1264,20 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'])
 
     # Get the predicted photometry
-    m_lens_mod_gp = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0, t_pred=t_mod_pho)[0]
-    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)    
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
 
     m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
     m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
-    m_lens_mod_gp_at_phot1 = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0)[0]
-    m_lens_mod_gp_only_at_phot1 = m_lens_mod_gp_at_phot1 - m_lens_mod_at_phot1
+    use_gp = True
+    try:
+        m_lens_mod_gp = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0, t_pred=t_mod_pho)[0]
+        m_lens_mod_gp_at_phot1 = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0)[0]
+        m_lens_mod_gp_only_at_phot1 = m_lens_mod_gp_at_phot1 - m_lens_mod_at_phot1
+        m_lens_obs1_detrend = data['mag1'] - m_lens_mod_gp_only_at_phot1
+    except:
+        use_gp = False
 
     # Get the observed photometry, de-trended (GP noise removed)
-    m_lens_obs1_detrend = data['mag1'] - m_lens_mod_gp_only_at_phot1
 
     t_mod_all = np.append(t_mod_ast, t_mod_pho)
     # Set the colorbar
@@ -1378,7 +1387,8 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - ax_height, ax_width, 0.25*ax_height])
     # ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
     #               fmt='k.', alpha=0.05)
-    ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
+    if use_gp:
+        ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax10.invert_yaxis()
@@ -1388,11 +1398,14 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11.axhline(0, color='grey', linestyle='--', zorder=1)
     ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05, zorder=2)
-    ax11.scatter(t_mod_pho, m_lens_mod_gp - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1, zorder=3)
+    if use_gp:
+        ax11.scatter(t_mod_pho, m_lens_mod_gp - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1, zorder=3)
+        ax11.set_ylabel('GP')
+    else:
+        ax11.set_ylabel('res.')
     ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
     ax11.xaxis.set_major_locator(plt.MultipleLocator(1000))
     ax11.set_xlabel('Time (MJD)')
-    ax11.set_ylabel('GP')
     #pdb.set_trace()
     
 
@@ -2605,10 +2618,10 @@ def plot_cmd_ob150211():
     """
     # Read in the Gaia and 2MASS catalogs.
     tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
-    gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
+    gaia = Table.read('/Users/jlu/work/microlens/OB150211/current/gaia3_large.fits')
 
     tt_t = np.where(tmass['name'] == 'ob150211')
-    tt_g = np.where(gaia['name'] == 'ob150211')
+    tt_g = np.where(gaia['source_id'] == '4058004814930630912')
 
     # Also fetch our best fit and figure out the source and lens/neighbor
     # brightness.
@@ -2693,6 +2706,7 @@ def plot_cmd_other3():
     Everything is in
     /Users/jlu/work/microlens/OB150211/a_2019_05_04/notes/7_other_phot.ipynb
     """
+    raise NotImplementedError("This function is not set up to generate the other cmds.")
     # Read in the Gaia and 2MASS catalogs.
     tmass = Table.read('/Users/jlu/work/microlens/OB150211/tmass.fits')
     gaia = Table.read('/Users/jlu/work/microlens/OB150211/gaia.fits')
@@ -6044,7 +6058,17 @@ def plot_trace_corner(target):
               'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
               'gp_log_omega01':     '$\log \omega_{0, GP, I}$ (days$^{-1}$)',
               'gp_log_omega0_S01':  '$\log S_{0, GP, I} \omega_{0, GP, I}$ (CLARIFY UNITS)',
-              'pi_ref_frame':       '$\pi_{ref\_frame} (mas)$'
+              'pi_ref_frame':       '$\pi_{ref\_frame} (mas)$',
+              'b_sff3':   '$b_{SFF,R}$',
+              'mag_src3': '$R_{src}$ (mag)',
+              'mag_base3': '$R_{base}$ (mag)',
+              'mult_err3': '$\\varepsilon_{m,R}$',
+              'add_err3': '$\\varepsilon_{a,R}$ (mmag)',
+              'b_sff4':   '$b_{SFF,V}$',
+              'mag_src4': '$V_{src}$ (mag)',
+              'mag_base4': '$V_{base}$ (mag)',
+              'mult_err4': '$\\varepsilon_{m,V}$',
+              'add_err4': '$\\varepsilon_{a,V}$ (mmag)',
              }
 
         
@@ -6440,6 +6464,9 @@ def get_data_and_fitter(mnest_base):
         ast_dsets = info['astrom_data']
     else:
         ast_dsets = []
+        
+    if '_perlmutter' in info['target']:
+        info['target'] = info['target'][:-11]
 
     my_model = getattr(model, info['model'])
     my_data = munge.getdata2(info['target'].lower(),
@@ -6506,6 +6533,8 @@ def get_data_fitter_params_models_samples(target, return_mode = 'best', def_best
 def load_summary_statistics(mnest_base, verbose=False):
     info_file = open(mnest_base + 'params.yaml', 'r')
     info = yaml.full_load(info_file)
+    if '_perlmutter' in info['target']:
+        info['target'] = info['target'][:-11]
     
     my_model = getattr(model, info['model'])
     my_data = munge.getdata2(info['target'].lower(), 
@@ -6749,41 +6778,50 @@ def get_best_fit_from_stats(fitter, stats, def_best='median'):
     
 def make_BIC_comparison_table():
     # Use the one with the highest likelihood solution.
-    ob120169_none = load_summary_statistics(ogle_phot_all['ob120169_none'] + 'd7_')
-    ob120169_add  = load_summary_statistics(ogle_phot_all['ob120169_add'] + 'c3_') 
-    ob120169_mult = load_summary_statistics(ogle_phot_all['ob120169_mult'] + 'a0_')
+    ob120169_none = load_summary_statistics(ogle_phot_all['ob120169_none'])[0]
+    ob120169_add  = load_summary_statistics(ogle_phot_all['ob120169_add'])[0]
+    ob120169_mult = load_summary_statistics(ogle_phot_all['ob120169_mult'])[0]
+    ob120169_addmult = load_summary_statistics(ogle_phot_all['ob120169_addmult'])[0]
 
-    ob140613_none = load_summary_statistics(ogle_phot_all['ob140613_none'] + 'c2_') 
-    ob140613_add  = load_summary_statistics(ogle_phot_all['ob140613_add']  + 'b3_') 
-    ob140613_mult = load_summary_statistics(ogle_phot_all['ob140613_mult'] + 'c8_') 
+    ob140613_none = load_summary_statistics(ogle_phot_all['ob140613_none'])[0]
+    ob140613_add  = load_summary_statistics(ogle_phot_all['ob140613_add'])[0]
+    ob140613_mult = load_summary_statistics(ogle_phot_all['ob140613_mult'])[0]
+    ob140613_addmult = load_summary_statistics(ogle_phot_all['ob140613_addmult'])[0]
 
-    ob150029_none = load_summary_statistics(ogle_phot_all['ob150029_none'] + 'b5_') 
-    ob150029_add  = load_summary_statistics(ogle_phot_all['ob150029_add']  + 'd8_')
-    ob150029_mult = load_summary_statistics(ogle_phot_all['ob150029_mult'] + 'd2_') 
+    ob150029_none = load_summary_statistics(ogle_phot_all['ob150029_none'])[0]
+    ob150029_add  = load_summary_statistics(ogle_phot_all['ob150029_add'])[0]
+    ob150029_mult = load_summary_statistics(ogle_phot_all['ob150029_mult'])[0]
+    ob150029_addmult = load_summary_statistics(ogle_phot_all['ob150029_addmult'])[0]
 
-    ob150211_none = load_summary_statistics(ogle_phot_all['ob150211_none'] + 'a1_')
-    ob150211_add  = load_summary_statistics(ogle_phot_all['ob150211_add']  + 'a4_')
-    ob150211_mult = load_summary_statistics(ogle_phot_all['ob150211_mult'] + 'd5_')
-
+    ob150211_none = load_summary_statistics(ogle_phot_all['ob150211_none'])[0]
+    ob150211_add  = load_summary_statistics(ogle_phot_all['ob150211_add'])[0]
+    ob150211_mult = load_summary_statistics(ogle_phot_all['ob150211_mult'])[0]
+    ob150211_addmult = load_summary_statistics(ogle_phot_all['ob150211_addmult'])[0]
     
     with open(paper_dir + 'BIC_comparison.txt', 'w+') as tab_file:
         tab_file.write('No error term' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_none['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_none['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_none['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_none['MaxLike_BIC']) + r' \\ ' + '\n'
-                       + 
-                       'Multiplicative' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_mult['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_mult['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_mult['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_mult['MaxLike_BIC']) + r' \\ ' + '\n'
+                       + '{0:.2f}'.format(np.min(ob120169_none['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob140613_none['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150029_none['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150211_none['MaxLike_BIC'])) + r' \\ ' + '\n'
                        +
                        'Additive' + ' & ' 
-                       + '{0:.2f}'.format(ob120169_add['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob140613_add['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150029_add['MaxLike_BIC']) + ' & ' 
-                       + '{0:.2f}'.format(ob150211_add['MaxLike_BIC']) + r' \\ ' + '\n')
+                       + '{0:.2f}'.format(np.min(ob120169_add['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob140613_add['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150029_add['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150211_add['MaxLike_BIC'])) + r' \\ ' + '\n'
+                       +
+                       'Multiplicative' + ' & '
+                       + '{0:.2f}'.format(np.min(ob120169_mult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob140613_mult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150029_mult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150211_mult['MaxLike_BIC'])) + r' \\ ' + '\n'
+                       +
+                       'Additive + Multiplicative' + ' & '
+                       + '{0:.2f}'.format(np.min(ob120169_addmult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob140613_addmult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150029_addmult['MaxLike_BIC'])) + ' & '
+                       + '{0:.2f}'.format(np.min(ob150211_addmult['MaxLike_BIC'])) + r' \\ ' + '\n')
 
     return
                        

@@ -6314,7 +6314,11 @@ def get_data_and_fitter(mnest_base):
         ast_dsets = []
 
     my_model = getattr(model, info['model'])
-    my_data = munge.getdata2(info['target'].lower(), 
+    tgt =info['target'].lower()
+    if '_perlmutter' in tgt:
+        tgt = tgt.split('_')[0]
+    print(tgt)
+    my_data = munge.getdata2(tgt, 
                              phot_data=pho_dsets,
                              ast_data=ast_dsets)
 
