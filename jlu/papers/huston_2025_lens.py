@@ -119,13 +119,11 @@ photom_spitzer = {'ob120169': None,
                   'ob150029': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150029_phot_2.txt',
                   'ob150211': '/g/lu/data/microlens/spitzer/calchi_novati_2015/ob150211_phot_3.txt'}
 
-# With GP.
 pspl_phot = {'ob120169' : ogle_phot_all['ob120169_addmult'],
              'ob140613' : ogle_phot_all['ob140613_addmult'],
              'ob150029' : ogle_phot_all['ob150029_addmult'],
              'ob150211' : ogle_phot_all['ob150211_add']}
 
-# With GP: Not done running -- need to update.
 pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/ogle_keck/124_phot_astrom_aerr_merr/a4_',
                       'ob140613' : a_dir['ob140613'] + 'model_fits/perlmutter/NOOS/ogle_moa_keck/124_phot_astrom_aerr_merr/a2_',
                       'ob150029' : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_keck/124noV_phot_astrom_aerr_merr/a1_',
@@ -135,7 +133,7 @@ pspl_ast_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/ogle_keck/124
 # 0-based... so 0 = first mode (after the global solution).
 pspl_ast_multiphot_mode = {'ob120169': 0,
                            'ob140613': 0,
-                           'ob150029': 0,
+                           'ob150029': 2,
                            'ob150211': 0}
 
 # WITH GP WAS BAD - RETHINK
@@ -1173,24 +1171,27 @@ def calc_bayes_factor(target):
 
     return prior_vol, log_BF
 
-def plot_ob120169_phot_ast():
+def plot_ob120169_phot_ast(def_best='maxL'):
     target = 'ob120169'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
+    
+    m2 = mod_fit.get_best_fit_model(def_best=def_best)
+    #pdb.set_trace()
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],  # 
                 'scalex': [-8, -6], 'scaley': [-2, -2],
                 'textx': -7, 'texty': -1.95,
                 'padd': 1}
-    plot_4panel(data, mod_all[mode], target, 1, img_f, inset_kw) #ref: 2016-05-24
+    plot_4panel(data, m2, target, 1, img_f, inset_kw) #ref: 2016-05-24
     return
 
-def plot_ob140613_phot_ast():
+def plot_ob140613_phot_ast(def_best='maxL'):
     target = 'ob140613'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
 
@@ -1201,24 +1202,25 @@ def plot_ob140613_phot_ast():
     plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw) #ref: 2018-08-16
     return
 
-def plot_ob150029_phot_ast():
+def plot_ob150029_phot_ast(def_best='maxL'):
     target = 'ob150029'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/17jul19_iraf/combo/mag17jul19_ob150029_kp.fits'
+    m2 = mod_fit.get_best_fit_model(def_best=def_best)
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [-1, -3], 'scaley': [-1, -1],
                 'textx': -2, 'texty': -0.95,
                 'padd': 0.2}
-    plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw) #ref: 2017-07-19
+    plot_4panel(data, m2, target, 6, img_f, inset_kw)
     return
 
-def plot_ob150211_phot_ast():
+def plot_ob150211_phot_ast(def_best='maxL'):
     target = 'ob150211'
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
-    mod_all = mod_fit.get_best_fit_modes_model(def_best = 'median')
+    mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
     img_f = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
 
@@ -1226,7 +1228,7 @@ def plot_ob150211_phot_ast():
                 'scalex': [3, 5], 'scaley': [4, 4],
                 'textx': 4, 'texty': 3.95,
                 'padd': 2}
-    plot_4panel(data, mod_all[mode], target, 7, img_f, inset_kw) #ref: 2017-06-05
+    plot_4panel(data, mod_all[mode], target, 7, img_f, inset_kw)
     return
 
 
@@ -1249,6 +1251,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
      '''
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
+    #pdb.set_trace()
 
     # Sample time
     tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
@@ -1389,6 +1392,9 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     #               fmt='k.', alpha=0.05)
     if use_gp:
         ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
+                  fmt='k.', alpha=0.05)
+    else:
+        ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax10.invert_yaxis()
