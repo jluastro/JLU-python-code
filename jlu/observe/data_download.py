@@ -25,7 +25,7 @@ def download_for_mulab(instrument, date, cookie_file):
     inst_upp = instrument.upper()
 
     date_hyphens = date
-    date_nohyphs = date.replace("_", "")
+    date_nohyphs = date.replace("-", "")
     
     data_dir = f'/g/lu/data/KECK/{date_nohyphs}_{inst_upp}/'
     data_table = data_dir + 'data.tbl'
