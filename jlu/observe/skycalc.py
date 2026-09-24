@@ -117,7 +117,7 @@ def plot_airmass(ra, dec, year, months, days, observatory, outfile='plot_airmass
         if proposal_cycle == 'A':
             text_offset = 1.1
         else:
-            text_offset = 1.3
+            text_offset = 1.1
         py.text(-3.5,
                 text_offset + (ii*0.1),
                 labels[ii], color=colors[ii], fontsize=20)
