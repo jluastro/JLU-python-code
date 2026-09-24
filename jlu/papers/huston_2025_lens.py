@@ -43,8 +43,8 @@ ep_ob120169 = ['12jun',   '12jul',   '13apr',   '13jul', '15may05',
                '15jun07', '16may24', '16jul14']
 
 ep_ob140613 = ['15jun07', '15jun28', '16apr17', '16may24', '16aug02',
-               '17jun05', '17jul14', '18may11', '18aug16', '19apr17',
-               '19apr21os'] #, '25aug02os']
+               '17jun05', '17jul14', '18may11', '18aug16', '19apr17',]
+               #'19apr21os'] #, '25aug02os']
 
 ep_ob150029 = ['15jun07', '15jul23', '16may24', '16jul14', '17may21',
                '17jul14', '17jul19', '18aug21', '19apr17']
@@ -106,7 +106,7 @@ ogle_phot_all = {'ob120169_none'    : a_dir['ob120169'] + 'model_fits/ogle_only/
                  'ob150029_none'    : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/102_phot/a2_',
                  'ob150029_add'     : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/103_phot_aerr/a0_',
                  'ob150029_mult'    : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/101_phot_merr/a4_',
-                 'ob150029_addmult' : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/104_phot_aerr_merr/a3_',
+                 'ob150029_addmult' : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/104noV_phot_aerr_merr/a2_',
                  'ob150029_gp'      : a_dir['ob150029'] + 'model_fits/perlmutter/ogle_moa_only/201_phot_gp/b0_',
                  'ob150211_none'    : a_dir['ob150211'] + 'model_fits/ogle_only/102_fit_phot_parallax/a1_',
                  'ob150211_add'     : a_dir['ob150211'] + 'model_fits/ogle_only/103_fit_phot_parallax_aerr/a2_',
@@ -136,11 +136,11 @@ pspl_ast_multiphot_mode = {'ob120169': 0,
                            'ob150029': 1,
                            'ob150211': 0}
 
-# WITH GP WAS BAD - RETHINK
-pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
-                  'ob140613' : a_dir['ob140613'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
-                  'ob150029' : a_dir['ob150029'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
-                  'ob150211' : a_dir['ob150211'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_'}
+## WITH GP WAS BAD - RETHINK
+#pspl_multiphot = {'ob120169' : a_dir['ob120169'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+#                  'ob140613' : a_dir['ob140613'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+#                  'ob150029' : a_dir['ob150029'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_',
+#                  'ob150211' : a_dir['ob150211'] + 'model_fits/0211_phot_ogle_keck_gp_old/b0_'}
 
 ogle_phot = {}
 # ogle_phot['ob120169'] = ogle_phot_all['ob120169_add']
@@ -148,12 +148,12 @@ ogle_phot = {}
 # ogle_phot['ob150029'] = ogle_phot_all['ob150029_add']
 # ogle_phot['ob150211'] = ogle_phot_all['ob150211_add']
 
-ogle_phot['ob120169'] = ogle_phot_all['ob120169_gp']
-ogle_phot['ob140613'] = ogle_phot_all['ob140613_gp']
-ogle_phot['ob150029'] = ogle_phot_all['ob150029_gp']
-ogle_phot['ob150211'] = ogle_phot_all['ob150211_gp']
+#ogle_phot['ob120169'] = ogle_phot_all['ob120169_gp']
+#ogle_phot['ob140613'] = ogle_phot_all['ob140613_gp']
+#ogle_phot['ob150029'] = ogle_phot_all['ob150029_gp']
+#ogle_phot['ob150211'] = ogle_phot_all['ob150211_gp']
 
-popsycle_events = '/u/casey/scratch/papers/microlens_2019/popsycle_rr_files/Mock_EWS_v2_NEW_DELTAM.fits'
+popsycle_events = '/u/mhuston/work/kecktargs_paper/popsycle/all_detectable_1peak_alltargets.fits'
 
 #keck_phot_2020 = {'kb200101' : mlens_dir + 'KB200101/a_2020_09_10/model_fits/kmtnet_phot_par/a0_',
 #                  'mb19284' : mlens_dir + '',
@@ -258,6 +258,7 @@ def make_obs_table():
         date = np.zeros(n_epochs, dtype='S10')
         tint = np.zeros(n_epochs, dtype=int)
         n_exp = np.zeros(n_epochs, dtype=int)
+        n_keep = np.zeros(n_epochs, dtype=int)
         strehl = np.zeros(n_epochs, dtype=float)
         fwhm = np.zeros(n_epochs, dtype=float)
         strehl_e = np.zeros(n_epochs, dtype=float)
@@ -294,7 +295,8 @@ def make_obs_table():
                 strehl_e[ee] = _log['strehl'].std()
                 fwhm[ee] = _log['fwhm'].mean()
                 fwhm_e[ee] = _log['fwhm'].std()
-                n_exp[ee] = len(_log)
+                #n_exp[ee] = len(_log)
+                n_exp[ee] = np.sum(_log['fwhm']<(1.25*np.min(_log['fwhm'])))
 
                 # Read in the stats file from the analysis of the AIROPA starlist.
                 _pos = open(pos_file, 'r')
@@ -327,7 +329,8 @@ def make_obs_table():
                 strehl_e[ee] = _log['strehl'].std()
                 fwhm[ee] = _log['fwhm'].mean()
                 fwhm_e[ee] = _log['fwhm'].std()
-                n_exp[ee] = len(_log)
+                #n_exp[ee] = len(_log)
+                n_exp[ee] = np.sum(_log['fwhm']<(1.25*np.min(_log['fwhm'])))
 
                 # Read in the stats file from the analysis of the AIROPA starlist.
                 _pos = open(pos_file, 'r')
@@ -343,19 +346,21 @@ def make_obs_table():
         c_obj_name = Column(data=obj_name, name='Object', format='{:13s}')
         c_date = Column(data=date, name='Date', format='{:10s}')
         c_tint = Column(data=tint, name='t$_{int}$', format='{:3.0f}', unit='s')
-        c_nexp = Column(data=n_exp, name='N$_{exp}$', format='{:3d}')
+        c_nexp = Column(data=n_exp, name='N$_{exp,total}$', format='{:3d}')
+        c_nkeep = Column(data=n_keep, name='N$_{exp,used}$', format='{:3d}')
         c_fwhm = Column(data=fwhm, name='FWHM', format='{:3.0f}', unit='mas')
         c_fwhm_err = Column(data=fwhm_e, name='FWHM$_{err}$', format='{:3.0f}', unit='mas')
         c_strehl = Column(data=strehl, name='Strehl', format='{:4.2f}')
         c_strehl_err = Column(data=strehl_e, name='Strehl$_{err}$', format='{:4.2f}')
-        c_nstar = Column(data=n_star, name='N$_{star}$', format='{:4d}')
-        c_mbase = Column(data=m_base, name='Kp$_{turn}$', format='{:4.1f}', unit='mag')
+#        c_nstar = Column(data=n_star, name='N$_{star}$', format='{:4d}')
+#        c_mbase = Column(data=m_base, name='Kp$_{turn}$', format='{:4.1f}', unit='mag')
         c_asterr = Column(data=ast_err, name='$\sigma_{ast}$', format='{:5.2f}', unit='mas')
         c_photerr = Column(data=phot_err, name='$\sigma_{phot}$', format='{:5.2f}', unit='mag')
 
-        tt = Table((c_obj_name, c_date, c_tint, c_nexp,
+        tt = Table((c_obj_name, c_date, c_tint, c_nexp, #c_nkeep,
                     c_fwhm, c_fwhm_err, c_strehl, c_strehl_err,
-                    c_nstar, c_mbase, c_asterr, c_photerr))
+                    #c_nstar, c_mbase,
+                    c_asterr, c_photerr))
 
         tables[target] = tt
 
@@ -1150,6 +1155,7 @@ def plot_ob120169_phot_ast(def_best='maxL'):
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
+    params = mod_fit.get_best_fit_modes(def_best=def_best)[mode]
     mod = mod_all[mode]
     img_f = '/g/lu/data/microlens/16may24/combo/mag16may24_ob120169_kp.fits'
     
@@ -1157,7 +1163,9 @@ def plot_ob120169_phot_ast(def_best='maxL'):
                 'scalex': [-8, -6], 'scaley': [-2, -2],
                 'textx': -7, 'texty': -1.95,
                 'padd': 1}
-    plot_4panel(data, mod_all[mode], target, 1, img_f, inset_kw) #ref: 2016-05-24
+    plot_4panel_v2(data, mod_all[mode], target, 1, img_f, inset_kw,
+                add_err=params.get('add_err1', 0.0),
+                mult_err = params.get('mult_err1', 1.0))
     return
 
 def plot_ob140613_phot_ast(def_best='maxL'):
@@ -1165,13 +1173,16 @@ def plot_ob140613_phot_ast(def_best='maxL'):
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
+    params = mod_fit.get_best_fit_modes(def_best=def_best)[mode]
     img_f = '/g/lu/data/microlens/18aug16/combo/mag18aug16_ob140613_kp.fits'
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [-8, -6], 'scaley': [-1.5, -1.5],
                 'textx': -7, 'texty': -1.45,
                 'padd': 1}
-    plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw) #ref: 2018-08-16
+    plot_4panel_v2(data, mod_all[mode], target, 6, img_f, inset_kw,
+                add_err=params.get('add_err1', 0.0),
+                mult_err = params.get('mult_err1', 1.0))
     return
 
 def plot_ob150029_phot_ast(def_best='maxL'):
@@ -1179,6 +1190,7 @@ def plot_ob150029_phot_ast(def_best='maxL'):
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
+    params = mod_fit.get_best_fit_modes(def_best=def_best)[mode]
     img_f = '/g/lu/data/microlens/17jul19_iraf/combo/mag17jul19_ob150029_kp.fits'
     m2 = mod_fit.get_best_fit_model(def_best=def_best)
 
@@ -1186,7 +1198,9 @@ def plot_ob150029_phot_ast(def_best='maxL'):
                 'scalex': [-1, -3], 'scaley': [-1, -1],
                 'textx': -2, 'texty': -0.95,
                 'padd': 0.2}
-    plot_4panel(data, mod_all[mode], target, 6, img_f, inset_kw)
+    plot_4panel_v2(data, mod_all[mode], target, 6, img_f, inset_kw,
+                add_err=params.get('add_err1', 0.0),
+                mult_err = params.get('mult_err1', 1.0))
     return
 
 def plot_ob150211_phot_ast(def_best='maxL'):
@@ -1194,17 +1208,20 @@ def plot_ob150211_phot_ast(def_best='maxL'):
     mod_fit, data = get_data_and_fitter(pspl_ast_multiphot[target])
     mod_all = mod_fit.get_best_fit_modes_model(def_best = def_best)
     mode = pspl_ast_multiphot_mode[target]
+    params = mod_fit.get_best_fit_modes(def_best=def_best)[mode]
     img_f = '/g/lu/data/microlens/17jun05/combo/mag17jun05_ob150211_kp.fits'
 
     inset_kw = {'labelp1': [-0.8, -0.2], 'labelp2': [0.9, 0.2],
                 'scalex': [3, 5], 'scaley': [4, 4],
                 'textx': 4, 'texty': 3.95,
                 'padd': 2}
-    plot_4panel(data, mod_all[mode], target, 7, img_f, inset_kw)
+    plot_4panel_v2(data, mod_all[mode], target, 7, img_f, inset_kw,
+                add_err=params.get('add_err1', 0.0),
+                mult_err = params.get('mult_err1', 1.0))
     return
 
-
-def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
+def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw,
+                add_err=0.0, mult_err=1.0):
     '''
     Plots a 2x2 figure of 1) the Keck image @ ref_epoch (which must coincide
     with img_f), 2) magnitude vs time, 3) RA vs time, and 4) DEC vs time,
@@ -1221,6 +1238,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
      'padd': the padding to add in mas,
      }.
      '''
+    print(f'Using add err {add_err} and mult err {mult_err}')
     from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
                                                       mark_inset)
     #pdb.set_trace()
@@ -1232,6 +1250,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
 
     # Get the linear motion curves for the source (includes parallax)
     p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast,filt_idx=1)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'],filt_idx=1)
     p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'],filt_idx=1)
 
     # Get the lensed motion curves for the source
@@ -1366,7 +1385,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
         ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
                   fmt='k.', alpha=0.05)
     else:
-        ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+        ax10.errorbar(data['t_phot1'], data['mag1'], yerr=mult_err*np.hypot(data['mag_err1'],add_err),
                   fmt='k.', alpha=0.05)
     ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
     ax10.invert_yaxis()
@@ -1374,7 +1393,7 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax10.set_aspect('auto', adjustable='box')
     ax10.set_xticks([])
     ax11.axhline(0, color='grey', linestyle='--', zorder=1)
-    ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=data['mag_err1'],
+    ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=mult_err*np.hypot(data['mag_err1'],add_err),
                   fmt='k.', alpha=0.05, zorder=2)
     if use_gp:
         ax11.scatter(t_mod_pho, m_lens_mod_gp - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1, zorder=3)
@@ -1384,8 +1403,6 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
     ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
     ax11.xaxis.set_major_locator(plt.MultipleLocator(1000))
     ax11.set_xlabel('Time (MJD)')
-    #pdb.set_trace()
-    
 
     # Center the position data and model off the reference epoch
     p_lens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
@@ -1436,6 +1453,241 @@ def plot_4panel(data, mod, target, ref_epoch, img_f, inset_kw):
         ax31.set_ylim(-0.5,1)
 
     plt.savefig(paper_dir + target + '_phot_astrom.pdf')
+    #plt.close(1)
+
+    return
+    
+def plot_4panel_v2(data, mod, target, ref_epoch, img_f, inset_kw,
+                add_err=0.0, mult_err=1.0):
+    '''
+    Plots a 2x2 figure of 1) the Keck image @ ref_epoch (which must coincide
+    with img_f), 2) magnitude vs time, 3) RA vs time, and 4) DEC vs time,
+    where the latter three have a residual to the model.
+    The astrometry plots include the lens and unlensed models.
+    inset_kw is a dictionary for plotting 1) with the following keywords:
+    {'labelp1': [x, y] list of first anchor for the label line,
+     'labelp2': [x, y] list of the second anchor,
+     'scalex': [x1, x2] list for plotting the pixel scale in mas,
+     'scaley': [y1, y2] list for plotting the pixel scale in mas,
+               (y1 = y2 plots a flat line),
+     'textx': the x coord of the scale text in mas,
+     'texty': the y coord of the scale text in mas,
+     'padd': the padding to add in mas,
+     }.
+     '''
+    print(f'Using add err {add_err} and mult err {mult_err}')
+    from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
+                                                      mark_inset)
+    #pdb.set_trace()
+
+    # Sample time
+    tmax = np.max(np.append(data['t_phot1'], data['t_phot2'])) + 90.0
+    t_mod_ast = np.arange(data['t_ast1'].min() - 180.0, tmax, 2)
+    t_mod_pho = np.arange(data['t_phot1'].min() - 90.0, tmax, 2)
+
+    # Get the linear motion curves for the source (includes parallax)
+    p_unlens_mod = mod.get_astrometry_unlensed(t_mod_ast,filt_idx=1)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'],filt_idx=1)
+    p_unlens_mod_at_ast = mod.get_astrometry_unlensed(data['t_ast1'],filt_idx=1)
+
+    # Get the lensed motion curves for the source
+    p_lens_mod = mod.get_astrometry(t_mod_ast,filt_idx=1)
+    p_lens_mod_at_ast = mod.get_astrometry(data['t_ast1'],filt_idx=1)
+
+    # Get the predicted photometry
+    m_lens_mod = mod.get_photometry(t_mod_pho, filt_idx=0)
+    m_lens_mod2 = mod.get_photometry(t_mod_pho, filt_idx=1)
+
+    m_lens_mod_at_phot1 = mod.get_photometry(data['t_phot1'], filt_idx=0)
+    m_lens_mod_at_phot2 = mod.get_photometry(data['t_phot2'], filt_idx=1)
+    use_gp = True
+    try:
+        m_lens_mod_gp = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0, t_pred=t_mod_pho)[0]
+        m_lens_mod_gp_at_phot1 = mod.get_photometry_with_gp(data['t_phot1'], data['mag1'], data['mag_err1'], filt_idx=0)[0]
+        m_lens_mod_gp_only_at_phot1 = m_lens_mod_gp_at_phot1 - m_lens_mod_at_phot1
+        m_lens_obs1_detrend = data['mag1'] - m_lens_mod_gp_only_at_phot1
+    except:
+        use_gp = False
+
+    # Get the observed photometry, de-trended (GP noise removed)
+
+    t_mod_all = np.append(t_mod_ast, t_mod_pho)
+    # Set the colorbar
+    cmap = plt.cm.viridis
+    norm = plt.Normalize(vmin=t_mod_all.min(), vmax=t_mod_all.max())
+    smap = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    smap.set_array([])
+
+    # Find the closest model date to the ref_epoch and
+    # center inset positions on it
+    mod_ref_epoch = np.abs(t_mod_ast - data['t_ast1'][ref_epoch]).argmin()
+    xpos_ins = (p_lens_mod[:, 0] - p_lens_mod[mod_ref_epoch, 0])*-1e3
+    ypos_ins = (p_lens_mod[:, 1] - p_lens_mod[mod_ref_epoch, 1])*1e3
+
+    # Load the Keck image
+    combo_dir = os.path.dirname(img_f)
+    img_base = os.path.basename(img_f)
+
+    img = fits.getdata(img_f)
+
+    psf_file = '/g/lu/data/microlens/source_list/' + target + '_psf.list'
+    psf_tab = Table.read(psf_file, format='ascii', header_start=-1)
+    pdx = np.where(psf_tab['PSF?'] == 1)[0]
+    psf_tab = psf_tab[pdx]
+
+    lis_file = combo_dir + '/starfinder/' + img_base.replace('.fits', '_rms_named.lis')
+    lis_tab = starlists.StarList.from_lis_file(lis_file)
+
+    # Find the target and get its pixel coordinates in this image.
+    tdx = np.where(lis_tab['name'] == target)[0]
+    coo_targ = np.array([lis_tab['x'][tdx[0]], lis_tab['y'][tdx[0]]])
+    coo_targ -= 1   # Shift to a 0-based array system
+
+    # Define the axes
+    scale = 0.00996
+    x_axis = np.arange(img.shape[0], dtype=float)
+    y_axis = np.arange(img.shape[1], dtype=float)
+    x_axis = (x_axis - coo_targ[0]) * scale * -1.0
+    y_axis = (y_axis - coo_targ[1]) * scale
+
+    # Set figure
+    plt.close(1)
+    fig = plt.figure(1, figsize = (11,10))
+    wpad = 0.14
+    hpad = 0.11
+    ax_width = 0.37 * 10. / 11.
+    ax_height = 0.37
+
+    #####
+    # second panel, i switches some stuff
+    # let's do keck photometry here
+    #####
+    ax00 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - 0.5*ax_height, ax_width, 0.5*ax_height])
+    ax01 = fig.add_axes([1.0 - wpad/2 - ax_width, 1.0 - hpad/2 - ax_height, ax_width, 0.5*ax_height])
+    
+    ax00.errorbar(data['t_phot2'], data['mag2'], yerr=mult_err*np.hypot(data['mag_err2'],add_err),
+                  fmt='k.', alpha=1)
+    ax00.scatter(t_mod_pho, m_lens_mod2, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
+    ax00.invert_yaxis()
+    ax00.set_ylabel('$m_{Kp}$ (mag)')
+    ax00.set_aspect('auto', adjustable='box')
+    ax00.set_xticks([])
+    ax01.axhline(0, color='grey', linestyle='--', zorder=1)
+    ax01.errorbar(data['t_phot2'], data['mag2'] - m_lens_mod_at_phot2, yerr=data['mag_err2'],
+                  fmt='k.', alpha=1, zorder=2)
+    ax01.set_ylabel('res.')
+    ax01.yaxis.set_major_locator(plt.MaxNLocator(2))
+    ax01.xaxis.set_major_locator(plt.MultipleLocator(1000))
+    ax01.set_xlabel('Time (MJD)')
+    ax00.set_xlim(min(data['t_phot2'])-180, max(data['t_phot2'])+90)
+    ax01.set_xlim(min(data['t_phot2'])-180, max(data['t_phot2'])+90)
+
+    #####
+    # MAGNITUDE VS TIME
+    #####
+    ax10 = fig.add_axes([wpad, 1.0 - hpad/2 - 0.5*ax_height, ax_width, 0.5*ax_height])
+    ax11 = fig.add_axes([wpad, 1.0 - hpad/2 - ax_height, ax_width, 0.5*ax_height])
+    # ax10.errorbar(data['t_phot1'], data['mag1'], yerr=data['mag_err1'],
+    #               fmt='k.', alpha=0.05)
+    if use_gp:
+        ax10.errorbar(data['t_phot1'], m_lens_obs1_detrend, yerr=data['mag_err1'],
+                  fmt='k.', alpha=0.05)
+    else:
+        ax10.errorbar(data['t_phot1'], data['mag1'], yerr=mult_err*np.hypot(data['mag_err1'],add_err),
+                  fmt='k.', alpha=0.05)
+    ax10.scatter(t_mod_pho, m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1)
+    ax10.invert_yaxis()
+    ax10.set_ylabel('$m_I$ (mag)')
+    ax10.set_aspect('auto', adjustable='box')
+    ax10.set_xticks([])
+    ax11.axhline(0, color='grey', linestyle='--', zorder=1)
+    ax11.errorbar(data['t_phot1'], data['mag1'] - m_lens_mod_at_phot1, yerr=mult_err*np.hypot(data['mag_err1'],add_err),
+                  fmt='k.', alpha=0.05, zorder=2)
+    if use_gp:
+        ax11.scatter(t_mod_pho, m_lens_mod_gp - m_lens_mod, c = t_mod_pho, cmap = cmap, norm = norm, s = 1, zorder=3)
+        ax11.set_ylabel('GP')
+    else:
+        ax11.set_ylabel('res.')
+    ax11.yaxis.set_major_locator(plt.MaxNLocator(2))
+    ax11.xaxis.set_major_locator(plt.MultipleLocator(1000))
+    ax11.set_xlabel('Time (MJD)')
+    ax10.set_xlim(min(data['t_phot1'])-90, max(data['t_phot1'])+90)
+    ax11.set_xlim(min(data['t_phot1'])-90, max(data['t_phot1'])+90)
+
+    # Center the position data and model off the reference epoch
+    p_lens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    p_unlens_mod_at_ast -= [data['xpos1'][ref_epoch], data['ypos1'][ref_epoch]]
+    data['xpos1'] -= data['xpos1'][ref_epoch]
+    data['ypos1'] -= data['ypos1'][ref_epoch]
+
+    #####
+    # RA VS TIME
+    #####
+    #ax20 = fig.add_axes([wpad, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
+    ax21 = fig.add_axes([wpad, hpad, ax_width, ax_height])
+#    ax20.errorbar(data['t_ast1'], data['xpos1']*-1e3,
+#                  yerr=data['xpos_err1']*1e3, fmt='k.', zorder = 1000)
+#    ax20.scatter(t_mod_ast, p_lens_mod[:, 0]*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+#    ax20.plot(t_mod_ast, p_unlens_mod[:, 0]*-1e3, 'r--')
+#    ax20.get_xaxis().set_visible(False)
+    ax21.set_ylabel(r'$\Delta \alpha^*$ (mas)')
+#    ax20.get_shared_x_axes().join(ax20, ax21)
+    ax21.errorbar(data['t_ast1'], (data['xpos1'] - p_unlens_mod_at_ast[:,0]) * -1e3,
+                  yerr=data['xpos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax21.scatter(t_mod_ast, (p_lens_mod[:, 0] - p_unlens_mod[:, 0])*-1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax21.axhline(0, linestyle='--', color='r')
+    ax21.set_xlabel('Time (MJD)')
+#    ax21.set_ylabel('Res.')
+    ax21.set_xlim(min(t_mod_ast), max(t_mod_ast))
+
+    #####
+    # DEC VS TIME
+    #####
+#    ax30 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad + 0.25*ax_height, ax_width, 0.75*ax_height])
+    ax31 = fig.add_axes([1.0 - wpad/2 - ax_width, hpad, ax_width, ax_height])
+#    ax30.errorbar(data['t_ast1'], data['ypos1']*1e3,
+#                  yerr=data['ypos_err1']*1e3, fmt='k.', zorder = 1000)
+#    ax30.scatter(t_mod_ast, p_lens_mod[:, 1]*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+#    ax30.plot(t_mod_ast, p_unlens_mod[:, 1]*1e3, 'r--')
+#    ax30.get_xaxis().set_visible(False)
+    ax31.set_ylabel(r'$\Delta \delta$ (mas)')
+    #ax30.get_shared_x_axes().join(ax30, ax31)
+    ax31.errorbar(data['t_ast1'], (data['ypos1'] - p_unlens_mod_at_ast[:, 1]) * 1e3,
+                  yerr=data['ypos_err1'] * 1e3, fmt='k.', alpha=1, zorder = 1000)
+    ax31.scatter(t_mod_ast, (p_lens_mod[:, 1] - p_unlens_mod[:, 1])*1e3, c = t_mod_ast, cmap = cmap, norm = norm, s = 1)
+    ax31.axhline(0, linestyle='--', color='r')
+    ax31.set_xlabel('Time (MJD)')
+    #ax31.set_ylabel('Res.')
+    ax31.set_xlim(min(t_mod_ast), max(t_mod_ast))
+    
+    ax01.get_shared_x_axes().join(ax01, ax00)
+    ax11.get_shared_x_axes().join(ax11, ax10)
+    if target.lower()=='ob120169':
+        ax11.set_yticks([-0.3,0,0.3])
+        ax01.set_yticks([-0.03,0,0.03])
+    elif target.lower()=='ob140613':
+        ax11.set_yticks([-0.2,0,0,0.2])
+        ax01.set_yticks([-0.06,0,0.06])
+        ax01.set_xticks([57000,57500,58000,58500])
+        ax21.set_xticks([57000,57500,58000,58500])
+        ax31.set_xticks([57000,57500,58000,58500])
+    elif target.lower()=='ob150029':
+        ax11.set_ylim(-0.03,0.035)
+        ax11.set_yticks([-0.02,0,0,0.02])
+        ax01.set_yticks([-0.06,0,0.06])
+        ax01.set_xticks([57000,57500,58000,58500])
+        ax21.set_xticks([57000,57500,58000,58500])
+        ax31.set_xticks([57000,57500,58000,58500])
+    elif target.lower()=='ob150211':
+        ax11.set_ylim(-0.06,0.065)
+        ax11.set_yticks([-0.05,0,0,0.05])
+        ax01.set_yticks([-0.06,0,0.06])
+        ax01.set_xticks([57000,58000,59000])
+        ax21.set_xticks([57000,58000,59000])
+        ax31.set_xticks([57000,58000,59000])
+
+    plt.savefig(paper_dir + target + '_phot_astrom_v2.pdf')
     #plt.close(1)
 
     return
@@ -1692,7 +1944,7 @@ def piE_tE_deltac(fit_type = 'ast'):
     if fit_type == 'phot':
         data_dict = pspl_phot
     if fit_type == 'multiphot':
-        data_dict = pspl_multiphot
+        data_dict = pspl_phot #pspl_multiphot
         
 
     ##########
@@ -1727,22 +1979,19 @@ def piE_tE_deltac(fit_type = 'ast'):
                           'ob120169': [150, 0.01],
                           'ob140613': [170, 0.1],
                           'ob150029': [150, 0.2],
-                          'ob150211': [35, 0.04],
-                          'ob170019': [0, 0.04],
-                          'ob170095': [0, 0.04],
-                          'ob190017': [0, 0.04],
-                          'kb200101': [0, 0]},
+                          'ob150211': [35, 0.04]},
                  'ast':  {'ob110022': [17, 0.37],
                           'ob120169': [110, 0.23],
                           'ob140613': [310, 0.14],
                           'ob150029': [42, 0.16],
                           'ob150211': [150, 0.03],
-                          'ob170019': [120, 0.045],
-                          'ob170095': [30, 0.04],
-                          'ob190017': [180, 0.28],
-                          'kb200101': [180, 0.016],
-                          'mb190284': [300, 0.025],
-                          'OB110462': [210,0.065]}
+                          'OB110462': [210,0.065]},
+                 'panel2':{'ob110022': [0.38, 0.37],
+                          'ob120169': [0.065, 0.23],
+                          'ob140613': [0.41, 0.14],
+                          'ob150029': [0.02, 0.18],
+                          'ob150211': [0.07, 0.055],
+                          'OB110462': [0.7,0.065]}
                 }
 
     label_pos_ast = {'ob120169': [0.006, 0.06],
@@ -1761,8 +2010,8 @@ def piE_tE_deltac(fit_type = 'ast'):
     colors = {'ob110022': 'dimgray',
               'ob120169': 'purple',
               'ob140613': 'hotpink',
-              'ob150029': 'darkorange',
-              'ob150211': 'green',
+              'ob150029': 'green',
+              'ob150211': 'darkorange',
               'ob170019': 'blue',
               'ob170095': 'blue',
               'ob190017': 'blue',
@@ -1983,7 +2232,7 @@ def piE_tE_deltac(fit_type = 'ast'):
     popsyc_u_ast_max_arr = np.zeros(len(popsyc))
 
     # Flux ratio of lens to source (and make it 0 if dark lens)
-    popsyc_g_arr = 10**(-0.4 * (popsyc['ubv_i_app_L'] - popsyc['ubv_i_app_S']))
+    popsyc_g_arr = 10**(-0.4 * (popsyc['ubv_I_app_L'] - popsyc['ubv_I_app_S']))
     popsyc_g_arr = popsyc_g_arr.filled(0)
 
     # First calculate max astrometric shift using
@@ -2041,16 +2290,16 @@ def piE_tE_deltac(fit_type = 'ast'):
 
 
 
-    axes.scatter(popsyc['t_E'][st_idx], popsyc['pi_E'][st_idx], 
+    axes.scatter(popsyc['tE_use'][st_idx], popsyc['pi_E'][st_idx],
                  alpha = 0.4, marker = '.', s = 25, 
                  color = 'paleturquoise', rasterized=True)
-    axes.scatter(popsyc['t_E'][wd_idx], popsyc['pi_E'][wd_idx], 
+    axes.scatter(popsyc['tE_use'][wd_idx], popsyc['pi_E'][wd_idx],
                  alpha = 0.4, marker = '.', s = 25, 
                  color = 'aqua', rasterized=True)
-    axes.scatter(popsyc['t_E'][ns_idx], popsyc['pi_E'][ns_idx], 
+    axes.scatter(popsyc['tE_use'][ns_idx], popsyc['pi_E'][ns_idx],
                  alpha = 0.4, marker = '.', s = 25, 
-                 color = 'tab:cyan', rasterized=True)
-    axes.scatter(popsyc['t_E'][bh_idx], popsyc['pi_E'][bh_idx],
+                 color = 'blue', rasterized=True)
+    axes.scatter(popsyc['tE_use'][bh_idx], popsyc['pi_E'][bh_idx],
                  alpha = 0.8, marker = '.', s = 25, 
                  color = 'black', rasterized=True)
 
@@ -2063,7 +2312,7 @@ def piE_tE_deltac(fit_type = 'ast'):
                  label = 'WD', color = 'aqua')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
-                 label = 'NS', color = 'tab:cyan')
+                 label = 'NS', color = 'blue')
     axes.scatter(0.01, 100,
                  alpha = 0.8, marker = '.', s = 25, 
                  label = 'BH', color = 'black')
@@ -2127,6 +2376,9 @@ def piE_tE_deltac(fit_type = 'ast'):
             model_fitter.contour2d_alpha(deltaC[targ], piE[targ], span=[span, span], quantiles_2d=quantiles_2d,
                                              weights=weights[targ], ax=axes, smooth=[sy, sx], color=colors[targ],
                                              **hist2d_kwargs, plot_density=False, sigma_levels=[1, 2])
+        if include[targ] and use_label[targ]:
+            axes.text(label_pos['panel2'][targ][0], label_pos['panel2'][targ][1],
+                          targ.upper(), color=colors[targ])
 
     
     # Mass Gap Band
@@ -2143,7 +2395,7 @@ def piE_tE_deltac(fit_type = 'ast'):
                   c = 'aqua', rasterized=True)
     axes.scatter(popsyc['deltaC'][ns_idx], popsyc['pi_E'][ns_idx], 
                   alpha = 0.4, marker = '.', s = 25,
-                  c = 'tab:cyan', rasterized=True)
+                  c = 'blue', rasterized=True)
     axes.scatter(popsyc['deltaC'][bh_idx], popsyc['pi_E'][bh_idx], 
                   alpha = 0.8, marker = '.', s = 25,
                   c = 'black', rasterized=True)
@@ -2434,6 +2686,8 @@ def calc_velocity(target):
     fitter.all_param_names.remove('thetaE')
     fitter.all_param_names.remove('mag_src1')
     fitter.all_param_names.remove('mag_src2')
+    if 'mag_src3' in fitter.all_param_names:
+        fitter.all_param_names.remove('mag_src3')
 
     bf_mod = fitter.get_best_fit_model()
     
@@ -2554,7 +2808,9 @@ def calc_velocity(target):
     plt.close(1)
     plt.figure(1, figsize=(6, 6))
     plt.clf()
-    plt.plot(ast['vx'][tdx], ast['vy'][tdx], 'r*', ms=10, label='Src, Keck')
+    plt.errorbar(ast['vx'][tdx], ast['vy'][tdx],
+                 xerr=ast['vx_err'][tdx], yerr=ast['vy_err'][tdx],
+                marker='*',color='gold', ms=10, label='Target, Keck',zorder=100)
     plt.errorbar([muS_E], [muS_N], xerr=[muSe_E], yerr=[muSe_N],
                      marker='s', color='red', label='Src, Fit', ms=10, lw=2, mfc='none', mew=4)
     plt.errorbar([muL_E], [muL_N], xerr=[muLe_E], yerr=[muLe_N],
@@ -3988,7 +4244,6 @@ def plot_lens_geometry(target, axis_lim_scale=3, vel_scale=0.05):
     vel_scale : float
         Scale factor for the velocity arrows. 
     """
-
     
     fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
     mod_all = fitter.get_best_fit_modes_model(def_best = 'median')
@@ -4562,177 +4817,172 @@ def org_solutions_for_table():
 
     return
             
-def table_ob120169_phot():
-    """
-    Print the latex table for the photometry-only fit.
-    """
-    target = 'ob120169'
-    
-    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
-    #pdb.set_trace()
-
-    # No longer using
-              # 'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
-              # 'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
-
-    # This dictionary sets the order of the parameters in the table.
-    # If I want a horizontal line in between the two, I just add 'break#' where
-    # the "#" symbol is just any arbitrary number.
-    labels = {'t0':       '$t_0$ (MJD)',
-              'u0_amp':   '$u_0$',
-              'tE':       '$t_E$ (days)',
-              'piE_E':    '$\pi_{E,E}$',
-              'piE_N':    '$\pi_{E,N}$',
-              'b_sff1':   '$b_{SFF,I}$',
-              'mag_base1': '$I_{base}$ (mag)',
-              'add_err1' : '$\\varepsilon_{a,I}$ (mmag)',
-              'mult_err1' : '$\\varepsilon_{m,I}$',
-              'break1':   '',
-              'mag_src1': '$I_{src}$ (mag)',
-             }
-        
-    scale = {'t0':      1.0,
-             'u0_amp':  1.0,
-             'tE':      1.0,
-             'piE_E':   1.0,
-             'piE_N':   1.0,
-             'b_sff1':  1.0,
-             'mag_src1':1.0,
-             'mag_base1':1.0,
-             'add_err1':1e3,
-             'mult_err1':1,
-             'thetaE':  1.0,
-             'piS':     1.0,
-             'muS_E':   1.0,
-             'muS_N':   1.0,
-             'xS0_E':   1e3,
-             'xS0_N':   1e3,
-             'b_sff2':  1.0,
-             'mag_src2':1.0,
-             'mag_base2':1.0,
-             'mL':      1.0,
-             'piL':     1.0,
-             'piRel':   1.0,
-             'muL_E':   1.0,
-             'muL_N':   1.0,
-             'muRel_E': 1.0,
-             'muRel_N': 1.0,
-             'gp_log_sigma1':      1.0,
-             'gp_rho1':            1.0,
-             'gp_log_omega04_S01': 1.0,
-             'gp_log_omega01':     1.0
-        }
-    sig_digits = {'t0':       '0.2f',
-                  'u0_amp':   '0.2f',
-                  'tE':       '0.1f',
-                  'piE_E':    '0.3f',
-                  'piE_N':    '0.3f',
-                  'b_sff1':   '0.3f',
-                  'mag_src1': '0.3f',
-                  'mag_base1': '0.3f',
-                  'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
-                  'thetaE':   '0.2f',
-                  'piS':      '0.3f',
-                  'muS_E':    '0.2f',
-                  'muS_N':    '0.2f',
-                  'xS0_E':    '0.2f',
-                  'xS0_N':    '0.2f',
-                  'b_sff2':   '0.2f',
-                  'mag_src2': '0.2f',
-                  'mag_base2': '0.2f',
-                  'add_err2': '0.1f',
-                  'mL':       '0.1f',
-                  'piL':      '0.3f',
-                  'piRel':    '0.3f',
-                  'muL_E':    '0.2f',
-                  'muL_N':    '0.2f',
-                  'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f',
-                  'gp_log_sigma1':      '0.1f',
-                  'gp_rho1':            '0.1f',
-                  'gp_log_omega04_S01': '0.1f',
-                  'gp_log_omega01':     '0.1f'
-                  }
-
-    pho_u0m = 0
-    pho_u0p = 1
-
-    tab_file = open(paper_dir + target + '_OGLE_phot.txt', 'w')
-    tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
-                                                               stats_pho['MAP_logL'][pho_u0p],
-                                                               stats_pho['Med_logL'][pho_u0p])
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0m],
-                                                               stats_pho['MAP_logL'][pho_u0m],
-                                                               stats_pho['Med_logL'][pho_u0m])
-                   + ' \\\ \n')
-    tab_file.write('$\\tilde{\chi}^2$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
-                                                               stats_pho['MAP_rchi2'][pho_u0p],
-                                                               stats_pho['Med_rchi2'][pho_u0p])
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
-                                                               stats_pho['MAP_rchi2'][pho_u0m],
-                                                               stats_pho['Med_rchi2'][pho_u0m])
-                   + ' \\\ \n')
-    tab_file.write('log$\mathcal{Z}$ '
-                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
-                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0m])
-                   + ' \\\ \n')
-    tab_file.write('$N_{dof}$ '
-                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
-                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0m])
-                   + ' \\\ \n'
-                   + r'\hline ' + '\n')
-    
-    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
-    start_extra_params = False
-    
-    for i, (key, label) in enumerate(labels.items()):
-        # We will have 4 solutions... each has a value and error bar.
-        # Setup an easy way to walk through them (and rescale) as necessary.
-        val_dict = [stats_pho, stats_pho]
-        val_mode = [pho_u0p, pho_u0m]
-
-        if 'break' in key:
-            tab_file.write('\\tableline\n')
-            continue
-
-        tab_file.write(label)
-                           
-        for ss in range(len(val_dict)):
-            stats = val_dict[ss]
-            
-            if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
-                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
-                
-                val_mli = stats['MaxLike_' + key][val_mode[ss]]
-                val_map = stats['MAP_' + key][val_mode[ss]]
-                val_med = stats['Med_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
-
-                val_mli *= scale[key]
-                val_map *= scale[key]
-                val_med *= scale[key]
-                elo *= scale[key]
-                ehi *= scale[key]
-
-                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
-            else:
-                fmt = ' & & & & '
-                tab_file.write(fmt)
-        if i+1<len(labels):
-            tab_file.write(' \\\ \n')
-    
-    return
+#def table_ob120169_phot():
+#    """
+#    Print the latex table for the photometry-only fit.
+#    """
+#    target = 'ob120169'
+#
+#    stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
+#
+#    # This dictionary sets the order of the parameters in the table.
+#    # If I want a horizontal line in between the two, I just add 'break#' where
+#    # the "#" symbol is just any arbitrary number.
+#    labels = {'t0':       '$t_0$ (MJD)',
+#              'u0_amp':   '$u_0$',
+#              'tE':       '$t_E$ (days)',
+#              'piE_E':    '$\pi_{E,E}$',
+#              'piE_N':    '$\pi_{E,N}$',
+#              'b_sff1':   '$b_{SFF,I}$',
+#              'mag_base1': '$I_{base}$ (mag)',
+#              'add_err1' : '$\\varepsilon_{a,I}$ (mmag)',
+#              'mult_err1' : '$\\varepsilon_{m,I}$',
+#              'break1':   '',
+#              'mag_src1': '$I_{src}$ (mag)',
+#             }
+#
+#    scale = {'t0':      1.0,
+#             'u0_amp':  1.0,
+#             'tE':      1.0,
+#             'piE_E':   1.0,
+#             'piE_N':   1.0,
+#             'b_sff1':  1.0,
+#             'mag_src1':1.0,
+#             'mag_base1':1.0,
+#             'add_err1':1e3,
+#             'mult_err1':1,
+#             'thetaE':  1.0,
+#             'piS':     1.0,
+#             'muS_E':   1.0,
+#             'muS_N':   1.0,
+#             'xS0_E':   1e3,
+#             'xS0_N':   1e3,
+#             'b_sff2':  1.0,
+#             'mag_src2':1.0,
+#             'mag_base2':1.0,
+#             'mL':      1.0,
+#             'piL':     1.0,
+#             'piRel':   1.0,
+#             'muL_E':   1.0,
+#             'muL_N':   1.0,
+#             'muRel_E': 1.0,
+#             'muRel_N': 1.0,
+#             'gp_log_sigma1':      1.0,
+#             'gp_rho1':            1.0,
+#             'gp_log_omega04_S01': 1.0,
+#             'gp_log_omega01':     1.0
+#        }
+#    sig_digits = {'t0':       '0.2f',
+#                  'u0_amp':   '0.2f',
+#                  'tE':       '0.1f',
+#                  'piE_E':    '0.3f',
+#                  'piE_N':    '0.3f',
+#                  'b_sff1':   '0.3f',
+#                  'mag_src1': '0.3f',
+#                  'mag_base1': '0.3f',
+#                  'add_err1': '0.1f',
+#                  'mult_err1': '0.1f',
+#                  'thetaE':   '0.2f',
+#                  'piS':      '0.3f',
+#                  'muS_E':    '0.2f',
+#                  'muS_N':    '0.2f',
+#                  'xS0_E':    '0.2f',
+#                  'xS0_N':    '0.2f',
+#                  'b_sff2':   '0.2f',
+#                  'mag_src2': '0.2f',
+#                  'mag_base2': '0.2f',
+#                  'add_err2': '0.1f',
+#                  'mL':       '0.1f',
+#                  'piL':      '0.3f',
+#                  'piRel':    '0.3f',
+#                  'muL_E':    '0.2f',
+#                  'muL_N':    '0.2f',
+#                  'muRel_E':  '0.2f',
+#                  'muRel_N':  '0.2f',
+#                  'gp_log_sigma1':      '0.1f',
+#                  'gp_rho1':            '0.1f',
+#                  'gp_log_omega04_S01': '0.1f',
+#                  'gp_log_omega01':     '0.1f'
+#                  }
+#
+#    pho_u0m = 0
+#    pho_u0p = 1
+#
+#    tab_file = open(paper_dir + target + '_OGLE_phot.txt', 'w')
+#    tab_file.write('log$\mathcal{L}$ '
+#                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
+#                                                               stats_pho['MAP_logL'][pho_u0p],
+#                                                               stats_pho['Med_logL'][pho_u0p])
+#                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0m],
+#                                                               stats_pho['MAP_logL'][pho_u0m],
+#                                                               stats_pho['Med_logL'][pho_u0m])
+#                   + ' \\\ \n')
+#    tab_file.write('$\\tilde{\chi}^2$ '
+#                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
+#                                                               stats_pho['MAP_rchi2'][pho_u0p],
+#                                                               stats_pho['Med_rchi2'][pho_u0p])
+#                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
+#                                                               stats_pho['MAP_rchi2'][pho_u0m],
+#                                                               stats_pho['Med_rchi2'][pho_u0m])
+#                   + ' \\\ \n')
+#    tab_file.write('log$\mathcal{Z}$ '
+#                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
+#                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0m])
+#                   + ' \\\ \n')
+#    tab_file.write('$N_{dof}$ '
+#                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
+#                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0m])
+#                   + ' \\\ \n'
+#                   + r'\hline ' + '\n')
+#
+#    # Keep track of when we finish off the fitted parameters (vs. additional parameters).
+#    start_extra_params = False
+#
+#    for i, (key, label) in enumerate(labels.items()):
+#        # We will have 4 solutions... each has a value and error bar.
+#        # Setup an easy way to walk through them (and rescale) as necessary.
+#        val_dict = [stats_pho, stats_pho]
+#        val_mode = [pho_u0p, pho_u0m]
+#
+#        if 'break' in key:
+#            tab_file.write('\\tableline\n')
+#            continue
+#
+#        tab_file.write(label)
+#
+#        for ss in range(len(val_dict)):
+#            stats = val_dict[ss]
+#
+#            if ('MaxLike_' + key in stats.colnames):
+#                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
+#                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
+#
+#                val_mli = stats['MaxLike_' + key][val_mode[ss]]
+#                val_map = stats['MAP_' + key][val_mode[ss]]
+#                val_med = stats['Med_' + key][val_mode[ss]]
+#                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+#                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+#
+#                val_mli *= scale[key]
+#                val_map *= scale[key]
+#                val_med *= scale[key]
+#                elo *= scale[key]
+#                ehi *= scale[key]
+#
+#                tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
+#            else:
+#                fmt = ' & & & & '
+#                tab_file.write(fmt)
+#        if i+1<len(labels):
+#            tab_file.write(' \\\ \n')
+#
+#    return
 
     
     
     
             
-def table_ob120169_phot_astrom():
+def table_ob120169_combo():
     # Load up the params file so we know what kind of 
     # data and model we are working with. Note that we 
     # are assuming that all the Nruns are using the same
@@ -4741,6 +4991,9 @@ def table_ob120169_phot_astrom():
     
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
+#    fitter,data = get_data_and_fitter(pspl_ast_multiphot[target])
+#    res = fitter.load_mnest_results()
+#    pdb.set_trace()
 
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
@@ -4819,7 +5072,7 @@ def table_ob120169_phot_astrom():
                   'mag_src1': '0.3f',
                   'mag_base1': '0.3f',
                   'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
+                  'mult_err1': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -4843,10 +5096,8 @@ def table_ob120169_phot_astrom():
                   'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0p = 0
-    pho_u0m = 1 # doesn't exist
+    pho_u0p = 1
     ast_u0p = 0
-    ast_u0m = 1 # doesn't exist
 
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
@@ -4997,7 +5248,7 @@ def table_ob140613_phot():
                   'mag_src1': '0.3f',
                   'mag_base1': '0.3f',
                   'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
+                  'mult_err1': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5008,12 +5259,12 @@ def table_ob140613_phot():
                   'mag_src2': '0.2f',
                   'mag_base2': '0.2f',
                   'add_err2': '0.1f',
-                  'mult_err2': '0.1f',
+                  'mult_err2': '0.2f',
                   'b_sff3':   '0.2f',
                   'mag_src3': '0.2f',
                   'mag_base3': '0.2f',
                   'add_err3': '0.1f',
-                  'mult_err3': '0.1f',
+                  'mult_err3': '0.2f',
                   'mL':       '0.1f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
@@ -5203,15 +5454,15 @@ def table_ob140613_phot_astrom():
                   'mag_src1': '0.3f',
                   'mag_base1': '0.3f',
                   'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
+                  'mult_err1': '0.2f',
                     'mag_src3': '0.3f',
                   'mag_base3': '0.3f',
                   'add_err3': '0.1f',
-                  'mult_err3': '0.1f',
+                  'mult_err3': '0.2f',
                     'mag_src4': '0.3f',
                   'mag_base4': '0.3f',
                   'add_err4': '0.1f',
-                  'mult_err4': '0.1f',
+                  'mult_err4': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5333,39 +5584,68 @@ def table_ob140613_phot_astrom_both():
     stats_pho, data_pho, mod_pho = load_summary_statistics(pspl_phot[target])
     stats_ast, data_ast, mod_ast = load_summary_statistics(pspl_ast_multiphot[target])
 
+    # This dictionary sets the order of the parameters in the table.
+    # If I want a horizontal line in between the two, I just add 'break#' where
+    # the "#" symbol is just any arbitrary number.
     labels = {'t0':       '$t_0$ (MJD)',
               'u0_amp':   '$u_0$',
               'tE':       '$t_E$ (days)',
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
-              'mag_src1': '$I_{src}$ (mag)',
-              'mult_err1': '$\\varepsilon_{m,I}$',
+              'mag_base1': '$I_{base}$ (mag)',
+              'add_err1' : '$\\varepsilon_{a,I}$ (mmag)',
+              'mult_err1' : '$\\varepsilon_{m,I}$',
+              'b_sff3':   '$b_{SFF,R}$',
+              'mag_base3': '$R_{base}$ (mag)',
+              'add_err3' : '$\\varepsilon_{a,R}$ (mmag)',
+              'mult_err3' : '$\\varepsilon_{m,R}$',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'thetaE':   '$\\theta_E$ (mas)',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
               'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'mult_err2': '$\\varepsilon_{m,Kp}$',
+              'break1':   '',
               'mL':       '$M_L$ ($\msun$)',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src3': '$R_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)',
              }
+        
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
              'tE':      1.0,
              'piE_E':   1.0,
              'piE_N':   1.0,
              'b_sff1':  1.0,
-             'mag_src1':1.0,
-             'mult_err1':1.0,
+             'b_sff2':  1.0,
+             'b_sff3':  1.0,
+             'b_sff4':  1.0,
+             'mag_src1': 1.0,
+              'mag_base1': 1.0,
+              'add_err1': 1e3,
+              'mult_err1': 1.0,
+             'mag_src2': 1.0,
+              'mag_base2': 1.0,
+              'add_err2': 1e3,
+              'mult_err2': 1.0,
+            'mag_src3': 1.0,
+              'mag_base3': 1.0,
+              'add_err3': 1e3,
+              'mult_err3': 1.0,
+            'mag_src4': 1.0,
+              'mag_base4': 1.0,
+              'add_err4': 1e3,
+              'mult_err4': 1.0,
              'thetaE':  1.0,
              'piS':     1.0,
              'muS_E':   1.0,
@@ -5374,14 +5654,19 @@ def table_ob140613_phot_astrom_both():
              'xS0_N':   1e3,
              'b_sff2':  1.0,
              'mag_src2':1.0,
-             'mult_err2':1.0,
+             'mag_base2':1.0,
+             'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
              'piRel':   1.0,
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -5389,8 +5674,21 @@ def table_ob140613_phot_astrom_both():
                   'piE_E':    '0.3f',
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
+                  'b_sff2':   '0.3f',
+                  'b_sff3':   '0.3f',
+                  'b_sff4':   '0.3f',
                   'mag_src1': '0.3f',
-                  'mult_err1': '0.1f',
+                  'mag_base1': '0.3f',
+                  'add_err1': '0.1f',
+                  'mult_err1': '0.2f',
+                    'mag_src3': '0.3f',
+                  'mag_base3': '0.3f',
+                  'add_err3': '0.1f',
+                  'mult_err3': '0.2f',
+                    'mag_src4': '0.3f',
+                  'mag_base4': '0.3f',
+                  'add_err4': '0.1f',
+                  'mult_err4': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5399,56 +5697,59 @@ def table_ob140613_phot_astrom_both():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
-                  'mult_err2': '0.1f',
-                  'mL':       '0.2f',
+                  'mag_base2': '0.2f',
+                  'add_err2': '0.1f',
+                  'mult_err2': '0.2f',
+                  'mL':       '0.1f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0m = 1 # no solution
-    pho_u0p = 0 # Best of 3 positive solutions
-    ast_u0m = 1 # no solution
-    ast_u0p = 0 # best of 3 positive solutions
+    pho_mode = 0
+    ast_mode = 0
     
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0p],
-                                                               stats_pho['MAP_logL'][pho_u0p], 
-                                                               stats_pho['Med_logL'][pho_u0p]) 
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0p],
-                                                               stats_ast['MAP_logL'][ast_u0p],
-                                                               stats_ast['Med_logL'][ast_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_mode],
+                                                               stats_pho['MAP_logL'][pho_mode],
+                                                               stats_pho['Med_logL'][pho_mode])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_mode],
+                                                               stats_ast['MAP_logL'][ast_mode],
+                                                               stats_ast['Med_logL'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('$\\tilde{\chi}^2$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0p],
-                                                               stats_pho['MAP_rchi2'][pho_u0p],
-                                                               stats_pho['Med_rchi2'][pho_u0p])
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0p],
-                                                               stats_ast['MAP_rchi2'][ast_u0p],
-                                                               stats_ast['Med_rchi2'][ast_u0p])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_mode],
+                                                               stats_pho['MAP_rchi2'][pho_mode],
+                                                               stats_pho['Med_rchi2'][pho_mode])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_mode],
+                                                               stats_ast['MAP_rchi2'][ast_mode],
+                                                               stats_ast['Med_rchi2'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('log$\mathcal{Z}$ ' 
-                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0p])
-                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0p])
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_mode])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_u0p])
-                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_u0p])
+                   + '& & & {0:.0f} & '.format(stats_pho['N_dof'][pho_mode])
+                   + '& & & {0:.0f} & '.format(stats_ast['N_dof'][ast_mode])
                    + ' \\\ \n'
                    + r'\hline ' + '\n')
     
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
     start_extra_params = False
     
-    for key, label in labels.items():
-        # We will have 4 solutions... each has a value and error bar.
+    for i, (key, label) in enumerate(labels.items()):
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast]
-        val_mode = [pho_u0p, ast_u0p]
+        val_mode = [pho_mode, ast_mode]
 
         if (key in mod_ast.additional_param_names) and not start_extra_params:
             tab_file.write('\\tableline\n')
@@ -5458,29 +5759,35 @@ def table_ob140613_phot_astrom_both():
                            
         for ss in range(len(val_dict)):
             stats = val_dict[ss]
+            key_tmp = key
+            if ss==0 and key.endswith('3'):
+                key_tmp = key_tmp[:-1]+'2'
+            if ss==0 and key.endswith('2'):
+                key_tmp = key_tmp[:-1]+'3'
             
-            if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
-                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
+            if ('MaxLike_' + key_tmp in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key_tmp] + '} & {1:' + sig_digits[key_tmp] + '} '
+                fmt += '& {2:' + sig_digits[key_tmp] + '} & [{3:' + sig_digits[key_tmp] + '}, {4:' + sig_digits[key_tmp] + '}] '
                 
-                val_mli = stats['MaxLike_' + key][val_mode[ss]]
-                val_map = stats['MAP_' + key][val_mode[ss]]
-                val_med = stats['Med_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key_tmp][val_mode[ss]]
+                val_map = stats['MAP_' + key_tmp][val_mode[ss]]
+                val_med = stats['Med_' + key_tmp][val_mode[ss]]
+                elo = stats['lo68_'    + key_tmp][val_mode[ss]] - stats['Med_' + key_tmp][val_mode[ss]]
+                ehi = stats['hi68_'    + key_tmp][val_mode[ss]] - stats['Med_' + key_tmp][val_mode[ss]]
 
-                val_mli *= scale[key]
-                val_map *= scale[key]
-                val_med *= scale[key]
-                elo *= scale[key]
-                ehi *= scale[key]
+                val_mli *= scale[key_tmp]
+                val_map *= scale[key_tmp]
+                val_med *= scale[key_tmp]
+                elo *= scale[key_tmp]
+                ehi *= scale[key_tmp]
 
                 tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
                 fmt = ' & & & & '
                 tab_file.write(fmt)
 
-        tab_file.write(' \\\ \n')
+        if i+1<len(labels):
+            tab_file.write(' \\\ \n')
     
     return
     
@@ -5560,7 +5867,7 @@ def table_ob150029_phot():
                   'mag_src1': '0.3f',
                   'mag_base1': '0.3f',
                   'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
+                  'mult_err1': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5571,12 +5878,12 @@ def table_ob150029_phot():
                   'mag_src2': '0.2f',
                   'mag_base2': '0.2f',
                   'add_err2': '0.1f',
-                  'mult_err2': '0.1f',
+                  'mult_err2': '0.2f',
                   'b_sff3':   '0.2f',
                   'mag_src3': '0.2f',
                   'mag_base3': '0.2f',
                   'add_err3': '0.1f',
-                  'mult_err3': '0.1f',
+                  'mult_err3': '0.2f',
                   'mL':       '0.1f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
@@ -5766,15 +6073,15 @@ def table_ob150029_phot_astrom():
                   'mag_src1': '0.3f',
                   'mag_base1': '0.3f',
                   'add_err1': '0.1f',
-                  'mult_err1': '0.1f',
+                  'mult_err1': '0.2f',
                     'mag_src3': '0.3f',
                   'mag_base3': '0.3f',
                   'add_err3': '0.1f',
-                  'mult_err3': '0.1f',
+                  'mult_err3': '0.2f',
                     'mag_src4': '0.3f',
                   'mag_base4': '0.3f',
                   'add_err4': '0.1f',
-                  'mult_err4': '0.1f',
+                  'mult_err4': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5852,7 +6159,7 @@ def table_ob150029_phot_astrom():
         val_mode = [ast_u0m, ast_u0p]
 
         if 'break' in key:
-            tab_file.write('\\tableline\n')
+            tab_file.write('\\tableline')
             continue
 
         tab_file.write(label)
@@ -5881,8 +6188,7 @@ def table_ob150029_phot_astrom():
                 fmt = ' & & & & '
                 tab_file.write(fmt)
 
-        if i+1<len(labels):
-            tab_file.write(' \\\ \n')
+        tab_file.write(' \\\ \n')
     
     return
 
@@ -5902,33 +6208,59 @@ def table_ob150029_phot_astrom_both():
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'b_sff1':   '$b_{SFF,I}$',
-              'mag_src1': '$I_{src}$ (mag)',
-              'add_err1': '$\\varepsilon_{a,I}$ (mmag)',
+              'mag_base1': '$I_{base}$ (mag)',
+              'add_err1' : '$\\varepsilon_{a,I}$ (mmag)',
+              'mult_err1' : '$\\varepsilon_{m,I}$',
+              'b_sff3':   '$b_{SFF,R}$',
+              'mag_base3': '$R_{base}$ (mag)',
+              'add_err3' : '$\\varepsilon_{a,R}$ (mmag)',
+              'mult_err3' : '$\\varepsilon_{m,R}$',
+              'b_sff2':   '$b_{SFF,Kp}$',
+              'mag_base2': '$Kp_{base}$ (mag)',
               'thetaE':   '$\\theta_E$ (mas)',
               'piS':      '$\pi_S$ (mas)',
               'muS_E':    '$\mu_{S,\\alpha*}$ (mas/yr)',
               'muS_N':    '$\mu_{S,\delta}$ (mas/yr)',
               'xS0_E':    '$x_{S0,\\alpha*}$ (mas)',
               'xS0_N':    '$x_{S0,\delta}$ (mas)',
-              'b_sff2':   '$b_{SFF,Kp}$',
-              'mag_src2': '$Kp_{src}$ (mag)',
-              'add_err2': '$\\varepsilon_{a,Kp}$ (mmag)',
+              'break1':   '',
               'mL':       '$M_L$ ($\msun$)',
               'piL':      '$\pi_L$ (mas)',
               'piRel':    '$\pi_{rel}$ (mas)',
               'muL_E':    '$\mu_{L,\\alpha*}$ (mas/yr)',
               'muL_N':    '$\mu_{L,\delta}$ (mas/yr)',
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
-              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)'
+              'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_src3': '$R_{src}$ (mag)',
+              'mag_src2': '$Kp_{src}$ (mag)',
              }
+        
     scale = {'t0':      1.0,
              'u0_amp':  1.0,
              'tE':      1.0,
              'piE_E':   1.0,
              'piE_N':   1.0,
              'b_sff1':  1.0,
-             'mag_src1':1.0,
-             'add_err1':1e3,
+             'b_sff2':  1.0,
+             'b_sff3':  1.0,
+             'b_sff4':  1.0,
+             'mag_src1': 1.0,
+              'mag_base1': 1.0,
+              'add_err1': 1e3,
+              'mult_err1': 1.0,
+             'mag_src2': 1.0,
+              'mag_base2': 1.0,
+              'add_err2': 1e3,
+              'mult_err2': 1.0,
+            'mag_src3': 1.0,
+              'mag_base3': 1.0,
+              'add_err3': 1e3,
+              'mult_err3': 1.0,
+            'mag_src4': 1.0,
+              'mag_base4': 1.0,
+              'add_err4': 1e3,
+              'mult_err4': 1.0,
              'thetaE':  1.0,
              'piS':     1.0,
              'muS_E':   1.0,
@@ -5937,6 +6269,7 @@ def table_ob150029_phot_astrom_both():
              'xS0_N':   1e3,
              'b_sff2':  1.0,
              'mag_src2':1.0,
+             'mag_base2':1.0,
              'add_err2':1e3,
              'mL':      1.0,
              'piL':     1.0,
@@ -5944,7 +6277,11 @@ def table_ob150029_phot_astrom_both():
              'muL_E':   1.0,
              'muL_N':   1.0,
              'muRel_E': 1.0,
-             'muRel_N': 1.0
+             'muRel_N': 1.0,
+             'gp_log_sigma1':      1.0,
+             'gp_rho1':            1.0,
+             'gp_log_omega04_S01': 1.0,
+             'gp_log_omega01':     1.0
         }
     sig_digits = {'t0':       '0.2f',
                   'u0_amp':   '0.2f',
@@ -5952,8 +6289,21 @@ def table_ob150029_phot_astrom_both():
                   'piE_E':    '0.3f',
                   'piE_N':    '0.3f',
                   'b_sff1':   '0.3f',
+                  'b_sff2':   '0.3f',
+                  'b_sff3':   '0.3f',
+                  'b_sff4':   '0.3f',
                   'mag_src1': '0.3f',
+                  'mag_base1': '0.3f',
                   'add_err1': '0.1f',
+                  'mult_err1': '0.2f',
+                    'mag_src3': '0.3f',
+                  'mag_base3': '0.3f',
+                  'add_err3': '0.1f',
+                  'mult_err3': '0.2f',
+                    'mag_src4': '0.3f',
+                  'mag_base4': '0.3f',
+                  'add_err4': '0.1f',
+                  'mult_err4': '0.2f',
                   'thetaE':   '0.2f',
                   'piS':      '0.3f',
                   'muS_E':    '0.2f',
@@ -5962,81 +6312,89 @@ def table_ob150029_phot_astrom_both():
                   'xS0_N':    '0.2f',
                   'b_sff2':   '0.2f',
                   'mag_src2': '0.2f',
+                  'mag_base2': '0.2f',
                   'add_err2': '0.1f',
-                  'mL':       '0.2f',
+                  'mult_err2': '0.2f',
+                  'mL':       '0.1f',
                   'piL':      '0.3f',
                   'piRel':    '0.3f',
                   'muL_E':    '0.2f',
                   'muL_N':    '0.2f',
                   'muRel_E':  '0.2f',
-                  'muRel_N':  '0.2f'
+                  'muRel_N':  '0.2f',
+                  'gp_log_sigma1':      '0.1f',
+                  'gp_rho1':            '0.1f',
+                  'gp_log_omega04_S01': '0.1f',
+                  'gp_log_omega01':     '0.1f'
                   }
 
-    pho_u0m = 1
-    pho_u0p = 0
-    ast_u0m = 0 
-    ast_u0p = 1  # No solution
+    pho_mode = 1
+    ast_mode = 1
     
     tab_file = open(paper_dir + target + '_OGLE_phot_ast.txt', 'w')
     tab_file.write('log$\mathcal{L}$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_u0m],
-                                                               stats_pho['MAP_logL'][pho_u0m],
-                                                               stats_pho['Med_logL'][pho_u0m])
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_u0m],
-                                                               stats_ast['MAP_logL'][ast_u0m],
-                                                               stats_ast['Med_logL'][ast_u0m])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_logL'][pho_mode],
+                                                               stats_pho['MAP_logL'][pho_mode],
+                                                               stats_pho['Med_logL'][pho_mode])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_logL'][ast_mode],
+                                                               stats_ast['MAP_logL'][ast_mode],
+                                                               stats_ast['Med_logL'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('$\\tilde{\chi}^2$ '
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_u0m],
-                                                               stats_pho['MAP_rchi2'][pho_u0m],
-                                                               stats_pho['Med_rchi2'][pho_u0m])
-                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_u0m],
-                                                               stats_ast['MAP_rchi2'][ast_u0m],
-                                                               stats_ast['Med_rchi2'][ast_u0m])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_pho['MaxLike_rchi2'][pho_mode],
+                                                               stats_pho['MAP_rchi2'][pho_mode],
+                                                               stats_pho['Med_rchi2'][pho_mode])
+                   + '& {0:.2f} & {1:.2f} & {2:.2f} & '.format(stats_ast['MaxLike_rchi2'][ast_mode],
+                                                               stats_ast['MAP_rchi2'][ast_mode],
+                                                               stats_ast['Med_rchi2'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('log$\mathcal{Z}$ ' 
-                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_u0m])
-                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_u0m])
+                   + '& & & {0:.1f} & '.format(stats_pho['logZ'][pho_mode])
+                   + '& & & {0:.1f} & '.format(stats_ast['logZ'][ast_mode])
                    + ' \\\ \n')
     tab_file.write('$N_{dof}$ ' 
-                   + '& {0:.0f} & & & '.format(stats_pho['N_dof'][pho_u0m])
-                   + '& {0:.0f} & & & '.format(stats_ast['N_dof'][ast_u0m])
+                   + '& {0:.0f} & & & '.format(stats_pho['N_dof'][pho_mode])
+                   + '& {0:.0f} & & & '.format(stats_ast['N_dof'][ast_mode])
                    + ' \\\ \n'
                    + r'\hline ' + '\n')
     
     # Keep track of when we finish off the fitted parameters (vs. additional parameters).
     start_extra_params = False
 
-    for key, label in labels.items():
-        # We will have 4 solutions... each has a value and error bar.
+    for i, (key, label) in enumerate(labels.items()):
         # Setup an easy way to walk through them (and rescale) as necessary.
         val_dict = [stats_pho, stats_ast]
-        val_mode = [pho_u0m, ast_u0m]
+        val_mode = [pho_mode, ast_mode]
 
         if (key in mod_ast.additional_param_names) and not start_extra_params:
-            tab_file.write('\\tableline\n')
+            tab_file.write('\\tableline')
             start_extra_params = True
 
         tab_file.write(label)
                            
         for ss in range(len(val_dict)):
             stats = val_dict[ss]
+            key_tmp = key
+            if ss==0 and key.endswith('3'):
+                key_tmp = key_tmp[:-1]+'2'
+            if ss==0 and key.endswith('2'):
+                key_tmp = key_tmp[:-1]+'3'
             
-            if ('MaxLike_' + key in stats.colnames):
-                fmt = ' & {0:' + sig_digits[key] + '} & {1:' + sig_digits[key] + '} '
-                fmt += '& {2:' + sig_digits[key] + '} & [{3:' + sig_digits[key] + '}, {4:' + sig_digits[key] + '}] '
+            if ('MaxLike_' + key_tmp in stats.colnames):
+                fmt = ' & {0:' + sig_digits[key_tmp] + '} & {1:' + sig_digits[key_tmp] + '} '
+                fmt += '& {2:' + sig_digits[key_tmp] + '} & [{3:' + sig_digits[key_tmp] + '}, {4:' + sig_digits[key_tmp] + '}] '
                 
-                val_mli = stats['MaxLike_' + key][val_mode[ss]]
-                val_map = stats['MAP_' + key][val_mode[ss]]
-                val_med = stats['Med_' + key][val_mode[ss]]
-                elo = stats['lo68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
-                ehi = stats['hi68_'    + key][val_mode[ss]] - stats['Med_' + key][val_mode[ss]]
+                val_mli = stats['MaxLike_' + key_tmp][val_mode[ss]]
+                val_map = stats['MAP_' + key_tmp][val_mode[ss]]
+                val_med = stats['Med_' + key_tmp][val_mode[ss]]
+                elo = stats['lo68_'    + key_tmp][val_mode[ss]] - stats['Med_' + key_tmp][val_mode[ss]]
+                ehi = stats['hi68_'    + key_tmp][val_mode[ss]] - stats['Med_' + key_tmp][val_mode[ss]]
 
-                val_mli *= scale[key]
-                val_map *= scale[key]
-                val_med *= scale[key]
-                elo *= scale[key]
-                ehi *= scale[key]
+                val_mli *= scale[key_tmp]
+                val_map *= scale[key_tmp]
+                val_med *= scale[key_tmp]
+                elo *= scale[key_tmp]
+                ehi *= scale[key_tmp]
 
                 tab_file.write(fmt.format(val_mli, val_map, val_med, elo, ehi))
             else:
@@ -6625,8 +6983,16 @@ def plot_all_mass_posteriors(sol_mode='best'):
 
     for target in targets:
         fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+#        fitter.load_priors()
         stats = calc_summary_statistics(fitter)
         tab = fitter.load_mnest_modes()
+        
+#        n_ps = 10_000
+#        thetaE_prior_samps = 10**fitter.priors['log10_thetaE'].rvs(n_ps)
+#        piE_prior_samps = np.hypot(fitter.priors['piE_E'].rvs(n_ps),
+#                                    fitter.priors['piE_N'].rvs(n_ps))
+#        mL_prior_samps = thetaE_prior_samps/piE_prior_samps/8.144
+        
         
         # Select out the best mode.
         mode = pspl_ast_multiphot_mode[target]
@@ -6641,18 +7007,23 @@ def plot_all_mass_posteriors(sol_mode='best'):
         kde = scipy.stats.gaussian_kde(np.log10(tab['mL']),
                                            weights=tab['weights'],
                                            bw_method=kde_bw[target])
+#        kde_prior = scipy.stats.gaussian_kde(np.log10(mL_prior_samps),
+#                                           bw_method=kde_bw[target])
         kde_mass = np.linspace(-2, 2, 500)
         # kde_mass = np.arange(0.0, 10, 0.01)
         kde_prob = kde(kde_mass)
+#        kde_prior_prob = kde_prior(kde_mass)
         kde_bin_size = np.zeros(len(kde_prob), dtype=float)
         kde_bin_size[:-1] = np.diff(kde_mass)
         kde_bin_size[-1] = kde_bin_size[-2]
         kde_norm = (kde_prob * kde_bin_size).sum()
         kde_prob /= kde_norm
+#        kde_prior_prob /= (kde_prior_prob * kde_bin_size).sum()
 
         # Normalize kde_prob
         # kde_prob /= kde_prob.max()
         plt.plot(kde_mass, kde_prob, color=colors[target], linestyle='-', label=target.upper())        
+#        plt.plot(kde_mass, kde_prior_prob, color=colors[target], linestyle=':')
 
         # Bins for the histogram
         bins = np.linspace(-2, 2, 80)
@@ -6670,7 +7041,7 @@ def plot_all_mass_posteriors(sol_mode='best'):
         # plt.xscale('log')
 
         # plt.axvline(stats['MaxLike_mL'], color=colors[target], linestyle='--', lw = 2)
-        plt.axvline(np.log10(stats['Med_mL']), color=colors[target], linestyle='--', lw = 2)
+        # plt.axvline(np.log10(stats['Med_mL']), color=colors[target], linestyle='--', lw = 2)
         # plt.axvline(np.log10(stats['MAP_mL']), color=colors[target], linestyle='--', lw = 2)
         # plt.axvline(np.log10(stats['MaxLike_mL']), color=colors[target], linestyle='-.', lw = 2)
         # plt.axvline(stats['lo68_mL'], color=colors[target], linestyle='--', lw = 2)
@@ -6693,7 +7064,7 @@ def plot_all_mass_posteriors(sol_mode='best'):
     plt.tick_params(axis='x', which='minor')
     # plt.ylim(0, 2)
     # plt.xlim(0, 5)
-    plt.ylim(0, 2.5)
+    plt.ylim(0, 2.3)
     plt.legend()
 
     def pow_10(x, pos):
@@ -6716,6 +7087,125 @@ def plot_all_mass_posteriors(sol_mode='best'):
     else:
         plt.savefig(paper_dir + 'all_mass_posteriors.png')
         plt.savefig(paper_dir + 'all_mass_posteriors.pdf')
+
+    return
+
+def plot_all_thetaE_posteriors(sol_mode='best'):
+    fontsize1 = 18
+    fontsize2 = 14
+    
+    targets = ['ob120169', 'ob140613', 'ob150029', 'ob150211']
+    colors = {'ob120169': 'purple',
+              'ob140613': 'red',
+              'ob150029': 'darkorange',
+              'ob150211': 'black'}
+    kde_bw = {'ob120169': 0.1,
+              'ob140613': 0.2,
+              'ob150029': 0.1,
+              'ob150211': 0.1}
+
+    plt.close(1)
+    plt.figure(1)
+    plt.clf()
+    plt.subplots_adjust(bottom = 0.15)
+
+    for target in targets:
+        fitter, data = get_data_and_fitter(pspl_ast_multiphot[target])
+        stats = calc_summary_statistics(fitter)
+        tab = fitter.load_mnest_modes()
+        
+        # Select out the best mode.
+        mode = pspl_ast_multiphot_mode[target]
+        stats = stats[mode]
+
+        if sol_mode == 'best':
+            tab = tab[mode]
+        elif sol_mode == 'global':
+            tab = fitter.load_mnest_results()
+
+        # KDE
+        kde = scipy.stats.gaussian_kde(tab['log10_thetaE'],
+                                           weights=tab['weights'],
+                                           bw_method=kde_bw[target])
+        kde_mass = np.linspace(-2, 2, 500)
+        # kde_mass = np.arange(0.0, 10, 0.01)
+        kde_prob = kde(kde_mass)
+        kde_bin_size = np.zeros(len(kde_prob), dtype=float)
+        kde_bin_size[:-1] = np.diff(kde_mass)
+        kde_bin_size[-1] = kde_bin_size[-2]
+        kde_norm = (kde_prob * kde_bin_size).sum()
+        kde_prob /= kde_norm
+
+        # Normalize kde_prob
+        # kde_prob /= kde_prob.max()
+        plt.plot(kde_mass, kde_prob, color=colors[target], linestyle='-', label=target.upper())
+
+        # Bins for the histogram
+        bins = np.linspace(-2, 2, 80)
+        # bins = np.linspace(00, 10, 0.1)
+        # bins = np.arange(0.0, 10, 0.1)
+
+#        n, b = np.histogram(np.log10(tab['mL']), bins = bins,
+#                            weights = tab['weights'], density = True)
+#        b0 = 0.5 * (b[1:] + b[:-1])
+#        # n /= n.max()
+#
+#        # plt.plot(b[:-1], n, drawstyle='steps-mid',
+#        #              color=colors[target], label=target)
+#
+#        # plt.xscale('log')
+#
+#        # plt.axvline(stats['MaxLike_mL'], color=colors[target], linestyle='--', lw = 2)
+#        # plt.axvline(np.log10(stats['Med_mL']), color=colors[target], linestyle='--', lw = 2)
+#        # plt.axvline(np.log10(stats['MAP_mL']), color=colors[target], linestyle='--', lw = 2)
+#        # plt.axvline(np.log10(stats['MaxLike_mL']), color=colors[target], linestyle='-.', lw = 2)
+#        # plt.axvline(stats['lo68_mL'], color=colors[target], linestyle='--', lw = 2)
+#        # plt.axvline(stats['hi68_mL'], color=colors[target], linestyle='--', lw = 2)
+
+        conf_int = get_CIs(tab['log10_thetaE'], tab['weights'])
+        print('Best-Fit log10_thetaE MaxLike = {0:.2f} for {1:s}'.format(stats['MaxLike_log10_thetaE'], target))
+        print('Best-Fit log10_thetaE MAP     = {0:.2f} for {1:s}'.format(stats['MAP_log10_thetaE'], target))
+        print('Best-Fit log10_thetaE Median  = {0:.2f} for {1:s}'.format(stats['Med_log10_thetaE'], target))
+        print('Best-Fit log10_thetaE Mean    = {0:.2f} for {1:s}'.format(stats['Mean_log10_thetaE'], target))
+        print('          68.3% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[0], conf_int[1]))
+        print('          95.5% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[2], conf_int[3]))
+        print('          99.7% CI = [{0:6.2f} - {1:6.2f}]'.format(conf_int[4], conf_int[5]))
+        
+    from scipy.stats import truncnorm
+    samples = truncnorm.pdf(kde_mass, -4, 4, loc=-0.2, scale=0.3)
+    plt.plot(kde_mass, samples, c='gray', linestyle='--', label='prior')
+        
+    plt.xlabel(r'Einstein radius $\log_{10} [\theta_E ({\rm mas})]$', fontsize=fontsize1, labelpad=10)
+    plt.ylabel('Posterior Probability', fontsize=fontsize1, labelpad=10)
+    plt.xticks(fontsize=fontsize2)
+    plt.yticks(fontsize=fontsize2)
+    plt.xlim(np.log10(0.05), np.log10(15))
+    plt.tick_params(axis='x', which='minor')
+    # plt.ylim(0, 2)
+    # plt.xlim(0, 5)
+    plt.ylim(0, 2.3)
+    plt.legend()
+
+#    def pow_10(x, pos):
+#        """The two args are the value and tick position.
+#        Label ticks with the product of the exponentiation"""
+#        return '%0.1f' % (10**x)
+#
+#    formatter = plt.FuncFormatter(pow_10)
+#    plt.gca().xaxis.set_major_formatter(formatter)
+#
+#    x_minor = matplotlib.ticker.FixedLocator([np.log10(mm) for mm in np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+#                                                                               1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+#                                                                               10, 20, 30, 40, 50, 60, 70, 80, 90, 100])])
+#    plt.gca().xaxis.set_minor_locator(x_minor)
+#    plt.gca().xaxis.set_minor_formatter(plt.NullFormatter())
+
+    if sol_mode == 'global':
+        plt.savefig(paper_dir + 'all_thetaE_posteriors_' + mode + '.png')
+        plt.savefig(paper_dir + 'all_thetaE_posteriors_' + mode + '.pdf')
+    else:
+        plt.savefig(paper_dir + 'all_thetaE_posteriors.png')
+        plt.savefig(paper_dir + 'all_thetaE_posteriors.pdf')
 
     return
 
@@ -7000,6 +7490,7 @@ def plot_trace_corner(target):
               'piE_E':    '$\pi_{E,E}$',
               'piE_N':    '$\pi_{E,N}$',
               'piE':      '$\pi_{E}$',
+              'log_piE':      '$\log_{10} [\pi_{E}]$',
               'b_sff1':   '$b_{SFF,I}$',
               'mag_src1': '$I_{src}$ (mag)',
               'mag_base1': '$I_{base}$ (mag)',
@@ -7027,6 +7518,7 @@ def plot_trace_corner(target):
               'muRel_E':  '$\mu_{rel,\\alpha*}$ (mas/yr)',
               'muRel_N':  '$\mu_{rel,\delta}$ (mas/yr)',
               'muRel':    '$\mu_{rel}$ (mas/yr)',
+              'log_muRel':    '$\log_{10} [\mu_{rel}$ (mas/yr)]',
               'gp_log_sigma1':      '$\log \sigma_{GP, I} (mag)$',
               'gp_rho1':            '$\\rho_{GP, I}$ (days)',
               'gp_log_omega04_S01': '$\log S_{0, GP, I} \omega_{0, GP, I}^4$ (mag$^2$ days$^{-2}$)',  
@@ -7092,6 +7584,23 @@ def plot_trace_corner(target):
     smy['MAP_piE'] = np.hypot(smy['MAP_piE_E'], smy['MAP_piE_N'])
     smy['Med_piE'] = np.hypot(smy['Med_piE_E'], smy['Med_piE_N'])
     params_global['piE'] = np.hypot(params_global['piE_E'], params_global['piE_N'])
+    
+    #
+    # Add log piE
+    #
+    idx_piE = fitter.all_param_names.index('piE')
+    
+    logpiE = np.log10(res['samples'][:, idx_piE])
+    res['samples'] = np.append(res['samples'], np.array([logpiE]).T, axis=1)
+    for mm in range(len(res_m)):
+        logpiE_m = np.log10(res_m[mm]['samples'][:, idx_piE])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([logpiE_m]).T, axis=1)
+
+    fitter.all_param_names.append('log_piE')
+    smy['MaxLike_log_piE'] = np.log10(smy['MaxLike_piE'])
+    smy['MAP_log_piE'] = np.log10(smy['MAP_piE'])
+    smy['Med_log_piE'] = np.log10(smy['Med_piE'])
+    params_global['log_piE'] = np.log10(params_global['piE'])
 
     #
     # Add ampltidue of muRel
@@ -7110,6 +7619,23 @@ def plot_trace_corner(target):
     smy['MAP_muRel'] = np.hypot(smy['MAP_muRel_E'], smy['MAP_muRel_N'])
     smy['Med_muRel'] = np.hypot(smy['Med_muRel_E'], smy['Med_muRel_N'])
     params_global['muRel'] = np.hypot(params_global['muRel_E'], params_global['muRel_N'])
+    
+    #
+    # Add log murel
+    #
+    idx_muRel = fitter.all_param_names.index('muRel')
+    
+    logmuRel = np.log10(res['samples'][:, idx_muRel])
+    res['samples'] = np.append(res['samples'], np.array([logmuRel]).T, axis=1)
+    for mm in range(len(res_m)):
+        logmuRel_m = np.log10(res_m[mm]['samples'][:, idx_muRel])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([logmuRel_m]).T, axis=1)
+
+    fitter.all_param_names.append('log_muRel')
+    smy['MaxLike_log_muRel'] = np.log10(smy['MaxLike_muRel'])
+    smy['MAP_log_muRel'] = np.log10(smy['MAP_muRel'])
+    smy['Med_log_muRel'] = np.log10(smy['Med_muRel'])
+    params_global['log_muRel'] = np.log10(params_global['muRel'])
 
     
     # # Trim down to just the primary fitting parameters.
@@ -7164,7 +7690,7 @@ def plot_trace_corner(target):
     ##########
 
     # First subset
-    fig5 = ['log_mL', 'piE', 'muRel']
+    fig5 = ['log_mL', 'log_piE', 'log_muRel']
     fig1 = ['mL', 'u0_amp', 'tE', 'piE', 'log10_thetaE', 'muRel', 'piRel', ]
     fig2 = ['mL', 'piS', 'piL', 'piE_E', 'piE_N', 'xS0_E', 'xS0_N', 't0']
     # if target == 'ob140613':
@@ -7187,7 +7713,7 @@ def plot_trace_corner(target):
     idx5 = [fitter.all_param_names.index(fig5_val) for fig5_val in fig5]
     idx6 = [fitter.all_param_names.index(fig6_val) for fig6_val in fig6]
 
-    all_idxs = [idx6] #[idx1, idx2, idx3, idx4,idx5]
+    all_idxs = [idx5, idx6] #[idx1, idx2, idx3, idx4,idx5]
 
     for ii in range(len(all_idxs)):
         idx = all_idxs[ii]
@@ -7201,7 +7727,15 @@ def plot_trace_corner(target):
                 span[mdx[0]] = [0, 100]
             else:
                 span[mdx[0]] = [0, 10]
-        
+        mdx = np.where(np.array(fitter.all_param_names)[idx] == 'log_mL')[0]
+        if len(mdx) > 0:
+            if target == 'ob150211':
+                span[mdx[0]] = [-1.2, 1.2]
+        mdx = np.where(np.array(fitter.all_param_names)[idx] == 'log_mL')[0]
+        if len(mdx) > 0:
+            if target == 'ob150211':
+                span[mdx[0]] = [-1.2, 1.2]
+                
         smooth = 0.05
         
         fig, axes = plt.subplots(ndim, ndim, figsize=(20, 20))
@@ -7220,8 +7754,12 @@ def plot_trace_corner(target):
         [[ax.yaxis.get_label().set_fontsize(25) for ax in axs] for axs in axes]
         if target=='ob120169':
             [ax.set_xlim(0,5) for ax in axes[:,0]]
-        if target=='ob150211':
+        if target=='ob150211' and ii==1:
             [ax.set_xlim(0,20) for ax in axes[:,0]]
+#        elif target=='ob150211' and ii==0:
+#            [ax.set_xlim(-1.6,1.6) for ax in axes[:,0]]
+#            [ax.set_xlim(0,0.5) for ax in axes[:,1]]
+
         plt.savefig(paper_dir + target + '_dy_corner_' + str(ii) + '.png', bbox_inches="tight")
         plt.savefig(paper_dir + target + '_dy_corner_' + str(ii) + '.pdf', bbox_inches="tight")
         
@@ -7266,6 +7804,149 @@ def plot_trace_corner(target):
 #                plt.savefig(paper_dir + target + '_dy_corner_' + 'mode' + str(mm) + '_' + str(ii) + '.pdf',
 #                            bbox_inches="tight")
 #
+    return
+    
+    
+def plot_trace_corner_phot(target):
+    labels = {'t0':       '$t_0$ (MJD)',
+              'u0_amp':   '$u_0$',
+              'tE':       '$t_E$ (days)',
+              'piE_E':    '$\pi_{E,E}$',
+              'piE_N':    '$\pi_{E,N}$',
+              'piE':      '$\pi_{E}$',
+              'b_sff1':   '$b_{SFF,I}$',
+              'mag_src1': '$I_{src}$ (mag)',
+              'mag_base1': '$I_{base}$ (mag)',
+              'mult_err1': '$\\varepsilon_{m,I}$',
+              'add_err1':  '$\\varepsilon_{a,I}$ (mmag)',
+              'muRel':    '$\mu_{rel}$ (mas/yr)'
+             }
+
+    # Photometric and Astrometry Posteriors
+    fitter, data = get_data_and_fitter(pspl_phot[target])
+    
+    from dynesty import plotting as dyplot
+
+    res = fitter.load_mnest_results_for_dynesty()
+    res_m = fitter.load_mnest_modes_results_for_dynesty()
+    params_global = fitter.get_best_fit(def_best='median')[0]
+    fitter_params = copy.deepcopy(fitter.all_param_names)
+    smy = calc_summary_statistics(fitter)
+    fitter.all_param_names = fitter_params
+    
+    #
+    # Add ampltidue of piE
+    #
+    idx_piEE = fitter.all_param_names.index('piE_E')
+    idx_piEN = fitter.all_param_names.index('piE_N')
+    
+    piE = np.hypot(res['samples'][:, idx_piEE], res['samples'][:, idx_piEN])
+    res['samples'] = np.append(res['samples'], np.array([piE]).T, axis=1)
+    for mm in range(len(res_m)):
+        piE_m = np.hypot(res_m[mm]['samples'][:, idx_piEE], res_m[mm]['samples'][:, idx_piEN])
+        res_m[mm]['samples'] = np.append(res_m[mm]['samples'], np.array([piE_m]).T, axis=1)
+
+    fitter.all_param_names.append('piE')
+    smy['MaxLike_piE'] = np.hypot(smy['MaxLike_piE_E'], smy['MaxLike_piE_N'])
+    smy['MAP_piE'] = np.hypot(smy['MAP_piE_E'], smy['MAP_piE_N'])
+    smy['Med_piE'] = np.hypot(smy['Med_piE_E'], smy['Med_piE_N'])
+    params_global['piE'] = np.hypot(params_global['piE_E'], params_global['piE_N'])
+
+    #
+    # Setup the truths arrays (choose Median)
+    #
+    best_sol = 'Med_'
+    truths = np.zeros(len(fitter.all_param_names), dtype=float)
+    truths_m = np.zeros((len(res_m), len(fitter.all_param_names)), dtype=float)
+    ax_labels = []
+    
+    for pp in range(len(fitter.all_param_names)):
+        param = fitter.all_param_names[pp]
+        
+        ax_labels.append(labels[param])
+
+        # Global solution
+        if param in params_global:
+            # truths[pp] = smy[best_sol + param][0]  # global best fit.
+            truths[pp] = params_global[param]  # global best fit.
+        else:
+            truths[pp] = None
+
+        # Mode solutions
+        for mm in range(len(res_m)):
+            if best_sol + param in smy.colnames:
+                truths_m[mm, pp] = smy[best_sol + param][mm]  # global best fit.
+            else:
+                truths_m[mm, pp] = None
+            
+    ax_labels = np.array(ax_labels)
+
+
+    # plt.close('all')
+    # dyplot.traceplot(res, labels=ax_labels,
+    #                  show_titles=True, truths=truths)
+    # plt.subplots_adjust(hspace=0.7)
+    # plt.savefig(paper_dir + target + '_dy_trace.png')
+
+
+    sigma_vals = np.array([0.682689])  # , 0.9545, 0.9973])
+    credi_ints_lo = (1.0 - sigma_vals) / 2.0
+    credi_ints_hi = (1.0 + sigma_vals) / 2.0
+    credi_ints_med = np.array([0.5])
+    quantiles = np.concatenate([credi_ints_med, credi_ints_lo, credi_ints_hi])
+
+    ##########
+    # Prep the figure
+    ##########
+
+    # First subset
+    fig1 = ['u0_amp', 'tE', 'piE', 'b_sff1']# ,'mag_base1', 't0']
+
+    idx1 = [fitter.all_param_names.index(fig1_val) for fig1_val in fig1]
+
+    all_idxs = [idx1] #[idx1, idx2, idx3, idx4,idx5]
+
+    for ii in range(len(all_idxs)):
+        idx = all_idxs[ii]
+        ndim = len(idx)
+
+        # Set the axis limits. hard code the mass limit.
+        span = [1.0 - 1e-6] * ndim
+        mdx = np.where(np.array(fitter.all_param_names)[idx] == 'mL')[0]
+        if len(mdx) > 0:
+            if target == 'ob150211':
+                span[mdx[0]] = [0, 100]
+            else:
+                span[mdx[0]] = [0, 10]
+        
+        smooth = 0.05
+        
+        fig, axes = plt.subplots(ndim, ndim, figsize=(20, 20))
+        plt.subplots_adjust(left=0.3, bottom=0.3)
+        model_fitter.cornerplot_custom([res],
+                          dims=idx, labels=ax_labels[idx], truths=truths[idx],
+                          show_titles=False, quantiles=quantiles,
+                          fig=(fig, axes),  smooth=smooth) #span=span,
+        #ax = plt.gca()
+        [[ax.tick_params(axis='both', which='major', labelsize=25) for ax in axs] for axs in axes]
+        [[ax.xaxis.get_label().set_fontsize(25) for ax in axs] for axs in axes]
+        [[ax.yaxis.get_label().set_fontsize(25) for ax in axs] for axs in axes]
+        if target=='ob120169':
+            [ax.set_xlim(-0.3,0.5) for ax in axes[:,0]]
+            [ax.set_xlim(100,185) for ax in axes[:,1]]
+            [ax.set_ylim(100,185) for ax in axes[1,:1]]
+            [ax.set_xlim(0,0.4) for ax in axes[:,2]]
+            [ax.set_ylim(0,0.4) for ax in axes[2,:2]]
+            [ax.set_xlim(0.7,1.2) for ax in axes[:,3]]
+            [ax.set_ylim(0.7,1.2) for ax in axes[3,:3]]
+            
+#        if target=='ob150211':
+#            [ax.set_xlim(0,20) for ax in axes[:,0]]
+        plt.savefig(paper_dir + target + '_dy_corner_phot_' + str(ii) + '.png', bbox_inches="tight")
+        plt.savefig(paper_dir + target + '_dy_corner_phot_' + str(ii) + '.pdf', bbox_inches="tight")
+        
+    plt.close('all')
+
     return
 
 def plot_ob150211_mass_piE_muRel_all_modes():
@@ -7443,7 +8124,7 @@ def plot_2d_contour(samples1, samples2, weights, axes, color,
     return
     
 
-def get_data_and_fitter(mnest_base):
+def get_data_and_fitter(mnest_base, use_keck_file='default'):
     info_file = open(mnest_base + 'params.yaml', 'r')
     info = yaml.full_load(info_file)
 
@@ -7454,13 +8135,16 @@ def get_data_and_fitter(mnest_base):
         ast_dsets = []
         
     if '_perlmutter' in info['target']:
-        info['target'] = info['target'][:-11]
+        info['target'] = info['target'].split('_')[0]
+    
+    if use_keck_file=='default':
+        use_keck_file = astrom_data[info['target'].lower()]
 
     my_model = getattr(model, info['model'])
     my_data = munge.getdata2(info['target'].lower(),
                              phot_data=pho_dsets,
                              ast_data=ast_dsets,
-                             use_keck_file=astrom_data[info['target'].lower()])
+                             use_keck_file=use_keck_file)
 
     # Need this for backwards compatability.
     if 'use_phot_optional_params' in info:
@@ -7617,6 +8301,17 @@ def calc_summary_statistics(fitter, verbose=False, return_samples=False):
         #smy['Med_mag_src2'] = smy['Med_mag_base2'] - 2.5 * np.log10(smy['Med_b_sff2'])
 
         fitter.all_param_names.append('mag_src2')
+        
+    if ('mag_base3' in current_params) and ('mag_src3' not in current_params):
+        for ii in range(len(tab_list)):
+            tab_list[ii]['mag_src3'] = tab_list[ii]['mag_base3'] - 2.5 * np.log10(tab_list[ii]['b_sff3'])
+
+        smy['Mean_mag_src3'] = smy['Mean_mag_base3'] - 2.5 * np.log10(smy['Mean_b_sff3'])
+        smy['MAP_mag_src3'] = smy['MAP_mag_base3'] - 2.5 * np.log10(smy['MAP_b_sff3'])
+        smy['MaxLike_mag_src3'] = smy['MaxLike_mag_base3'] - 2.5 * np.log10(smy['MaxLike_b_sff3'])
+        #smy['Med_mag_src2'] = smy['Med_mag_base2'] - 2.5 * np.log10(smy['Med_b_sff2'])
+
+        fitter.all_param_names.append('mag_src3')
         
 
     # Make a deepcopy of this table and set everything to zeros.
@@ -9514,4 +10209,4 @@ def examine_priors():
             else:
                 pstr += '\\\\'
         print(pstr)
-            
+ 
