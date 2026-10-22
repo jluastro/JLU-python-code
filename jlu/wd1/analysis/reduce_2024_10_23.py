@@ -34,6 +34,8 @@ from flystar import starlists as fly_starlists
 import astropy.table
 from astropy.table import Table
 from astropy.table import Column
+from astropy.io import fits
+from star_clusters import general_membership as gen_mem
 from jlu.astrometry import align
 from scipy.stats import binned_statistic, chi2
 from scipy.optimize import least_squares
@@ -2923,7 +2925,14 @@ def add_velocities_to_catalog(catalog_in_dir, catalog_out_dir, epochs=['2005_F81
     return
 
 
-def identify_kinematic_members(catalog):
+def identify_kinematic_members(catalog, save_path=None, show=True):
+    """
+    save_path : str, optional
+        Directory to save the VPD and XY plots in.
+    show : bool, optional
+        Show the plots (False closes them instead, e.g. for the intermediate
+        iterations of an alignment loop).
+    """
     t = copy.deepcopy(catalog)
     scale = ast.scale['WFC'] * 10**3  # mas/yr per pix/yr
     members = np.full(len(t), False, dtype=bool)  # Start with all non-members
@@ -2992,7 +3001,9 @@ def identify_kinematic_members(catalog):
     # vy_mean = vy_clip.mean()
     # vx_std = vx_clip.std()
     # vy_std = vy_clip.std()
-    vel_cut = ((vx_std + vy_std) / 2.0) * 3.0  # 3 sigma
+    # Membership is the GMM label, not a radius cut: the member component's
+    # covariance is elongated and tilted, so no circle describes it.
+    v_corr = member_cov[0, 1] / (vx_std * vy_std)
 
     # Convert velocities to have cluster mean at 0, 0
     print('Adjusting cluster to 0 velocity')
@@ -3000,22 +3011,37 @@ def identify_kinematic_members(catalog):
     t['vy'] = (t['vy'] - vy_mean) * scale
     t['vx_err'] *= scale
     t['vy_err'] *= scale
-    vel_cut *= scale
 
-    # Plot Gaussian
-    circle = plt.Circle((0, 0), vel_cut, color='C3', linewidth=2, fill=False, label='GMM std')
-    fig, ax = plt.subplots(figsize=(6, 6))
-    scatter = ax.scatter(t['vx'], t['vy'], c=labels, cmap='viridis', s=1, alpha=0.5)
-    ax.set_xlabel('vx (mas/yr)')
-    ax.set_ylabel('vy (mas/yr)')
-    ax.set_title('GMM of VPD')
-    ax.legend(*scatter.legend_elements(), title='Component')
-    ax.add_artist(circle)
-    if not os.path.exists(os.path.join(work_dir, '50.ALIGN_KS2/plots')):
-        os.makedirs(os.path.join(work_dir, '50.ALIGN_KS2/plots'))
+    # Rotate the plotted velocities onto RA/Dec with vel_rotate(-vx, vy, -pa_angle).
+    # t['vx'] was already x-inverted above (+x to the East), so it is passed as-is
+    # for the -vx argument. The table keeps detector-aligned velocities to stay
+    # consistent with x0/y0 in the label file.
+    pa_angle = -fits.open(f'{user_path}/Westerlund1/data/images/j8z201lzq_flt.fits')[1].header['ORIENTAT']
+    v_ra, v_dec = gen_mem.vel_rotate(np.asarray(t['vx']), np.asarray(t['vy']), -pa_angle)
+
+    if save_path is not None:
+        os.makedirs(save_path, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    scatter = ax.scatter(v_ra, v_dec, c=labels, cmap='viridis', s=0.5, alpha=0.5, rasterized=True)
+    # Name the cluster component "Member" and the others "Field 1", "Field 2"
+    handles, _ = scatter.legend_elements()
+    comps = list(np.unique(labels))
+    member_idx = comps.index(cluster_label)
+    # Reorder the handles (which keep their colors) so Member is listed first
+    order = [member_idx] + [i for i in range(len(comps)) if i != member_idx]
+    handles = [handles[i] for i in order]
+    comp_names = ['Member'] + ['Field {0:d}'.format(n + 1) for n in range(len(comps) - 1)]
+    ax.legend(handles, comp_names, title='Component', fontsize=12, title_fontsize=12, framealpha=0.9)
+    ax.set_xlim(-3.5, 3.5)
+    ax.set_ylim(-3.5, 3.5)
+    ax.tick_params(axis='both', labelsize=12)
+    ax.set_xlabel(r'$\mu_{\alpha^*}$ (mas yr$^{-1}$)', fontsize=14)
+    ax.set_ylabel(r'$\mu_\delta$ (mas yr$^{-1}$)', fontsize=14)
+    ax.set_title('GMM of HST VPD', fontsize=14)
     plt.tight_layout()
-    plt.savefig(os.path.join(work_dir, '50.ALIGN_KS2/plots/make_new_labels_with_members_vpd.png'))
-    plt.show()
+    if save_path is not None:
+        plt.savefig(os.path.join(save_path, 'kinematic_members.pdf'), dpi=300)
+    plt.show() if show else plt.close(fig)
 
     # Make the membership cut.
     vtot = np.hypot(t['vx'], t['vy'])
@@ -3023,20 +3049,18 @@ def identify_kinematic_members(catalog):
 
     # Make a plot to show the distribution of members. This can
     # effect our alignment process.
-    plt.figure(2, figsize=(6,6))
+    fig2 = plt.figure(2, figsize=(6, 6))
     plt.plot(t['x0'], t['y0'], 'k.', ms=1)
-    plt.xlabel('X (")')
-    plt.ylabel('Y (")')
-    plt.savefig(os.path.join(work_dir, '50.ALIGN_KS2/plots/make_new_labels_with_members_xy.png'))
-    plt.show()
+    plt.xlabel('X (")', fontsize=12)
+    plt.ylabel('Y (")', fontsize=12)
+    plt.show() if show else plt.close(fig2)
 
     print('vx: {0:7.4f} ± {1:7.4f} pix/yr'.format(vx_mean, vx_std))
     print('vy: {0:7.4f} ± {1:7.4f} pix/yr'.format(vy_mean, vy_std))
-    print('Velocity Cut: vtot < {0:7.4f} pix/yr'.format(vel_cut))
 
     print('vx: {0:7.2f} ± {1:7.2f} mas/yr'.format(vx_mean * scale * -1., vx_std * scale))
     print('vy: {0:7.2f} ± {1:7.2f} mas/yr'.format(vy_mean * scale, vy_std * scale))
-    print('Velocity Cut: vtot < {0:7.4f} mas/yr'.format(vel_cut * scale))
+    print('vx-vy correlation of the member component: {0:6.3f}'.format(v_corr))
 
     print('Saving {0:d} Wd 1 members'.format(len(t)))
     # Make the new label.dat ... we can make it straight from our
@@ -5170,6 +5194,400 @@ def plot_chi2_by_dof(tab, fit_cols=None, min_stars=50, outlier_p=None):
                 n_epoch=n_meas, dof=dof,
                 truncate_at=(chi2.ppf(outlier_p, dof) if outlier_p else None)
             )
+
+
+# One fixed colour per epoch for the alignment diagnostics below (validated
+# categorical palette, light mode), plus the text/grid inks.
+_EPOCH_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948']
+_INK, _INK2, _MUTED, _GRID = '#0b0b0b', '#52514e', '#b5b4ad', '#e4e3df'
+
+
+def _loo_residuals(tab, fit_cols, pscale=50.0, floor=0.5, clip=5.0):
+    """Leave-one-out residuals of a per-star linear fit, in mas.
+
+    r/(1-h) is how far a star sits at one epoch from where its OTHER epochs put
+    it. Unlike the plain residual it is not shrunk by that epoch's own lever
+    arm, so an epoch at the end of the baseline (2005, 2024) shows its
+    misalignment at full size. Its variance is sigma^2/(1-h). Stars need 3+
+    epochs (with 2, h = 1 and there is nothing left to predict from).
+
+    The weights are 1/(sigma_loo^2 + floor^2), floor in mas: pure 1/sigma^2
+    spans ~10^6 between bright and faint stars, which hands a coherence
+    estimate to a few dozen stars; the floor is the scale of the signal being
+    looked for, which is the optimal weight for it. Points beyond `clip`
+    sigma_loo are dropped (mismatches would otherwise dominate the products).
+    Returns rx, ry, wx, wy, each (N_stars, N_cols): nan / 0 where unusable.
+    """
+    cols = np.asarray(fit_cols, dtype=int)
+    times = np.asarray(tab.meta['list_times'], dtype=float)[cols]
+    valid = get_valid_idx(tab, cols)
+    valid &= (valid.sum(axis=1) >= 3)[:, None]
+    rows = np.where(valid.any(axis=1))[0]
+    v = valid[rows]
+    out = []
+    for p, e in (('x', 'xe'), ('y', 'ye')):
+        pos = np.where(v, np.asarray(tab[p])[rows][:, cols], 0.0)
+        err = np.where(v, np.asarray(tab[e])[rows][:, cols], 1.0)
+        resid, h = _wls_linear(pos, err, v, times)
+        h = np.clip(h, 0, 1 - 1e-6)
+        sig_loo = err * pscale / np.sqrt(1 - h)
+        loo = resid * pscale / (1 - h)
+        good = v & (np.abs(loo) < clip * sig_loo)
+        r = np.full(valid.shape, np.nan)
+        w = np.zeros(valid.shape)
+        r[rows] = np.where(good, loo, np.nan)
+        w[rows] = np.where(good, 1.0 / (sig_loo**2 + floor**2), 0.0)
+        out += [r, w]
+    rx, wx, ry, wy = out
+    both = (wx > 0) & (wy > 0)
+    return (np.where(both, rx, np.nan), np.where(both, ry, np.nan),
+            np.where(both, wx, 0.0), np.where(both, wy, 0.0))
+
+
+def _cell_chi2(ci, n_cells, rx, ry, wx, wy, min_stars):
+    """Weighted mean residual per cell and its t value, using the scatter
+    within the cell for the standard error (never xe/ye)."""
+    n = np.bincount(ci, minlength=n_cells)
+    res = []
+    for r, w in ((rx, wx), (ry, wy)):
+        Sw = np.bincount(ci, w, minlength=n_cells)
+        mu = np.bincount(ci, w * r, minlength=n_cells) / np.where(Sw > 0, Sw, 1)
+        var = np.bincount(ci, w**2 * (r - mu[ci])**2, minlength=n_cells) / np.where(Sw > 0, Sw, 1)**2
+        sem = np.sqrt(var * n / np.maximum(n - 1, 1))
+        res.append((mu, mu / np.where(sem > 0, sem, np.inf)))
+    ok = n >= min_stars
+    (mx, tx), (my, ty) = res
+    return mx, my, tx, ty, ok, np.mean((tx[ok]**2 + ty[ok]**2) / 2)
+
+
+def residual_systematics(tab, fit_cols, cell=300, min_stars=30, seps=np.geomspace(20, 2000, 11),
+                         n_sub=6000, n_shuffle=10, mag_bin=1.0, mag_min_stars=100, seed=0, pscale=50.0):
+    """Spatially coherent residuals per epoch: the signature of an alignment
+    error, which the error calibration can neither create nor remove.
+
+    Measurement noise is independent from star to star; a transformation
+    error moves every star in a region together. Both statistics below
+    look only for the second, and both are measured against the same data
+    with the residuals shuffled between stars (which keeps every star's
+    noise and destroys any spatial pattern) -- so neither depends on whether
+    xe/ye are right, unlike a chi2 distribution, which calibrate_epoch_errors
+    makes match by construction.
+
+    cells : the field is cut into cell x cell px squares; each cell's weighted
+        mean residual is divided by its standard error from the scatter
+        WITHIN the cell. chi2_cell is the mean of t^2 over cells and axes, and
+        chi2_null the same after shuffling: their ratio is 1 when the
+        residuals have no spatial pattern.
+    xi(s) : the weighted mean product of the residual vectors of two stars
+        at separation s, per axis, in mas^2 -- the variance of the part of the
+        residuals that the two stars share. Its square root is the size of
+        the coherent alignment error on that scale.
+
+    mag : before either, the weighted mean residual in bins of m0 is measured
+        and subtracted. A shift that depends on brightness (a "magnitude
+        equation": a centring bias that differs between bright and faint
+        stars, or between the KS2 and hst1pass measurements) is common to
+        stars all over the field, so left in it would fill every cell and
+        every separation and pass for an alignment error -- which no
+        transformation in x, y can remove. It is reported separately.
+
+    Residuals are leave-one-out (see _loo_residuals), from tab's own x/y/xe/ye
+    over fit_cols; pass the table un-filtered and it drops chi2 outliers
+    itself if they are flagged.
+    Returns {epoch name: dict(...)} with the magnitude trend, the cell map and
+    both statistics.
+    """
+    from scipy.spatial import cKDTree
+    cols = np.asarray(fit_cols, dtype=int)
+    epnames = list(tab.meta['EPNAMES'])
+    keep = np.ones(len(tab), bool)
+    if 'chi2_outlier' in tab.colnames:
+        keep = ~np.asarray(tab['chi2_outlier'], bool)
+    rx, ry, wx, wy = _loo_residuals(tab, cols, pscale=pscale)
+    m0 = np.asarray(tab['m0'], float)
+    keep &= np.isfinite(m0)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)
+        px = np.nanmedian(np.asarray(tab['x'])[:, cols], axis=1)
+        py_ = np.nanmedian(np.asarray(tab['y'])[:, cols], axis=1)
+    rng = np.random.default_rng(seed)
+    x_edges = np.arange(np.nanmin(px), np.nanmax(px) + cell, cell)
+    y_edges = np.arange(np.nanmin(py_), np.nanmax(py_) + cell, cell)
+    nx, ny = len(x_edges) - 1, len(y_edges) - 1
+    out = {}
+    for j, c in enumerate(cols):
+        s = keep & (wx[:, j] > 0)
+        if s.sum() < 10 * min_stars:
+            continue
+        x, y, r_x, r_y, w_x, w_y = px[s], py_[s], rx[s, j], ry[s, j], wx[s, j], wy[s, j]
+        # Magnitude trend: weighted mean per mag_bin-wide m0 bin (bins with
+        # fewer than mag_min_stars are dropped), interpolated back onto every star
+        # and subtracted.
+        m = m0[s]
+        m_edges = np.arange(np.floor(m.min()), m.max() + mag_bin, mag_bin)
+        mi = np.clip(np.digitize(m, m_edges) - 1, 0, len(m_edges) - 2)
+        nmb = len(m_edges) - 1
+        cnt = np.bincount(mi, minlength=nmb)
+        mag_c = np.bincount(mi, m, minlength=nmb) / np.maximum(cnt, 1)
+        filled = cnt >= mag_min_stars
+        trend = []
+        for r_, w_ in ((r_x, w_x), (r_y, w_y)):
+            Sw = np.bincount(mi, w_, minlength=nmb)
+            Sw = np.where(Sw > 0, Sw, np.inf)
+            mu = np.bincount(mi, w_ * r_, minlength=nmb) / Sw
+            sem = np.sqrt(np.bincount(mi, w_**2 * (r_ - mu[mi])**2, minlength=nmb)) / Sw
+            trend.append((mu, sem))
+        (mag_mx, mag_ex), (mag_my, mag_ey) = [(mu[filled], e[filled]) for mu, e in trend]
+        mag_c = mag_c[filled]
+        r_x = r_x - np.interp(m, mag_c, mag_mx)
+        r_y = r_y - np.interp(m, mag_c, mag_my)
+        ix = np.clip(np.digitize(x, x_edges) - 1, 0, nx - 1)
+        iy = np.clip(np.digitize(y, y_edges) - 1, 0, ny - 1)
+        ci = iy * nx + ix
+        mx, my, tx, ty, ok, c2 = _cell_chi2(ci, nx * ny, r_x, r_y, w_x, w_y, min_stars)
+        c2_null = []
+        for _ in range(n_shuffle):
+            p = rng.permutation(len(x))
+            c2_null.append(_cell_chi2(ci, nx * ny, r_x[p], r_y[p], w_x[p], w_y[p], min_stars)[-1])
+
+        sub = rng.choice(len(x), size=min(n_sub, len(x)), replace=False)
+        pairs = cKDTree(np.c_[x[sub], y[sub]]).query_pairs(seps[-1], output_type='ndarray')
+        a, b = sub[pairs[:, 0]], sub[pairs[:, 1]]
+        d = np.hypot(x[a] - x[b], y[a] - y[b])
+        k = np.digitize(d, seps) - 1
+        inb = (k >= 0) & (k < len(seps) - 1)
+        a, b, k = a[inb], b[inb], k[inb]
+        nb = len(seps) - 1
+
+        def xi_of(rx_, ry_, wx_, wy_):
+            num = (np.bincount(k, wx_[a] * wx_[b] * rx_[a] * rx_[b], minlength=nb)
+                   / np.bincount(k, wx_[a] * wx_[b], minlength=nb))
+            num += (np.bincount(k, wy_[a] * wy_[b] * ry_[a] * ry_[b], minlength=nb)
+                    / np.bincount(k, wy_[a] * wy_[b], minlength=nb))
+            return num / 2
+
+        xi = xi_of(r_x, r_y, w_x, w_y)
+        xi_null = []
+        for _ in range(n_shuffle):
+            p = rng.permutation(len(x))
+            xi_null.append(xi_of(r_x[p], r_y[p], w_x[p], w_y[p]))
+        xc = (x_edges[:-1] + x_edges[1:]) / 2
+        yc = (y_edges[:-1] + y_edges[1:]) / 2
+        out[epnames[c]] = dict(
+            n_stars=int(s.sum()), mag=mag_c, mag_mx=mag_mx, mag_my=mag_my, mag_ex=mag_ex, mag_ey=mag_ey,
+            cell_x=np.tile(xc, ny), cell_y=np.repeat(yc, nx),
+            cell_mx=mx, cell_my=my, cell_t2=(tx**2 + ty**2), cell_ok=ok,
+            chi2_cell=c2, chi2_null=np.mean(c2_null), coherence=c2 / np.mean(c2_null),
+            seps=np.sqrt(seps[:-1] * seps[1:]), xi=xi, xi_null_mean=np.mean(xi_null, axis=0),
+            xi_null_std=np.std(xi_null, axis=0),
+            pair_counts=np.bincount(k, minlength=nb))
+    return out
+
+
+def plot_residual_systematics(tab, fit_cols, title=None, save_path=None, show=True, stats=None,
+                              arrow_mas=0.5, pscale=50.0):
+    """What is left in the residuals that the error bars cannot explain, split
+    into what depends on brightness and what depends on position (see
+    residual_systematics). Use it instead of the chi2 plot to judge the
+    ALIGNMENT: the chi2 plot judges the error bars, and only after
+    calibrate_epoch_errors has fitted them to it.
+
+    Top row, one map per epoch, magnitude trend removed: the mean residual in
+    each cell, orange where it is significant at 99% against the scatter
+    within the cell. A good alignment leaves short, randomly pointing grey
+    arrows; an alignment error shows as orange arrows lining up over a region.
+    Bottom row:
+      1-2. mean residual vs m0, in x and in y: a magnitude equation. Flat at 0
+           when bright and faint stars are measured consistently. The
+           transformations cannot remove this, so more alignment passes won't.
+      3.   sqrt(xi), the residual two stars share, vs their separation, with
+           the band a shuffled field reaches. Above it: distortion left on
+           that scale.
+      4.   chi2_cell / chi2_null per epoch: 1 = no spatial pattern.
+    Returns the statistics (pass them back in as `stats` to re-plot).
+    """
+    from matplotlib.ticker import FixedLocator, NullFormatter
+    if stats is None:
+        stats = residual_systematics(tab, fit_cols, pscale=pscale)
+    names = list(stats)
+    colors = {n: _EPOCH_COLORS[i % len(_EPOCH_COLORS)] for i, n in enumerate(names)}
+    sig = chi2.ppf(0.99, 2)
+
+    def style(ax):
+        ax.tick_params(labelsize=8, colors=_INK2)
+        for sp in ax.spines.values():
+            sp.set_color(_GRID)
+
+    fig = plt.figure(figsize=(3.3 * max(len(names), 4), 8.2), facecolor='white')
+    top, bottom = fig.subfigures(2, 1, height_ratios=[1.1, 1], hspace=0.04)
+    maps = top.subplots(1, len(names), sharex=True, sharey=True)
+    for n, ax in zip(names, np.atleast_1d(maps)):
+        st = stats[n]
+        ok = st['cell_ok']
+        hot = ok & (st['cell_t2'] > sig)
+        for m, col in ((ok & ~hot, _MUTED), (hot, '#eb6834')):
+            q = ax.quiver(st['cell_x'][m], st['cell_y'][m], st['cell_mx'][m], st['cell_my'][m],
+                          color=col, angles='xy', scale_units='xy', scale=arrow_mas / 600, width=0.008)
+        ax.set_aspect('equal')
+        ax.set_title(f'{n}\n{hot.sum()} of {ok.sum()} cells significant', fontsize=9, color=_INK, loc='left')
+        ax.set_xlabel('x (px)', fontsize=8, color=_INK2)
+        style(ax)
+    np.atleast_1d(maps)[0].set_ylabel('y (px)', fontsize=8, color=_INK2)
+    top.text(0.01, 0.97, 'Mean residual per cell, magnitude trend removed  (orange: significant at 99%)',
+             fontsize=10, color=_INK, va='top')
+    np.atleast_1d(maps)[-1].quiverkey(q, 0.78, 1.32, arrow_mas, f'{arrow_mas:g} mas  ', labelpos='W',
+                                      coordinates='axes', color=_INK2, labelcolor=_INK2,
+                                      fontproperties={'size': 8})
+
+    axm = bottom.subplots(1, 4, gridspec_kw=dict(width_ratios=[1, 1, 1.5, 0.9], wspace=0.42))
+    for ax, comp, lab in ((axm[0], 'x', 'x'), (axm[1], 'y', 'y')):
+        for n in names:
+            st = stats[n]
+            mu, e = st[f'mag_m{comp}'], st[f'mag_e{comp}']
+            ax.fill_between(st['mag'], mu - e, mu + e, color=colors[n], alpha=0.18, lw=0)
+            ax.plot(st['mag'], mu, '-o', lw=2, ms=4, color=colors[n], label=n)
+        ax.axhline(0, color=_INK2, lw=0.8)
+        ax.set_xlabel('m0 (mag)', fontsize=9, color=_INK2)
+        ax.set_ylabel(f'mean {lab} residual (mas)', fontsize=9, color=_INK2)
+        ax.set_title(f'Residual vs magnitude, {lab}', fontsize=9.5, color=_INK, loc='left')
+        ax.grid(color=_GRID, lw=0.6)
+        style(ax)
+    # Limits from the means, not the bands: the faintest bin's band can be
+    # several times wider than the whole trend.
+    allmu = np.concatenate([stats[n][f'mag_m{c}'] for n in names for c in 'xy'])
+    pad = 0.15 * (allmu.max() - allmu.min()) + 0.1
+    for ax in axm[:2]:
+        ax.set_ylim(allmu.min() - pad, allmu.max() + pad)
+    axm[0].legend(fontsize=7, frameon=False)
+
+    ax = axm[2]
+    signed_sqrt = lambda v: np.sign(v) * np.sqrt(np.abs(v))
+    null_mu = np.median([stats[n]['xi_null_mean'] for n in names], axis=0)
+    null_sd = np.median([stats[n]['xi_null_std'] for n in names], axis=0)
+    s_arcsec = stats[names[0]]['seps'] * pscale / 1e3
+    ax.fill_between(s_arcsec, signed_sqrt(null_mu - 2 * null_sd), signed_sqrt(null_mu + 2 * null_sd),
+                    color=_GRID, lw=0, label='shuffled field, 2σ')
+    for n in names:
+        ax.plot(s_arcsec, signed_sqrt(stats[n]['xi']), '-o', lw=2, ms=4, color=colors[n], label=n)
+    ax.axhline(0, color=_INK2, lw=0.8)
+    ax.set_xscale('log')
+    ticks = [t for t in (1, 2, 5, 10, 20, 50, 100) if s_arcsec[0] / 1.5 <= t <= s_arcsec[-1] * 1.5]
+    ax.xaxis.set_major_locator(FixedLocator(ticks))
+    ax.set_xticklabels([f'{t:g}' for t in ticks])
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel('separation of the two stars (arcsec)', fontsize=9, color=_INK2)
+    ax.set_ylabel('shared residual, ±√ξ (mas)', fontsize=9, color=_INK2)
+    ax.set_title('Residual two stars share, vs separation', fontsize=9.5, color=_INK, loc='left')
+    ax.legend(fontsize=7, frameon=False, ncol=2)
+    ax.grid(color=_GRID, lw=0.6)
+    style(ax)
+
+    ax = axm[3]
+    vals = [stats[n]['coherence'] for n in names]
+    ax.barh(range(len(names)), vals, color=[colors[n] for n in names], height=0.6)
+    ax.axvline(1, color=_INK2, lw=1, ls='--')
+    for k, v in enumerate(vals):
+        ax.text(v, k, f' {v:.2f}', va='center', fontsize=8, color=_INK)
+    ax.set_yticks(range(len(names)), names, fontsize=8, color=_INK2)
+    ax.invert_yaxis()
+    ax.set_xlim(0, max(2, 1.25 * max(vals)))
+    ax.set_xlabel('cell χ² / shuffled (1 = none)', fontsize=9, color=_INK2)
+    ax.set_title('Spatial pattern per epoch', fontsize=9.5, color=_INK, loc='left')
+    style(ax)
+
+    if title:
+        fig.suptitle(title, fontsize=11.5, color=_INK, x=0.005, ha='left', y=1.02)
+    if save_path is not None:
+        os.makedirs(save_path, exist_ok=True)
+        fig.savefig(os.path.join(save_path, 'residual_systematics.png'), dpi=150, bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+    return stats
+
+
+def motion_change(prev, cur, pscale=50.0):
+    """How much the proper motions moved between two alignments, star by star.
+
+    Matched by name. Each star's change is divided by its error in `cur`, and
+    the width of that (NMAD, so a few mismatches don't set it) is the
+    convergence measure: 0.1 means the alignment still moves a typical star by
+    a tenth of its own error bar, which changes nothing that matters (it adds
+    0.5% to the error in quadrature). A shift shared by every star is the
+    frame drifting and is removed with the median. Stars flagged as chi2
+    outliers in `cur` are left out.
+    """
+    pn = {n: i for i, n in enumerate(np.asarray(prev['name']).astype(str))}
+    cn = np.asarray(cur['name']).astype(str)
+    ic = np.array([i for i, n in enumerate(cn) if n in pn], dtype=int)
+    ip = np.array([pn[n] for n in cn[ic]], dtype=int)
+    if 'chi2_outlier' in cur.colnames:
+        good = ~np.asarray(cur['chi2_outlier'], bool)[ic]
+        ic, ip = ic[good], ip[good]
+    g = lambda t, c, i: np.asarray(t[c], float)[i]
+    dvx, dvy = g(cur, 'vx', ic) - g(prev, 'vx', ip), g(cur, 'vy', ic) - g(prev, 'vy', ip)
+    ex, ey = g(cur, 'vx_err', ic), g(cur, 'vy_err', ic)
+    f = np.isfinite(dvx) & np.isfinite(dvy) & (ex > 0) & (ey > 0) & np.isfinite(ex) & np.isfinite(ey)
+    return dict(n=int(f.sum()), nmad_x=nmad(dvx[f] / ex[f]), nmad_y=nmad(dvy[f] / ey[f]),
+                median_dv=np.median(np.hypot(dvx[f] - np.median(dvx[f]), dvy[f] - np.median(dvy[f]))) * pscale)
+
+
+def plot_convergence(history, tol, save_path=None, show=True):
+    """The pass-3 iterations at a glance. history: one dict per iteration
+    with 'motion' (motion_change vs the previous iteration), 'members_changed'
+    (fraction of members added or removed) and 'coherence'
+    ({epoch: chi2_cell/chi2_null}, from residual_systematics).
+
+    Left: the stopping metric -- the iterations stop once both lines are
+    under the dashed tolerance. Middle: whether the member list has settled.
+    Right: whether the alignment itself improved (1 = no spatial pattern
+    left), which the stopping metric doesn't measure.
+    """
+    it = np.arange(1, len(history) + 1)
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.8), facecolor='white')
+    ax = axes[0]
+    for key, lab, col in (('nmad_x', 'x', _EPOCH_COLORS[0]), ('nmad_y', 'y', _EPOCH_COLORS[1])):
+        v = [h['motion'][key] for h in history]
+        ax.plot(it, v, '-o', lw=2, ms=6, color=col, label=f'{lab} motion')
+    ax.axhline(tol, color=_INK2, ls='--', lw=1)
+    ax.text(it[0], tol, f' stop below {tol:g}', va='bottom', fontsize=8, color=_INK2)
+    ax.set_yscale('log')
+    ax.set_ylabel('change vs previous iteration\nNMAD(Δv / σ_v)', fontsize=9, color=_INK2)
+    ax.set_title('Stopping metric', fontsize=10, color=_INK, loc='left')
+    ax.legend(fontsize=8, frameon=False)
+
+    ax = axes[1]
+    ax.plot(it, [100 * h['members_changed'] for h in history], '-o', lw=2, ms=6, color=_EPOCH_COLORS[0])
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel('members added or removed (%)', fontsize=9, color=_INK2)
+    ax.set_title('Member list', fontsize=10, color=_INK, loc='left')
+
+    ax = axes[2]
+    names = list(history[-1]['coherence'])
+    for i, n in enumerate(names):
+        ax.plot(it, [h['coherence'].get(n, np.nan) for h in history], '-o', lw=2, ms=6,
+                color=_EPOCH_COLORS[i % len(_EPOCH_COLORS)], label=n)
+    ax.axhline(1, color=_INK2, ls='--', lw=1)
+    ax.set_ylim(bottom=0)
+    ax.set_ylabel('cell χ² / shuffled (1 = no pattern)', fontsize=9, color=_INK2)
+    ax.set_title('Spatial pattern in the residuals', fontsize=10, color=_INK, loc='left')
+    ax.legend(fontsize=7.5, frameon=False)
+    for ax in axes:
+        ax.set_xlabel('pass 3 iteration', fontsize=9, color=_INK2)
+        ax.set_xticks(it)
+        ax.grid(color=_GRID, lw=0.6)
+        ax.tick_params(labelsize=8, colors=_INK2)
+        for sp in ax.spines.values():
+            sp.set_color(_GRID)
+    fig.tight_layout()
+    if save_path is not None:
+        os.makedirs(save_path, exist_ok=True)
+        fig.savefig(os.path.join(save_path, 'convergence.png'), dpi=150, bbox_inches='tight')
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 def atleast_n_group_detected(wd1_position_combined, col_groups, n):
