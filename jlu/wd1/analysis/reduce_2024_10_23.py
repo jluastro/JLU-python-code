@@ -4126,17 +4126,31 @@ def plot_vpd(use_RMSE=False, vel_weight=None):
     # return comp_dirs, art_lists, filters
 
 
+def read_ks2_offset(ks2_f):
+    """(_XOFF_, _YOFF_) master-frame offset from a ks2.F."""
+    with open(ks2_f) as f:
+        defines = dict(line.split()[1:3] for line in f if line.startswith(('#define _XOFF_', '#define _YOFF_')))
+    return int(defines['_XOFF_']), int(defines['_YOFF_'])
+
+
 def call_process_ks2_artstar(comp_dirs, art_lists, filters, ks2_update):
     # comp_dirs, art_lists, filters = setup_artstar_info()
 
     # Loop through each year
     for epoch in list(comp_dirs.keys()):
         art_dirs = comp_dirs[epoch]
-                
+
         # Loop through each position, sublist combo
         for ii in range(len(art_dirs)):
             directory = work_dir + '/' + epoch + '/' + art_dirs[ii]
             os.chdir(directory)
+
+            # The full-field runs shift KS2's frame by (_XOFF_, _YOFF_), and the
+            # artificial star lists are written in it; bring everything back to
+            # the catalog frame. 2005 uses KS2's own (shifted) positions, the IR
+            # epochs nimfo2bar's MAT-based ones, which are not shifted.
+            offset = read_ks2_offset('ks2.F')
+            out_offset = offset if '2005' in epoch else (0, 0)
 
             filt = filters[epoch]
 
@@ -4152,7 +4166,8 @@ def call_process_ks2_artstar(comp_dirs, art_lists, filters, ks2_update):
                 else:
                     nimfo2bar_file = 'nimfo2bar.xymeee.' + filt_string
                 comp.process_ks2_artstar(art_star_list, nimfo2bar_file,
-                                         filter_num=filt[ff], ks2_update=ks2_update)
+                                         filter_num=filt[ff], ks2_update=ks2_update,
+                                         in_offset=offset, out_offset=out_offset)
 
             
     return
