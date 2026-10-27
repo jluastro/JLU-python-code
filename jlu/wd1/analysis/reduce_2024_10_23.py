@@ -4834,7 +4834,8 @@ def _solve_block(pos, err, times):
 
 def calibrate_epoch_errors(tab, epoch_cols=None,
                            mag_bins=(12, 19, 20.5, 21.5, 22.5, 23.5, 26),
-                           min_stars=250, mag_col='m0', apply=True, verbose=True):
+                           min_stars=250, mag_col='m0', apply=True, verbose=True,
+                           return_factors=False):
     """Rescale per-epoch xe/ye so that fit residuals follow the expected chi2.
 
     Solves for a multiplicative factor per (epoch, axis, magnitude), which is the
@@ -4878,6 +4879,12 @@ def calibrate_epoch_errors(tab, epoch_cols=None,
     carry the factors, or `tab` itself when apply=False -- which makes
     apply=False a dry run: verbose still prints the factors it would have
     applied.
+
+    With return_factors=True it returns (table, factors), where
+    factors[epoch][axis] = {mag_col: magnitude centres, 'factor': factors}, the
+    curves np.interp reads to scale each star's xe/ye. Saving them lets errors
+    that never went through this fit -- artificial stars -- be put on the same
+    footing.
     """
     epnames = list(tab.meta['EPNAMES'])
     times = np.asarray(tab.meta['list_times'])
@@ -4958,6 +4965,11 @@ def calibrate_epoch_errors(tab, epoch_cols=None,
                 factor = np.interp(mags, mc, fv)
                 factor[~finite_mag] = fv[-1]
                 tab_out[ax + 'e'][:, j] *= factor
+    if return_factors:
+        factors = {epnames[j]: {ax: {mag_col: curves[ax][j][0].tolist(), 'factor': curves[ax][j][1].tolist()}
+                                for ax in 'xy'}
+                   for j in curves['x']}
+        return tab_out, factors
     return tab_out
 
 def post_process_ref_table(ref_table, mosaic_epochs, epnames):
@@ -6061,6 +6073,17 @@ def combine_short_exposures(tab):
             tab['m'][:, long_idx] = (-2.5 * np.ma.log10(combined_flux)).filled(np.nan)
             me_combined = (2.5 / np.log(10) * combined_flux_err / combined_flux).filled(np.inf)
             tab['me'][:, long_idx] = np.where(np.isfinite(tab['m'][:, long_idx]), me_combined, np.inf)
+
+            # m_orig (the untransformed magnitude) is merged the same way. Left out,
+            # a star measured only in the short exposures of an epoch -- typically
+            # one saturated in the long ones -- kept m_orig = NaN there once the
+            # short column was dropped, though its m and position were merged.
+            if 'm_orig' in tab.colnames:
+                m_orig = np.ma.masked_invalid(tab['m_orig'][:, [long_idx, short_idx]])
+                flux_orig = 10**(-0.4 * m_orig)
+                flux_orig_err = 0.4 * np.log(10) * flux_orig * me
+                combined_flux_orig = np.ma.average(flux_orig, axis=1, weights=1/flux_orig_err**2)
+                tab['m_orig'][:, long_idx] = (-2.5 * np.ma.log10(combined_flux_orig)).filled(np.nan)
 
             if 'n' in tab.colnames:
                 tab['n'][:, long_idx] += tab['n'][:, short_idx]
